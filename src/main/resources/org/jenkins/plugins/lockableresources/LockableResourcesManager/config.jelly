@@ -1,0 +1,31 @@
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ -->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+	<f:section title="${%Lockable Resources Manager}">
+		<f:entry title="${%Default Lock Priority Level}" field="defaultPriority">
+			<f:textbox/>
+		</f:entry>
+		<f:entry title="${%Lock Priority Parameter Name}" field="priorityParameterName">
+			<f:textbox/>
+		</f:entry>
+		<f:entry title="${%Lockable Resources}">
+			<f:repeatable field="resources" header="${%Resource}" minimum="0" add="${%Add Lockable Resouce}">
+				<table width="100%">
+					<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>
+					<f:entry title="">
+						<div align="right"><f:repeatableDeleteButton/></div>
+					</f:entry>
+				</table>
+			</f:repeatable>
+		</f:entry>
+	</f:section>
+</j:jelly>

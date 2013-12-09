@@ -1,0 +1,34 @@
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ -->
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+	<l:layout title="${it.displayName}">
+		<j:invokeStatic var="currentThread" className="java.lang.Thread" method="currentThread" />
+		<j:invoke var="buildClass" on="${currentThread.contextClassLoader}" method="loadClass">
+			<j:arg value="hudson.model.AbstractBuild" />
+		</j:invoke>
+		<j:set var="build" value="${request.findAncestorObject(buildClass)}" />
+		<st:include page="sidepanel.jelly" it="${build}" />
+		<l:main-panel>
+			<h1>${%Locked Resources}</h1>
+			<p>This build has locked the following resources:</p>
+			<ul>
+<j:forEach var="resource" items="${it.lockedResources}" varStatus="loop">
+				<li>
+					<strong>${resource.name}</strong> - <em>${resource.description}</em>
+				</li>
+</j:forEach>
+			</ul>
+		</l:main-panel>
+	</l:layout>
+</j:jelly>

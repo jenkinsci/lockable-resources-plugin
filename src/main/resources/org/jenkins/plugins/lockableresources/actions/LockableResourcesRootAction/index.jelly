@@ -1,0 +1,74 @@
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ -->
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+
+	<l:layout title="${it.displayName}">
+		<l:main-panel>
+			<h1>${%Lockable Resources}</h1>
+			<table class="pane" style="width: 50%;">
+				<tbody>
+					<tr>
+						<td class="pane-header">Resource</td>
+						<td class="pane-header">Status</td>
+						<td class="pane-header">Action</td>
+					</tr>
+<j:forEach var="resource" items="${it.resources}" indexVar="i">
+<script>
+var resource_${i} = <st:bind value="${resource}"/>;
+function unlock_resource_${i}() {
+	resource_${i}.forceUnlock(function() {
+		location.reload(true);
+	});
+}
+</script>
+					<tr>
+						<td class="pane">
+							<strong>${resource.name}</strong><br/>
+							<em>${resource.description}</em>
+						</td>
+<j:if test="${resource.locked}">
+						<td class="pane" style="color: red;">
+							<strong>LOCKED</strong> by
+							<a href="${rootURL}/${resource.lockedBy.url}">
+								${resource.lockedBy.fullDisplayName}
+							</a>
+						</td>
+						<td class="pane">
+							<button onClick="unlock_resource_${i}();">Unlock</button>
+						</td>
+</j:if>
+<j:if test="${!resource.locked}">
+	<j:if test="${resource.reserved}">
+						<td class="pane" style="color: orange;">
+							<strong>RESERVED</strong> by
+							<a href="${rootURL}/${resource.task.url}">
+								${resource.task.fullDisplayName}
+							</a>
+						</td>
+						<td class="pane"></td>
+	</j:if>
+	<j:if test="${!resource.reserved}">
+						<td class="pane" style="color: green;">
+							<strong>FREE</strong>
+						</td>
+						<td class="pane"></td>
+	</j:if>
+</j:if>
+					</tr>
+</j:forEach>
+				</tbody>
+			</table>
+		</l:main-panel>
+	</l:layout>
+</j:jelly>

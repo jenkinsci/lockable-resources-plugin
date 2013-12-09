@@ -1,0 +1,82 @@
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.jenkins-ci.plugins</groupId>
+		<artifactId>plugin</artifactId>
+		<version>1.509.4</version>
+	</parent>
+
+	<groupId>org.6wind.jenkins</groupId>
+	<artifactId>lockable-resources</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<packaging>hpi</packaging>
+	<name>Lockable Resources plugin</name>
+	<description>
+		This plugin allows to define lockable resources (such as printers, phones,
+		computers) that can be used by builds. If a build requires an external
+		resource which is already locked, it will wait for the resource to be free.
+		One can define a lock-priority globally and on a per-job basis.
+	</description>
+
+	<licenses>
+		<license>
+			<name>MIT</name>
+			<url>http://www.opensource.org/licenses/mit-license.php</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<id>robin-jarry</id>
+			<name>Robin Jarry</name>
+			<email>robin.jarry@6wind.com</email>
+			<roles>
+				<role>developer</role>
+				<role>maintainer</role>
+			</roles>
+			<timezone>CET</timezone>
+		</developer>
+	</developers>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.jenkins-ci.tools</groupId>
+				<artifactId>maven-hpi-plugin</artifactId>
+				<version>1.96</version>
+				<extensions>true</extensions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<repositories>
+		<repository>
+			<id>repo.jenkins-ci.org</id>
+			<url>http://repo.jenkins-ci.org/public/</url>
+		</repository>
+	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>repo.jenkins-ci.org</id>
+			<url>http://repo.jenkins-ci.org/public/</url>
+		</pluginRepository>
+	</pluginRepositories>
+
+	<scm>
+		<connection>scm:git:git://github.com/6WIND/lockable-resources-plugin.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/6WIND/lockable-resources-plugin.git</developerConnection>
+		<url>https://github.com/6WIND/external-resources-plugin</url>
+	</scm>
+
+</project>

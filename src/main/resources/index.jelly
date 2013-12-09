@@ -1,0 +1,15 @@
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ -->
+<div>
+  This plugin allows to define external resources (such as printers, phones,
+  computers) that can be locked by builds. If a build requires an external
+  resource which is already locked, it will wait for the resource to be free.
+</div>
