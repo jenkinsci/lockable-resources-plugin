@@ -1,0 +1,14 @@
+<div>
+<p>
+When a build is scheduled, it will attempt to lock the specified resources. If
+some (or all) the resources are already locked by another build, the build will
+be queued until they are released.
+</p>
+<p>
+By default, all builds have the same lock priority (defined in the global
+configuration). If you want a specific job to have a different priority, you
+need to add a parameter to the job. The priority must be an integer (lowest
+priority will start first). The parameter name is also defined in the global
+configuration (<code>LOCK_PRIORITY</code> by default).
+</p>
+</div>
