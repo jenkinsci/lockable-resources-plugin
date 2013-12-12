@@ -75,8 +75,8 @@
 	</pluginRepositories>
 
 	<scm>
-		<connection>scm:git:git://github.com/jenkinsci/lockable-resources-plugin.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/jenkinsci/lockable-resources-plugin.git</developerConnection>
+		<connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
+		<developerConnection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</developerConnection>
 		<url>https://github.com/jenkinsci/lockable-resources-plugin</url>
 	</scm>
 
