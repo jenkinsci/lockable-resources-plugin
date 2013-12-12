@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
 import hudson.model.Descriptor;
@@ -16,26 +17,24 @@ import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
-	private static final int NOBODY = 0;
+	private static final int NOT_QUEUED = 0;
 
 	private final String name;
 	private final String description;
+	private final String reservedBy;
 
-	private transient int reservedBy = NOBODY;
-	private transient AbstractBuild<?, ?> lockedBy = null;
+	private transient int queueItemId = NOT_QUEUED;
+	private transient AbstractBuild<?, ?> build = null;
 
 	@DataBoundConstructor
-	public LockableResource(String name, String description) {
+	public LockableResource(String name, String description, String reservedBy) {
 		this.name = name;
 		this.description = description;
+		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
 	}
 
 	public String getName() {
@@ -46,28 +45,40 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return description;
 	}
 
-	public boolean isReserved(int requestorId) {
-		return reservedBy != NOBODY && reservedBy != requestorId;
+	public String getReservedBy() {
+		return reservedBy;
 	}
 
-	public void unreserve() {
-		reservedBy = NOBODY;
+	public boolean isReserved() {
+		return reservedBy != null;
+	}
+
+	public boolean isQueued() {
+		return queueItemId != NOT_QUEUED;
+	}
+
+	public boolean isQueued(int taskId) {
+		return queueItemId != NOT_QUEUED && queueItemId != taskId;
+	}
+
+	public void unqueue() {
+		queueItemId = NOT_QUEUED;
 	}
 
 	public boolean isLocked() {
-		return lockedBy != null;
+		return build != null;
 	}
 
-	public AbstractBuild<?, ?> getLockedBy() {
-		return lockedBy;
+	public AbstractBuild<?, ?> getBuild() {
+		return build;
 	}
 
-	public void setLockedBy(AbstractBuild<?, ?> lockedBy) {
-		this.lockedBy = lockedBy;
+	public void setBuild(AbstractBuild<?, ?> lockedBy) {
+		this.build = lockedBy;
 	}
 
 	public Task getTask() {
-		Item item = Queue.getInstance().getItem(reservedBy);
+		Item item = Queue.getInstance().getItem(queueItemId);
 		if (item != null) {
 			return item.task;
 		} else {
@@ -75,19 +86,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 	}
 
-	public int getReservedBy() {
-		return reservedBy;
+	public int getQueueItemId() {
+		return queueItemId;
 	}
 
-	public void setReservedBy(int queueItemId) {
-		this.reservedBy = queueItemId;
-	}
-
-	@JavaScriptMethod
-	public void forceUnlock() {
-		List<LockableResource> resources = new ArrayList<LockableResource>();
-		resources.add(this);
-		LockableResourcesManager.get().unlock(resources, null);
+	public void setQueueItemId(int queueItemId) {
+		this.queueItemId = queueItemId;
 	}
 
 	@Override

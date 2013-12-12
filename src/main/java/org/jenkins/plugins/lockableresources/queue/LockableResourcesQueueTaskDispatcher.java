@@ -39,7 +39,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		LOGGER.finest(project.getName() + " trying to reserve resources "
 				+ required);
-		if (LockableResourcesManager.get().reserve(required, item.id)) {
+		if (LockableResourcesManager.get().queue(required, item.id)) {
 			LOGGER.finest(project.getName() + " reserved resources " + required);
 			return null;
 		} else {

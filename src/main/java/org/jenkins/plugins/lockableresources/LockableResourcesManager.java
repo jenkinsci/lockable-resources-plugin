@@ -47,24 +47,34 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return priorityParameterName;
 	}
 
-	public synchronized boolean reserve(List<LockableResource> resources,
+	public LockableResource fromName(String resourceName) {
+		if (resourceName != null) {
+			for (LockableResource r : resources) {
+				if (resourceName.equals(r.getName()))
+					return r;
+			}
+		}
+		return null;
+	}
+
+	public synchronized boolean queue(List<LockableResource> resources,
 			int queueItemId) {
 		for (LockableResource r : resources)
-			if (r.isReserved(queueItemId) || r.isLocked())
+			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
 		for (LockableResource r : resources)
-			r.setReservedBy(queueItemId);
+			r.setQueueItemId(queueItemId);
 		return true;
 	}
 
 	public synchronized boolean lock(List<LockableResource> resources,
 			AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources)
-			if (r.isLocked())
+			if (r.isReserved() || r.isLocked())
 				return false;
 		for (LockableResource r : resources) {
-			r.unreserve();
-			r.setLockedBy(build);
+			r.unqueue();
+			r.setBuild(build);
 		}
 		return true;
 	}
@@ -72,9 +82,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public synchronized void unlock(List<LockableResource> resources,
 			AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
-			if (build == null || build == r.getLockedBy()) {
-				r.unreserve();
-				r.setLockedBy(null);
+			if (build == null || build == r.getBuild()) {
+				r.unqueue();
+				r.setBuild(null);
 			}
 		}
 	}
@@ -90,8 +100,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		try {
 			defaultPriority = json.getInt("defaultPriority");
 			priorityParameterName = json.getString("priorityParameterName");
-			resources = req.bindJSONToList(LockableResource.class,
-					json.get("resources"));
+			List<LockableResource> newResouces = req.bindJSONToList(
+					LockableResource.class, json.get("resources"));
+			for (LockableResource r : newResouces) {
+				LockableResource old = fromName(r.getName());
+				if (old != null) {
+					r.setBuild(old.getBuild());
+					r.setQueueItemId(r.getQueueItemId());
+				}
+			}
+			resources = newResouces;
 			save();
 			return true;
 		} catch (JSONException e) {

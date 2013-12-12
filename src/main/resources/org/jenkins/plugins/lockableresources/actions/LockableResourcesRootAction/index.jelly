@@ -25,11 +25,8 @@
 					</tr>
 <j:forEach var="resource" items="${it.resources}" indexVar="i">
 <script>
-var resource_${i} = <st:bind value="${resource}"/>;
 function unlock_resource_${i}() {
-	resource_${i}.forceUnlock(function() {
-		location.reload(true);
-	});
+	window.location.assign("unlock?resource=${resource.name}");
 }
 </script>
 					<tr>
@@ -40,25 +37,24 @@ function unlock_resource_${i}() {
 <j:if test="${resource.locked}">
 						<td class="pane" style="color: red;">
 							<strong>LOCKED</strong> by
-							<a href="${rootURL}/${resource.lockedBy.url}">
-								${resource.lockedBy.fullDisplayName}
+							<a href="${rootURL}/${resource.build.url}">
+								${resource.build.fullDisplayName}
 							</a>
 						</td>
 						<td class="pane">
+<j:if test="${h.hasPermission(app.ADMINISTER)}">
 							<button onClick="unlock_resource_${i}();">Unlock</button>
+</j:if>
 						</td>
 </j:if>
 <j:if test="${!resource.locked}">
-	<j:if test="${resource.reserved}">
-						<td class="pane" style="color: orange;">
-							<strong>RESERVED</strong> by
-							<a href="${rootURL}/${resource.task.url}">
-								${resource.task.fullDisplayName}
-							</a>
+	<j:if test="${resource.reservedBy != null}">
+						<td class="pane" style="color: red;">
+							<strong>RESERVED</strong> by <strong>${resource.reservedBy}</strong>
 						</td>
 						<td class="pane"></td>
 	</j:if>
-	<j:if test="${!resource.reserved}">
+	<j:if test="${resource.reservedBy == null}">
 						<td class="pane" style="color: green;">
 							<strong>FREE</strong>
 						</td>

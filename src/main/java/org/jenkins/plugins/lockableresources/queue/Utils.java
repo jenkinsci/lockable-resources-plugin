@@ -47,17 +47,17 @@ public class Utils {
 		return null;
 	}
 
-	public static List<LockableResource> requiredResources(AbstractProject<?, ?> project) {
+	public static List<LockableResource> requiredResources(
+			AbstractProject<?, ?> project) {
 		RequiredResourcesProperty property = project
 				.getProperty(RequiredResourcesProperty.class);
 		if (property != null) {
-			List<LockableResource> all = LockableResourcesManager.get().getResources();
 			List<LockableResource> required = new ArrayList<LockableResource>();
 			for (String name : property.getResources()) {
-				for (LockableResource r : all) {
-					if (r.getName().equals(name))
-						required.add(r);
-				}
+				LockableResource r = LockableResourcesManager.get().fromName(
+						name);
+				if (r != null)
+					required.add(r);
 			}
 			return required;
 		}
