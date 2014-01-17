@@ -17,6 +17,9 @@
 			<f:entry title="${%Resources}" field="resourceNames">
 				<f:textbox autoCompleteDelimChar=" "/>
 			</f:entry>
+			<f:entry title="${%Request only one of the listed resources}" field="onlyOne">
+				<f:checkbox/>
+			</f:entry>
 		</f:nested>
 	</f:optionalBlock>
 </j:jelly>

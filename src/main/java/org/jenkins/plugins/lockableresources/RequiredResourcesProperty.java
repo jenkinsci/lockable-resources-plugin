@@ -28,11 +28,13 @@ import org.kohsuke.stapler.StaplerRequest;
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	private final String resourceNames;
+	private final boolean onlyOne;
 
 	@DataBoundConstructor
-	public RequiredResourcesProperty(String resourceNames) {
+	public RequiredResourcesProperty(String resourceNames, boolean onlyOne) {
 		super();
 		this.resourceNames = resourceNames;
+		this.onlyOne = onlyOne;
 	}
 
 	public String[] getResources() {
@@ -45,6 +47,10 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	public String getResourceNames() {
 		return resourceNames;
+	}
+
+	public boolean getOnlyOne() {
+		return onlyOne;
 	}
 
 	@Extension
@@ -69,10 +75,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 			String resourceNames = Util.fixEmptyAndTrim(json
 					.getString("resourceNames"));
+
+			boolean onlyOne =  json.getBoolean("onlyOne");
+
 			if (resourceNames == null)
 				return null;
 
-			return new RequiredResourcesProperty(resourceNames);
+			return new RequiredResourcesProperty(resourceNames, onlyOne);
 		}
 
 		public FormValidation doCheckResourceNames(@QueryParameter String value) {

@@ -21,13 +21,14 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
-	private static final int NOT_QUEUED = 0;
+	public static final int NOT_QUEUED = 0;
 
 	private final String name;
 	private final String description;
 	private final String reservedBy;
 
 	private transient int queueItemId = NOT_QUEUED;
+	private transient String queueItemProject = null;
 	private transient AbstractBuild<?, ?> build = null;
 
 	@DataBoundConstructor
@@ -93,6 +94,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public void setQueueItemId(int queueItemId) {
 		this.queueItemId = queueItemId;
 	}
+
+	public String getQueueItemProject() {
+		return this.queueItemProject;
+	}
+        
+    public void setQueueItemProject(String queueItemProject) {
+        this.queueItemProject = queueItemProject;
+    }
 
 	@Override
 	public String toString() {

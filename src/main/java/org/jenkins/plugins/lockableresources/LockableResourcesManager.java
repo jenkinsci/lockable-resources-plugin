@@ -39,6 +39,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return resources;
 	}
 
+    public List<LockableResource> getResourcesFromProject(String fullName) {
+        List<LockableResource> matching = new ArrayList<LockableResource>();
+        for (LockableResource r : resources) {
+            String rName = r.getQueueItemProject();
+            if (rName != null && rName.equals(fullName)) {
+                matching.add(r);
+            }
+        }
+        return matching;
+    }
+
+    public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
+        List<LockableResource> matching = new ArrayList<LockableResource>();
+        for (LockableResource r : resources) {
+            AbstractBuild<?, ?> rBuild = r.getBuild();
+            if (rBuild != null && rBuild == build) {
+                matching.add(r);
+            }
+        }
+        return matching;
+    }
+
 	public int getDefaultPriority() {
 		return defaultPriority;
 	}
@@ -67,6 +89,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	public synchronized LockableResource queue_one(List<LockableResource> resources,
+			int queueItemId, String queueItemProject) {
+		for (LockableResource r : resources)
+			if (!r.isReserved() && !r.isQueued(queueItemId) && !r.isLocked()) {
+				r.setQueueItemId(queueItemId);
+                r.setQueueItemProject(queueItemProject);
+				return r;
+            }
+		return null;
+	}
+
 	public synchronized boolean lock(List<LockableResource> resources,
 			AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources)
@@ -85,6 +118,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
 				r.setBuild(null);
+                r.setQueueItemProject(null);
+                r.setQueueItemId(LockableResource.NOT_QUEUED);
 			}
 		}
 	}

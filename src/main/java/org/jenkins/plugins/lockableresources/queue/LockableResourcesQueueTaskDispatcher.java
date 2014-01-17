@@ -33,19 +33,35 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		if (project == null)
 			return null;
 
-		List<LockableResource> required = Utils.requiredResources(project);
-		if (required == null || required.isEmpty())
+		LockableResourcesStruct resources = Utils.requiredResources(project);
+		if (resources == null || resources.required.isEmpty())
 			return null;
 
-		LOGGER.finest(project.getName() + " trying to reserve resources "
-				+ required);
-		if (LockableResourcesManager.get().queue(required, item.id)) {
-			LOGGER.finest(project.getName() + " reserved resources " + required);
-			return null;
+		if (resources.onlyOne) {
+			LOGGER.finest(project.getName() + " trying to reserve one of "
+					+ resources.required);
+			LockableResource r = LockableResourcesManager.get().queue_one(
+                resources.required, item.id, project.getFullName());
+			if (r != null) {
+				LOGGER.finest(project.getName() + " reserved resource " + r);
+				return null;
+			} else {
+				LOGGER.finest(project.getName() + " waiting for resource "
+						+ r);
+				return new BecauseResourcesLocked(resources.required);
+			}
+
 		} else {
-			LOGGER.finest(project.getName() + " waiting for resources "
-					+ required);
-			return new BecauseResourcesLocked(required);
+			LOGGER.finest(project.getName() + " trying to reserve resources "
+					+ resources.required);
+			if (LockableResourcesManager.get().queue(resources.required, item.id)) {
+				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+			return null;
+			} else {
+				LOGGER.finest(project.getName() + " waiting for resources "
+						+ resources.required);
+				return new BecauseResourcesLocked(resources.required);
+			}
 		}
 	}
 
