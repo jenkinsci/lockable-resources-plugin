@@ -28,11 +28,16 @@ import org.kohsuke.stapler.StaplerRequest;
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	private final String resourceNames;
+	private final String resourceNamesVar;
+	private final String resourceNumber;
 
 	@DataBoundConstructor
-	public RequiredResourcesProperty(String resourceNames) {
+	public RequiredResourcesProperty(String resourceNames,
+			String resourceNamesVar, String resourceNumber) {
 		super();
 		this.resourceNames = resourceNames;
+		this.resourceNamesVar = resourceNamesVar;
+		this.resourceNumber = resourceNumber;
 	}
 
 	public String[] getResources() {
@@ -45,6 +50,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	public String getResourceNames() {
 		return resourceNames;
+	}
+
+	public String getResourceNamesVar() {
+		return resourceNamesVar;
+	}
+
+	public String getResourceNumber() {
+		return resourceNumber;
 	}
 
 	@Extension
@@ -69,10 +82,18 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 			String resourceNames = Util.fixEmptyAndTrim(json
 					.getString("resourceNames"));
+
+			String resourceNamesVar = Util.fixEmptyAndTrim(json
+					.getString("resourceNamesVar"));
+
+			String resourceNumber = Util.fixEmptyAndTrim(json
+					.getString("resourceNumber"));
+
 			if (resourceNames == null)
 				return null;
 
-			return new RequiredResourcesProperty(resourceNames);
+			return new RequiredResourcesProperty(resourceNames,
+					resourceNamesVar, resourceNumber);
 		}
 
 		public FormValidation doCheckResourceNames(@QueryParameter String value) {
@@ -103,6 +124,31 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			}
 		}
 
+		public FormValidation doCheckResourceNumber(@QueryParameter String value,
+			@QueryParameter String resourceNames) {
+			String number = Util.fixEmptyAndTrim(value);
+			if (number == null || number.equals("") || number.trim().equals("0")) {
+				return FormValidation.ok();
+			}
+
+			int numAsInt;
+			try {
+				numAsInt = Integer.parseInt(number);
+			} catch(NumberFormatException e)  {
+				return FormValidation.error(
+					"Could not parse the given value as integer.");
+			}
+			int numResources = resourceNames.split("\\s+").length;
+
+			if (numResources < numAsInt) {
+				return FormValidation.error(String.format(
+					"Given amount %d in greater than amount of resources: %d.",
+					numAsInt,
+					numResources));
+			}
+			return FormValidation.ok();
+		}
+
 		public AutoCompletionCandidates doAutoCompleteResourceNames(
 				@QueryParameter String value) {
 			AutoCompletionCandidates c = new AutoCompletionCandidates();
@@ -121,3 +167,4 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 	}
 }
+

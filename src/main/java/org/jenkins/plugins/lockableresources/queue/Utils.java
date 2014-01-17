@@ -13,12 +13,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Queue;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
-import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class Utils {
 
@@ -47,19 +42,12 @@ public class Utils {
 		return null;
 	}
 
-	public static List<LockableResource> requiredResources(
+	public static LockableResourcesStruct requiredResources(
 			AbstractProject<?, ?> project) {
 		RequiredResourcesProperty property = project
 				.getProperty(RequiredResourcesProperty.class);
 		if (property != null) {
-			List<LockableResource> required = new ArrayList<LockableResource>();
-			for (String name : property.getResources()) {
-				LockableResource r = LockableResourcesManager.get().fromName(
-						name);
-				if (r != null)
-					required.add(r);
-			}
-			return required;
+			return new LockableResourcesStruct(property);
 		}
 		return null;
 	}
