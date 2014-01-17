@@ -111,6 +111,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.reservedBy = null;
 	}
 
+	public String getQueueItemProject() {
+		return this.queueItemProject;
+	}
+        
+    public void setQueueItemProject(String queueItemProject) {
+        this.queueItemProject = queueItemProject;
+    }
+
 	@Override
 	public String toString() {
 		return name;

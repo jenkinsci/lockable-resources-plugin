@@ -15,6 +15,7 @@ import hudson.model.Queue;
 
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
+
 public class Utils {
 
 	public static AbstractProject<?, ?> getProject(Queue.Item item) {
