@@ -18,6 +18,7 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class LockableResourcesStruct {
 	public List<LockableResource> required;
+	public String requiredVar;
 	public boolean onlyOne;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property) {
@@ -28,6 +29,7 @@ public class LockableResourcesStruct {
 			if (r != null)
 				this.required.add(r);
 		}
+		this.requiredVar = property.getResourceNamesVar();
 		this.onlyOne = property.getOnlyOne();
 	}    
 }

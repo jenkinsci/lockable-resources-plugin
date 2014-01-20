@@ -13,6 +13,9 @@ import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.listeners.RunListener;
+import hudson.model.ParametersAction;
+import hudson.model.ParameterValue;
+import hudson.model.StringParameterValue;
 import java.util.ArrayList;
 
 import java.util.List;
@@ -36,26 +39,33 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		if (proj != null) {
 			LockableResourcesStruct resources = Utils.requiredResources(proj);
 			if (resources != null) {
-                if (resources.onlyOne) {
-                    required = LockableResourcesManager.get().
-                        getResourcesFromProject(proj.getFullName());
-                    assert(required.size() == 1);
-                } else {
-                    required = resources.required;
-                }
+				if (resources.onlyOne) {
+					required = LockableResourcesManager.get().
+						getResourcesFromProject(proj.getFullName());
+					assert(required.size() == 1);
+			    } else {
+					required = resources.required;
+				}
 				if (LockableResourcesManager.get().lock(required, build)) {
 					build.addAction(LockedResourcesBuildAction
-							.fromResources(required));
+						.fromResources(required));
 					listener.getLogger().printf("%s acquired lock on %s\n",
-							LOG_PREFIX, required);
+						LOG_PREFIX, required);
 					LOGGER.fine(build.getFullDisplayName()
-							+ " acquired lock on " + required);
+						+ " acquired lock on " + required);
+					if (resources.requiredVar != null) {
+				    	List<ParameterValue> params = new ArrayList<ParameterValue>();
+						params.add(new StringParameterValue(
+							resources.requiredVar,
+							required.toString().replaceAll("[\\]\\[]", "")));
+						build.addAction(new ParametersAction(params));
+					}
 				} else {
 					listener.getLogger().printf("%s failed to lock %s\n",
-							LOG_PREFIX, required);
+						LOG_PREFIX, required);
 					LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-							+ required);
-				}
+						+ required);
+			    }
 			}
 		}
 	}
