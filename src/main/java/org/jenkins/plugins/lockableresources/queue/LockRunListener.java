@@ -48,11 +48,11 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 				if (LockableResourcesManager.get().lock(required, build)) {
 				if (LockableResourcesManager.get().lock(required, build)) {
 					build.addAction(LockedResourcesBuildAction
-							.fromResources(required));
+						.fromResources(required));
 					listener.getLogger().printf("%s acquired lock on %s\n",
-							LOG_PREFIX, required);
+						LOG_PREFIX, required);
 					LOGGER.fine(build.getFullDisplayName()
-							+ " acquired lock on " + required);
+						+ " acquired lock on " + required);
 					if (resources.requiredVar != null) {
 						List<ParameterValue> params = new ArrayList<ParameterValue>();
 						params.add(new StringParameterValue(
@@ -62,10 +62,10 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					}
 				} else {
 					listener.getLogger().printf("%s failed to lock %s\n",
-							LOG_PREFIX, required);
+						LOG_PREFIX, required);
 					LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-							+ required);
-				}
+						+ required);
+			    }
 			}
 		}
 	}
