@@ -30,7 +30,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	static final String LOG_PREFIX = "[lockable-resources]";
 	static final Logger LOGGER = Logger.getLogger(LockRunListener.class
-			.getName());
+		.getName());
 
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
@@ -65,7 +65,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 						LOG_PREFIX, required);
 					LOGGER.fine(build.getFullDisplayName() + " failed to lock "
 						+ required);
-			    }
+				}
 			}
 		}
 	}
@@ -81,10 +81,8 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);
 
-	}
+		}
 
-	@Override
-	public void onDeleted(AbstractBuild<?, ?> build) {
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {
@@ -92,11 +90,17 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);
                 }
-        }
+	}
 
-        LockableResourcesManager.get().unlock(required, build);
-        LOGGER.fine(build.getFullDisplayName() + " released lock on "
-            + required);
+	@Override
+	public void onDeleted(AbstractBuild<?, ?> build) {
+		List<LockableResource> required
+			= LockableResourcesManager.get().getResourcesFromBuild(build);
+		if (required.size() > 0) {
+			LockableResourcesManager.get().unlock(required, build);
+			LOGGER.fine(build.getFullDisplayName() + " released lock on "
+				+ required);
+		}
 	}
 
 }
