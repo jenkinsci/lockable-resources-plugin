@@ -26,17 +26,19 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 	static final Logger LOGGER = Logger
-			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
+		.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	@Override
 	public CauseOfBlockage canTake(Node node, BuildableItem item) {
 		AbstractProject<?, ?> project = Utils.getProject(item);
-		if (project == null)
+		if (project == null) {
 			return null;
+		}
 
 		LockableResourcesStruct resources = Utils.requiredResources(project);
-		if (resources == null || resources.required.isEmpty())
+		if (resources == null || resources.required.isEmpty()) {
 			return null;
+		}
 
 		int resourceNumber;
 		try {
@@ -64,13 +66,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 		} else {
 			LOGGER.finest(project.getName() + " trying to reserve resources "
-					+ resources.required);
+				+ resources.required);
 			if (LockableResourcesManager.get().queue(resources.required, item.id)) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
 				LOGGER.finest(project.getName() + " waiting for resources "
-						+ resources.required);
+					+ resources.required);
 				return new BecauseResourcesLocked(resources.required);
 			}
 		}
