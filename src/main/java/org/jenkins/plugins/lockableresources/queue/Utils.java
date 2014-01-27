@@ -18,7 +18,6 @@ import java.util.List;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.LockableResource;
 
-
 public class Utils {
 
 	public static AbstractProject<?, ?> getProject(Queue.Item item) {
@@ -26,7 +25,7 @@ public class Utils {
 			AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
 			if (proj instanceof MatrixConfiguration) {
 				proj = (AbstractProject<?, ?>) ((MatrixConfiguration) proj)
-						.getParent();
+					.getParent();
 			}
 			return proj;
 		}
@@ -39,7 +38,7 @@ public class Utils {
 			AbstractProject<?, ?> proj = (AbstractProject<?, ?>) p;
 			if (proj instanceof MatrixConfiguration) {
 				proj = (AbstractProject<?, ?>) ((MatrixConfiguration) proj)
-						.getParent();
+					.getParent();
 			}
 			return proj;
 		}
@@ -47,9 +46,9 @@ public class Utils {
 	}
 
 	public static LockableResourcesStruct requiredResources(
-			AbstractProject<?, ?> project) {
+		AbstractProject<?, ?> project) {
 		RequiredResourcesProperty property = project
-				.getProperty(RequiredResourcesProperty.class);
+			.getProperty(RequiredResourcesProperty.class);
 		if (property != null) {
 			LockableResourcesStruct resources = new LockableResourcesStruct(property);
 			return resources;

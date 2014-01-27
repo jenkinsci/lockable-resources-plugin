@@ -40,10 +40,11 @@ public class LockedResourcesBuildAction implements Action {
 	}
 
 	public static LockedResourcesBuildAction fromResources(
-			List<LockableResource> resources) {
+		List<LockableResource> resources) {
 		List<ResourcePOJO> resPojos = new ArrayList<ResourcePOJO>();
-		for (LockableResource r : resources)
+		for (LockableResource r : resources) {
 			resPojos.add(new ResourcePOJO(r));
+		}
 		return new LockedResourcesBuildAction(resPojos);
 	}
 

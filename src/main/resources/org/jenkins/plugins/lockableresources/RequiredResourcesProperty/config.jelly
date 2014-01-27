@@ -20,8 +20,8 @@
 			<f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
 				<f:textbox/>
 			</f:entry>
-			<f:entry title="${%Request only one of the listed resources}" field="onlyOne">
-				<f:checkbox/>
+			<f:entry title="${%Number of the listed resources to request}" field="resourceNumber">
+				<f:textbox/>
 			</f:entry>
 		</f:nested>
 	</f:optionalBlock>

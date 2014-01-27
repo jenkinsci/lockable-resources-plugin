@@ -39,10 +39,9 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		if (proj != null) {
 			LockableResourcesStruct resources = Utils.requiredResources(proj);
 			if (resources != null) {
-				if (resources.onlyOne) {
+				if (resources.requiredNumber != null) {
 					required = LockableResourcesManager.get().
 						getResourcesFromProject(proj.getFullName());
-					assert (required.size() == 1);
 				} else {
 					required = resources.required;
 				}

@@ -39,27 +39,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return resources;
 	}
 
-    public List<LockableResource> getResourcesFromProject(String fullName) {
-        List<LockableResource> matching = new ArrayList<LockableResource>();
-        for (LockableResource r : resources) {
-            String rName = r.getQueueItemProject();
-            if (rName != null && rName.equals(fullName)) {
-                matching.add(r);
-            }
-        }
-        return matching;
-    }
+	public List<LockableResource> getResourcesFromProject(String fullName) {
+		List<LockableResource> matching = new ArrayList<LockableResource>();
+		for (LockableResource r : resources) {
+			String rName = r.getQueueItemProject();
+			if (rName != null && rName.equals(fullName)) {
+				matching.add(r);
+			}
+		}
+		return matching;
+	}
 
-    public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
-        List<LockableResource> matching = new ArrayList<LockableResource>();
-        for (LockableResource r : resources) {
-            AbstractBuild<?, ?> rBuild = r.getBuild();
-            if (rBuild != null && rBuild == build) {
-                matching.add(r);
-            }
-        }
-        return matching;
-    }
+	public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
+		List<LockableResource> matching = new ArrayList<LockableResource>();
+		for (LockableResource r : resources) {
+			AbstractBuild<?, ?> rBuild = r.getBuild();
+			if (rBuild != null && rBuild == build) {
+				matching.add(r);
+			}
+		}
+		return matching;
+	}
 
 	public int getDefaultPriority() {
 		return defaultPriority;
@@ -72,39 +72,53 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public LockableResource fromName(String resourceName) {
 		if (resourceName != null) {
 			for (LockableResource r : resources) {
-				if (resourceName.equals(r.getName()))
+				if (resourceName.equals(r.getName())) {
 					return r;
+				}
 			}
 		}
 		return null;
 	}
 
 	public synchronized boolean queue(List<LockableResource> resources,
-			int queueItemId) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
+		int queueItemId) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
 				return false;
-		for (LockableResource r : resources)
+			}
+		}
+		for (LockableResource r : resources) {
 			r.setQueueItemId(queueItemId);
+		}
 		return true;
 	}
 
-	public synchronized LockableResource queue_one(List<LockableResource> resources,
-			int queueItemId, String queueItemProject) {
-		for (LockableResource r : resources)
+	public synchronized List<LockableResource> queue(List<LockableResource> resources,
+		int queueItemId, String queueItemProject, int number) {
+		List<LockableResource> selected = new ArrayList<LockableResource>();
+		for (LockableResource r : resources) {
 			if (!r.isReserved() && !r.isQueued(queueItemId) && !r.isLocked()) {
-				r.setQueueItemId(queueItemId);
-                r.setQueueItemProject(queueItemProject);
-				return r;
-            }
-		return null;
+				selected.add(r);
+			}
+			if (selected.size() == number) break;
+		}
+		if (selected.size() != number) {
+			return null;
+		}
+		for (LockableResource r : selected) {
+			r.setQueueItemId(queueItemId);
+			r.setQueueItemProject(queueItemProject);
+		}
+		return selected;
 	}
 
 	public synchronized boolean lock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isLocked())
+		AbstractBuild<?, ?> build) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isLocked()) {
 				return false;
+			}
+		}
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);
@@ -113,13 +127,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+		AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
 				r.setBuild(null);
-                r.setQueueItemProject(null);
-                r.setQueueItemId(LockableResource.NOT_QUEUED);
+				r.setQueueItemProject(null);
+				r.setQueueItemId(LockableResource.NOT_QUEUED);
 			}
 		}
 	}
@@ -131,12 +145,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	@Override
 	public boolean configure(StaplerRequest req, JSONObject json)
-			throws FormException {
+		throws FormException {
 		try {
 			defaultPriority = json.getInt("defaultPriority");
 			priorityParameterName = json.getString("priorityParameterName");
 			List<LockableResource> newResouces = req.bindJSONToList(
-					LockableResource.class, json.get("resources"));
+				LockableResource.class, json.get("resources"));
 			for (LockableResource r : newResouces) {
 				LockableResource old = fromName(r.getName());
 				if (old != null) {
@@ -154,7 +168,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public static LockableResourcesManager get() {
 		return (LockableResourcesManager) Jenkins.getInstance()
-				.getDescriptorOrDie(LockableResourcesManager.class);
+			.getDescriptorOrDie(LockableResourcesManager.class);
 	}
 
 }
