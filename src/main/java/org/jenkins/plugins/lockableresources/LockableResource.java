@@ -25,7 +25,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private final String name;
 	private final String description;
-	private final String reservedBy;
+	private String reservedBy;
 
 	private transient int queueItemId = NOT_QUEUED;
 	private transient String queueItemProject = null;
@@ -101,6 +101,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	public void setQueueItemProject(String queueItemProject) {
 		this.queueItemProject = queueItemProject;
+	}
+
+	public void setReservedBy(String userName) {
+		this.reservedBy = userName;
+	}
+
+	public void unReserve() {
+		this.reservedBy = null;
 	}
 
 	@Override
