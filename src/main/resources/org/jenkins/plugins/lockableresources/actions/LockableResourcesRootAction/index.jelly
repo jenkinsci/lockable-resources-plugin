@@ -49,8 +49,8 @@ function unreserve_resource_${i}() {
 						</td>
 						<td class="pane">
 <j:if test="${h.hasPermission(it.UNLOCK)}">
-							<button onClick="unlock_resource_${i}();">Unlock</button>
-</j:if>
+								<button onClick="unlock_resource_${i}();">Unlock</button>
+	</j:if>
 						</td>
 </j:if>
 <j:if test="${!resource.locked}">
