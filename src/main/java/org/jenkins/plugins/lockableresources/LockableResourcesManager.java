@@ -138,6 +138,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 	}
 
+	public synchronized boolean reserve(List<LockableResource> resources,
+                String userName) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isLocked() || r.isQueued()) {
+				return false;
+			}
+		}
+		for (LockableResource r : resources) {
+			r.setReservedBy(userName);
+		}
+		return true;
+	}
+
+	public synchronized void unreserve(List<LockableResource> resources) {
+		for (LockableResource r : resources) {
+			r.unReserve();
+		}
+	}        
+        
 	@Override
 	public String getDisplayName() {
 		return "External Resources";

@@ -28,6 +28,12 @@
 function unlock_resource_${i}() {
 	window.location.assign("unlock?resource=${resource.name}");
 }
+function reserve_resource_${i}() {
+	window.location.assign("reserve?resource=${resource.name}");
+}
+function unreserve_resource_${i}() {
+	window.location.assign("unreserve?resource=${resource.name}");
+}
 </script>
 					<tr>
 						<td class="pane">
@@ -42,9 +48,9 @@ function unlock_resource_${i}() {
 							</a>
 						</td>
 						<td class="pane">
-<j:if test="${h.hasPermission(app.ADMINISTER)}">
-							<button onClick="unlock_resource_${i}();">Unlock</button>
-</j:if>
+	<j:if test="${h.hasPermission(app.ADMINISTER)}">
+								<button onClick="unlock_resource_${i}();">Unlock</button>
+	</j:if>
 						</td>
 </j:if>
 <j:if test="${!resource.locked}">
@@ -52,13 +58,21 @@ function unlock_resource_${i}() {
 						<td class="pane" style="color: red;">
 							<strong>RESERVED</strong> by <strong>${resource.reservedBy}</strong>
 						</td>
-						<td class="pane"></td>
+						<td class="pane">
+		<j:if test="${(it.UserName != null &amp;&amp; it.UserName == resource.reservedBy) || h.hasPermission(app.ADMINISTER)}">
+									<button onClick="unreserve_resource_${i}();">UnReserve</button>
+		</j:if>
+						</td>
 	</j:if>
 	<j:if test="${resource.reservedBy == null}">
 						<td class="pane" style="color: green;">
 							<strong>FREE</strong>
 						</td>
-						<td class="pane"></td>
+						<td class="pane">
+		<j:if test="${it.UserName != null}">
+									<button onClick="reserve_resource_${i}();">Reserve</button>
+		</j:if>
+						</td>
 	</j:if>
 </j:if>
 					</tr>
