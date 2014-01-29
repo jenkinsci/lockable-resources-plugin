@@ -46,7 +46,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return null;
 		}
 	}
-        
+
 	public String getDisplayName() {
 		return "Lockable Resources";
 	}
@@ -89,14 +89,14 @@ public class LockableResourcesRootAction implements RootAction {
 
 		List<LockableResource> resources = new ArrayList<LockableResource>();
 		resources.add(r);
-                String userName = getUserName();
-                if (userName != null)
-                    LockableResourcesManager.get().reserve(resources, userName);
+		String userName = getUserName();
+		if (userName != null)
+			LockableResourcesManager.get().reserve(resources, userName);
 
 		rsp.forwardToPreviousPage(req);
 	}
 
-        public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
+	public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 
 		String name = req.getParameter("resource");
