@@ -39,6 +39,14 @@ public class LockableResourcesRootAction implements RootAction {
 		}
 	}
 
+	public String getUserName() {
+		if (User.current() != null) {
+			return User.current().getFullName();
+		} else {
+			return null;
+		}
+	}
+
 	public String getDisplayName() {
 		return "Lockable Resources";
 	}
@@ -52,7 +60,7 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)
-			throws IOException, ServletException {
+		throws IOException, ServletException {
 		Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
 
 		String name = req.getParameter("resource");
@@ -65,6 +73,42 @@ public class LockableResourcesRootAction implements RootAction {
 		List<LockableResource> resources = new ArrayList<LockableResource>();
 		resources.add(r);
 		LockableResourcesManager.get().unlock(resources, null);
+
+		rsp.forwardToPreviousPage(req);
+	}
+
+	public void doReserve(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<LockableResource>();
+		resources.add(r);
+		String userName = getUserName();
+		if (userName != null)
+			LockableResourcesManager.get().reserve(resources, userName);
+
+		rsp.forwardToPreviousPage(req);
+	}
+
+	public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<LockableResource>();
+		resources.add(r);
+		LockableResourcesManager.get().unreserve(resources);
 
 		rsp.forwardToPreviousPage(req);
 	}

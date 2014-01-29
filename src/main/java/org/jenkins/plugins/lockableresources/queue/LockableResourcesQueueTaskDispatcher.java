@@ -14,6 +14,7 @@ import hudson.model.Node;
 import hudson.model.Queue.BuildableItem;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
+import java.util.ArrayList;
 
 import java.util.List;
 import java.util.logging.Logger;
@@ -25,27 +26,56 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 	static final Logger LOGGER = Logger
-			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
+		.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	@Override
 	public CauseOfBlockage canTake(Node node, BuildableItem item) {
 		AbstractProject<?, ?> project = Utils.getProject(item);
-		if (project == null)
+		if (project == null) {
 			return null;
+		}
 
-		List<LockableResource> required = Utils.requiredResources(project);
-		if (required == null || required.isEmpty())
+		LockableResourcesStruct resources = Utils.requiredResources(project);
+		if (resources == null || resources.required.isEmpty()) {
 			return null;
+		}
 
-		LOGGER.finest(project.getName() + " trying to reserve resources "
-				+ required);
-		if (LockableResourcesManager.get().queue(required, item.id)) {
-			LOGGER.finest(project.getName() + " reserved resources " + required);
-			return null;
+		if (resources.requiredNumber != null ) {
+			List<LockableResource> selected = new ArrayList<LockableResource>();
+			LOGGER.finest(project.getName() + " trying to reserve " +
+				resources.requiredNumber + " of " + resources.required);
+			int numAsInt;
+			try {
+				numAsInt = Integer.parseInt(resources.requiredNumber);
+			} catch(NumberFormatException e)  {
+				// The user has ignored the warning in config page
+				numAsInt = 1;	
+			}
+				
+			selected = LockableResourcesManager.get().queue(
+				resources.required,
+				item.id,
+				project.getFullName(),
+				numAsInt);
+			if (selected != null) {
+				LOGGER.finest(project.getName() + " reserved resources " + selected);
+				return null;
+			} else {
+				LOGGER.finest(project.getName() + " waiting for resources");
+				return new BecauseResourcesLocked(resources.required);
+			}
+
 		} else {
-			LOGGER.finest(project.getName() + " waiting for resources "
-					+ required);
-			return new BecauseResourcesLocked(required);
+			LOGGER.finest(project.getName() + " trying to reserve resources "
+				+ resources.required);
+			if (LockableResourcesManager.get().queue(resources.required, item.id)) {
+				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+				return null;
+			} else {
+				LOGGER.finest(project.getName() + " waiting for resources "
+					+ resources.required);
+				return new BecauseResourcesLocked(resources.required);
+			}
 		}
 	}
 

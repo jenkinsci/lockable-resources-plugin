@@ -21,13 +21,14 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
-	private static final int NOT_QUEUED = 0;
+	public static final int NOT_QUEUED = 0;
 
 	private final String name;
 	private final String description;
-	private final String reservedBy;
 
+	private transient String reservedBy = null;
 	private transient int queueItemId = NOT_QUEUED;
+	private transient String queueItemProject = null;
 	private transient AbstractBuild<?, ?> build = null;
 
 	@DataBoundConstructor
@@ -94,6 +95,22 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.queueItemId = queueItemId;
 	}
 
+	public String getQueueItemProject() {
+		return this.queueItemProject;
+	}
+
+	public void setQueueItemProject(String queueItemProject) {
+		this.queueItemProject = queueItemProject;
+	}
+
+	public void setReservedBy(String userName) {
+		this.reservedBy = userName;
+	}
+
+	public void unReserve() {
+		this.reservedBy = null;
+	}
+
 	@Override
 	public String toString() {
 		return name;
@@ -109,18 +126,23 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		LockableResource other = (LockableResource) obj;
 		if (name == null) {
-			if (other.name != null)
+			if (other.name != null) {
 				return false;
-		} else if (!name.equals(other.name))
+			}
+		} else if (!name.equals(other.name)) {
 			return false;
+		}
 		return true;
 	}
 
