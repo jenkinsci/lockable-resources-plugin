@@ -48,7 +48,7 @@ function unreserve_resource_${i}() {
 							</a>
 						</td>
 						<td class="pane">
-<j:if test="${h.hasPermission(app.ADMINISTER)}">
+<j:if test="${h.hasPermission(it.UNLOCK)}">
 							<button onClick="unlock_resource_${i}();">Unlock</button>
 </j:if>
 						</td>
@@ -59,7 +59,7 @@ function unreserve_resource_${i}() {
 							<strong>RESERVED</strong> by <strong>${resource.reservedBy}</strong>
 						</td>
 						<td class="pane">
-		<j:if test="${(it.UserName != null &amp;&amp; it.UserName == resource.reservedBy) || h.hasPermission(app.ADMINISTER)}">
+		<j:if test="${h.hasPermission(it.RESERVE) &amp;&amp; it.UserName == resource.reservedBy}">
 									<button onClick="unreserve_resource_${i}();">UnReserve</button>
 		</j:if>
 						</td>
@@ -69,7 +69,7 @@ function unreserve_resource_${i}() {
 							<strong>FREE</strong>
 						</td>
 						<td class="pane">
-		<j:if test="${it.UserName != null}">
+		<j:if test="${h.hasPermission(it.RESERVE) &amp;&amp; it.UserName != null}">
 									<button onClick="reserve_resource_${i}();">Reserve</button>
 		</j:if>
 						</td>
