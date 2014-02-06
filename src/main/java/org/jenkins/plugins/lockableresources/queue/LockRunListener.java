@@ -46,7 +46,6 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					required = resources.required;
 				}
 				if (LockableResourcesManager.get().lock(required, build)) {
-				if (LockableResourcesManager.get().lock(required, build)) {
 					build.addAction(LockedResourcesBuildAction
 						.fromResources(required));
 					listener.getLogger().printf("%s acquired lock on %s\n",
@@ -82,14 +81,6 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					+ required);
 
 		}
-
-		List<LockableResource> required = LockableResourcesManager.get()
-				.getResourcesFromBuild(build);
-		if (required.size() > 0) {
-			LockableResourcesManager.get().unlock(required, build);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
-                }
 	}
 
 	@Override
