@@ -62,6 +62,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return null;
 	}
 
+
 	public String getDisplayName() {
 		return "Lockable Resources";
 	}
@@ -75,7 +76,7 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)
-			throws IOException, ServletException {
+		throws IOException, ServletException {
 		Jenkins.getInstance().checkPermission(UNLOCK);
 
 		String name = req.getParameter("resource");

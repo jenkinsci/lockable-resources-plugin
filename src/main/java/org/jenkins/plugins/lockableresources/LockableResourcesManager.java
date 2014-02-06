@@ -72,47 +72,68 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public LockableResource fromName(String resourceName) {
 		if (resourceName != null) {
 			for (LockableResource r : resources) {
-				if (resourceName.equals(r.getName()))
+				if (resourceName.equals(r.getName())) {
 					return r;
+				}
 			}
 		}
 		return null;
 	}
 
 	public synchronized boolean queue(List<LockableResource> resources,
-			int queueItemId) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
+		int queueItemId) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
 				return false;
-		for (LockableResource r : resources)
+			}
+		}
+		for (LockableResource r : resources) {
 			r.setQueueItemId(queueItemId);
+		}
 		return true;
 	}
 
 	public synchronized List<LockableResource> queue(List<LockableResource> resources,
-		int queueItemId, String queueItemProject, int number) {
+			int queueItemId, String queueItemProject, int number) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
-			if (!r.isReserved() && !r.isQueued(queueItemId) && !r.isLocked()) {
-				selected.add(r);
+			// This project might already have something in queue
+			String rProject = r.getQueueItemProject();
+			if (rProject != null && rProject.equals(queueItemProject)) {
+				if (r.isQueued(queueItemId)) {
+					// this item has queued the resource earlier
+					selected.add(r);
+				} else {
+					// The project has another buildable item waiting -> bail out
+					return null;
+				}
 			}
-			if (selected.size() == number) break;
+		}
+		for (LockableResource rs : resources) {
+			if (selected.size() >= number) {
+				break;
+			}
+			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) {
+				selected.add(rs);
+			}
 		}
 		if (selected.size() != number) {
 			return null;
 		}
-		for (LockableResource r : selected) {
-			r.setQueueItemId(queueItemId);
-			r.setQueueItemProject(queueItemProject);
+		for (LockableResource rsc : selected) {
+			rsc.setQueueItemId(queueItemId);
+			rsc.setQueueItemProject(queueItemProject);
 		}
 		return selected;
 	}
 
 	public synchronized boolean lock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isLocked())
+		AbstractBuild<?, ?> build) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isLocked()) {
 				return false;
+			}
+		}
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);
@@ -121,7 +142,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+		AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
@@ -133,7 +154,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean reserve(List<LockableResource> resources,
-                String userName) {
+			String userName) {
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked() || r.isQueued()) {
 				return false;
@@ -160,12 +181,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	@Override
 	public boolean configure(StaplerRequest req, JSONObject json)
-			throws FormException {
+		throws FormException {
 		try {
 			defaultPriority = json.getInt("defaultPriority");
 			priorityParameterName = json.getString("priorityParameterName");
 			List<LockableResource> newResouces = req.bindJSONToList(
-					LockableResource.class, json.get("resources"));
+				LockableResource.class, json.get("resources"));
 			for (LockableResource r : newResouces) {
 				LockableResource old = fromName(r.getName());
 				if (old != null) {
@@ -183,7 +204,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public static LockableResourcesManager get() {
 		return (LockableResourcesManager) Jenkins.getInstance()
-				.getDescriptorOrDie(LockableResourcesManager.class);
+			.getDescriptorOrDie(LockableResourcesManager.class);
 	}
 
 }

@@ -25,8 +25,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private final String name;
 	private final String description;
-	private String reservedBy;
-
+	
+	private transient String reservedBy = null;
 	private transient int queueItemId = NOT_QUEUED;
 	private transient String queueItemProject = null;
 	private transient AbstractBuild<?, ?> build = null;
@@ -59,7 +59,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public boolean isQueued(int taskId) {
-		return queueItemId != NOT_QUEUED && queueItemId != taskId;
+		return queueItemId == taskId;
 	}
 
 	public void unqueue() {
@@ -126,18 +126,23 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		LockableResource other = (LockableResource) obj;
 		if (name == null) {
-			if (other.name != null)
+			if (other.name != null) {
 				return false;
-		} else if (!name.equals(other.name))
+			}
+		} else if (!name.equals(other.name)) {
 			return false;
+		}
 		return true;
 	}
 
