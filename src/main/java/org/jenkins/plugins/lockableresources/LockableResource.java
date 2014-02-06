@@ -60,7 +60,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public boolean isQueued(int taskId) {
-		return queueItemId != NOT_QUEUED && queueItemId != taskId;
+		return queueItemId == taskId;
 	}
 
 	public void unqueue() {

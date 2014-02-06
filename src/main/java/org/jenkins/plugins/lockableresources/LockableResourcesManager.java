@@ -94,20 +94,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized List<LockableResource> queue(List<LockableResource> resources,
-		int queueItemId, String queueItemProject, int number) {
+			int queueItemId, String queueItemProject, int number) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
-			if (!r.isReserved() && !r.isQueued(queueItemId) && !r.isLocked()) {
-				selected.add(r);
+			// This project might already have something in queue
+			String rProject = r.getQueueItemProject();
+			if (rProject != null && rProject.equals(queueItemProject)) {
+				if (r.isQueued(queueItemId)) {
+					// this item has queued the resource earlier
+					selected.add(r);
+				} else {
+					// The project has another buildable item waiting -> bail out
+					return null;
+				}
 			}
-			if (selected.size() == number) break;
+		}
+		for (LockableResource rs : resources) {
+			if (selected.size() >= number) {
+				break;
+			}
+			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) {
+				selected.add(rs);
+			}
 		}
 		if (selected.size() != number) {
 			return null;
 		}
-		for (LockableResource r : selected) {
-			r.setQueueItemId(queueItemId);
-			r.setQueueItemProject(queueItemProject);
+		for (LockableResource rsc : selected) {
+			rsc.setQueueItemId(queueItemId);
+			rsc.setQueueItemProject(queueItemProject);
 		}
 		return selected;
 	}
@@ -139,7 +154,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean reserve(List<LockableResource> resources,
-                String userName) {
+			String userName) {
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked() || r.isQueued()) {
 				return false;
