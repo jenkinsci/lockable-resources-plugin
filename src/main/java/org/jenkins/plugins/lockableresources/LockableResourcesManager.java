@@ -96,7 +96,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			// This project might already have something in queue
 			String rProject = r.getQueueItemProject();
 			if (rProject != null && rProject.equals(queueItemProject)) {
-				if (r.isQueued(queueItemId)) {
+				if (r.isQueuedByTask(queueItemId)) {
 					// this item has queued the resource earlier
 					selected.add(r);
 				} else {

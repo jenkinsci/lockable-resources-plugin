@@ -58,7 +58,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return queueItemId != NOT_QUEUED;
 	}
 
+	// returns True if queued by any other task than the given one
 	public boolean isQueued(int taskId) {
+		return queueItemId != NOT_QUEUED && queueItemId != taskId;
+	}
+
+	public boolean isQueuedByTask(int taskId) {
 		return queueItemId == taskId;
 	}
 
