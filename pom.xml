@@ -18,7 +18,7 @@
 
 	<groupId>org.6wind.jenkins</groupId>
 	<artifactId>lockable-resources</artifactId>
-	<version>1.4</version>
+	<version>1.5-SNAPSHOT</version>
 	<packaging>hpi</packaging>
 	<name>Lockable Resources plugin</name>
 	<description>
