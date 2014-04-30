@@ -28,6 +28,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String reservedBy;
 
 	private transient int queueItemId = NOT_QUEUED;
+	// this is used to link queue phase to locking
 	private transient String queueItemProject = null;
 	private transient AbstractBuild<?, ?> build = null;
 
@@ -116,6 +117,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.reservedBy = null;
 	}
 
+	public void reset() {
+		this.unReserve();
+		this.unqueue();
+		this.queueItemProject = null;
+		this.setBuild(null);
+	}
+	
 	@Override
 	public String toString() {
 		return name;

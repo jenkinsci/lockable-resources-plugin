@@ -13,6 +13,8 @@ import hudson.model.AbstractBuild;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
@@ -89,8 +91,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
-	public synchronized List<LockableResource> queue(List<LockableResource> resources,
-			int queueItemId, String queueItemProject, int number) {
+	public synchronized List<LockableResource> queue(
+		List<LockableResource> resources,
+		int queueItemId,
+		String queueItemProject,
+		int number,
+		Logger log) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
 			// This project might already have something in queue
@@ -101,6 +107,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					selected.add(r);
 				} else {
 					// The project has another buildable item waiting -> bail out
+					log.log(Level.FINEST, "{0} has another build " +
+						"that already queued resource {1}. Continue queueing.",
+						new Object[]{queueItemProject, r});
 					return null;
 				}
 			}
@@ -114,6 +123,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 		if (selected.size() != number) {
+			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
+			    "Waiting for correct amount.",
+			    new Object[]{queueItemProject, selected.size()});
+			// just to be sure, clean up
+			for (LockableResource x : resources) {
+				if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject)) {
+					x.setQueueItemProject(null);
+					x.setQueueItemId(LockableResource.NOT_QUEUED);
+				}
+			}
 			return null;
 		}
 		for (LockableResource rsc : selected) {
@@ -168,6 +187,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 	}
 
+	public synchronized void reset(List<LockableResource> resources) {
+		for (LockableResource r : resources) {
+			r.reset();
+		}
+		save();
+	}
+	
 	@Override
 	public String getDisplayName() {
 		return "External Resources";

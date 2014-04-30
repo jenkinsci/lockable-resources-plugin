@@ -34,6 +34,9 @@ function reserve_resource_${i}() {
 function unreserve_resource_${i}() {
 	window.location.assign("unreserve?resource=${resource.name}");
 }
+function reset_resource_${i}() {
+	window.location.assign("reset?resource=${resource.name}");
+}
 </script>
 					<tr>
 						<td class="pane">
@@ -67,14 +70,26 @@ function unreserve_resource_${i}() {
 						</td>
 	</j:if>
 	<j:if test="${resource.reservedBy == null}">
-						<td class="pane" style="color: green;">
-							<strong>FREE</strong>
-						</td>
-						<td class="pane">
-		<j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
-							<button onClick="reserve_resource_${i}();">Reserve</button>
+		<j:if test="${resource.queued}">
+			<td class="pane" style="color: yellow;">
+				QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
+			</td>
+			<td class="pane">
+				<j:if test="${h.hasPermission(it.UNLOCK)}">
+					<button onClick="reset_resource_${i}();">ResetResource</button>
+				</j:if>
+			</td>
 		</j:if>
-						</td>
+		<j:if test="${!resource.queued}">
+			<td class="pane" style="color: green;">
+				<strong>FREE</strong>
+			</td>
+			<td class="pane">
+				<j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
+					<button onClick="reserve_resource_${i}();">Reserve</button>
+				</j:if>
+			</td>
+		</j:if>
 	</j:if>
 </j:if>
 					</tr>
