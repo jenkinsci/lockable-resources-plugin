@@ -16,18 +16,27 @@ import hudson.model.Descriptor;
 import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
+import java.util.logging.Logger;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
+	static final Logger LOGGER = Logger.getLogger(LockableResource.class
+			.getName());
+    
 	public static final int NOT_QUEUED = 0;
 
 	private final String name;
 	private final String description;
+	
+	// If the build is blocked by other reasons, let the resources free again
+	private final int queueTimeout = 60;
+	private long queuingStarted = 0;
+		
 	private String reservedBy;
-
 	private transient int queueItemId = NOT_QUEUED;
+	// this is used to link queue phase to locking
 	private transient String queueItemProject = null;
 	private transient AbstractBuild<?, ?> build = null;
 
@@ -55,20 +64,19 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public boolean isQueued() {
+		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED;
 	}
 
 	// returns True if queued by any other task than the given one
 	public boolean isQueued(int taskId) {
+		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED && queueItemId != taskId;
 	}
 
 	public boolean isQueuedByTask(int taskId) {
+		this.validateQueuingTimeout();
 		return queueItemId == taskId;
-	}
-
-	public void unqueue() {
-		queueItemId = NOT_QUEUED;
 	}
 
 	public boolean isLocked() {
@@ -93,21 +101,42 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public int getQueueItemId() {
+		this.validateQueuingTimeout();
 		return queueItemId;
 	}
 
-	public void setQueueItemId(int queueItemId) {
-		this.queueItemId = queueItemId;
-	}
-
 	public String getQueueItemProject() {
+		this.validateQueuingTimeout();
 		return this.queueItemProject;
 	}
-
-	public void setQueueItemProject(String queueItemProject) {
-		this.queueItemProject = queueItemProject;
+	
+	private void validateQueuingTimeout() {
+		if (this.queuingStarted > 0) {
+			long timeSinceStarted = (System.currentTimeMillis() / 1000) -
+				this.queuingStarted;
+			if (timeSinceStarted > this.queueTimeout) {
+				LOGGER.fine("Queuing timed out for: " + this.toString());
+			this.unqueue();
+			}
+		}
+	}
+	
+	public void setQueued(int queueItemId) {
+		this.queueItemId = queueItemId;
+		this.queuingStarted = System.currentTimeMillis() / 1000;
 	}
 
+	public void setQueued(int queueItemId, String queueProjectName) {
+		this.setQueued(queueItemId);
+		this.queueItemProject = queueProjectName;
+	}
+	
+	public void unqueue() {
+		queueItemId = NOT_QUEUED;
+		queueItemProject = null;		
+		queuingStarted = 0;
+	}
+	
 	public void setReservedBy(String userName) {
 		this.reservedBy = userName;
 	}
@@ -116,6 +145,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.reservedBy = null;
 	}
 
+	public void reset() {
+		this.unReserve();
+		this.unqueue();
+		this.setBuild(null);
+	}
+	
 	@Override
 	public String toString() {
 		return name;
