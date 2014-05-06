@@ -71,7 +71,7 @@ function reset_resource_${i}() {
 	</j:if>
 	<j:if test="${resource.reservedBy == null}">
 		<j:if test="${resource.queued}">
-			<td class="pane" style="color: yellow;">
+			<td class="pane" style="color: magenta;">
 				QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
 			</td>
 			<td class="pane">
