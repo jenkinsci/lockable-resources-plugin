@@ -71,6 +71,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	@Override
 	public void onCompleted(AbstractBuild<?, ?> build, TaskListener listener) {
+		// obviously project name cannot be obtained here
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {

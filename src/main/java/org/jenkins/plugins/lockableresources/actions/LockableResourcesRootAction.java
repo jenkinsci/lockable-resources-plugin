@@ -135,4 +135,22 @@ public class LockableResourcesRootAction implements RootAction {
 
 		rsp.forwardToPreviousPage(req);
 	}
+
+	public void doReset(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+		Jenkins.getInstance().checkPermission(UNLOCK);
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<LockableResource>();
+		resources.add(r);
+		LockableResourcesManager.get().reset(resources);
+
+		rsp.forwardToPreviousPage(req);
+	}
 }

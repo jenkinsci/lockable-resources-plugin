@@ -187,6 +187,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return "External Resources";
 	}
 
+	public synchronized void reset(List<LockableResource> resources) {
+		for (LockableResource r : resources) {
+			r.reset();
+		}
+		save();
+	}
+
 	@Override
 	public boolean configure(StaplerRequest req, JSONObject json)
 			throws FormException {

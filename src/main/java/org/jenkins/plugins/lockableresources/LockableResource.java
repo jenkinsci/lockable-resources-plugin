@@ -116,6 +116,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.reservedBy = null;
 	}
 
+	public void reset() {
+		this.unReserve();
+		this.unqueue();
+		this.queueItemProject = null;
+		this.setBuild(null);
+	}
+
 	@Override
 	public String toString() {
 		return name;
