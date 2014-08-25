@@ -22,6 +22,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
 	public static final int NOT_QUEUED = 0;
+	private static final int QUEUE_TIMEOUT = 60;
 
 	private final String name;
 	private final String description;
@@ -30,6 +31,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private transient int queueItemId = NOT_QUEUED;
 	private transient String queueItemProject = null;
 	private transient AbstractBuild<?, ?> build = null;
+	private transient long queuingStarted = 0;
 
 	@DataBoundConstructor
 	public LockableResource(String name, String description, String reservedBy) {
@@ -55,20 +57,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public boolean isQueued() {
+		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED;
 	}
 
 	// returns True if queued by any other task than the given one
 	public boolean isQueued(int taskId) {
+		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED && queueItemId != taskId;
 	}
 
 	public boolean isQueuedByTask(int taskId) {
+		this.validateQueuingTimeout();
 		return queueItemId == taskId;
 	}
 
 	public void unqueue() {
 		queueItemId = NOT_QUEUED;
+		queueItemProject = null;
+		queuingStarted = 0;
 	}
 
 	public boolean isLocked() {
@@ -93,19 +100,31 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public int getQueueItemId() {
+		this.validateQueuingTimeout();
 		return queueItemId;
 	}
 
-	public void setQueueItemId(int queueItemId) {
-		this.queueItemId = queueItemId;
-	}
-
 	public String getQueueItemProject() {
+		this.validateQueuingTimeout();
 		return this.queueItemProject;
 	}
 
-	public void setQueueItemProject(String queueItemProject) {
-		this.queueItemProject = queueItemProject;
+	public void setQueued(int queueItemId) {
+		this.queueItemId = queueItemId;
+		this.queuingStarted = System.currentTimeMillis() / 1000;
+	}
+
+	public void setQueued(int queueItemId, String queueProjectName) {
+		this.setQueued(queueItemId);
+		this.queueItemProject = queueProjectName;
+	}
+
+	private void validateQueuingTimeout() {
+		if (queuingStarted > 0) {
+			long now = System.currentTimeMillis() / 1000;
+			if (now - queuingStarted > QUEUE_TIMEOUT)
+				unqueue();
+		}
 	}
 
 	public void setReservedBy(String userName) {
@@ -119,7 +138,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public void reset() {
 		this.unReserve();
 		this.unqueue();
-		this.queueItemProject = null;
 		this.setBuild(null);
 	}
 

@@ -85,7 +85,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
 		for (LockableResource r : resources)
-			r.setQueueItemId(queueItemId);
+			r.setQueued(queueItemId);
 		return true;
 	}
 
@@ -122,16 +122,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			for (LockableResource x : resources) {
 				if (x.getQueueItemProject() != null
 						&& x.getQueueItemProject().equals(queueItemProject)) {
-					x.setQueueItemProject(null);
-					x.setQueueItemId(LockableResource.NOT_QUEUED);
+					x.unqueue();
 				}
 			}
 			return null;
 		}
 
 		for (LockableResource rsc : selected) {
-			rsc.setQueueItemId(queueItemId);
-			rsc.setQueueItemProject(queueItemProject);
+			rsc.setQueued(queueItemId, queueItemProject);
 		}
 
 		return selected;
@@ -155,8 +153,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
 				r.setBuild(null);
-				r.setQueueItemProject(null);
-				r.setQueueItemId(LockableResource.NOT_QUEUED);
 			}
 		}
 	}
@@ -206,7 +202,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				LockableResource old = fromName(r.getName());
 				if (old != null) {
 					r.setBuild(old.getBuild());
-					r.setQueueItemId(r.getQueueItemId());
+					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
 				}
 			}
 			resources = newResouces;
