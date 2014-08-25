@@ -91,7 +91,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public synchronized List<LockableResource> queue(List<LockableResource> resources,
 			int queueItemId, String queueItemProject, int number) {
+
 		List<LockableResource> selected = new ArrayList<LockableResource>();
+
 		for (LockableResource r : resources) {
 			// This project might already have something in queue
 			String rProject = r.getQueueItemProject();
@@ -105,6 +107,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				}
 			}
 		}
+
 		for (LockableResource rs : resources) {
 			if (selected.size() >= number) {
 				break;
@@ -113,13 +116,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				selected.add(rs);
 			}
 		}
+
 		if (selected.size() != number) {
+			// just to be sure, clean up
+			for (LockableResource x : resources) {
+				if (x.getQueueItemProject() != null
+						&& x.getQueueItemProject().equals(queueItemProject)) {
+					x.setQueueItemProject(null);
+					x.setQueueItemId(LockableResource.NOT_QUEUED);
+				}
+			}
 			return null;
 		}
+
 		for (LockableResource rsc : selected) {
 			rsc.setQueueItemId(queueItemId);
 			rsc.setQueueItemProject(queueItemProject);
 		}
+
 		return selected;
 	}
 

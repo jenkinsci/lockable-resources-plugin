@@ -10,11 +10,9 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
 import hudson.model.AbstractProject;
-import hudson.model.Node;
-import hudson.model.Queue.BuildableItem;
+import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
-import java.util.ArrayList;
 
 import java.util.List;
 import java.util.logging.Logger;
@@ -29,7 +27,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	@Override
-	public CauseOfBlockage canTake(Node node, BuildableItem item) {
+	public CauseOfBlockage canRun(Queue.Item item) {
+
 		AbstractProject<?, ?> project = Utils.getProject(item);
 		if (project == null)
 			return null;
@@ -46,7 +45,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		}
 
 		if (resourceNumber > 0) {
-			List<LockableResource> selected = new ArrayList<LockableResource>();
+			List<LockableResource> selected = null;
 			LOGGER.finest(project.getName() + " trying to reserve " +
 					resourceNumber + " of " + resources.required);
 
