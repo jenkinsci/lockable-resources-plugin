@@ -56,6 +56,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	public String getResourceNames() {
 		return resourceNames;
 	}
+	
+	public String getLabelName() {
+		return labelName;
+	}
+
 
 	public String getResourceNamesVar() {
 		return resourceNamesVar;
@@ -97,7 +102,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String labelName = Util.fixEmptyAndTrim(json
 					.getString("labelName"));
 
-			if (resourceNames == null) {
+			if (resourceNames == null && labelName == null) {
 				return null;
 			}
 

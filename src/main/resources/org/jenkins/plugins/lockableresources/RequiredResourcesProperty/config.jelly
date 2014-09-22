@@ -23,7 +23,7 @@
 			<f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
 				<f:textbox/>
 			</f:entry>
-			<f:entry title="${%Number of the listed resources to request}" field="resourceNumber">
+			<f:entry title="${%Number of resources to request}" field="resourceNumber">
 				<f:textbox/>
 			</f:entry>
 		</f:nested>
