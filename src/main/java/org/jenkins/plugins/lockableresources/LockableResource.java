@@ -8,6 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import java.util.List;
+
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -16,6 +18,7 @@ import hudson.model.Descriptor;
 import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
+import java.util.Arrays;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -26,6 +29,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private final String name;
 	private final String description;
+	private final String labels;
 	private String reservedBy;
 
 	private transient int queueItemId = NOT_QUEUED;
@@ -34,9 +38,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private transient long queuingStarted = 0;
 
 	@DataBoundConstructor
-	public LockableResource(String name, String description, String reservedBy) {
+	public LockableResource(
+			String name, String description, String labels, String reservedBy) {
 		this.name = name;
 		this.description = description;
+		this.labels = labels;
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
 	}
 
@@ -48,6 +54,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return description;
 	}
 
+	public String getLabels() {
+		return labels;
+	}
+	
 	public String getReservedBy() {
 		return reservedBy;
 	}

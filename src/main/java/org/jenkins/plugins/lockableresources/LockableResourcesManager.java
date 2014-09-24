@@ -11,7 +11,10 @@ package org.jenkins.plugins.lockableresources;
 import hudson.Extension;
 import hudson.model.AbstractBuild;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import jenkins.model.GlobalConfiguration;
@@ -59,6 +62,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 		return matching;
+	}
+	
+	public Boolean isValidLabel(String label)
+	{
+		return this.getAllLabels().contains(label);
+	}
+
+	public Set<String> getAllLabels()
+	{
+		Set<String> labels = new HashSet<String>();
+		for (LockableResource r : this.resources) {
+			labels.addAll(Arrays.asList(r.getLabels().split("\\s+")));
+		}
+		return labels;
 	}
 
 	public int getDefaultPriority() {

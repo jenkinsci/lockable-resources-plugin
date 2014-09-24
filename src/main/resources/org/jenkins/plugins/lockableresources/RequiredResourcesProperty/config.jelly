@@ -17,6 +17,9 @@
 			<f:entry title="${%Resources}" field="resourceNames">
 				<f:textbox autoCompleteDelimChar=" "/>
 			</f:entry>
+			<f:entry title="${%Label}" field="labelName">
+				<f:textbox autoCompleteDelimChar=" "/>
+			</f:entry>
 			<f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
 				<f:textbox/>
 			</f:entry>
