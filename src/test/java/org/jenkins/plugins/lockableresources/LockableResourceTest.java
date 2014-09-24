@@ -206,16 +206,6 @@ public class LockableResourceTest {
 	}
 
 	/**
-	 * Test of setQueueItemId method, of class LockableResource.
-	 */
-	@Test
-	public void testSetQueueItemId() {
-		System.out.println("setQueueItemId");
-		int queueItemId = 0;
-		instance.setQueueItemId(queueItemId);
-	}
-
-	/**
 	 * Test of getQueueItemProject method, of class LockableResource.
 	 */
 	@Test
@@ -224,16 +214,6 @@ public class LockableResourceTest {
 		String expResult = null;
 		String result = instance.getQueueItemProject();
 		assertEquals(expResult, result);
-	}
-
-	/**
-	 * Test of setQueueItemProject method, of class LockableResource.
-	 */
-	@Test
-	public void testSetQueueItemProject() {
-		System.out.println("setQueueItemProject");
-		String queueItemProject = "";
-		instance.setQueueItemProject(queueItemProject);
 	}
 
 	/**
