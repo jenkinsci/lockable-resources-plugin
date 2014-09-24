@@ -8,8 +8,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
-import java.util.List;
-
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;

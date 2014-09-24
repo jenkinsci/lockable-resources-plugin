@@ -163,12 +163,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// if did not get wanted amount or did not get all
-		if ((selected.size() != number) || 
-			(number == 0 && selected.size() != candidates.size())) {
-			
+		int required_amount = (number == 0) ? candidates.size() : number;
+
+		if (selected.size() != required_amount) {
 			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
-			    "Waiting for correct amount.",
-			    new Object[]{queueItemProject, selected.size()});
+			    "Waiting for correct amount: {2}.",
+			    new Object[]{queueItemProject, selected.size(), required_amount});
 			// just to be sure, clean up
 			for (LockableResource x : resources) {
 				if (x.getQueueItemProject() != null
