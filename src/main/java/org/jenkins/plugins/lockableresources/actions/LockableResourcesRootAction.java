@@ -19,6 +19,7 @@ import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 
@@ -74,6 +75,18 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getResources();
 	}
 
+	public int getFreeResourceAmount(String label) {
+		return LockableResourcesManager.get().getFreeResourceAmount(label);
+	}
+	
+	public Set<String> getAllLabels() {
+		return LockableResourcesManager.get().getAllLabels();
+	}
+	
+	public int getNumberOfAllLabels() {
+		return LockableResourcesManager.get().getAllLabels().size();
+	}
+	
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)
 			throws IOException, ServletException {
 		Jenkins.getInstance().checkPermission(UNLOCK);

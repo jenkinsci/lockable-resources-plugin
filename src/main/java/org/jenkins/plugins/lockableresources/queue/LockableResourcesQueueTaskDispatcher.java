@@ -34,8 +34,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			return null;
 
 		LockableResourcesStruct resources = Utils.requiredResources(project);
-		if (resources == null || resources.required.isEmpty())
+		if (resources == null || 
+			(resources.required.isEmpty() && resources.label.isEmpty())) {
 			return null;
+		}
 
 		int resourceNumber;
 		try {
@@ -44,52 +46,52 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			resourceNumber = 0;
 		}
 
-		if (resourceNumber > 0) {
-			List<LockableResource> selected = null;
-			LOGGER.finest(project.getName() + " trying to reserve " +
-					resourceNumber + " of " + resources.required);
+		LOGGER.finest(project.getName() + 
+			" trying to get resources with these details: " + resources);
 
-			selected = LockableResourcesManager.get().queue(
-					resources.required,
+		if (resourceNumber > 0 || !resources.label.isEmpty()) {
+
+			List<LockableResource> selected = LockableResourcesManager.get().queue(
+					resources,
 					item.id,
 					project.getFullName(),
-					resourceNumber);
+					resourceNumber,
+					LOGGER);
+			
 			if (selected != null) {
 				LOGGER.finest(project.getName() + " reserved resources " + selected);
 				return null;
 			} else {
 				LOGGER.finest(project.getName() + " waiting for resources");
-				return new BecauseResourcesLocked(resources.required);
+				return new BecauseResourcesLocked(resources);
 			}
+			
 		} else {
-			LOGGER.finest(project.getName() + " trying to reserve resources "
-					+ resources.required);
 			if (LockableResourcesManager.get().queue(resources.required, item.id)) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
 				LOGGER.finest(project.getName() + " waiting for resources "
-						+ resources.required);
-				return new BecauseResourcesLocked(resources.required);
+					+ resources.required);
+				return new BecauseResourcesLocked(resources);
 			}
 		}
 	}
 
 	public static class BecauseResourcesLocked extends CauseOfBlockage {
 
-		private final List<LockableResource> resources;
+		private final LockableResourcesStruct rscStruct;
 
-		public BecauseResourcesLocked(List<LockableResource> resources) {
-			this.resources = resources;
-		}
-
-		public List<LockableResource> getResources() {
-			return resources;
+		public BecauseResourcesLocked(LockableResourcesStruct r) {
+			this.rscStruct = r;
 		}
 
 		@Override
 		public String getShortDescription() {
-			return "Waiting for resources " + resources.toString();
+			if (this.rscStruct.label.isEmpty())
+				return "Waiting for resources " + rscStruct.required.toString();
+			else
+				return "Waiting for resources with label " + rscStruct.label;
 		}
 	}
 
