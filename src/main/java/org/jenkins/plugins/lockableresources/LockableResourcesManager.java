@@ -21,6 +21,7 @@ import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -73,9 +74,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	{
 		Set<String> labels = new HashSet<String>();
 		for (LockableResource r : this.resources) {
-			labels.addAll(Arrays.asList(r.getLabels().split("\\s+")));
+			String rl = r.getLabels();
+			if (rl == null || "".equals(rl))
+				continue;
+			labels.addAll(Arrays.asList(rl.split("\\s+")));
 		}
 		return labels;
+	}
+
+	public int getFreeResourceAmount(String label)
+	{
+		int free = 0;
+		for (LockableResource r : this.resources) {
+			if (r.isLocked() || r.isQueued() || r.isReserved())
+				continue;
+			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
+				free += 1;
+		}
+		return free;
+	}
+
+	public List<LockableResource> getResourcesWithLabel(String label) {
+		List<LockableResource> found = new ArrayList<LockableResource>();
+		for (LockableResource r : this.resources) {
+			if (r.isValidLabel(label))
+				found.add(r);
+			}
+		return found;
 	}
 
 	public int getDefaultPriority() {
@@ -106,35 +131,44 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
-	public synchronized List<LockableResource> queue(List<LockableResource> resources,
-			int queueItemId, String queueItemProject, int number) {
-
+	public synchronized List<LockableResource> queue(
+		LockableResourcesStruct requiredResources,
+		int queueItemId,
+		String queueItemProject,
+		int number,  // 0 means all
+		Logger log) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
-
-		for (LockableResource r : resources) {
-			// This project might already have something in queue
-			String rProject = r.getQueueItemProject();
-			if (rProject != null && rProject.equals(queueItemProject)) {
-				if (r.isQueuedByTask(queueItemId)) {
-					// this item has queued the resource earlier
-					selected.add(r);
-				} else {
-					// The project has another buildable item waiting -> bail out
-					return null;
-				}
-			}
+		Boolean ok = checkCurrentResourcesStatus(
+			selected, queueItemProject, queueItemId, log);
+		if (!ok) {
+			// The project has another buildable item waiting -> bail out
+			log.log(Level.FINEST, "{0} has another build waiting resources." +
+			    " Waiting for it to proceed first.",
+			    new Object[]{queueItemProject});			
+			return null;
 		}
-
-		for (LockableResource rs : resources) {
-			if (selected.size() >= number) {
+		
+		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+			candidates = requiredResources.required;
+		} else {
+			candidates = getResourcesWithLabel(requiredResources.label);
+		}
+		
+		for (LockableResource rs : candidates) {
+			if (number != 0 && (selected.size() >= number))
 				break;
-			}
-			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) {
+			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
 				selected.add(rs);
-			}
 		}
 
-		if (selected.size() != number) {
+		// if did not get wanted amount or did not get all
+		if ((selected.size() != number) || 
+			(number == 0 && selected.size() != candidates.size())) {
+			
+			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
+			    "Waiting for correct amount.",
+			    new Object[]{queueItemProject, selected.size()});
 			// just to be sure, clean up
 			for (LockableResource x : resources) {
 				if (x.getQueueItemProject() != null
@@ -148,15 +182,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (LockableResource rsc : selected) {
 			rsc.setQueued(queueItemId, queueItemProject);
 		}
-
 		return selected;
 	}
-
+	
+	// Adds already selected (in previous queue round) resources to 'selected'
+	// Return false if another item queued for this project -> bail out
+	private Boolean checkCurrentResourcesStatus(
+		List<LockableResource> selected,
+		String project,
+		int taskId,
+		Logger log) {
+		for (LockableResource r : resources) {
+			// This project might already have something in queue
+			String rProject = r.getQueueItemProject();
+			if (rProject != null && rProject.equals(project)) {
+				if (r.isQueuedByTask(taskId)) {
+					// this item has queued the resource earlier
+					selected.add(r);
+				} else {
+					// The project has another buildable item waiting -> bail out
+					log.log(Level.FINEST, "{0} has another build " +
+						"that already queued resource {1}. Continue queueing.",
+						new Object[]{project, r});
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	
 	public synchronized boolean lock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isLocked())
+		AbstractBuild<?, ?> build) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isLocked()) {
 				return false;
+			}
+		}
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);
@@ -165,7 +226,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+		AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
@@ -195,16 +256,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 	}
 
-	@Override
-	public String getDisplayName() {
-		return "External Resources";
-	}
-
 	public synchronized void reset(List<LockableResource> resources) {
 		for (LockableResource r : resources) {
 			r.reset();
 		}
 		save();
+	}
+
+	@Override
+	public String getDisplayName() {
+		return "External Resources";
 	}
 
 	@Override

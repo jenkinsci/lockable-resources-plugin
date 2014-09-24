@@ -57,6 +57,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public String getLabels() {
 		return labels;
 	}
+
+	public Boolean isValidLabel(String candidate) {
+		return Arrays.asList(labels.split("\\s+")).contains(candidate);
+	}
 	
 	public String getReservedBy() {
 		return reservedBy;

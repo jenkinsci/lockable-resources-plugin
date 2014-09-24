@@ -61,7 +61,6 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return labelName;
 	}
 
-
 	public String getResourceNamesVar() {
 		return resourceNamesVar;
 	}
@@ -159,8 +158,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 
 		public FormValidation doCheckResourceNumber(@QueryParameter String value,
-			@QueryParameter String resourceNames) {
+			@QueryParameter String resourceNames,
+			@QueryParameter String labelName) {
+			
 			String number = Util.fixEmptyAndTrim(value);
+			String names = Util.fixEmptyAndTrim(resourceNames);
+			String label = Util.fixEmptyAndTrim(labelName);
+			
 			if (number == null || number.equals("") || number.trim().equals("0")) {
 				return FormValidation.ok();
 			}
@@ -172,11 +176,17 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.error(
 					"Could not parse the given value as integer.");
 			}
-			int numResources = resourceNames.split("\\s+").length;
+			int numResources = 0;
+			if (names != null) {
+				numResources = names.split("\\s+").length;
+			} else if (label != null) {
+				numResources = LockableResourcesManager.get().
+					getResourcesWithLabel(label).size();
+			}
 
 			if (numResources < numAsInt) {
 				return FormValidation.error(String.format(
-					"Given amount %d in greater than amount of resources: %d.",
+					"Given amount %d is greater than amount of resources: %d.",
 					numAsInt,
 					numResources));
 			}

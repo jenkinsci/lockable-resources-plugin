@@ -17,6 +17,7 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 public class LockableResourcesStruct {
 
 	public List<LockableResource> required;
+	public String label;
 	public String requiredVar;
 	public String requiredNumber;
 
@@ -29,14 +30,27 @@ public class LockableResourcesStruct {
 				this.required.add(r);
 			}
 		}
+		
+		this.label = property.getLabelName();
+		if (this.label == null)
+			this.label = "";
+		
 		this.requiredVar = property.getResourceNamesVar();
 		if (this.requiredVar != null && this.requiredVar.equals("")) {
 			this.requiredVar = null;
 		}
+		
 		this.requiredNumber = property.getResourceNumber();
 		if (this.requiredNumber != null && (this.requiredNumber.equals("") ||
 			this.requiredNumber.trim().equals("0"))) {
 			this.requiredNumber = null;
 		}
+	}
+	
+	public String toString() {
+		return "Required resources: " + this.required +
+			", Required label: " + this.label +
+			", Variable name: " + this.requiredVar +
+			", Number of resources: " + this.requiredNumber;
 	}
 }
