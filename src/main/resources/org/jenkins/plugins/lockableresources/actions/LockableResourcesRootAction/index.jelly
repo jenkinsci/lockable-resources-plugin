@@ -105,33 +105,34 @@ function reset_resource_${i}() {
 <br></br>
 <br></br>
 
-<table class="pane" style="width: 50%;">
-	<tbody>
-		<tr>
-			<td class="pane-header">Label</td>
-			<td class="pane-header">Free resources</td>
-		</tr>
-		<j:forEach var="label" items="${it.getAllLabels()}">
+<j:if test="${it.getNumberOfAllLabels() != 0}">
+	<table class="pane" style="width: 50%;">
+		<tbody>
 			<tr>
-				<j:choose>
-					<j:when test="${it.getFreeResourceAmount(label) == 0}">
-						<td class="pane" style="color: red;">${label}</td>
-						<td class="pane" style="color: red;">0</td>
-					</j:when>
-					<j:when test="${it.getFreeResourceAmount(label) == 1}">
-						<td class="pane" style="color: darkorange;">${label}</td>
-						<td class="pane" style="color: darkorange;">1</td>
-					</j:when>
-					<j:otherwise>
-						<td class="pane" style="color: green;">${label}</td>
-						<td class="pane" style="color: green;">${it.getFreeResourceAmount(label)}</td>
-					</j:otherwise>
-				</j:choose>
+				<td class="pane-header">Label</td>
+				<td class="pane-header">Free resources</td>
 			</tr>
-		</j:forEach>
-	</tbody>
-</table>
-
+			<j:forEach var="label" items="${it.getAllLabels()}">
+				<tr>
+					<j:choose>
+						<j:when test="${it.getFreeResourceAmount(label) == 0}">
+							<td class="pane" style="color: red;">${label}</td>
+							<td class="pane" style="color: red;">0</td>
+						</j:when>
+						<j:when test="${it.getFreeResourceAmount(label) == 1}">
+							<td class="pane" style="color: darkorange;">${label}</td>
+							<td class="pane" style="color: darkorange;">1</td>
+						</j:when>
+						<j:otherwise>
+							<td class="pane" style="color: green;">${label}</td>
+							<td class="pane" style="color: green;">${it.getFreeResourceAmount(label)}</td>
+						</j:otherwise>
+					</j:choose>
+				</tr>
+			</j:forEach>
+		</tbody>
+	</table>
+</j:if>
 
 		</l:main-panel>
 	</l:layout>

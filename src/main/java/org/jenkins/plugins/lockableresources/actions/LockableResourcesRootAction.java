@@ -83,6 +83,9 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getAllLabels();
 	}
 	
+	public int getNumberOfAllLabels() {
+		return LockableResourcesManager.get().getAllLabels().size();
+	}
 	
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)
 			throws IOException, ServletException {
