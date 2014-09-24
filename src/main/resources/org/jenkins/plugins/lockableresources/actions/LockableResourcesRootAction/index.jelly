@@ -21,6 +21,7 @@
 					<tr>
 						<td class="pane-header">Resource</td>
 						<td class="pane-header">Status</td>
+						<td class="pane-header">Labels</td>
 						<td class="pane-header">Action</td>
 					</tr>
 <j:forEach var="resource" items="${it.resources}" indexVar="i">
@@ -50,6 +51,7 @@ function reset_resource_${i}() {
 								${resource.build.fullDisplayName}
 							</a>
 						</td>
+						<td class="pane">${resource.labels}</td>
 						<td class="pane">
 <j:if test="${h.hasPermission(it.UNLOCK)}">
 							<button onClick="unlock_resource_${i}();">Unlock</button>
@@ -61,6 +63,7 @@ function reset_resource_${i}() {
 						<td class="pane" style="color: red;">
 							<strong>RESERVED</strong> by <strong>${resource.reservedBy}</strong>
 						</td>
+						<td class="pane">${resource.labels}</td>
 						<td class="pane">
 		<j:if test="${h.hasPermission(it.RESERVE)}">
 			<j:if test="${it.UserName == resource.reservedBy or h.hasPermission(app.ADMINISTER)}">
@@ -74,6 +77,7 @@ function reset_resource_${i}() {
 						<td class="pane" style="color: yellow;">
 							QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
 						</td>
+						<td class="pane">${resource.labels}</td>
 						<td class="pane">
 			<j:if test="${h.hasPermission(it.UNLOCK)}">
 							<button onClick="reset_resource_${i}();">ResetResource</button>
@@ -84,6 +88,7 @@ function reset_resource_${i}() {
 						<td class="pane" style="color: green;">
 							<strong>FREE</strong>
 						</td>
+						<td class="pane">${resource.labels}</td>
 						<td class="pane">
 			<j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
 								<button onClick="reserve_resource_${i}();">Reserve</button>
@@ -96,6 +101,36 @@ function reset_resource_${i}() {
 </j:forEach>
 				</tbody>
 			</table>
+<j:if test="${it.getNumberOfAllLabels() != 0}">
+			<h3>Labels</h3>
+			<table class="pane" style="width: 50%;">
+				<tbody>
+					<tr>
+						<td class="pane-header">Label</td>
+						<td class="pane-header">Free resources</td>
+					</tr>
+<j:forEach var="label" items="${it.getAllLabels()}">
+					<tr>
+	<j:choose>
+		<j:when test="${it.getFreeResourceAmount(label) == 0}">
+						<td class="pane" style="color: red;">${label}</td>
+						<td class="pane" style="color: red;">0</td>
+		</j:when>
+		<j:when test="${it.getFreeResourceAmount(label) == 1}">
+						<td class="pane" style="color: darkorange;">${label}</td>
+						<td class="pane" style="color: darkorange;">1</td>
+		</j:when>
+		<j:otherwise>
+						<td class="pane" style="color: green;">${label}</td>
+						<td class="pane" style="color: green;">${it.getFreeResourceAmount(label)}</td>
+		</j:otherwise>
+	</j:choose>
+					</tr>
+</j:forEach>
+				</tbody>
+			</table>
+</j:if>
+
 		</l:main-panel>
 	</l:layout>
 </j:jelly>

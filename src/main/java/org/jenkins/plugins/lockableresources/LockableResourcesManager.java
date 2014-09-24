@@ -11,13 +11,19 @@ package org.jenkins.plugins.lockableresources;
 import hudson.Extension;
 import hudson.model.AbstractBuild;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -61,6 +67,44 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return matching;
 	}
 
+	public Boolean isValidLabel(String label)
+	{
+		return this.getAllLabels().contains(label);
+	}
+
+	public Set<String> getAllLabels()
+	{
+		Set<String> labels = new HashSet<String>();
+		for (LockableResource r : this.resources) {
+			String rl = r.getLabels();
+			if (rl == null || "".equals(rl))
+				continue;
+			labels.addAll(Arrays.asList(rl.split("\\s+")));
+		}
+		return labels;
+	}
+
+	public int getFreeResourceAmount(String label)
+	{
+		int free = 0;
+		for (LockableResource r : this.resources) {
+			if (r.isLocked() || r.isQueued() || r.isReserved())
+				continue;
+			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
+				free += 1;
+		}
+		return free;
+	}
+
+	public List<LockableResource> getResourcesWithLabel(String label) {
+		List<LockableResource> found = new ArrayList<LockableResource>();
+		for (LockableResource r : this.resources) {
+			if (r.isValidLabel(label))
+				found.add(r);
+		}
+		return found;
+	}
+
 	public int getDefaultPriority() {
 		return defaultPriority;
 	}
@@ -89,41 +133,47 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
-	public synchronized List<LockableResource> queue(List<LockableResource> resources,
-			int queueItemId, String queueItemProject, int number) {
-
+	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
+	                                                 int queueItemId,
+	                                                 String queueItemProject,
+	                                                 int number,  // 0 means all
+	                                                 Logger log) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
-		for (LockableResource r : resources) {
-			// This project might already have something in queue
-			String rProject = r.getQueueItemProject();
-			if (rProject != null && rProject.equals(queueItemProject)) {
-				if (r.isQueuedByTask(queueItemId)) {
-					// this item has queued the resource earlier
-					selected.add(r);
-				} else {
-					// The project has another buildable item waiting -> bail out
-					return null;
-				}
-			}
+		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
+			// The project has another buildable item waiting -> bail out
+			log.log(Level.FINEST, "{0} has another build waiting resources." +
+			        " Waiting for it to proceed first.",
+			        new Object[]{queueItemProject});
+			return null;
 		}
 
-		for (LockableResource rs : resources) {
-			if (selected.size() >= number) {
+		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+			candidates = requiredResources.required;
+		} else {
+			candidates = getResourcesWithLabel(requiredResources.label);
+		}
+
+		for (LockableResource rs : candidates) {
+			if (number != 0 && (selected.size() >= number))
 				break;
-			}
-			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) {
+			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
 				selected.add(rs);
-			}
 		}
 
-		if (selected.size() != number) {
+		// if did not get wanted amount or did not get all
+		int required_amount = number == 0 ? candidates.size() : number;
+
+		if (selected.size() != required_amount) {
+			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
+			        "Waiting for correct amount: {2}.",
+			        new Object[]{queueItemProject, selected.size(), required_amount});
 			// just to be sure, clean up
 			for (LockableResource x : resources) {
-				if (x.getQueueItemProject() != null
-						&& x.getQueueItemProject().equals(queueItemProject)) {
+				if (x.getQueueItemProject() != null &&
+				    x.getQueueItemProject().equals(queueItemProject))
 					x.unqueue();
-				}
 			}
 			return null;
 		}
@@ -131,15 +181,41 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (LockableResource rsc : selected) {
 			rsc.setQueued(queueItemId, queueItemProject);
 		}
-
 		return selected;
+	}
+
+	// Adds already selected (in previous queue round) resources to 'selected'
+	// Return false if another item queued for this project -> bail out
+	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
+	                                            String project,
+	                                            int taskId,
+	                                            Logger log) {
+		for (LockableResource r : resources) {
+			// This project might already have something in queue
+			String rProject = r.getQueueItemProject();
+			if (rProject != null && rProject.equals(project)) {
+				if (r.isQueuedByTask(taskId)) {
+					// this item has queued the resource earlier
+					selected.add(r);
+				} else {
+					// The project has another buildable item waiting -> bail out
+					log.log(Level.FINEST, "{0} has another build " +
+						"that already queued resource {1}. Continue queueing.",
+						new Object[]{project, r});
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	public synchronized boolean lock(List<LockableResource> resources,
 			AbstractBuild<?, ?> build) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isLocked())
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isLocked()) {
 				return false;
+			}
+		}
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);

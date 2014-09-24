@@ -17,10 +17,13 @@
 			<f:entry title="${%Resources}" field="resourceNames">
 				<f:textbox autoCompleteDelimChar=" "/>
 			</f:entry>
+			<f:entry title="${%Label}" field="labelName">
+				<f:textbox autoCompleteDelimChar=" "/>
+			</f:entry>
 			<f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
 				<f:textbox/>
 			</f:entry>
-			<f:entry title="${%Number of the listed resources to request}" field="resourceNumber">
+			<f:entry title="${%Number of resources to request}" field="resourceNumber">
 				<f:textbox/>
 			</f:entry>
 		</f:nested>
