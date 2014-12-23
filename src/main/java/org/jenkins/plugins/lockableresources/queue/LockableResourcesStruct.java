@@ -27,6 +27,12 @@ public class LockableResourcesStruct {
 				name);
 			if (r != null) {
 				this.required.add(r);
+			} else {
+				// exact name not found, might be regex
+				List<LockableResource> list = LockableResourcesManager.get().fromRegex(name);
+				for(LockableResource regRes: list) {
+					this.required.add(regRes);
+				}
 			}
 		}
 		this.requiredVar = property.getResourceNamesVar();

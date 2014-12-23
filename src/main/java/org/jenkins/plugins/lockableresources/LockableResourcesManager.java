@@ -79,6 +79,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return null;
 	}
 
+	public List<LockableResource> fromRegex(String resourceRegex) {
+		List<LockableResource> matched = new ArrayList<LockableResource>();
+		if (resourceRegex != null) {
+			for (LockableResource r : resources) {
+				try {
+					if (r.getName().matches(resourceRegex))
+						matched.add(r);
+				} catch ( java.util.regex.PatternSyntaxException e){};
+			}
+		}
+		return matched;
+	}
+
 	public synchronized boolean queue(List<LockableResource> resources,
 			int queueItemId) {
 		for (LockableResource r : resources)
