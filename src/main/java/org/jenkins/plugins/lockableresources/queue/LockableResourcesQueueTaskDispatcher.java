@@ -33,7 +33,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		if (project == null)
 			return null;
 
-		LockableResourcesStruct resources = Utils.requiredResources(project);
+		LockableResourcesStruct resources = Utils.requiredResources(project, Utils.getQueueItemParams(item));
 		if (resources == null || resources.required.isEmpty())
 			return null;
 

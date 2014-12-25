@@ -8,14 +8,31 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import java.util.HashMap;
+import java.util.Map;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Queue;
+import hudson.model.ParameterValue;
+import hudson.model.StringParameterValue;
 
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class Utils {
+
+	public static Map<String,String> getQueueItemParams(Queue.Item item) {
+		Map<String,String> variables = new HashMap<String, String>();
+		for( hudson.model.ParametersAction action: item.getActions(hudson.model.ParametersAction.class) ) {
+			for(ParameterValue paramValue: action.getParameters() ) {
+				if( paramValue instanceof StringParameterValue) {
+					StringParameterValue sv = (StringParameterValue)paramValue;
+					variables.put(sv.getName(),sv.value);
+				}
+			}
+		}
+		return variables;
+	}
 
 	public static AbstractProject<?, ?> getProject(Queue.Item item) {
 		if (item.task instanceof AbstractProject) {
@@ -43,12 +60,25 @@ public class Utils {
 	}
 
 	public static LockableResourcesStruct requiredResources(
-			AbstractProject<?, ?> project) {
+			AbstractProject<?, ?> project, Map<String,String> buildParams) {
 		RequiredResourcesProperty property = project
 				.getProperty(RequiredResourcesProperty.class);
 		if (property != null) {
-			return new LockableResourcesStruct(property);
+			return new LockableResourcesStruct(property,buildParams);
 		}
 		return null;
 	}
+
+	public static LockableResourcesStruct requiredResources(
+			AbstractBuild<?, ?> build) {
+		AbstractProject<? ,?> project = build.getProject();
+		build.getBuildVariables();
+		RequiredResourcesProperty property = project
+				.getProperty(RequiredResourcesProperty.class);
+		if (property != null) {
+			return new LockableResourcesStruct(property,build.getBuildVariables());
+		}
+		return null;
+	}
+
 }

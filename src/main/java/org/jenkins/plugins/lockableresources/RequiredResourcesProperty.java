@@ -102,14 +102,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.ok();
 			} else {
 				List<String> wrongNames = new ArrayList<String>();
+				LockableResourcesManager manager = LockableResourcesManager.get();
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
-					for (LockableResource r : LockableResourcesManager.get()
-							.getResources()) {
-						if (r.getName().equals(name)) {
-							found = true;
-							break;
-						}
+					LockableResource resource;
+					resource = manager.fromName(name);
+					if ( resource != null) {
+						found = true;
+					} else {
+						List<LockableResource> list = manager.fromRegex(name);
+						found = list.size() > 0;
 					}
 					if (!found)
 						wrongNames.add(name);
@@ -117,6 +119,10 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				if (wrongNames.isEmpty()) {
 					return FormValidation.ok();
 				} else {
+					if( names.indexOf("${") >= 0) {
+						return FormValidation
+								.warning("Resource names can't be validated when build parameters are used.");
+					}
 					return FormValidation
 							.error("The following resources do not exist: "
 									+ wrongNames);
@@ -138,14 +144,28 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.error(
 					"Could not parse the given value as integer.");
 			}
-			int numResources = resourceNames.split("\\s+").length;
+			// count resources
+			int numResources = 0;
+			LockableResourcesManager manager = LockableResourcesManager.get();
+			for(String name : resourceNames.split("\\s+") ) {
+				if( manager.fromName(name) != null) {
+					numResources++;
+				} else {
+					List<LockableResource> list = manager.fromRegex(name);
+					numResources += list.size();
+				}
+			}
 
 			if (numResources < numAsInt) {
+				if( resourceNames.indexOf("${") >= 0) {
+					return FormValidation
+							.warning("Amount of resources can't be validated when build parameters are used.");
+				}
 				return FormValidation.error(String.format(
-					"Given amount %d in greater than amount of resources: %d.",
+					"Given amount %d in greater than amount of available resources: %d.",
 					numAsInt,
 					numResources));
-			}
+ 			}
 			return FormValidation.ok();
 		}
 
