@@ -119,6 +119,10 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				if (wrongNames.isEmpty()) {
 					return FormValidation.ok();
 				} else {
+					if( names.indexOf("${") >= 0) {
+						return FormValidation
+								.warning("Resource names can't be validated when build parameters are used.");
+					}
 					return FormValidation
 							.error("The following resources do not exist: "
 									+ wrongNames);
@@ -153,11 +157,15 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			}
 
 			if (numResources < numAsInt) {
+				if( resourceNames.indexOf("${") >= 0) {
+					return FormValidation
+							.warning("Amount of resources can't be validated when build parameters are used.");
+				}
 				return FormValidation.error(String.format(
 					"Given amount %d in greater than amount of available resources: %d.",
 					numAsInt,
 					numResources));
-			}
+ 			}
 			return FormValidation.ok();
 		}
 
