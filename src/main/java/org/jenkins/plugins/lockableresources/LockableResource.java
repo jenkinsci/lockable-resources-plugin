@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -29,6 +30,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private final String description;
 	private final String labels;
 	private String reservedBy;
+	private String properties;
 
 	private transient int queueItemId = NOT_QUEUED;
 	private transient String queueItemProject = null;
@@ -37,11 +39,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@DataBoundConstructor
 	public LockableResource(
-			String name, String description, String labels, String reservedBy) {
+			String name, String description, String labels, String reservedBy, String properties) {
 		this.name = name;
 		this.description = description;
 		this.labels = labels;
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
+		this.properties = properties;
 	}
 
 	public String getName() {
@@ -66,6 +69,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	public boolean isReserved() {
 		return reservedBy != null;
+	}
+	
+	public String getProperties() {
+		return properties;
 	}
 
 	public boolean isQueued() {

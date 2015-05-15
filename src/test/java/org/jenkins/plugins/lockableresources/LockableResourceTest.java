@@ -1,7 +1,8 @@
 /*
  * The MIT License
  *
- * Copyright 2014 Aki Asikainen.
+ * Copyright 2014-2015 Aki Asikainen.
+ *                     SAP SE.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +55,7 @@ public class LockableResourceTest {
 
 	@Before
 	public void setUp() {
-		this.instance = new LockableResource("r1", "d1", "l1 l2", "");
+		this.instance = new LockableResource("r1", "d1", "l1 l2", "", "");
 	}
 
 	@After

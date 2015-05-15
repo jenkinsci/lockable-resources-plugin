@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -8,14 +9,20 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.EnvVars;
 import hudson.Extension;
+import hudson.Launcher;
 import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.Environment;
 import hudson.model.listeners.RunListener;
 import hudson.model.ParametersAction;
 import hudson.model.ParameterValue;
+import hudson.model.Run;
 import hudson.model.StringParameterValue;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import java.util.List;
@@ -35,7 +42,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
 		AbstractProject<?, ?> proj = Utils.getProject(build);
-		List<LockableResource> required = new ArrayList<LockableResource>();
+		List<LockableResource> required;
 		if (proj != null) {
 			LockableResourcesStruct resources = Utils.requiredResources(proj);
 			if (resources != null) {
@@ -67,6 +74,21 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 				}
 			}
 		}
+	}
+
+	@Override
+	public Environment setUpEnvironment(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException, Run.RunnerAbortedException {
+		EnvVars env = new EnvVars();
+		AbstractProject<?, ?> proj = Utils.getProject(build);
+		for ( LockableResource r : LockableResourcesManager.get().getResourcesFromBuild(build) ) {
+			String envProps = r.getProperties();
+			if ( envProps != null ) {
+				for ( String prop : envProps.split("\\s*[\\r\\n]+\\s*") ) {
+					env.addLine(prop);
+				}
+			}
+		}
+		return Environment.create(env);
 	}
 
 	@Override

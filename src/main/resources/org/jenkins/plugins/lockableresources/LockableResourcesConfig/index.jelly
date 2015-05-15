@@ -24,7 +24,7 @@
 				<j:set var="config" value="${it.manager}" />
 				<f:entry title="${%Lockable Resources}">
 					<f:repeatable name="resources" var="instance" items="${config.resources}" header="${%Resource}" minimum="0" add="${%Add Lockable Resource}">
-						<table width="50%">
+						<table width="700px">
 							<st:include it="${config}" page="/org/jenkins/plugins/lockableresources/LockableResource/config.jelly" />
 							<f:entry title="">
 								<div align="right"><f:repeatableDeleteButton/></div>
