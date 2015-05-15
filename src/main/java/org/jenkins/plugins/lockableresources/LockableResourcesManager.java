@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -116,20 +117,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public LockableResource fromName(String resourceName) {
 		if (resourceName != null) {
 			for (LockableResource r : resources) {
-				if (resourceName.equals(r.getName()))
+				if (resourceName.equals(r.getName())) {
 					return r;
+				}
 			}
 		}
 		return null;
 	}
 
-	public synchronized boolean queue(List<LockableResource> resources,
-			int queueItemId) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
+	public synchronized boolean queue(List<LockableResource> resources, int queueItemId) {
+		for (LockableResource r : resources) {
+			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
 				return false;
-		for (LockableResource r : resources)
+			}
+		}
+		for (LockableResource r : resources) {
 			r.setQueued(queueItemId);
+		}
 		return true;
 	}
 
@@ -267,8 +271,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	@Override
-	public boolean configure(StaplerRequest req, JSONObject json)
-			throws FormException {
+	public boolean configure(StaplerRequest req, JSONObject json) {
 		try {
 			defaultPriority = json.getInt("defaultPriority");
 			priorityParameterName = json.getString("priorityParameterName");
