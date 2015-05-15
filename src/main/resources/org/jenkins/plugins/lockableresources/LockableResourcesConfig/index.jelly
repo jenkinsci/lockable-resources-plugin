@@ -22,12 +22,6 @@
 
 			<f:form method="post" action="configSubmit">
 				<j:set var="config" value="${it.manager}" />
-				<f:entry title="${%Default Lock Priority Level}" field="defaultPriority" help="/plugin/lockable-resources/help/help-defaultPriority.html">
-					<f:textbox value="${config.defaultPriority}" />
-				</f:entry>
-				<f:entry title="${%Lock Priority Parameter Name}" field="priorityParameterName" help="/plugin/lockable-resources/help/help-priorityParameterName.html">
-					<f:textbox value="${config.priorityParameterName}"/>
-				</f:entry>
 				<f:entry title="${%Lockable Resources}">
 					<f:repeatable name="resources" var="instance" items="${config.resources}" header="${%Resource}" minimum="0" add="${%Add Lockable Resource}">
 						<table width="50%">

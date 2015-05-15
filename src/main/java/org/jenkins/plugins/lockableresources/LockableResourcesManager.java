@@ -31,14 +31,10 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-	private int defaultPriority;
-	private String priorityParameterName;
 	private List<LockableResource> resources;
 
 	public LockableResourcesManager() {
 		resources = new ArrayList<LockableResource>();
-		defaultPriority = 5;
-		priorityParameterName = "LOCK_PRIORITY";
 		load();
 	}
 
@@ -104,14 +100,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				found.add(r);
 		}
 		return found;
-	}
-
-	public int getDefaultPriority() {
-		return defaultPriority;
-	}
-
-	public String getPriorityParameterName() {
-		return priorityParameterName;
 	}
 
 	public LockableResource fromName(String resourceName) {
@@ -273,8 +261,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	@Override
 	public boolean configure(StaplerRequest req, JSONObject json) {
 		try {
-			defaultPriority = json.getInt("defaultPriority");
-			priorityParameterName = json.getString("priorityParameterName");
 			List<LockableResource> newResouces = req.bindJSONToList(
 					LockableResource.class, json.get("resources"));
 			for (LockableResource r : newResouces) {
