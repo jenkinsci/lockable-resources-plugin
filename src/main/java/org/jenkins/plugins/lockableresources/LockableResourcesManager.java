@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,6 +34,9 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
+	private static final transient Random rand = new Random();
+
+	private boolean useResourcesEvenly = false;
 	private final LinkedHashSet<LockableResource> resources;
 
 	public LockableResourcesManager() {
@@ -42,6 +46,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public Collection<LockableResource> getResources() {
 		return resources;
+	}
+
+	public boolean getUseResourcesEvenly() {
+		return useResourcesEvenly;
 	}
 
 	public List<LockableResource> getResourcesFromProject(String fullName) {
@@ -142,23 +150,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
-		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		List<LockableResource> candidates;
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 			candidates = requiredResources.required;
 		} else {
 			candidates = getResourcesWithLabel(requiredResources.label);
 		}
 
+		int required_amount = number == 0 ? candidates.size() : number;
+
+		List<LockableResource> availableCandidates = new ArrayList<LockableResource>();
 		for (LockableResource rs : candidates) {
-			if (number != 0 && (selected.size() >= number))
-				break;
 			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
-				selected.add(rs);
+				availableCandidates.add(rs);
+		}
+
+		while ( selected.size() < required_amount && availableCandidates.size() > 0 ) {
+			LockableResource r = selectResourceToUse(availableCandidates);
+			availableCandidates.remove(r);
+			selected.add(r);
 		}
 
 		// if did not get wanted amount or did not get all
-		int required_amount = number == 0 ? candidates.size() : number;
-
 		if (selected.size() != required_amount) {
 			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
 			        "Waiting for correct amount: {2}.",
@@ -176,6 +189,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			rsc.setQueued(queueItemId, queueItemProject);
 		}
 		return selected;
+	}
+
+	private LockableResource selectResourceToUse( List<LockableResource> resources ) {
+		if ( useResourcesEvenly ) {
+			return resources.get(rand.nextInt(resources.size()));
+		}
+		//else
+			return resources.get(0);
 	}
 
 	// Adds already selected (in previous queue round) resources to 'selected'
@@ -263,6 +284,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	@Override
 	public boolean configure(StaplerRequest req, JSONObject json) {
 		try {
+			useResourcesEvenly = json.getBoolean("useResourcesEvenly");
 			List<LockableResource> newResouces = req.bindJSONToList(
 					LockableResource.class, json.get("resources"));
 			for (LockableResource r : newResouces) {

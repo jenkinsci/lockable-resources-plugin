@@ -22,6 +22,11 @@
 
 			<f:form method="post" action="configSubmit">
 				<j:set var="config" value="${it.manager}" />
+				<f:advanced align="left">
+					<f:entry title="${%Use Resources Evenly}" field="useResourcesEvenly" help="/plugin/lockable-resources/help/useResourcesEvenly.html">
+						<f:checkbox default="${config.useResourcesEvenly}"/>
+					</f:entry>
+				</f:advanced>
 				<f:entry title="${%Lockable Resources}">
 					<f:repeatable name="resources" var="instance" items="${config.resources}" header="${%Resource}" minimum="0" add="${%Add Lockable Resource}">
 						<table width="700px">
