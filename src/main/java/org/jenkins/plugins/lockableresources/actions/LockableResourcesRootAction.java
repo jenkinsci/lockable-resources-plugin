@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -18,6 +19,7 @@ import hudson.security.PermissionScope;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -71,7 +73,7 @@ public class LockableResourcesRootAction implements RootAction {
 		return "lockable-resources";
 	}
 
-	public List<LockableResource> getResources() {
+	public Collection<LockableResource> getResources() {
 		return LockableResourcesManager.get().getResources();
 	}
 

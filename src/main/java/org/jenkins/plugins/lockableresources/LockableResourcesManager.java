@@ -16,6 +16,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,14 +33,14 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-	private List<LockableResource> resources;
+	private final LinkedHashSet<LockableResource> resources;
 
 	public LockableResourcesManager() {
-		resources = new ArrayList<LockableResource>();
+		resources = new LinkedHashSet<LockableResource>();
 		load();
 	}
 
-	public List<LockableResource> getResources() {
+	public Collection<LockableResource> getResources() {
 		return resources;
 	}
 
@@ -270,7 +272,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
 				}
 			}
-			resources = newResouces;
+			resources.clear();
+			resources.addAll(newResouces);
 			save();
 			return true;
 		} catch (JSONException e) {
