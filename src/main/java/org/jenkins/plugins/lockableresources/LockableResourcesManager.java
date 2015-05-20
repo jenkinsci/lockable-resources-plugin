@@ -17,11 +17,13 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,7 +45,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private boolean useResourcesEvenly = false;
 	private final LinkedHashSet<LockableResource> resources;
 
-	private final transient Map<String,Set<LockableResource>> labelsCache = new HashMap<String,Set<LockableResource>>();
+	private final transient Map<String,Set<LockableResource>> labelsCache = new TreeMap<String,Set<LockableResource>>();
 	private final transient Map<String,Set<LockableResource>> lbLabelsCache = new HashMap<String,Set<LockableResource>>();
 
 	public LockableResourcesManager() {
@@ -103,11 +105,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public Set<String> getAllLabels()
 	{
-		Set<String> labels = new TreeSet<String>();
-		for (LockableResource r : this.resources) {
-			labels.addAll(r.getLabelSet());
-		}
-		return labels;
+		return Collections.unmodifiableSet(labelsCache.keySet());
 	}
 
 	public int getFreeResourceAmount(String label)
