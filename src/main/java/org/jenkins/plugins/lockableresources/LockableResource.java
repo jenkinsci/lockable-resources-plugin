@@ -9,6 +9,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import com.thoughtworks.xstream.annotations.XStreamConverter;
+import com.thoughtworks.xstream.converters.UnmarshallingContext;
+import com.thoughtworks.xstream.converters.collections.CollectionConverter;
+import com.thoughtworks.xstream.io.HierarchicalStreamReader;
+import com.thoughtworks.xstream.mapper.Mapper;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -18,6 +23,10 @@ import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -30,7 +39,8 @@ public class LockableResource
 
 	private final String name;
 	private final String description;
-	private final String labels;
+	@XStreamConverter(value=LabelConverter.class)
+	private final LinkedHashSet<String> labels = new LinkedHashSet<String>();
 	private String reservedBy;
 	private String properties;
 
@@ -44,7 +54,7 @@ public class LockableResource
 		this.name = Util.fixEmptyAndTrim(name);
 		if ( this.name == null ) throw new IllegalArgumentException("name cannot be null!");
 		this.description = Util.fixEmptyAndTrim(description);
-		this.labels = Util.fixEmptyAndTrim(labels);
+		this.labels.addAll(labelsFromString(Util.fixNull(labels).trim()));
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
 		this.properties = properties;
 	}
@@ -58,11 +68,25 @@ public class LockableResource
 	}
 
 	public String getLabels() {
-		return labels;
+		if ( labels != null && labels.size() > 0 ) {
+			StringBuilder sb = new StringBuilder();
+			for ( String l : labels ) {
+				sb.append(" ").append(l);
+			}
+			return sb.substring(1);
+		}
+		else {
+			return null;
+		}
+	}
+	
+	public Set<String> getLabelSet() {
+		if ( labels == null ) return Collections.emptySet();
+		return Collections.unmodifiableSet(labels);
 	}
 
 	public Boolean isValidLabel(String candidate) {
-		return Arrays.asList(labels.split("\\s+")).contains(candidate);
+		return labels.contains(candidate);
 	}
 
 	public String getReservedBy() {
@@ -199,5 +223,30 @@ public class LockableResource
 			return "Resource";
 		}
 
+	}
+
+	public static class LabelConverter extends CollectionConverter {
+		public LabelConverter(Mapper mapper) {
+			super(mapper);
+		}
+		
+		@Override
+		public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
+			LinkedHashSet<String> labels;
+			String labelString = reader.getValue();
+			if ( labelString != null && !reader.hasMoreChildren() ) {
+				labels = new LinkedHashSet<String>();
+				labels.addAll(labelsFromString(labelString.trim()));
+			}
+			else {
+				labels = (LinkedHashSet<String>)super.unmarshal(reader, context);
+			}
+			return labels;
+		}
+	}
+	
+	private static List<String> labelsFromString( String labelString ) {
+		if ( labelString.length() <= 0 ) return Collections.emptyList();
+		return Arrays.asList(labelString.split("\\s+"));
 	}
 }

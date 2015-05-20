@@ -10,12 +10,12 @@
 package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.AbstractBuild;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -43,6 +43,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private boolean useResourcesEvenly = false;
 	private final LinkedHashSet<LockableResource> resources;
 
+	private final transient Map<String,Set<LockableResource>> labelsCache = new HashMap<String,Set<LockableResource>>();
 	private final transient Map<String,Set<LockableResource>> lbLabelsCache = new HashMap<String,Set<LockableResource>>();
 
 	public LockableResourcesManager() {
@@ -94,19 +95,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return matching;
 	}
 
-	public Boolean isValidLabel(String label)
+	public boolean isValidLabel(String label)
 	{
-		return this.getAllLabels().contains(label);
+		if (label == null) return false;
+		return this.labelsCache.containsKey(label);
 	}
 
 	public Set<String> getAllLabels()
 	{
-		Set<String> labels = new HashSet<String>();
+		Set<String> labels = new TreeSet<String>();
 		for (LockableResource r : this.resources) {
-			String rl = r.getLabels();
-			if (rl == null || "".equals(rl))
-				continue;
-			labels.addAll(Arrays.asList(rl.split("\\s+")));
+			labels.addAll(r.getLabelSet());
 		}
 		return labels;
 	}
@@ -114,11 +113,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public int getFreeResourceAmount(String label)
 	{
 		int free = 0;
-		for (LockableResource r : this.resources) {
-			if (r.isLocked() || r.isQueued() || r.isReserved())
-				continue;
-			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
-				free += 1;
+		for ( LockableResource r : labelsCache.get(Util.fixEmpty(label)) ) {
+			if ( r.isFree() ) free++;
 		}
 		return free;
 	}
@@ -215,7 +211,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					String lowestUsageLabel = null;
 					for ( String label : groups.keySet() ) {
 						if ( groups.get(label).size() > 0 ) {
-							double usage = calculateLabelUsage(label);
+						double usage = calculateLbLabelUsage(label);
 							if ( usage < lowestUsage ) {
 								resourcesLeft = true;
 								lowestUsage = usage;
@@ -391,34 +387,38 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	@Override
 	public synchronized void load() {
 		super.load();
-		buildLabelGroupsCache();
+		buildLabelCaches();
 	}
 
 	@Override
 	public synchronized void save() {
 		super.save();
-		buildLabelGroupsCache();
+		buildLabelCaches();
 	}
 
-	private synchronized void buildLabelGroupsCache() {
+	private synchronized void buildLabelCaches() {
+		labelsCache.clear();
 		lbLabelsCache.clear();
 		for ( LockableResource r : resources ) {
-			boolean foundLabel = false;
-			for ( String label : loadBalancingLabels ) {
-				if ( r.isValidLabel(label) ) {
-					foundLabel = true;
+			boolean foundLbLabel = false;
+			for ( String label : r.getLabelSet() ) {
+				if ( !labelsCache.containsKey(label) ) labelsCache.put(label, new HashSet<LockableResource>());
+				labelsCache.get(label).add(r);
+
+				if (loadBalancingLabels.contains(label)) {
+					foundLbLabel = true;
 					if ( !lbLabelsCache.containsKey(label) ) lbLabelsCache.put(label, new HashSet<LockableResource>());
 					lbLabelsCache.get(label).add(r);
 				}
 			}
-			if ( !foundLabel ) {
+			if ( !foundLbLabel ) {
 				if ( !lbLabelsCache.containsKey(null) ) lbLabelsCache.put(null, new HashSet<LockableResource>());
 				lbLabelsCache.get(null).add(r);
 			}
 		}
 	}
 
-	private synchronized double calculateLabelUsage( String label ) {
+	private synchronized double calculateLbLabelUsage( String label ) {
 		int used = 0;
 		for ( LockableResource r : lbLabelsCache.get(label) ) {
 			if ( !r.isFree() ) used++;
