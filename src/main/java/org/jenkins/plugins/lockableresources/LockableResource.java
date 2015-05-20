@@ -38,11 +38,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private transient long queuingStarted = 0;
 
 	@DataBoundConstructor
-	public LockableResource(
-			String name, String description, String labels, String reservedBy, String properties) {
-		this.name = name;
-		this.description = description;
-		this.labels = labels;
+	public LockableResource(String name, String description, String labels, String reservedBy, String properties) {
+		this.name = Util.fixEmptyAndTrim(name);
+		if ( this.name == null ) throw new IllegalArgumentException("name cannot be null!");
+		this.description = Util.fixEmptyAndTrim(description);
+		this.labels = Util.fixEmptyAndTrim(labels);
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
 		this.properties = properties;
 	}
@@ -168,26 +168,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((name == null) ? 0 : name.hashCode());
-		return result;
+		return prime * name.hashCode();
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
 		LockableResource other = (LockableResource) obj;
-		if (name == null) {
-			if (other.name != null)
-				return false;
-		} else if (!name.equals(other.name))
-			return false;
-		return true;
+		if ( name.equals(other.name) ) return true;
+		return super.equals(obj);
 	}
 
 	@Extension
