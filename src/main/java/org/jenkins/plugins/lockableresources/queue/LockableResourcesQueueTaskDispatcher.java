@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -14,7 +15,7 @@ import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -51,7 +52,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		if (resourceNumber > 0 || !resources.label.isEmpty()) {
 
-			List<LockableResource> selected = LockableResourcesManager.get().queue(
+			Collection<LockableResource> selected = LockableResourcesManager.get().queue(
 					resources,
 					item.id,
 					project.getFullName(),

@@ -17,9 +17,12 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,19 +36,36 @@ import org.kohsuke.stapler.StaplerRequest;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
-
+	
 	private static final transient Random rand = new Random();
 
+	private final LinkedHashSet<String> loadBalancingLabels;
 	private boolean useResourcesEvenly = false;
 	private final LinkedHashSet<LockableResource> resources;
 
+	private final transient Map<String,Set<LockableResource>> lbLabelsCache = new HashMap<String,Set<LockableResource>>();
+
 	public LockableResourcesManager() {
 		resources = new LinkedHashSet<LockableResource>();
+		loadBalancingLabels = new LinkedHashSet<String>();
 		load();
 	}
 
 	public Collection<LockableResource> getResources() {
 		return resources;
+	}
+
+	public String getLoadBalancingLabels() {
+		if ( loadBalancingLabels.size() > 0 ) {
+			StringBuilder sb = new StringBuilder();
+			for ( String l : loadBalancingLabels ) {
+				sb.append(" ").append(l);
+			}
+			return sb.substring(1);
+		}
+		else {
+			return null;
+		}
 	}
 
 	public boolean getUseResourcesEvenly() {
@@ -135,12 +155,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
-	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
+	public synchronized Collection<LockableResource> queue(LockableResourcesStruct requiredResources,
 	                                                 int queueItemId,
 	                                                 String queueItemProject,
 	                                                 int number,  // 0 means all
 	                                                 Logger log) {
-		List<LockableResource> selected = new ArrayList<LockableResource>();
+		// using a TreeSet here to ensure consistant ordering in logging/messaging output
+		Set<LockableResource> selected = new TreeSet<LockableResource>();
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
 			// The project has another buildable item waiting -> bail out
@@ -159,16 +180,68 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		int required_amount = number == 0 ? candidates.size() : number;
 
-		List<LockableResource> availableCandidates = new ArrayList<LockableResource>();
-		for (LockableResource rs : candidates) {
-			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
-				availableCandidates.add(rs);
-		}
+		// only use fancy logic if we don't need to lock all of them
+		if ( required_amount < candidates.size() ) {
+			List<LockableResource> availableCandidates = new ArrayList<LockableResource>();
+			for (LockableResource rs : candidates) {
+				if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
+					availableCandidates.add(rs);
+			}
 
-		while ( selected.size() < required_amount && availableCandidates.size() > 0 ) {
-			LockableResource r = selectResourceToUse(availableCandidates);
-			availableCandidates.remove(r);
-			selected.add(r);
+			if ( !loadBalancingLabels.isEmpty() ) {
+				// now filter based on the load balancing labels parameter
+				// first break our available candidates into a list for each LB label
+				Map<String,List<LockableResource>> groups = new HashMap<String,List<LockableResource>>(loadBalancingLabels.size() + 1);
+				for (LockableResource r : availableCandidates) {
+					boolean foundLabel = false;
+					for ( String label : loadBalancingLabels ) {
+						if ( r.isValidLabel(label) ) {
+							foundLabel = true;
+							if ( !groups.containsKey(label) ) groups.put(label, new ArrayList<LockableResource>());
+							groups.get(label).add(r);
+							break;
+						}
+					}
+					if ( !foundLabel ) {
+						if ( !groups.containsKey(null) ) groups.put(null, new ArrayList<LockableResource>());
+						groups.get(null).add(r);
+					}
+				}
+				// now repeatedly select a candidate resource from the label with the lowest current usage
+				boolean resourcesLeft = true;
+				while ( selected.size() < required_amount && resourcesLeft ) {
+					resourcesLeft = false;
+					double lowestUsage = 2;
+					String lowestUsageLabel = null;
+					for ( String label : groups.keySet() ) {
+						if ( groups.get(label).size() > 0 ) {
+							double usage = calculateLabelUsage(label);
+							if ( usage < lowestUsage ) {
+								resourcesLeft = true;
+								lowestUsage = usage;
+								lowestUsageLabel = label;
+							}
+						}
+					}
+					if ( resourcesLeft ) {
+						List<LockableResource> group = groups.get(lowestUsageLabel);
+						LockableResource r = selectResourceToUse(group);
+						group.remove(r);
+						selected.add(r);
+						r.setQueued(queueItemId, queueItemProject);
+					}
+				}
+			}
+			else {
+				while ( selected.size() < required_amount && availableCandidates.size() > 0 ) {
+					LockableResource r = selectResourceToUse(availableCandidates);
+					availableCandidates.remove(r);
+					selected.add(r);
+				}
+			}
+		}
+		else {
+			selected.addAll(candidates);
 		}
 
 		// if did not get wanted amount or did not get all
@@ -201,7 +274,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	// Adds already selected (in previous queue round) resources to 'selected'
 	// Return false if another item queued for this project -> bail out
-	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
+	private boolean checkCurrentResourcesStatus(Collection<LockableResource> selected,
 	                                            String project,
 	                                            int taskId,
 	                                            Logger log) {
@@ -282,9 +355,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	@Override
-	public boolean configure(StaplerRequest req, JSONObject json) {
+	public synchronized boolean configure(StaplerRequest req, JSONObject json) {
 		try {
+			String loadBalancingLabelsString = json.getString("loadBalancingLabels").trim();
+			loadBalancingLabels.clear();
+			for ( String label : loadBalancingLabelsString.split("\\s+") ) {
+				loadBalancingLabels.add(label);
+			}
+
 			useResourcesEvenly = json.getBoolean("useResourcesEvenly");
+			
 			List<LockableResource> newResouces = req.bindJSONToList(
 					LockableResource.class, json.get("resources"));
 			for (LockableResource r : newResouces) {
@@ -306,6 +386,44 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public static LockableResourcesManager get() {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
+	}
+
+	@Override
+	public synchronized void load() {
+		super.load();
+		buildLabelGroupsCache();
+	}
+
+	@Override
+	public synchronized void save() {
+		super.save();
+		buildLabelGroupsCache();
+	}
+
+	private synchronized void buildLabelGroupsCache() {
+		lbLabelsCache.clear();
+		for ( LockableResource r : resources ) {
+			boolean foundLabel = false;
+			for ( String label : loadBalancingLabels ) {
+				if ( r.isValidLabel(label) ) {
+					foundLabel = true;
+					if ( !lbLabelsCache.containsKey(label) ) lbLabelsCache.put(label, new HashSet<LockableResource>());
+					lbLabelsCache.get(label).add(r);
+				}
+			}
+			if ( !foundLabel ) {
+				if ( !lbLabelsCache.containsKey(null) ) lbLabelsCache.put(null, new HashSet<LockableResource>());
+				lbLabelsCache.get(null).add(r);
+			}
+		}
+	}
+
+	private synchronized double calculateLabelUsage( String label ) {
+		int used = 0;
+		for ( LockableResource r : lbLabelsCache.get(label) ) {
+			if ( !r.isFree() ) used++;
+		}
+		return (double)used / lbLabelsCache.get(label).size();
 	}
 
 }

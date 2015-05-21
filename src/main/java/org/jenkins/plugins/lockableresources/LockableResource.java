@@ -21,7 +21,9 @@ import java.util.Arrays;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
-public class LockableResource extends AbstractDescribableImpl<LockableResource> {
+public class LockableResource
+		extends AbstractDescribableImpl<LockableResource>
+		implements Comparable<LockableResource> {
 
 	public static final int NOT_QUEUED = 0;
 	private static final int QUEUE_TIMEOUT = 60;
@@ -99,6 +101,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	public boolean isLocked() {
 		return build != null;
+	}
+
+	public boolean isFree() {
+		return !isLocked() && !isQueued() && !isReserved();
 	}
 
 	public AbstractBuild<?, ?> getBuild() {
@@ -179,6 +185,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		LockableResource other = (LockableResource) obj;
 		if ( name.equals(other.name) ) return true;
 		return super.equals(obj);
+	}
+
+	public int compareTo(LockableResource o) {
+		return name.compareTo(o.name);
 	}
 
 	@Extension
