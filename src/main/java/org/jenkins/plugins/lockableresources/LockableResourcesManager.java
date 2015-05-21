@@ -171,71 +171,86 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		} else {
 			candidates = getResourcesWithLabel(requiredResources.label);
 		}
+		log.log(Level.FINEST, "Candidates: {0}", candidates);
 
 		int required_amount = number == 0 ? candidates.size() : number;
 
-		// only use fancy logic if we don't need to lock all of them
-		if ( required_amount < candidates.size() ) {
-			List<LockableResource> availableCandidates = new ArrayList<LockableResource>();
-			for (LockableResource rs : candidates) {
-				if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
-					availableCandidates.add(rs);
-			}
-
-			if ( !loadBalancingLabels.isEmpty() ) {
-				// now filter based on the load balancing labels parameter
-				// first break our available candidates into a list for each LB label
-				Map<String,List<LockableResource>> groups = new HashMap<String,List<LockableResource>>(loadBalancingLabels.size() + 1);
-				for (LockableResource r : availableCandidates) {
-					boolean foundLabel = false;
-					for ( String label : loadBalancingLabels ) {
-						if ( r.isValidLabel(label) ) {
-							foundLabel = true;
-							if ( !groups.containsKey(label) ) groups.put(label, new ArrayList<LockableResource>());
-							groups.get(label).add(r);
-							break;
-						}
-					}
-					if ( !foundLabel ) {
-						if ( !groups.containsKey(null) ) groups.put(null, new ArrayList<LockableResource>());
-						groups.get(null).add(r);
-					}
+		if ( selected.size() >= required_amount ) {
+			log.log(Level.FINE, "Required resources already queued: {0}", selected);
+		}
+		else {
+			// only use fancy logic if we don't need to lock all of them
+			if ( required_amount < candidates.size() ) {
+				log.log(Level.FINEST, "Selecting {0} resources.", required_amount);
+				List<LockableResource> availableCandidates = new ArrayList<LockableResource>();
+				for (LockableResource rs : candidates) {
+					if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
+						availableCandidates.add(rs);
 				}
-				// now repeatedly select a candidate resource from the label with the lowest current usage
-				boolean resourcesLeft = true;
-				while ( selected.size() < required_amount && resourcesLeft ) {
-					resourcesLeft = false;
-					double lowestUsage = 2;
-					String lowestUsageLabel = null;
-					for ( String label : groups.keySet() ) {
-						if ( groups.get(label).size() > 0 ) {
-						double usage = calculateLbLabelUsage(label);
-							if ( usage < lowestUsage ) {
-								resourcesLeft = true;
-								lowestUsage = usage;
-								lowestUsageLabel = label;
+				log.log(Level.FINEST, "Available candidates: {0}", availableCandidates);
+
+				if ( !loadBalancingLabels.isEmpty() ) {
+					log.log(Level.FINEST, "Load balancing labels: {0}", loadBalancingLabels);
+					// now filter based on the load balancing labels parameter
+					// first break our available candidates into a list for each LB label
+					Map<String,List<LockableResource>> groups = new HashMap<String,List<LockableResource>>(loadBalancingLabels.size() + 1);
+					for (LockableResource r : availableCandidates) {
+						boolean foundLabel = false;
+						for ( String label : loadBalancingLabels ) {
+							if ( r.isValidLabel(label) ) {
+								foundLabel = true;
+								if ( !groups.containsKey(label) ) groups.put(label, new ArrayList<LockableResource>());
+								groups.get(label).add(r);
+								break;
 							}
 						}
+						if ( !foundLabel ) {
+							if ( !groups.containsKey(null) ) groups.put(null, new ArrayList<LockableResource>());
+							groups.get(null).add(r);
+						}
 					}
-					if ( resourcesLeft ) {
-						List<LockableResource> group = groups.get(lowestUsageLabel);
-						LockableResource r = selectResourceToUse(group);
-						group.remove(r);
+					log.log(Level.FINER, "Load Balancing Groups: {0}", groups);
+					// now repeatedly select a candidate resource from the label with the lowest current usage
+					boolean resourcesLeft = true;
+					while ( selected.size() < required_amount && resourcesLeft ) {
+						resourcesLeft = false;
+						double lowestUsage = 2;
+						String lowestUsageLabel = null;
+						for ( String label : groups.keySet() ) {
+							if ( groups.get(label).size() > 0 ) {
+							double usage = calculateLbLabelUsage(label);
+								if ( usage < lowestUsage ) {
+									resourcesLeft = true;
+									lowestUsage = usage;
+									lowestUsageLabel = label;
+								}
+							}
+						}
+						log.log(Level.FINEST, "Lowest usage label: {0}", lowestUsageLabel);
+						if ( resourcesLeft ) {
+							List<LockableResource> group = groups.get(lowestUsageLabel);
+							LockableResource r = selectResourceToUse(group);
+							group.remove(r);
+							selected.add(r);
+							r.setQueued(queueItemId, queueItemProject);
+							log.log(Level.FINER, "Queued resource lock on: {0}", r);
+						}
+					}
+				}
+				else {
+					while ( selected.size() < required_amount && availableCandidates.size() > 0 ) {
+						LockableResource r = selectResourceToUse(availableCandidates);
+						availableCandidates.remove(r);
 						selected.add(r);
-						r.setQueued(queueItemId, queueItemProject);
 					}
 				}
 			}
 			else {
-				while ( selected.size() < required_amount && availableCandidates.size() > 0 ) {
-					LockableResource r = selectResourceToUse(availableCandidates);
-					availableCandidates.remove(r);
-					selected.add(r);
-				}
+				log.log(Level.FINER, "Selecting all specified resources.");
+				selected.addAll(candidates);
 			}
-		}
-		else {
-			selected.addAll(candidates);
+
+			log.log(Level.FINE, "Selected resources: {0}", selected);
 		}
 
 		// if did not get wanted amount or did not get all
@@ -252,6 +267,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
+		log.log(Level.FINER, "Queuing locks for selected resources: {0}", selected);
 		for (LockableResource rsc : selected) {
 			rsc.setQueued(queueItemId, queueItemProject);
 		}
