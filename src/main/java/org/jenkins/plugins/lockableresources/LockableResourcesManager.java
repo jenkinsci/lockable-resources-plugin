@@ -159,8 +159,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
 			// The project has another buildable item waiting -> bail out
-			log.log(Level.FINEST, "{0} has another build waiting resources." +
-			        " Waiting for it to proceed first.",
+			log.log(Level.FINEST, "{0} has another build waiting resources. Waiting for it to proceed first.",
 			        new Object[]{queueItemProject});
 			return null;
 		}
@@ -255,8 +254,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		// if did not get wanted amount or did not get all
 		if (selected.size() != required_amount) {
-			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
-			        "Waiting for correct amount: {2}.",
+			log.log(Level.FINEST, "{0} found {1} resource(s) to queue. Waiting for correct amount: {2}.",
 			        new Object[]{queueItemProject, selected.size(), required_amount});
 			// just to be sure, clean up
 			for (LockableResource x : resources) {
@@ -297,8 +295,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					selected.add(r);
 				} else {
 					// The project has another buildable item waiting -> bail out
-					log.log(Level.FINEST, "{0} has another build " +
-						"that already queued resource {1}. Continue queueing.",
+					log.log(Level.FINEST, "{0} has another build that already queued resource {1}. Continue queueing.",
 						new Object[]{project, r});
 					return false;
 				}

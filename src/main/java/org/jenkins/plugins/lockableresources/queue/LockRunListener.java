@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -57,8 +58,8 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 							.fromResources(required));
 					listener.getLogger().printf("%s acquired lock on %s\n",
 							LOG_PREFIX, required);
-					LOGGER.fine(build.getFullDisplayName()
-							+ " acquired lock on " + required);
+					LOGGER.log(Level.FINE, "{0} acquired lock on {1}",
+							new Object[]{build.getFullDisplayName(), required});
 					if (resources.requiredVar != null) {
 						List<ParameterValue> params = new ArrayList<ParameterValue>();
 						params.add(new StringParameterValue(
@@ -69,8 +70,8 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 				} else {
 					listener.getLogger().printf("%s failed to lock %s\n",
 							LOG_PREFIX, required);
-					LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-							+ required);
+					LOGGER.log(Level.FINE, "{0} failed to lock {1}",
+							new Object[]{build.getFullDisplayName(), required});
 				}
 			}
 		}
@@ -100,8 +101,8 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			LockableResourcesManager.get().unlock(required, build);
 			listener.getLogger().printf("%s released lock on %s\n",
 					LOG_PREFIX, required);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
+			LOGGER.log(Level.FINE, "{0} released lock on {1}",
+					new Object[]{build.getFullDisplayName(), required});
 		}
 
 	}
@@ -112,8 +113,8 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {
 			LockableResourcesManager.get().unlock(required, build);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
+			LOGGER.log(Level.FINE, "{0} released lock on {1}",
+					new Object[]{build.getFullDisplayName(), required});
 		}
 	}
 

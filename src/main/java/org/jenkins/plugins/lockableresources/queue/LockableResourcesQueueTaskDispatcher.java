@@ -48,8 +48,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				resourceNumber = 0;
 			}
 
-			LOGGER.finest(project.getName() +
-				" trying to get resources with these details: " + resources);
+			LOGGER.log(Level.FINEST, "{0} trying to get resources with these details: {1}",
+					new Object[]{project.getName(), resources});
 
 			if (resourceNumber > 0 || !resources.label.isEmpty()) {
 
@@ -61,20 +61,22 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 						LOGGER);
 
 				if (selected != null) {
-					LOGGER.finest(project.getName() + " reserved resources " + selected);
+					LOGGER.log(Level.FINEST, "{0} reserved resources {1}",
+							new Object[]{project.getName(), selected});
 					return null;
 				} else {
-					LOGGER.finest(project.getName() + " waiting for resources");
+					LOGGER.log(Level.FINEST, "{0} waiting for resources", project.getName());
 					return new BecauseResourcesLocked(resources);
 				}
 
 			} else {
 				if (LockableResourcesManager.get().queue(resources.required, item.id)) {
-					LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+					LOGGER.log(Level.FINEST, "{0} reserved resources {1}",
+							new Object[]{project.getName(), resources.required});
 					return null;
 				} else {
-					LOGGER.finest(project.getName() + " waiting for resources "
-						+ resources.required);
+					LOGGER.log(Level.FINEST, "{0} waiting for resources {1}",
+							new Object[]{project.getName(), resources.required});
 					return new BecauseResourcesLocked(resources);
 				}
 			}
