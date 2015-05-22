@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -17,6 +18,9 @@ import hudson.model.Job;
 import hudson.util.FormValidation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 
 import net.sf.json.JSONObject;
@@ -30,17 +34,41 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	private final String resourceNames;
 	private final String resourceNamesVar;
 	private final String resourceNumber;
-	private final String labelName;
 
-	@DataBoundConstructor
+	// maintained to facilitate upgrade from v1.6
+	@Deprecated
+	private final transient String labelName = null;
+
 	public RequiredResourcesProperty(String resourceNames,
 			String resourceNamesVar, String resourceNumber,
 			String labelName) {
 		super();
+		if ( labelName != null && !labelName.trim().isEmpty() ) {
+			this.resourceNames = labelName;
+		}
+		else{
+			this.resourceNames = resourceNames;
+		}
+		this.resourceNamesVar = resourceNamesVar;
+		this.resourceNumber = resourceNumber;
+	}
+
+	@DataBoundConstructor
+	public RequiredResourcesProperty(String resourceNames,
+			String resourceNamesVar, String resourceNumber) {
+		super();
 		this.resourceNames = resourceNames;
 		this.resourceNamesVar = resourceNamesVar;
 		this.resourceNumber = resourceNumber;
-		this.labelName = labelName;
+	}
+
+	public Object readResolve() {
+		if ( labelName != null ) {
+			return new RequiredResourcesProperty(
+					this.resourceNames, this.resourceNamesVar,
+					this.resourceNumber, this.labelName);
+		}
+		return this;
 	}
 
 	public String[] getResources() {
@@ -61,10 +89,6 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	public String getResourceNumber() {
 		return resourceNumber;
-	}
-
-	public String getLabelName() {
-		return labelName;
 	}
 
 	@Extension
@@ -96,14 +120,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String resourceNumber = Util.fixEmptyAndTrim(json
 					.getString("resourceNumber"));
 
-			String labelName = Util.fixEmptyAndTrim(json
-					.getString("labelName"));
-
-			if (resourceNames == null && labelName == null)
+			if (resourceNames == null )
 				return null;
 
 			return new RequiredResourcesProperty(resourceNames,
-					resourceNamesVar, resourceNumber, labelName);
+					resourceNamesVar, resourceNumber);
 		}
 
 		public FormValidation doCheckResourceNames(@QueryParameter String value) {
@@ -124,6 +145,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 					if (!found)
 						wrongNames.add(name);
 				}
+				// now filter out valid labels
+				Iterator<String> it = wrongNames.iterator();
+				while ( it.hasNext() ) {
+					String label = it.next();
+					if (LockableResourcesManager.get().isValidLabel(label)) {
+						it.remove();
+					}
+				}
 				if (wrongNames.isEmpty()) {
 					return FormValidation.ok();
 				} else {
@@ -134,33 +163,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			}
 		}
 
-		public FormValidation doCheckLabelName(
-				@QueryParameter String value,
-				@QueryParameter String resourceNames) {
-			String label = Util.fixEmptyAndTrim(value);
-			String names = Util.fixEmptyAndTrim(resourceNames);
-			if (label == null) {
-				return FormValidation.ok();
-			} else if (names != null) {
-				return FormValidation.error(
-						"Only label or resources can be defined, not both.");
-			} else {
-				if (LockableResourcesManager.get().isValidLabel(label)) {
-					return FormValidation.ok();
-				} else {
-					return FormValidation.error(
-							"The label does not exist: " + label);
-				}
-			}
-		}
-
 		public FormValidation doCheckResourceNumber(@QueryParameter String value,
-				@QueryParameter String resourceNames,
-				@QueryParameter String labelName) {
+				@QueryParameter String resourceNames) {
 
 			String number = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
-			String label = Util.fixEmptyAndTrim(labelName);
 
 			if (number == null || number.equals("") || number.trim().equals("0")) {
 				return FormValidation.ok();
@@ -173,12 +180,26 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.error(
 					"Could not parse the given value as integer.");
 			}
+
+			LockableResourcesManager manager = LockableResourcesManager.get();
+
 			int numResources = 0;
 			if (names != null) {
-				numResources = names.split("\\s+").length;
-			} else if (label != null) {
-				numResources = LockableResourcesManager.get().
-					getResourcesWithLabel(label).size();
+				HashSet<String> resources = new HashSet<String>();
+				resources.addAll(Arrays.asList(names.split("\\s+")));
+				Iterator<String> it = resources.iterator();
+				HashSet<String> labelResources = new HashSet<String>();
+				while ( it.hasNext() ) {
+					String resource = it.next();
+					if ( manager.fromName(resource) == null ) {
+						it.remove();
+						for ( LockableResource r : manager.getResourcesWithLabel(resource) ) {
+							labelResources.add(r.getName());
+						}
+					}
+				}
+				resources.addAll(labelResources);
+				numResources = resources.size();
 			}
 
 			if (numResources < numAsInt) {
@@ -188,19 +209,6 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 					numResources));
 			}
 			return FormValidation.ok();
-		}
-
-		public AutoCompletionCandidates doAutoCompleteLabelName(
-				@QueryParameter String value) {
-			AutoCompletionCandidates c = new AutoCompletionCandidates();
-
-			value = Util.fixEmptyAndTrim(value);
-
-			for (String l : LockableResourcesManager.get().getAllLabels())
-				if (value != null && l.startsWith(value))
-					c.add(l);
-
-			return c;
 		}
 
 		public AutoCompletionCandidates doAutoCompleteResourceNames(
@@ -214,6 +222,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 						.getResources()) {
 					if (r.getName().startsWith(value))
 						c.add(r.getName());
+				}
+				for (String l : LockableResourcesManager.get().getAllLabels()) {
+					if ( l.startsWith(value) ) c.add(l);
 				}
 			}
 

@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, Aki Asikainen. All rights reserved.             *
+ * Copyright (c) 2013-2015, Aki Asikainen                              *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -8,32 +9,32 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class LockableResourcesStruct {
 
-	public List<LockableResource> required;
-	public String label;
+	public Set<LockableResource> required;
+	public transient String requiredNames;
 	public String requiredVar;
 	public String requiredNumber;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property) {
-		this.required = new ArrayList<LockableResource>();
+		this.required = new LinkedHashSet<LockableResource>();
+		this.requiredNames = property.getResourceNames();
 		for (String name : property.getResources()) {
 			LockableResource r = LockableResourcesManager.get().fromName(
 				name);
 			if (r != null) {
 				this.required.add(r);
 			}
+			else {
+				this.required.addAll(LockableResourcesManager.get().getResourcesWithLabel(name));
+			}
 		}
-
-		this.label = property.getLabelName();
-		if (this.label == null)
-			this.label = "";
 
 		this.requiredVar = property.getResourceNamesVar();
 		if (this.requiredVar != null && this.requiredVar.equals("")) {
@@ -49,7 +50,6 @@ public class LockableResourcesStruct {
 
 	public String toString() {
 		return "Required resources: " + this.required +
-			", Required label: " + this.label +
 			", Variable name: " + this.requiredVar +
 			", Number of resources: " + this.requiredNumber;
 	}

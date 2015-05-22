@@ -137,7 +137,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return null;
 	}
 
-	public synchronized boolean queue(List<LockableResource> resources, int queueItemId) {
+	public synchronized boolean queue(Collection<LockableResource> resources, int queueItemId) {
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
 				return false;
@@ -164,12 +164,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
-		List<LockableResource> candidates;
-		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
-			candidates = requiredResources.required;
-		} else {
-			candidates = getResourcesWithLabel(requiredResources.label);
-		}
+		Collection<LockableResource> candidates = requiredResources.required;
 		log.log(Level.FINEST, "Candidates: {0}", candidates);
 
 		int required_amount = number == 0 ? candidates.size() : number;

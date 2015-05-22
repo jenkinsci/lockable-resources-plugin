@@ -47,12 +47,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		if (proj != null) {
 			LockableResourcesStruct resources = Utils.requiredResources(proj);
 			if (resources != null) {
-				if (resources.requiredNumber != null || !resources.label.isEmpty()) {
-					required = LockableResourcesManager.get().
-						getResourcesFromProject(proj.getFullName());
-				} else {
-					required = resources.required;
-				}
+				required = LockableResourcesManager.get().getResourcesFromProject(proj.getFullName());
 				if (LockableResourcesManager.get().lock(required, build)) {
 					build.addAction(LockedResourcesBuildAction
 							.fromResources(required));

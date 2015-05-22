@@ -36,8 +36,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				return null;
 
 			LockableResourcesStruct resources = Utils.requiredResources(project);
-			if (resources == null ||
-				(resources.required.isEmpty() && resources.label.isEmpty())) {
+			if ( resources == null || resources.required.isEmpty() ) {
 				return null;
 			}
 
@@ -51,7 +50,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			LOGGER.log(Level.FINEST, "{0} trying to get resources with these details: {1}",
 					new Object[]{project.getName(), resources});
 
-			if (resourceNumber > 0 || !resources.label.isEmpty()) {
+			if ( resourceNumber > 0 ) {
 
 				Collection<LockableResource> selected = LockableResourcesManager.get().queue(
 						resources,
@@ -97,10 +96,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		@Override
 		public String getShortDescription() {
-			if (this.rscStruct.label.isEmpty())
-				return "Waiting for resources " + rscStruct.required.toString();
-			else
-				return "Waiting for resources with label " + rscStruct.label;
+			return "Waiting for resources: " + rscStruct.requiredNames;
 		}
 	}
 
