@@ -18,10 +18,12 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
+import hudson.model.AutoCompletionCandidates;
 import hudson.model.Descriptor;
 import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
+import hudson.util.FormValidation;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +31,7 @@ import java.util.Set;
 import java.util.LinkedHashSet;
 
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 
 public class LockableResource
 		extends AbstractDescribableImpl<LockableResource>
@@ -52,7 +55,8 @@ public class LockableResource
 	@DataBoundConstructor
 	public LockableResource(String name, String description, String labels, String reservedBy, String properties) {
 		this.name = Util.fixEmptyAndTrim(name);
-		if ( this.name == null ) throw new IllegalArgumentException("name cannot be null!");
+		if ( this.name == null ) throw new IllegalArgumentException("Resource must have a name!");
+		if ( this.name.contains(" ") ) throw new IllegalArgumentException("Resource names cannot contain spaces!");
 		this.description = Util.fixEmptyAndTrim(description);
 		this.labels.addAll(labelsFromString(Util.fixNull(labels).trim()));
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
@@ -223,6 +227,27 @@ public class LockableResource
 			return "Resource";
 		}
 
+		public FormValidation doCheckName(@QueryParameter String value) {
+			value = Util.fixEmptyAndTrim(value);
+			if (value == null) {
+				return FormValidation.error("Resource must have a name!");
+			}
+			else if ( value.contains(" ") ) {
+				return FormValidation.error("Resource names cannot contain spaces!");
+			}
+			return FormValidation.ok();
+		}
+
+		public AutoCompletionCandidates doAutoCompleteLabels(@QueryParameter String value) {
+			AutoCompletionCandidates c = new AutoCompletionCandidates();
+			value = Util.fixEmptyAndTrim(value);
+			if (value != null) {
+				for (String l : LockableResourcesManager.get().getAllLabels()) {
+					if ( l.startsWith(value) ) c.add(l);
+				}
+			}
+			return c;
+		}
 	}
 
 	public static class LabelConverter extends CollectionConverter {

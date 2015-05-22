@@ -9,10 +9,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
-import hudson.Extension;
+import hudson.Plugin;
 import hudson.Util;
+import hudson.XmlFile;
 import hudson.model.AbstractBuild;
+import jenkins.model.Jenkins;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.ArrayList;
@@ -28,18 +32,15 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import jenkins.model.GlobalConfiguration;
-import jenkins.model.Jenkins;
-import net.sf.json.JSONException;
-import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 
-@Extension
-public class LockableResourcesManager extends GlobalConfiguration {
+public class LockableResourcesManager extends Plugin {
 	
 	private static final transient Random rand = new Random();
+	private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
 	private final LinkedHashSet<String> loadBalancingLabels;
 	private boolean useResourcesEvenly = false;
@@ -49,9 +50,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private final transient Map<String,Set<LockableResource>> lbLabelsCache = new HashMap<String,Set<LockableResource>>();
 
 	public LockableResourcesManager() {
+		super();
 		resources = new LinkedHashSet<LockableResource>();
 		loadBalancingLabels = new LinkedHashSet<String>();
-		load();
+		try {
+			load();
+		}
+		catch ( IOException ex ) {
+			LOGGER.log(Level.SEVERE, "Unable to load plugin configuration!", ex);
+			throw new RuntimeException("Unable to load plugin configuration!", ex);
+		}
 	}
 
 	public Collection<LockableResource> getResources() {
@@ -344,11 +352,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 	}
 
-	@Override
-	public String getDisplayName() {
-		return "External Resources";
-	}
-
 	public synchronized void reset(List<LockableResource> resources) {
 		for (LockableResource r : resources) {
 			r.reset();
@@ -357,49 +360,54 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	@Override
-	public synchronized boolean configure(StaplerRequest req, JSONObject json) {
-		try {
-			String loadBalancingLabelsString = json.getString("loadBalancingLabels").trim();
-			loadBalancingLabels.clear();
-			for ( String label : loadBalancingLabelsString.split("\\s+") ) {
-				loadBalancingLabels.add(label);
-			}
-
-			useResourcesEvenly = json.getBoolean("useResourcesEvenly");
-			
-			List<LockableResource> newResouces = req.bindJSONToList(
-					LockableResource.class, json.get("resources"));
-			for (LockableResource r : newResouces) {
-				LockableResource old = fromName(r.getName());
-				if (old != null) {
-					r.setBuild(old.getBuild());
-					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
-				}
-			}
-			resources.clear();
-			resources.addAll(newResouces);
-			save();
-			return true;
-		} catch (JSONException e) {
-			return false;
+	public synchronized void configure(StaplerRequest req, JSONObject json) {
+		String loadBalancingLabelsString = json.getString("loadBalancingLabels").trim();
+		loadBalancingLabels.clear();
+		for ( String label : loadBalancingLabelsString.split("\\s+") ) {
+			loadBalancingLabels.add(label);
 		}
+
+		useResourcesEvenly = json.getBoolean("useResourcesEvenly");
+
+		List<LockableResource> newResouces = req.bindJSONToList(
+				LockableResource.class, json.get("resources"));
+		for (LockableResource r : newResouces) {
+			LockableResource old = fromName(r.getName());
+			if (old != null) {
+				r.setBuild(old.getBuild());
+				r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
+			}
+		}
+		resources.clear();
+		resources.addAll(newResouces);
+		save();
 	}
 
 	public static LockableResourcesManager get() {
-		return (LockableResourcesManager) Jenkins.getInstance()
-				.getDescriptorOrDie(LockableResourcesManager.class);
+		Jenkins jenkins = Jenkins.getInstance();
+		if (jenkins != null) {
+			return jenkins.getPlugin(LockableResourcesManager.class);
+		} else {
+			LOGGER.fine("Error, Jenkins could not be found, so no plugin!");
+			return null;
+		}
 	}
 
 	@Override
-	public synchronized void load() {
+	public synchronized void load() throws IOException {
 		super.load();
 		buildLabelCaches();
 	}
 
 	@Override
 	public synchronized void save() {
-		super.save();
-		buildLabelCaches();
+		try {
+			super.save();
+			buildLabelCaches();
+		}
+		catch ( IOException ex ) {
+			LOGGER.log(Level.SEVERE, "Unable to save configuration!", ex);
+		}
 	}
 
 	private synchronized void buildLabelCaches() {
@@ -430,6 +438,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if ( !r.isFree() ) used++;
 		}
 		return (double)used / lbLabelsCache.get(label).size();
+	}
+
+	@Override
+	protected XmlFile getConfigXml() {
+		File f = new File(Jenkins.getInstance().getRootDir(), this.getClass().getName() + ".xml");
+		return new XmlFile(Jenkins.XSTREAM, f);
 	}
 
 }

@@ -18,7 +18,7 @@
 		<f:textbox/>
 	</f:entry>
 	<f:entry title="${%Labels}" field="labels" help="/plugin/lockable-resources/help/labels.html">
-		<f:textbox/>
+		<f:textbox autoCompleteDelimChar=" "/>
 	</f:entry>
 	<f:entry title="${%Reserved by}" field="reservedBy">
 		<f:textbox/>
