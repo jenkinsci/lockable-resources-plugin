@@ -72,14 +72,6 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return this;
 	}
 
-	public String[] getResources() {
-		String names = Util.fixEmptyAndTrim(resourceNames);
-		if (names != null)
-			return names.split("\\s+");
-		else
-			return new String[0];
-	}
-
 	public String getResourceNames() {
 		return resourceNames;
 	}

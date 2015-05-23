@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2015, SAP SE                                          *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+-->
+
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+         xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project"
+>
+	<f:entry title="${%Name}" help="/help/parameter/name.html">
+		<f:textbox name="parameter.name" value="${instance.name}" default="requiredResources" />
+	</f:entry>
+	<f:entry title="${%Default Value}" help="/help/parameter/string-default.html">
+		<f:textbox name="parameter.defaultValue" value="${instance.defaultValue}" />
+	</f:entry>
+	<f:entry title="${%Description}" help="/help/parameter/description.html">
+		<f:textarea name="parameter.description" value="${instance.description}"
+		            codemirror-mode="${app.markupFormatter.codeMirrorMode}"
+		            codemirror-config="${app.markupFormatter.codeMirrorConfig}"
+		            previewEndpoint="/markupFormatter/previewDescription"
+		/>
+	</f:entry>
+</j:jelly>

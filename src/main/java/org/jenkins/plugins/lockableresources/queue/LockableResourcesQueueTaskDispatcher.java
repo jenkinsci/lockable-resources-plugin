@@ -11,6 +11,8 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
 import hudson.model.AbstractProject;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
@@ -19,8 +21,9 @@ import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.RequiredResourcesParameterValue;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
@@ -35,8 +38,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			if (project == null)
 				return null;
 
-			LockableResourcesStruct resources = Utils.requiredResources(project);
-			if ( resources == null || resources.required.isEmpty() ) {
+			LockableResourcesStruct resources = null;
+			for ( ParametersAction pa : item.getActions(ParametersAction.class) ) {
+				for ( ParameterValue pv : pa.getParameters() ) {
+					if ( pv instanceof RequiredResourcesParameterValue ) {
+						resources = new LockableResourcesStruct((RequiredResourcesParameterValue)pv);
+						break;
+					}
+				}
+			}
+			if ( resources == null ) resources = Utils.requiredResources(project);
+			if ( resources == null || resources.required == null ) {
 				return null;
 			}
 

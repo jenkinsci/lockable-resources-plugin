@@ -9,43 +9,59 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.Util;
+
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
+
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.RequiredResourcesParameterValue;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class LockableResourcesStruct {
 
-	public Set<LockableResource> required;
-	public transient String requiredNames;
-	public String requiredVar;
-	public String requiredNumber;
+	public final Set<LockableResource> required;
+	public final transient String requiredNames;
+	public final String requiredVar;
+	public final String requiredNumber;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property) {
-		this.required = new LinkedHashSet<LockableResource>();
-		this.requiredNames = property.getResourceNames();
-		for (String name : property.getResources()) {
-			LockableResource r = LockableResourcesManager.get().fromName(
-				name);
-			if (r != null) {
-				this.required.add(r);
-			}
-			else {
-				this.required.addAll(LockableResourcesManager.get().getResourcesWithLabel(name));
-			}
-		}
+		this(
+				property.getResourceNames(),
+				property.getResourceNamesVar(),
+				property.getResourceNumber()
+		);
+	}
 
-		this.requiredVar = property.getResourceNamesVar();
-		if (this.requiredVar != null && this.requiredVar.equals("")) {
-			this.requiredVar = null;
-		}
+	public LockableResourcesStruct( RequiredResourcesParameterValue param ) {
+		this(param.value, null, null);
+	}
 
-		this.requiredNumber = property.getResourceNumber();
-		if (this.requiredNumber != null && (this.requiredNumber.equals("") ||
-			this.requiredNumber.trim().equals("0"))) {
-			this.requiredNumber = null;
+	private LockableResourcesStruct( String requiredNames, String requiredVar, String requiredNumber ) {
+		Set<LockableResource> required = new LinkedHashSet<LockableResource>();
+		requiredNames = Util.fixEmptyAndTrim(requiredNames);
+		if ( requiredNames != null ) {
+			for ( String name : requiredNames.split("\\s+") ) {
+				LockableResource r = LockableResourcesManager.get().fromName(
+					name);
+				if (r != null) {
+					required.add(r);
+				}
+				else {
+					required.addAll(LockableResourcesManager.get().getResourcesWithLabel(name));
+				}
+			}
 		}
+		this.requiredNames = requiredNames;
+		this.required = Collections.unmodifiableSet(required);
+
+		this.requiredVar = Util.fixEmptyAndTrim(requiredVar);
+
+		requiredNumber = Util.fixEmptyAndTrim(requiredNumber);
+		if ( requiredNumber != null && requiredNumber.equals("0") ) requiredNumber = null;
+		this.requiredNumber = requiredNumber;
 	}
 
 	public String toString() {
