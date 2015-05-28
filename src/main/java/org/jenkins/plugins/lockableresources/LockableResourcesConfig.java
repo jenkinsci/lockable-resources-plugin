@@ -21,7 +21,7 @@ import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 
-import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
+import static org.jenkins.plugins.lockableresources.Constants.*;
 
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -66,7 +66,7 @@ public class LockableResourcesConfig
 	
 	@Override
 	public String getIconFileName() {
-		return LockableResourcesRootAction.ICON;
+		return ICON;
 	}
 
 	@Override
@@ -89,7 +89,7 @@ public class LockableResourcesConfig
 			value = Util.fixEmptyAndTrim(value);
 			Set<String> curLabels = LockableResourcesManager.get().getAllLabels();
 			if ( value != null ) {
-				for ( String label : value.split("\\s+") ) {
+				for ( String label : value.split(RESOURCES_SPLIT_REGEX) ) {
 					if ( !curLabels.contains(label) ) {
 						return FormValidation.warning("One or more labels is new or does not exist.");
 					}

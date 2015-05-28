@@ -23,8 +23,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
-import net.sf.json.JSONObject;
+import static org.jenkins.plugins.lockableresources.Constants.*;
 
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -133,7 +134,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.ok();
 			} else {
 				List<String> wrongNames = new ArrayList<String>();
-				for (String name : names.split("\\s+")) {
+				for (String name : names.split(RESOURCES_SPLIT_REGEX)) {
 					boolean found = false;
 					for (LockableResource r : LockableResourcesManager.get()
 							.getResources()) {
@@ -186,7 +187,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			int numResources = 0;
 			if (names != null) {
 				HashSet<String> resources = new HashSet<String>();
-				resources.addAll(Arrays.asList(names.split("\\s+")));
+				resources.addAll(Arrays.asList(names.split(RESOURCES_SPLIT_REGEX)));
 				Iterator<String> it = resources.iterator();
 				HashSet<String> labelResources = new HashSet<String>();
 				while ( it.hasNext() ) {

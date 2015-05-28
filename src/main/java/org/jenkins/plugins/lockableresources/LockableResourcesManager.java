@@ -32,6 +32,7 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static org.jenkins.plugins.lockableresources.Constants.*;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
 import net.sf.json.JSONObject;
@@ -363,7 +364,7 @@ public class LockableResourcesManager extends Plugin {
 	public synchronized void configure(StaplerRequest req, JSONObject json) {
 		String loadBalancingLabelsString = json.getString("loadBalancingLabels").trim();
 		loadBalancingLabels.clear();
-		for ( String label : loadBalancingLabelsString.split("\\s+") ) {
+		for ( String label : loadBalancingLabelsString.split(RESOURCES_SPLIT_REGEX) ) {
 			loadBalancingLabels.add(label);
 		}
 

@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -13,6 +14,7 @@ import hudson.model.Action;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.jenkins.plugins.lockableresources.Constants.*;
 import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class LockedResourcesBuildAction implements Action {
@@ -28,7 +30,7 @@ public class LockedResourcesBuildAction implements Action {
 	}
 
 	public String getIconFileName() {
-		return LockableResourcesRootAction.ICON;
+		return ICON;
 	}
 
 	public String getDisplayName() {

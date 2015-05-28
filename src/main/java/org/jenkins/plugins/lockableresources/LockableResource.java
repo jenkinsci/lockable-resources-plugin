@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import static org.jenkins.plugins.lockableresources.Constants.*;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -272,6 +273,6 @@ public class LockableResource
 	
 	private static List<String> labelsFromString( String labelString ) {
 		if ( labelString.length() <= 0 ) return Collections.emptyList();
-		return Arrays.asList(labelString.split("\\s+"));
+		return Arrays.asList(labelString.split(RESOURCES_SPLIT_REGEX));
 	}
 }

@@ -27,6 +27,7 @@ import javax.servlet.ServletException;
 
 import jenkins.model.Jenkins;
 
+import static org.jenkins.plugins.lockableresources.Constants.*;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
@@ -46,8 +47,6 @@ public class LockableResourcesRootAction implements RootAction {
 			Messages.ReservePermission(),
 			Messages._ReservePermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
-
-	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
 	public String getIconFileName() {
 		if (User.current() != null) {
