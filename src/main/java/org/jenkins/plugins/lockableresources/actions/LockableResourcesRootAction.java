@@ -51,7 +51,7 @@ public class LockableResourcesRootAction implements RootAction {
 	public String getIconFileName() {
 		if (User.current() != null) {
 			// only show if logged in
-			return ICON;
+			return ICON_SMALL;
 		} else {
 			return null;
 		}

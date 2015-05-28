@@ -30,7 +30,7 @@ public class LockedResourcesBuildAction implements Action {
 	}
 
 	public String getIconFileName() {
-		return ICON;
+		return ICON_SMALL;
 	}
 
 	public String getDisplayName() {

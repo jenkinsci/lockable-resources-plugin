@@ -66,7 +66,7 @@ public class LockableResourcesConfig
 	
 	@Override
 	public String getIconFileName() {
-		return ICON;
+		return ICON_LARGE;
 	}
 
 	@Override

@@ -19,7 +19,12 @@ public class Constants {
 	public static final String RESOURCES_SPLIT_REGEX = "\\s+";
 	
 	/**
-	 * Plugin icon file.
+	 * Plugin icon file (24x24).
 	 */
-	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
+	public static final String ICON_SMALL = "/plugin/lockable-resources/img/device-24x24.png";
+
+	/**
+	 * Plugin icon file (48x48).
+	 */
+	public static final String ICON_LARGE = "/plugin/lockable-resources/img/device-48x48.png";
 }
