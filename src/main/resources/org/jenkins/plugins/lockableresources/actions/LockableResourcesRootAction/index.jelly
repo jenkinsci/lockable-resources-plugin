@@ -1,6 +1,7 @@
 <!--
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ * Copyright (c) 2013-2015, 6WIND S.A.                                 *
+ *                          SAP SE                                     *
  *                                                                     *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
  * published under the MIT license.                                    *
@@ -74,7 +75,7 @@ function reset_resource_${i}() {
 	</j:if>
 	<j:if test="${resource.reservedBy == null}">
 		<j:if test="${resource.queued}">
-						<td class="pane" style="color: yellow;">
+						<td class="pane" style="color: orange;">
 							QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
 						</td>
 						<td class="pane">${resource.labels}</td>
