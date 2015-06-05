@@ -60,36 +60,18 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 
 			LOGGER.log(Level.FINEST, "{0} trying to get resources with these details: {1}",
-					new Object[]{project.getName(), resources});
+					new Object[]{project.getFullName(), resources});
 
-			if ( resourceNumber > 0 ) {
+			Collection<LockableResource> selected = LockableResourcesManager.get().queue(
+					resources, item, project.getFullName(), resourceNumber);
 
-				Collection<LockableResource> selected = LockableResourcesManager.get().queue(
-						resources,
-						item.id,
-						project.getFullName(),
-						resourceNumber,
-						LOGGER);
-
-				if (selected != null) {
-					LOGGER.log(Level.FINEST, "{0} reserved resources {1}",
-							new Object[]{project.getName(), selected});
-					return null;
-				} else {
-					LOGGER.log(Level.FINEST, "{0} waiting for resources", project.getName());
-					return new BecauseResourcesLocked(resources);
-				}
-
+			if (selected != null) {
+				LOGGER.log(Level.FINEST, "{0} reserved resources {1}",
+						new Object[]{project.getFullName(), selected});
+				return null;
 			} else {
-				if (LockableResourcesManager.get().queue(resources.required, item.id)) {
-					LOGGER.log(Level.FINEST, "{0} reserved resources {1}",
-							new Object[]{project.getName(), resources.required});
-					return null;
-				} else {
-					LOGGER.log(Level.FINEST, "{0} waiting for resources {1}",
-							new Object[]{project.getName(), resources.required});
-					return new BecauseResourcesLocked(resources);
-				}
+				LOGGER.log(Level.FINEST, "{0} waiting for resources", project.getFullName());
+				return new BecauseResourcesLocked(resources);
 			}
 		}
 		catch ( RuntimeException ex ) {

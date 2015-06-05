@@ -39,7 +39,7 @@ public class LockableResource
 		implements Comparable<LockableResource> {
 
 	public static final int NOT_QUEUED = 0;
-	private static final int QUEUE_TIMEOUT = 60;
+	private static final int QUEUE_TIMEOUT = 60 * 1000;
 
 	private final String name;
 	private final String description;
@@ -107,19 +107,16 @@ public class LockableResource
 	}
 
 	public boolean isQueued() {
-		this.validateQueuingTimeout();
-		return queueItemId != NOT_QUEUED;
+		return getQueueItemId() != NOT_QUEUED;
 	}
 
 	// returns True if queued by any other task than the given one
 	public boolean isQueued(int taskId) {
-		this.validateQueuingTimeout();
-		return queueItemId != NOT_QUEUED && queueItemId != taskId;
+		return isQueued() && queueItemId != taskId;
 	}
 
 	public boolean isQueuedByTask(int taskId) {
-		this.validateQueuingTimeout();
-		return queueItemId == taskId;
+		return getQueueItemId() == taskId;
 	}
 
 	public void unqueue() {
@@ -145,7 +142,7 @@ public class LockableResource
 	}
 
 	public Task getTask() {
-		Item item = Queue.getInstance().getItem(queueItemId);
+		Item item = Queue.getInstance().getItem(getQueueItemId());
 		if (item != null) {
 			return item.task;
 		} else {
@@ -163,19 +160,15 @@ public class LockableResource
 		return this.queueItemProject;
 	}
 
-	public void setQueued(int queueItemId) {
-		this.queueItemId = queueItemId;
-		this.queuingStarted = System.currentTimeMillis() / 1000;
-	}
-
 	public void setQueued(int queueItemId, String queueProjectName) {
-		this.setQueued(queueItemId);
+		this.queueItemId = queueItemId;
+		this.queuingStarted = System.currentTimeMillis();
 		this.queueItemProject = queueProjectName;
 	}
 
 	private void validateQueuingTimeout() {
 		if (queuingStarted > 0) {
-			long now = System.currentTimeMillis() / 1000;
+			long now = System.currentTimeMillis();
 			if (now - queuingStarted > QUEUE_TIMEOUT)
 				unqueue();
 		}

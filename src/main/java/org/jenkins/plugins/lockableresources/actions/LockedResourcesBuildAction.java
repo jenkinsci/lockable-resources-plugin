@@ -9,6 +9,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.actions;
 
+import hudson.model.AbstractBuild;
 import hudson.model.Action;
 
 import java.util.ArrayList;
@@ -16,14 +17,13 @@ import java.util.List;
 
 import static org.jenkins.plugins.lockableresources.Constants.*;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
 public class LockedResourcesBuildAction implements Action {
 
-	private final List<ResourcePOJO> lockedResources;
+	private final List<ResourcePOJO> lockedResources = new ArrayList<ResourcePOJO>();
 
-	public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
-		this.lockedResources = lockedResources;
-	}
+	public final transient List<String> matchedResources = new ArrayList<String>();
 
 	public List<ResourcePOJO> getLockedResources() {
 		return lockedResources;
@@ -41,18 +41,20 @@ public class LockedResourcesBuildAction implements Action {
 		return "locked-resources";
 	}
 
-	public static LockedResourcesBuildAction fromResources(
-			List<LockableResource> resources) {
-		List<ResourcePOJO> resPojos = new ArrayList<ResourcePOJO>();
-		for (LockableResource r : resources)
-			resPojos.add(new ResourcePOJO(r));
-		return new LockedResourcesBuildAction(resPojos);
+	public void populateLockedResources( AbstractBuild<?, ?> build ) {
+		LockableResourcesManager manager = LockableResourcesManager.get();
+		lockedResources.clear();
+		for ( String rName : matchedResources ) {
+			LockableResource r = manager.fromName(rName);
+			assert(r.getBuild() == build);
+			lockedResources.add(new ResourcePOJO(r));
+		}
 	}
 
 	public static class ResourcePOJO {
 
-		public String name;
-		public String description;
+		public final String name;
+		public final String description;
 
 		public ResourcePOJO(String name, String description) {
 			this.name = name;

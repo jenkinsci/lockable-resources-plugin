@@ -22,9 +22,9 @@ import hudson.model.ParametersAction;
 import hudson.model.ParameterValue;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
+
 import java.io.IOException;
 import java.util.ArrayList;
-
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,31 +43,31 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
 		AbstractProject<?, ?> proj = Utils.getProject(build);
-		List<LockableResource> required;
-		if (proj != null) {
-			LockableResourcesStruct resources = Utils.requiredResources(proj);
-			if (resources != null) {
-				required = LockableResourcesManager.get().getResourcesFromProject(proj.getFullName());
-				if (LockableResourcesManager.get().lock(required, build)) {
-					build.addAction(LockedResourcesBuildAction
-							.fromResources(required));
-					listener.getLogger().printf("%s acquired lock on %s\n",
-							LOG_PREFIX, required);
-					LOGGER.log(Level.FINE, "{0} acquired lock on {1}",
-							new Object[]{build.getFullDisplayName(), required});
-					if (resources.requiredVar != null) {
-						List<ParameterValue> params = new ArrayList<ParameterValue>();
-						params.add(new StringParameterValue(
-							resources.requiredVar,
-							required.toString().replaceAll("[\\]\\[]", "")));
-						build.addAction(new ParametersAction(params));
-					}
-				} else {
-					listener.getLogger().printf("%s failed to lock %s\n",
-							LOG_PREFIX, required);
-					LOGGER.log(Level.FINE, "{0} failed to lock {1}",
-							new Object[]{build.getFullDisplayName(), required});
+		LockedResourcesBuildAction requiredResourcesAction = build.getAction(LockedResourcesBuildAction.class);
+		if ( proj != null && requiredResourcesAction != null && !requiredResourcesAction.matchedResources.isEmpty() ) {
+			List<String> required = requiredResourcesAction.matchedResources;
+			if (LockableResourcesManager.get().lock(required, build)) {
+				requiredResourcesAction.populateLockedResources(build);
+				listener.getLogger().printf("%s acquired lock on %s", LOG_PREFIX, required);
+				listener.getLogger().println();
+				LOGGER.log(Level.FINE, "{0} acquired lock on {1}",
+						new Object[]{build.getFullDisplayName(), required});
+
+				// add environment variable
+				LockableResourcesStruct resources = Utils.requiredResources(proj);
+				if (resources != null && resources.requiredVar != null) {
+					List<ParameterValue> params = new ArrayList<ParameterValue>();
+					params.add(new StringParameterValue(
+					           resources.requiredVar,
+					           required.toString().replaceAll("[\\]\\[]", ""))
+					);
+					build.addAction(new ParametersAction(params));
 				}
+			} else {
+				listener.getLogger().printf("%s failed to lock %s", LOG_PREFIX, required);
+				listener.getLogger().println();
+				LOGGER.log(Level.FINE, "{0} failed to lock {1}",
+						new Object[]{build.getFullDisplayName(), required});
 			}
 		}
 	}
