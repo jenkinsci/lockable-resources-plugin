@@ -80,6 +80,10 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getFreeResourceAmount(label);
 	}
 
+	public String dereferenceLabelAlias(String label) {
+		return LockableResourcesManager.get().dereferenceLabelAlias(label);
+	}
+
 	public Set<String> getAllLabels() {
 		return LockableResourcesManager.get().getAllLabels();
 	}

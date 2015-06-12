@@ -111,18 +111,23 @@ function reset_resource_${i}() {
 						<td class="pane-header">Free resources</td>
 					</tr>
 <j:forEach var="label" items="${it.getAllLabels()}">
+	<j:set var="aliasText" value=""/>
+	<j:set var="realLabel" value="${it.dereferenceLabelAlias(label)}" />
+	<j:if test="${realLabel != null}">
+		<j:set var="aliasText" value="-> [${realLabel}]" />
+	</j:if>
 					<tr>
 	<j:choose>
 		<j:when test="${it.getFreeResourceAmount(label) == 0}">
-						<td class="pane" style="color: red;">${label}</td>
+						<td class="pane" style="color: red;">${label} <font style="color:black">${aliasText}</font></td>
 						<td class="pane" style="color: red;">0</td>
 		</j:when>
 		<j:when test="${it.getFreeResourceAmount(label) == 1}">
-						<td class="pane" style="color: darkorange;">${label}</td>
+						<td class="pane" style="color: darkorange;">${label} <font style="color:black">${aliasText}</font></td>
 						<td class="pane" style="color: darkorange;">1</td>
 		</j:when>
 		<j:otherwise>
-						<td class="pane" style="color: green;">${label}</td>
+						<td class="pane" style="color: green;">${label} <font style="color:black">${aliasText}</font></td>
 						<td class="pane" style="color: green;">${it.getFreeResourceAmount(label)}</td>
 		</j:otherwise>
 	</j:choose>

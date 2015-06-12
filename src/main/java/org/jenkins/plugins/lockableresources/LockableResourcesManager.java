@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
 import net.sf.json.JSONObject;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
 public class LockableResourcesManager extends Plugin {
@@ -49,6 +51,7 @@ public class LockableResourcesManager extends Plugin {
 	private final LinkedHashSet<String> loadBalancingLabels;
 	private boolean useResourcesEvenly = false;
 	private final LinkedHashSet<LockableResource> resources;
+	private final LinkedHashMap<String,String> labelAliases;
 
 	private final transient Map<String,Set<LockableResource>> labelsCache = new TreeMap<String,Set<LockableResource>>();
 	private final transient Map<String,Set<LockableResource>> lbLabelsCache = new HashMap<String,Set<LockableResource>>();
@@ -58,6 +61,7 @@ public class LockableResourcesManager extends Plugin {
 		super();
 		resources = new LinkedHashSet<LockableResource>();
 		loadBalancingLabels = new LinkedHashSet<String>();
+		labelAliases = new LinkedHashMap<String, String>();
 		try {
 			load();
 		}
@@ -121,6 +125,18 @@ public class LockableResourcesManager extends Plugin {
 		return Collections.unmodifiableSet(labelsCache.keySet());
 	}
 
+	public Map<String,String> getLabelAliases()
+	{
+		return Collections.unmodifiableMap(labelAliases);
+	}
+
+	public String dereferenceLabelAlias( String labelAlias ) {
+		if ( labelsCache.containsKey(labelAlias) && labelAliases.containsKey(labelAlias) ) {
+			return labelAliases.get(labelAlias);
+		}
+		return null;
+	}
+
 	public int getFreeResourceAmount(String label)
 	{
 		int free = 0;
@@ -131,6 +147,10 @@ public class LockableResourcesManager extends Plugin {
 	}
 
 	public List<LockableResource> getResourcesWithLabel(String label) {
+		if ( labelsCache.containsKey(label) && labelAliases.containsKey(label) ) {
+			LOGGER.log(Level.FINER, "Coverting label alias {0} to real label.", label);
+			label = labelAliases.get(label);
+		}
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
 			if (r.isValidLabel(label))
@@ -367,6 +387,15 @@ public class LockableResourcesManager extends Plugin {
 
 		useResourcesEvenly = json.getBoolean("useResourcesEvenly");
 
+		List<KeyValuePair> aliases = req.bindJSONToList(
+				KeyValuePair.class, json.get("labelAliases"));
+		labelAliases.clear();
+		for ( KeyValuePair p : aliases ) {
+			if ( p.key != null && p.value != null ) {
+				labelAliases.put(p.key, p.value);
+			}
+		}
+
 		List<LockableResource> newResouces = req.bindJSONToList(
 				LockableResource.class, json.get("resources"));
 		for (LockableResource r : newResouces) {
@@ -430,6 +459,16 @@ public class LockableResourcesManager extends Plugin {
 			}
 			resourceMapCache.put(r.getName(), r);
 		}
+
+		// process label aliases
+		for ( String alias : labelAliases.keySet() ) {
+			if ( !labelsCache.containsKey(alias) && fromName(alias) == null ) {
+				String aliasedLabel = labelAliases.get(alias);
+				if ( labelsCache.containsKey(aliasedLabel) ) {
+					labelsCache.put(alias, labelsCache.get(aliasedLabel));
+				}
+			}
+		}
 	}
 
 	private synchronized double calculateLbLabelUsage( String label ) {
@@ -446,4 +485,13 @@ public class LockableResourcesManager extends Plugin {
 		return new XmlFile(Jenkins.XSTREAM, f);
 	}
 
+	public static class KeyValuePair {
+		public final String key;
+		public final String value;
+		@DataBoundConstructor
+		public KeyValuePair(String key, String value) {
+			this.key = Util.fixEmptyAndTrim(key);
+			this.value = Util.fixEmptyAndTrim(value);
+		}
+	}
 }

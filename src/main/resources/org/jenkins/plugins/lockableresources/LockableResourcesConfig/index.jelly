@@ -31,6 +31,21 @@
 					<f:entry title="${%Use Resources Evenly}" field="useResourcesEvenly" help="/plugin/lockable-resources/help/useResourcesEvenly.html">
 						<f:checkbox default="${config.useResourcesEvenly}"/>
 					</f:entry>
+					<f:entry title="${%Label Aliases}" help="/plugin/lockable-resources/help/labelAliases.html">
+						<f:repeatable name="labelAliases" var="alias" items="${config.labelAliases.entrySet()}" header="${%Label Alias}" minimum="0" add="${%Add Label Alias}">
+							<table width="675px">
+								<f:entry title="${%Alias}" field="key">
+									<f:textbox value="${alias.key}"/>
+								</f:entry>
+								<f:entry title="${%Value}" field="value">
+									<f:textbox value="${alias.value}"/>
+								</f:entry>
+								<f:entry title="">
+									<div align="right"><f:repeatableDeleteButton/></div>
+								</f:entry>
+							</table>
+						</f:repeatable>
+					</f:entry>
 				</f:advanced>
 
 				<f:entry title="${%Lockable Resources}">
