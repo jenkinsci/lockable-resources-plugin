@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
+import hudson.matrix.MatrixBuild;
 import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
@@ -31,9 +32,16 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	static final String LOG_PREFIX = "[lockable-resources]";
 	static final Logger LOGGER = Logger.getLogger(LockRunListener.class
 			.getName());
-
+        
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
+                if (build instanceof MatrixBuild) {
+                    listener.getLogger().printf("%s Skipping acquire for %s as it is parent matrix build\n",
+                            LOG_PREFIX, build.toString());
+                    LOGGER.fine("Skipping acquire for " + build.getFullDisplayName()
+                            + " as it is parent matrix build");
+                    return;
+                }
 		AbstractProject<?, ?> proj = Utils.getProject(build);
 		List<LockableResource> required = new ArrayList<LockableResource>();
 		if (proj != null) {
