@@ -42,32 +42,38 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
                             + " as it is parent matrix build");
                     return;
                 }
-		AbstractProject<?, ?> project = Utils.getProjectOfBuild(build);
-		if (project != null) {
-			LockableResourcesStruct resources = Utils.getResourcesConfigurationForProject(project);
-			if (resources == null) {
-                            return;
-                        }
-                        List<LockableResource> required = resources.requiredNumber != null || !resources.label.isEmpty()
-                                ? LockableResourcesManager.get().getResourcesFromProject(project.getFullName())
-                                : resources.required;
-                        if (!LockableResourcesManager.get().lock(required, build)) {
-                                listener.getLogger().printf("%s failed to lock %s\n",
-                                                LOG_PREFIX, required);
-                                LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-                                                + required);
-                                return;
-                        }
-                        build.addAction(LockedResourcesBuildAction.fromResources(required));
-                        listener.getLogger().printf("%s acquired lock on %s\n", LOG_PREFIX, required);
-                        LOGGER.fine(build.getFullDisplayName() + " acquired lock on " + required);
-                        if (resources.requiredVar != null) {
-                                List<ParameterValue> params = new ArrayList<ParameterValue>();
-                                params.add(new StringParameterValue(
-                                        resources.requiredVar,
-                                        required.toString().replaceAll("[\\]\\[]", "")));
-                                build.addAction(new ParametersAction(params));
-                        }
+		AbstractProject<?, ?> proj = Utils.getProject(build);
+		List<LockableResource> required = new ArrayList<LockableResource>();
+		if (proj != null) {
+			LockableResourcesStruct resources = Utils.requiredResources(proj);
+			if (resources != null) {
+				if (resources.requiredNumber != null || !resources.label.isEmpty()) {
+					required = LockableResourcesManager.get().
+						getResourcesFromProject(proj.getFullName());
+				} else {
+					required = resources.required;
+				}
+				if (LockableResourcesManager.get().lock(required, build)) {
+					build.addAction(LockedResourcesBuildAction
+							.fromResources(required));
+					listener.getLogger().printf("%s acquired lock on %s\n",
+							LOG_PREFIX, required);
+					LOGGER.fine(build.getFullDisplayName()
+							+ " acquired lock on " + required);
+					if (resources.requiredVar != null) {
+						List<ParameterValue> params = new ArrayList<ParameterValue>();
+						params.add(new StringParameterValue(
+							resources.requiredVar,
+							required.toString().replaceAll("[\\]\\[]", "")));
+						build.addAction(new ParametersAction(params));
+					}
+				} else {
+					listener.getLogger().printf("%s failed to lock %s\n",
+							LOG_PREFIX, required);
+					LOGGER.fine(build.getFullDisplayName() + " failed to lock "
+							+ required);
+				}
+			}
 		}
 	}
 

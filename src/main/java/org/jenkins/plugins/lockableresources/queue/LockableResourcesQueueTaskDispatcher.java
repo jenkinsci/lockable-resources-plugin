@@ -29,11 +29,11 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 	@Override
 	public CauseOfBlockage canRun(Queue.Item item) {
 
-		AbstractProject<?, ?> project = Utils.getProjectOfQueueItem(item);
+		AbstractProject<?, ?> project = Utils.getProject(item);
 		if (project == null)
 			return null;
 
-		LockableResourcesStruct resources = Utils.getResourcesConfigurationForProject(project);
+		LockableResourcesStruct resources = Utils.requiredResources(project);
 		if (resources == null ||
 			(resources.required.isEmpty() && resources.label.isEmpty())) {
 			return null;
