@@ -23,7 +23,9 @@ import org.kohsuke.stapler.DataBoundConstructor;
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
 	public static final int NOT_QUEUED = 0;
-	private static final int QUEUE_TIMEOUT = 60;
+        // Queueing cannot be eradicated without rewriting too much
+        // because LockableResourcesManager.getResourcesFromProject depends on it
+	private static final int QUEUE_TIMEOUT = 5;
 
 	private final String name;
 	private final String description;
