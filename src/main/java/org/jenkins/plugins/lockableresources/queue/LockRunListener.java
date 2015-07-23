@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
+import hudson.matrix.MatrixBuild;
 import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
@@ -31,41 +32,42 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	static final String LOG_PREFIX = "[lockable-resources]";
 	static final Logger LOGGER = Logger.getLogger(LockRunListener.class
 			.getName());
-
+        
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
-		AbstractProject<?, ?> proj = Utils.getProject(build);
-		List<LockableResource> required = new ArrayList<LockableResource>();
-		if (proj != null) {
-			LockableResourcesStruct resources = Utils.requiredResources(proj);
-			if (resources != null) {
-				if (resources.requiredNumber != null || !resources.label.isEmpty()) {
-					required = LockableResourcesManager.get().
-						getResourcesFromProject(proj.getFullName());
-				} else {
-					required = resources.required;
-				}
-				if (LockableResourcesManager.get().lock(required, build)) {
-					build.addAction(LockedResourcesBuildAction
-							.fromResources(required));
-					listener.getLogger().printf("%s acquired lock on %s\n",
-							LOG_PREFIX, required);
-					LOGGER.fine(build.getFullDisplayName()
-							+ " acquired lock on " + required);
-					if (resources.requiredVar != null) {
-						List<ParameterValue> params = new ArrayList<ParameterValue>();
-						params.add(new StringParameterValue(
-							resources.requiredVar,
-							required.toString().replaceAll("[\\]\\[]", "")));
-						build.addAction(new ParametersAction(params));
-					}
-				} else {
-					listener.getLogger().printf("%s failed to lock %s\n",
-							LOG_PREFIX, required);
-					LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-							+ required);
-				}
-			}
+                if (build instanceof MatrixBuild) {
+                    listener.getLogger().printf("%s Skipping acquire for %s as it is parent matrix build\n",
+                            LOG_PREFIX, build.toString());
+                    LOGGER.fine("Skipping acquire for " + build.getFullDisplayName()
+                            + " as it is parent matrix build");
+                    return;
+                }
+		AbstractProject<?, ?> project = Utils.getProjectOfBuild(build);
+		if (project != null) {
+			LockableResourcesStruct resources = Utils.getResourcesConfigurationForProject(project);
+			if (resources == null) {
+                            return;
+                        }
+                        List<LockableResource> required = resources.requiredNumber != null || !resources.label.isEmpty()
+                                ? LockableResourcesManager.get().getResourcesFromProject(project.getFullName())
+                                : resources.required;
+                        if (!LockableResourcesManager.get().lock(required, build)) {
+                                listener.getLogger().printf("%s failed to lock %s\n",
+                                                LOG_PREFIX, required);
+                                LOGGER.fine(build.getFullDisplayName() + " failed to lock "
+                                                + required);
+                                return;
+                        }
+                        build.addAction(LockedResourcesBuildAction.fromResources(required));
+                        listener.getLogger().printf("%s acquired lock on %s\n", LOG_PREFIX, required);
+                        LOGGER.fine(build.getFullDisplayName() + " acquired lock on " + required);
+                        if (resources.requiredVar != null) {
+                                List<ParameterValue> params = new ArrayList<ParameterValue>();
+                                params.add(new StringParameterValue(
+                                        resources.requiredVar,
+                                        required.toString().replaceAll("[\\]\\[]", "")));
+                                build.addAction(new ParametersAction(params));
+                        }
 		}
 	}
 
