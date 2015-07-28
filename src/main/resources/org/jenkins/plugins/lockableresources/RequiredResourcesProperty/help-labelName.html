@@ -5,4 +5,22 @@ here. The build will select the resource(s) from the pool that includes all
 resources sharing the given label.
 Either Label or Resources field must be empty.
 </p>
+<p>
+If label starts with groovy: then it is treated as a groovy expression to be
+evaluated each time a resource is checked to be appropriate for a build. The
+expression must result into a boolean value. The following variables are available:
+</p>
+<ul>
+    <li>resourceName - as per resource configuration</li>
+    <li>resourceDescription - as per resource configuration</li>
+    <li>resourceLabels - java.util.List&lt;String&gt; of labels as per resource configuration</li>
+</ul>
+<p>
+For matrix jobs, axis names and axis values are referencable as well. Examples:
+</p>
+<ul>
+    <li>groovy:resourceLabels.contains("hardcoded")</li>
+    <li>groovy:resourceLabels.contains(axisName)</li>
+    <li>groovy:resourceName == axisName</li>
+</ul>
 </div>

@@ -176,9 +176,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			int numResources = 0;
 			if (names != null) {
 				numResources = names.split("\\s+").length;
-			} else if (label != null) {
-				numResources = LockableResourcesManager.get().
-					getResourcesWithLabel(label).size();
+			} else if (label != null ) {
+				numResources = Integer.MAX_VALUE;
 			}
 
 			if (numResources < numAsInt) {
