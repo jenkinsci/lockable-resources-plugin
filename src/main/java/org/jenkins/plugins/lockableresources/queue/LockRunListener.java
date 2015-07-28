@@ -20,6 +20,7 @@ import java.util.ArrayList;
 
 import java.util.List;
 import java.util.logging.Logger;
+import org.apache.commons.lang.StringUtils;
 
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -53,12 +54,22 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					LOGGER.fine(build.getFullDisplayName()
 							+ " acquired lock on " + required);
 					if (resources.requiredVar != null) {
-						List<ParameterValue> params = new ArrayList<ParameterValue>();
-						params.add(new StringParameterValue(
-							resources.requiredVar,
+						List<ParameterValue> parameterList = new ArrayList<ParameterValue>();
+						parameterList.add(new StringParameterValue(
+                                                        resources.requiredVar,
 							required.toString().replaceAll("[\\]\\[]", "")));
-						build.addAction(new ParametersAction(params));
-					}
+                                                ParametersAction oldParams = build.getAction(ParametersAction.class);
+                                                if (oldParams != null) {
+                                                    for(ParameterValue oldParameter : oldParams.getParameters()) {
+                                                        if(!StringUtils.equals(oldParameter.getName(), resources.requiredVar)) {
+                                                            parameterList.add(oldParameter);
+                                                        }
+                                                    }
+                                                    build.getActions().remove(oldParams);
+                                                }
+                                                ParametersAction newParams = new ParametersAction(parameterList);
+                                                build.addAction(newParams);
+                                        }
 				} else {
 					listener.getLogger().printf("%s failed to lock %s\n",
 							LOG_PREFIX, required);

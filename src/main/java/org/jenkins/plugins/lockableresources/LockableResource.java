@@ -8,6 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -17,11 +19,18 @@ import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
-
+    
+        public static final String GROOVY_LABEL_MARKER = "groovy:";
+	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 	public static final int NOT_QUEUED = 0;
 	private static final int QUEUE_TIMEOUT = 60;
 
@@ -56,9 +65,45 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return labels;
 	}
 
-	public Boolean isValidLabel(String candidate) {
-		return Arrays.asList(labels.split("\\s+")).contains(candidate);
+	public Boolean isValidLabel(String candidate, Map<String, Object> params) {
+            return candidate.startsWith(GROOVY_LABEL_MARKER)
+                    ? expressionMatches(candidate, params)
+                    : labelsContain(candidate);
 	}
+
+        private boolean labelsContain(String candidate) {
+            return makeLabelsList().contains(candidate);
+        }
+
+        private List<String> makeLabelsList() {
+            return Arrays.asList(labels.split("\\s+"));
+        }
+
+        private boolean expressionMatches(String expression, Map<String, Object> params) {
+            Map<String, Object> allParams = new HashMap<String, Object>(params);
+            allParams.put("resourceName", name);
+            allParams.put("resourceDescription", description);
+            allParams.put("resourceLabels", makeLabelsList());
+            String expressionToEvaluate = expression.substring(GROOVY_LABEL_MARKER.length());
+            Binding binding = new Binding(allParams);
+            GroovyShell shell = new GroovyShell(binding);
+            try {
+                Object result = shell.evaluate(expressionToEvaluate);
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    LOGGER.fine("Checked resource " + name 
+                            + " for " + expression 
+                            + " with " + allParams 
+                            + " -> " + result);
+                }
+                return (Boolean) result;
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE,
+                        "Cannot get boolean result out of groovy expression '"
+                        + expressionToEvaluate + "' on (" + allParams + ")",
+                        e);
+                return false;
+            }
+        }
 
 	public String getReservedBy() {
 		return reservedBy;

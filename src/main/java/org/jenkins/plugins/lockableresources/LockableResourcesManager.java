@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,7 +70,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public Boolean isValidLabel(String label)
 	{
-		return this.getAllLabels().contains(label);
+		return label.startsWith(LockableResource.GROOVY_LABEL_MARKER)
+                        || this.getAllLabels().contains(label);
 	}
 
 	public Set<String> getAllLabels()
@@ -96,10 +98,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return free;
 	}
 
-	public List<LockableResource> getResourcesWithLabel(String label) {
+	public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
-			if (r.isValidLabel(label))
+			if (r.isValidLabel(label, params))
 				found.add(r);
 		}
 		return found;
@@ -137,7 +139,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	                                                 int queueItemId,
 	                                                 String queueItemProject,
 	                                                 int number,  // 0 means all
-	                                                 Logger log) {
+	                                                 Logger log,
+                                                         Map<String, Object> params) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
@@ -152,7 +155,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 			candidates = requiredResources.required;
 		} else {
-			candidates = getResourcesWithLabel(requiredResources.label);
+			candidates = getResourcesWithLabel(requiredResources.label, params);
 		}
 
 		for (LockableResource rs : candidates) {
