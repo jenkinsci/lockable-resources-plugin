@@ -24,6 +24,9 @@ public class LockableResources extends Plugin {
 		return new Api(this);
 	}
 
+	/**
+	 * @return A resources list that can be accessed by a remote API
+	 */
 	@Exported
 	public List<LockableResource> getResources() {
 		return Collections.unmodifiableList(LockableResourcesManager.get()

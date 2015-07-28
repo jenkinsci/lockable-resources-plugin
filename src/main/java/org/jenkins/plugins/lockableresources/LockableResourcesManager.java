@@ -42,10 +42,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		load();
 	}
 
+	/**
+	 * @return A list containing all resources
+	 */
 	public List<LockableResource> getResources() {
 		return resources;
 	}
 
+	/**
+	 * @param fullName
+	 * @return A list of all resources that are queued by a project with the
+	 * given name
+	 */
 	public List<LockableResource> getResourcesFromProject(String fullName) {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
@@ -57,6 +65,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return matching;
 	}
 
+	/**
+	 * @param build
+	 * @return A list of all resources locked by given build
+	 */
 	public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
@@ -68,12 +80,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return matching;
 	}
 
+	/**
+	 * @param label
+	 * @return True if the given label is in the list of labels for any
+	 * resource, or false otherwise
+	 */
 	public Boolean isValidLabel(String label)
 	{
 		return label.startsWith(LockableResource.GROOVY_LABEL_MARKER)
 				|| this.getAllLabels().contains(label);
 	}
 
+	/**
+	 * @return Creates a set of labels containing all the labels associated with
+	 * the resources in the 'resources' field
+	 */
 	public Set<String> getAllLabels()
 	{
 		Set<String> labels = new HashSet<String>();
@@ -86,6 +107,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return labels;
 	}
 
+	/**
+	 * @param label
+	 * @return The amount of resources with the given label that are not locked, queued or reserved
+	 */
 	public int getFreeResourceAmount(String label)
 	{
 		int free = 0;
@@ -98,6 +123,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return free;
 	}
 
+	/**
+	 * @param label
+	 * @param params
+	 * @return A list containing the resources that have the given label
+	 */
 	public List<LockableResource> getResourcesWithLabel(String label,
 			Map<String, Object> params) {
 		List<LockableResource> found = new ArrayList<LockableResource>();
@@ -108,6 +138,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return found;
 	}
 
+	/**
+	 * @param resourceName
+	 * @return The resource with the given name
+	 */
 	public LockableResource fromName(String resourceName) {
 		if (resourceName != null) {
 			for (LockableResource r : resources) {
@@ -118,6 +152,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return null;
 	}
 
+	/**
+	 * Queue the resources in 'resources' if they are not already
+	 * locked, queued or reserved
+	 * @param resources The resources that will be queued
+	 * @param queueItemId The id of the item that enqueues the resources
+	 * @return True if the resources have been successfully queued, or false
+	 * otherwise
+	 */
 	public synchronized boolean queue(List<LockableResource> resources,
 			int queueItemId) {
 		for (LockableResource r : resources)
@@ -128,6 +170,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	/**
+	 * First find available resources, and then queue them for the
+	 * given queueItemProject
+	 * @param requiredResources A pool of resources that will be investigated
+	 * @param queueItemId The ID of the current item
+	 * @param queueItemProject The current project
+	 * @param number The number of resources requested - 0 means all
+	 * @param params Parameters used to identify labels
+	 * @param log The Logger file used for logging
+	 * @return A list of queued resources that have either been previously selected in
+	 * the previous queuing round, or resources that can be queued - are not
+	 * reserved for any user, locked or queued (by another item). If the list does not
+	 * meet the size criteria, the method will return null.
+	 */
 	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
 	                                                 int queueItemId,
 	                                                 String queueItemProject,
@@ -180,8 +236,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return selected;
 	}
 
-	// Adds already selected (in previous queue round) resources to 'selected'
-	// Return false if another item queued for this project -> bail out
+	/**
+	 * Adds already selected (in previous queue round) resources to 'selected'
+	 *
+	 * @return false if another item queued for this project -> bail out
+	 */
 	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
 	                                            String project,
 	                                            int taskId,
@@ -205,6 +264,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	/**
+	 * @param resources The resources to lock
+	 * @param build The build that locks the resources
+	 * @return True if all the resources have been successfully dequeued and
+	 * locked (in order to be able to achieve this, none of the resources can
+	 * be reserved by an user or locked). Return false, if the process failed
+	 */
 	public synchronized boolean lock(List<LockableResource> resources,
 			AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
@@ -219,6 +285,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	/**
+	 * Unlock all resources in the list that were locked by the given build
+	 * @param resources The resources that will be unlocked
+	 * @param build The build that locks the resources
+	 */
 	public synchronized void unlock(List<LockableResource> resources,
 			AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
@@ -229,6 +300,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 	}
 
+	/**
+	 * @param resources The resources that will be reserved
+	 * @param userName The name of the user that reserves the resources
+	 * @return True if all the resources have been successfully reserved
+	 * (to achieve this, none of the resources can be reserved by an user or locked).
+	 * Return false, if the process failed
+	 */
 	public synchronized boolean reserve(List<LockableResource> resources,
 			String userName) {
 		for (LockableResource r : resources) {
@@ -243,6 +321,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	/**
+	 * @param resources Unreserve all the resources in the given list
+	 */
 	public synchronized void unreserve(List<LockableResource> resources) {
 		for (LockableResource r : resources) {
 			r.unReserve();
@@ -255,6 +336,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return "External Resources";
 	}
 
+	/**
+	 * Reset the resources in the given list (calls resource.reset)
+	 * @param resources
+	 */
 	public synchronized void reset(List<LockableResource> resources) {
 		for (LockableResource r : resources) {
 			r.reset();
