@@ -49,6 +49,14 @@
 		</developer>
 	</developers>
 
+	<dependencies>
+		<dependency>
+			<groupId>org.jenkins-ci.plugins</groupId>
+			<artifactId>mailer</artifactId>
+			<version>1.5</version>
+		</dependency>
+	</dependencies>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -56,6 +64,9 @@
 				<artifactId>maven-hpi-plugin</artifactId>
 				<version>1.96</version>
 				<extensions>true</extensions>
+				<configuration>
+					<contextPath>/</contextPath>
+				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-release-plugin</artifactId>

@@ -16,10 +16,18 @@ import hudson.model.Descriptor;
 import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
+import hudson.model.User;
+import hudson.tasks.Mailer.UserProperty;
+
 import java.util.Arrays;
 
-import org.kohsuke.stapler.DataBoundConstructor;
+import jenkins.model.Jenkins;
 
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
+
+@ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
 	public static final int NOT_QUEUED = 0;
@@ -44,14 +52,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
 	}
 
+	@Exported
 	public String getName() {
 		return name;
 	}
 
+	@Exported
 	public String getDescription() {
 		return description;
 	}
 
+	@Exported
 	public String getLabels() {
 		return labels;
 	}
@@ -60,12 +71,27 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return Arrays.asList(labels.split("\\s+")).contains(candidate);
 	}
 
+	@Exported
 	public String getReservedBy() {
 		return reservedBy;
 	}
 
+	@Exported
 	public boolean isReserved() {
 		return reservedBy != null;
+	}
+
+	@Exported
+	public String getReservedByEmail() {
+		if (reservedBy != null) {
+			UserProperty email = null;
+			User user = Jenkins.getInstance().getUser(reservedBy);
+			if (user != null)
+				email = user.getProperty(UserProperty.class);
+			if (email != null)
+				return email.getAddress();
+		}
+		return null;
 	}
 
 	public boolean isQueued() {
@@ -90,12 +116,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		queuingStarted = 0;
 	}
 
+	@Exported
 	public boolean isLocked() {
 		return build != null;
 	}
 
 	public AbstractBuild<?, ?> getBuild() {
 		return build;
+	}
+
+	@Exported
+	public String getBuildName() {
+		if (build != null)
+			return build.getFullDisplayName();
+		else
+			return null;
 	}
 
 	public void setBuild(AbstractBuild<?, ?> lockedBy) {
