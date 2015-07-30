@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
+import hudson.matrix.MatrixProject;
 import hudson.model.AbstractProject;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
@@ -17,8 +18,8 @@ import hudson.model.queue.CauseOfBlockage;
 import java.util.List;
 import java.util.logging.Logger;
 
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
@@ -28,6 +29,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 	@Override
 	public CauseOfBlockage canRun(Queue.Item item) {
+		// Skip locking for multiple configuration projects,
+		// only the child jobs will actually lock resources.
+		if (item.task instanceof MatrixProject)
+			return null;
 
 		AbstractProject<?, ?> project = Utils.getProject(item);
 		if (project == null)
