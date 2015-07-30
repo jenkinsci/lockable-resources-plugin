@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
@@ -18,37 +19,32 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 public class Utils {
 
 	public static AbstractProject<?, ?> getProject(Queue.Item item) {
-		if (item.task instanceof AbstractProject) {
-			AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
-			if (proj instanceof MatrixConfiguration) {
-				proj = (AbstractProject<?, ?>) ((MatrixConfiguration) proj)
-						.getParent();
-			}
-			return proj;
-		}
+		if (item.task instanceof AbstractProject)
+			return (AbstractProject<?, ?>) item.task;
 		return null;
 	}
 
 	public static AbstractProject<?, ?> getProject(AbstractBuild<?, ?> build) {
 		Object p = build.getParent();
-		if (p instanceof AbstractProject) {
-			AbstractProject<?, ?> proj = (AbstractProject<?, ?>) p;
-			if (proj instanceof MatrixConfiguration) {
-				proj = (AbstractProject<?, ?>) ((MatrixConfiguration) proj)
-						.getParent();
-			}
-			return proj;
-		}
+		if (p instanceof AbstractProject)
+			return (AbstractProject<?, ?>) p;
 		return null;
 	}
 
 	public static LockableResourcesStruct requiredResources(
 			AbstractProject<?, ?> project) {
-		RequiredResourcesProperty property = project
-				.getProperty(RequiredResourcesProperty.class);
-		if (property != null) {
-			return new LockableResourcesStruct(property);
+		RequiredResourcesProperty property = null;
+		EnvVars env = new EnvVars();
+
+		if (project instanceof MatrixConfiguration) {
+			env.putAll(((MatrixConfiguration) project).getCombination());
+			project = (AbstractProject<?, ?>) project.getParent();
 		}
+
+		property = project.getProperty(RequiredResourcesProperty.class);
+		if (property != null)
+			return new LockableResourcesStruct(property, env);
+
 		return null;
 	}
 }

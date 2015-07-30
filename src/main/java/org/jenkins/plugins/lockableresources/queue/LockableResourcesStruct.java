@@ -8,8 +8,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.EnvVars;
+
 import java.util.ArrayList;
 import java.util.List;
+
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -21,30 +24,26 @@ public class LockableResourcesStruct {
 	public String requiredVar;
 	public String requiredNumber;
 
-	public LockableResourcesStruct(RequiredResourcesProperty property) {
-		this.required = new ArrayList<LockableResource>();
+	public LockableResourcesStruct(RequiredResourcesProperty property,
+			EnvVars env) {
+		required = new ArrayList<LockableResource>();
 		for (String name : property.getResources()) {
 			LockableResource r = LockableResourcesManager.get().fromName(
-				name);
+				env.expand(name));
 			if (r != null) {
 				this.required.add(r);
 			}
 		}
 
-		this.label = property.getLabelName();
-		if (this.label == null)
-			this.label = "";
+		label = env.expand(property.getLabelName());
+		if (label == null)
+			label = "";
 
-		this.requiredVar = property.getResourceNamesVar();
-		if (this.requiredVar != null && this.requiredVar.equals("")) {
-			this.requiredVar = null;
-		}
+		requiredVar = property.getResourceNamesVar();
 
-		this.requiredNumber = property.getResourceNumber();
-		if (this.requiredNumber != null && (this.requiredNumber.equals("") ||
-			this.requiredNumber.trim().equals("0"))) {
-			this.requiredNumber = null;
-		}
+		requiredNumber = property.getResourceNumber();
+		if (requiredNumber != null && requiredNumber.equals("0"))
+			requiredNumber = null;
 	}
 
 	public String toString() {
