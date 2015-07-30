@@ -409,6 +409,24 @@ public class LockableResourcesManager extends Plugin {
 		resources.addAll(newResouces);
 		save();
 	}
+	
+	public synchronized boolean addResourceLabel( LockableResource res, String label ) {
+		Set<String> resLabels = res.getModifyableLabelSet();
+		boolean result = resLabels.add(label);
+		if ( result ) {
+			buildCaches();
+		}
+		return result;
+	}
+	
+	public synchronized boolean removeResourceLabel( LockableResource res, String label ) {
+		Set<String> resLabels = res.getModifyableLabelSet();
+		boolean result = resLabels.remove(label);
+		if ( result ) {
+			buildCaches();
+		}
+		return result;
+	}
 
 	public static LockableResourcesManager get() {
 		Jenkins jenkins = Jenkins.getInstance();

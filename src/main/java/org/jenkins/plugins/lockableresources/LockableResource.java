@@ -85,6 +85,18 @@ public class LockableResource
 		}
 	}
 	
+	/**
+	 * FOR INTERNAL USE ONLY!
+	 * 
+	 * Returns this objects internal label set.  Changes will be reflected in the containing object.
+	 * The caller MUST update the label caches for any changes made.
+	 * 
+	 * @return the internal set which stores the labels applied to this resource
+	 */
+	protected Set<String> getModifyableLabelSet() {
+		return labels;
+	}
+	
 	public Set<String> getLabelSet() {
 		if ( labels == null ) return Collections.emptySet();
 		return Collections.unmodifiableSet(labels);
