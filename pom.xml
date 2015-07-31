@@ -25,7 +25,6 @@
 		This plugin allows to define lockable resources (such as printers, phones,
 		computers) that can be used by builds. If a build requires an external
 		resource which is already locked, it will wait for the resource to be free.
-		One can define a lock-priority globally and on a per-job basis.
 	</description>
 	<url>https://wiki.jenkins-ci.org/display/JENKINS/Lockable+Resources+Plugin</url>
 
