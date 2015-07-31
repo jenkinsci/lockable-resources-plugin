@@ -8,6 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -20,6 +22,10 @@ import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 
@@ -30,8 +36,10 @@ import org.kohsuke.stapler.export.ExportedBean;
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
 
+	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 	public static final int NOT_QUEUED = 0;
 	private static final int QUEUE_TIMEOUT = 60;
+	public static final String GROOVY_LABEL_MARKER = "groovy:";
 
 	private final String name;
 	private final String description;
@@ -67,8 +75,42 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return labels;
 	}
 
-	public Boolean isValidLabel(String candidate) {
-		return Arrays.asList(labels.split("\\s+")).contains(candidate);
+	public boolean isValidLabel(String candidate, Map<String, Object> params) {
+		return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(
+				candidate, params) : labelsContain(candidate);
+	}
+
+	private boolean labelsContain(String candidate) {
+		return makeLabelsList().contains(candidate);
+	}
+
+	private List<String> makeLabelsList() {
+		return Arrays.asList(labels.split("\\s+"));
+	}
+
+	private boolean expressionMatches(String expression,
+			Map<String, Object> params) {
+		Binding binding = new Binding(params);
+		binding.setVariable("resourceName", name);
+		binding.setVariable("resourceDescription", description);
+		binding.setVariable("resourceLabels", makeLabelsList());
+		String expressionToEvaluate = expression.replace(GROOVY_LABEL_MARKER, "");
+		GroovyShell shell = new GroovyShell(binding);
+		try {
+			Object result = shell.evaluate(expressionToEvaluate);
+			if (LOGGER.isLoggable(Level.FINE)) {
+				LOGGER.fine("Checked resource " + name + " for " + expression
+						+ " with " + binding + " -> " + result);
+			}
+			return (Boolean) result;
+		} catch (Exception e) {
+			LOGGER.log(
+					Level.SEVERE,
+					"Cannot get boolean result out of groovy expression '"
+							+ expressionToEvaluate + "' on (" + binding + ")",
+					e);
+			return false;
+		}
 	}
 
 	@Exported
