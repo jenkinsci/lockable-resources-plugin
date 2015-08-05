@@ -156,7 +156,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @return True if the resources have been successfully queued, or false
 	 * otherwise
 	 */
-	public synchronized boolean queue(  List<LockableResource> resources,
+	public synchronized boolean queueId(List<LockableResource> resources,
 										int queueItemId) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
@@ -167,25 +167,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	/**
-	 * First find available resources, and then queue them for the
-	 * given queueItemProject
+	 * Find available resources for the given parameters
 	 * @param requiredResources A pool of resources that will be investigated
 	 * @param queueItemId The ID of the current item
 	 * @param queueItemProject The current project
 	 * @param number The number of resources requested - 0 means all
 	 * @param params Parameters used to identify labels
 	 * @param log The Logger file used for logging
-	 * @return A list of queued resources that have either been previously selected in
+	 * @return A list of available resources that have either been previously selected in
 	 * the previous queuing round, or resources that can be queued - are not
 	 * reserved for any user, locked or queued (by another item). If the list does not
 	 * meet the size criteria, the method will return null.
 	 */
-	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
-	                                                 int queueItemId,
-	                                                 String queueItemProject,
-	                                                 int number,  // 0 means all
-	                                                 Map<String, Object> params,
-	                                                 Logger log) {
+	public synchronized
+		List<LockableResource> findAvailableResources(LockableResourcesStruct requiredResources,
+	                                                  int queueItemId,
+	                                                  String queueItemProject,
+	                                                  int number,  // 0 means all
+	                                                  Map<String, Object> params,
+	                                                  Logger log) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
@@ -196,7 +196,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
-		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		List<LockableResource> candidates;
 		if (requiredResources.label != null && requiredResources.label.isEmpty())
 			candidates = requiredResources.required;
 		else
@@ -225,9 +225,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
+		return selected;
+	}
+
+	/**
+	 * Queues the given resources (in 'selected') for the item with the given itemId
+	 * and project. The resources should be obtained from a call to findAvailableResources
+	 * @param selected The resources that will be enqueued
+	 * @param queueItemId The id of the item that will enqueue the resource
+	 * @param queueItemProject The name of the project that enqueues the resource
+	 */
+	public synchronized void queueProject(  List<LockableResource> selected,
+											int queueItemId,
+											String queueItemProject) {
 		for (LockableResource rsc : selected)
 			rsc.setQueued(queueItemId, queueItemProject);
-		return selected;
 	}
 
 	/**
@@ -266,7 +278,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * be reserved by an user or locked). Return false, if the process failed
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-									AbstractBuild<?, ?> build) {
+									 AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked())
 				return false;
