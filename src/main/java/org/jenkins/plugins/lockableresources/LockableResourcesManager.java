@@ -114,7 +114,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (r.isLocked() || r.isQueued() || r.isReserved())
 				continue;
 
-			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
+			if (r.isValidLabel(label, null))
 				free += 1;
 		}
 		return free;
@@ -351,7 +351,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				LockableResource old = fromName(r.getName());
 				if (old != null) {
 					r.setBuild(old.getBuild());
-					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
+					r.setQueued(old.getQueueItemId(), old.getQueueItemProject());
 				}
 			}
 			resources = newResouces;
