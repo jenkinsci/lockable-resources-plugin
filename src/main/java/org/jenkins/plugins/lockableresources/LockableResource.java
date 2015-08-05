@@ -1,11 +1,14 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
+ *                                                                           *
+ * Resource reservation per node by Darius Mihai (mihai_darius22@yahoo.com)  *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                          *
+ *                                                                           *
+ * This file is part of the Jenkins Lockable Resources Plugin and is         *
+ * published under the MIT license.                                          *
+ *                                                                           *
+ * See the "LICENSE.txt" file for more information.                          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
 import groovy.lang.Binding;
@@ -15,6 +18,7 @@ import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
 import hudson.model.Descriptor;
+import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
@@ -22,13 +26,16 @@ import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Set;
 
 import jenkins.model.Jenkins;
 
+import org.jenkins.plugins.lockableresources.queue.Utils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
@@ -47,6 +54,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private final String description;
 	/** Labels associated with this resource */
 	private final String labels;
+	/** The name(s) of the nodes that can use this resource */
+	private String reservedForNode;
 	/** The name of the user that should be logged in, in order to use this resource */
 	private String reservedBy;
 
@@ -58,16 +67,26 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private transient AbstractBuild<?, ?> build = null;
 	/** The moment (UNIX time in seconds) when the resource was queued */
 	private transient long queuingStarted = 0;
+	/** A list of node names (slave names) that can use this resource; same as
+	 *  reservedForNode, names are split by whitespace
+	 */
+	private transient Set<String> reservedForNodes;
 
 	@DataBoundConstructor
 	public LockableResource(String name,
 							String description,
 							String labels,
+							String reservedForNode,
 							String reservedBy) {
 		this.name = name;
 		this.description = description;
 		this.labels = labels;
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
+		this.reservedForNode = Util.fixEmptyAndTrim(reservedForNode);
+
+		this.reservedForNodes = new HashSet<String>();
+		this.reservedForNodes.addAll(Arrays.asList(reservedForNode.split("\\s+")));
+		this.reservedForNodes = this.reservedForNodes.isEmpty() ? null : this.reservedForNodes;
 	}
 
 	/**
@@ -92,6 +111,23 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getLabels() {
 		return labels;
+	}
+
+	/**
+	 * @return A string with the names of the nodes that reserved this resource,
+	 * or null if the resource is not reserved for any node
+	 */
+	@Exported
+	public String getReservedForNode() {
+		return reservedForNode;
+	}
+
+	/**
+	 * @return A list of names of the nodes that reserved this resource, or null
+	 * if the resource is not reserved for any node
+	 */
+	public Set<String> getReservedForNodes() {
+		return reservedForNodes;
 	}
 
 	/**
@@ -161,6 +197,28 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getReservedBy() {
 		return reservedBy;
+	}
+
+	/**
+	 * @param node
+	 * @return True if this resource is not reserved for any node or if it is
+	 * reserved for the given node, or false otherwise.
+	 */
+	public boolean isReservedForNode(Node node) {
+		if (node == null)
+			return isReservedForThisNode();
+
+		String nodeName = node.getNodeName().equals("") ? "master" : node.getNodeName();
+
+		return reservedForNodes == null || reservedForNodes.contains(nodeName);
+	}
+
+	/**
+	 * @return True if the node running this method is one of the nodes for
+	 * which this resource has been reserved for, or false otherwise
+	 */
+	public boolean isReservedForThisNode() {
+		return reservedForNodes == null || reservedForNodes.contains(Utils.getNodeName());
 	}
 
 	/**
@@ -322,11 +380,45 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * @param userName Sets the value for the 'reservedBy' field, thus
-	 * reserving the resource for an user
+	 * Adds a value to the 'reservedForNode' list if the
+	 * resource is not already reserved for that node
+	 * @param nodeName Node name to be added
+	 */
+	public void setReservedForNode(String nodeName) {
+		if (!this.reservedForNodes.contains(nodeName)) {
+			this.reservedForNodes.add(nodeName);
+			this.reservedForNode += nodeName;
+		}
+	}
+
+	/**
+	 * Sets the value for the 'reservedBy' field, thus reserving the resource for an user
+	 * @param userName
 	 */
 	public void setReservedBy(String userName) {
 		this.reservedBy = userName;
+	}
+
+	/**
+	 * Removes a node name from the 'reservedForNode' list
+	 * @param nodeName The name of the node that will be removed
+	 */
+	public void unReserveForNode(String nodeName) {
+		this.reservedForNodes.remove(nodeName);
+
+		this.reservedForNode = new String();
+		for (String s : this.reservedForNodes)
+			this.reservedForNode += s + " ";
+
+		this.reservedForNode = this.reservedForNode.trim();
+	}
+
+	/**
+	 * Removes all node names from the 'reservedForNode' list
+	 */
+	public void unReserveForAllNodes() {
+		this.reservedForNode = null;
+		this.reservedForNodes.clear();
 	}
 
 	/**
@@ -337,10 +429,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * Resets the values for the 'reservedBy' and 'build'
+	 * Resets the values for the 'reservedForNode', 'reservedBy' and 'build'
 	 * fields and dequeues the resource
 	 */
 	public void reset() {
+		this.unReserveForAllNodes();
 		this.unReserve();
 		this.unqueue();
 		this.setBuild(null);

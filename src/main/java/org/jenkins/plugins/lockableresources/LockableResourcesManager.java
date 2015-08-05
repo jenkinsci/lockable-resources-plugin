@@ -1,15 +1,19 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
+ *                                                                           *
+ * Resource reservation per node by Darius Mihai (mihai_darius22@yahoo.com)  *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                          *
+ *                                                                           *
+ * This file is part of the Jenkins Lockable Resources Plugin and is         *
+ * published under the MIT license.                                          *
+ *                                                                           *
+ * See the "LICENSE.txt" file for more information.                          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
 import hudson.model.AbstractBuild;
+import hudson.model.Node;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -153,16 +157,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * locked, queued or reserved
 	 * @param resources The resources that will be queued
 	 * @param queueItemId The id of the item that enqueues the resources
+	 * @param node The node for which the resources should be reserved for
 	 * @return True if the resources have been successfully queued, or false
 	 * otherwise
 	 */
 	public synchronized boolean queueId(List<LockableResource> resources,
-										int queueItemId) {
+										int queueItemId,
+										Node node) {
 		for (LockableResource r : resources)
-			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
+			if (r.isReserved() || r.isQueued(queueItemId) ||
+					r.isLocked() || !r.isReservedForNode(node))
 				return false;
+
 		for (LockableResource r : resources)
 			r.setQueued(queueItemId);
+
 		return true;
 	}
 
@@ -174,6 +183,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param number The number of resources requested - 0 means all
 	 * @param params Parameters used to identify labels
 	 * @param log The Logger file used for logging
+	 * @param node The node that requests resources
 	 * @return A list of available resources that have either been previously selected in
 	 * the previous queuing round, or resources that can be queued - are not
 	 * reserved for any user, locked or queued (by another item). If the list does not
@@ -185,7 +195,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	                                                  String queueItemProject,
 	                                                  int number,  // 0 means all
 	                                                  Map<String, Object> params,
-	                                                  Logger log) {
+													  Logger log,
+													  Node node) {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
@@ -205,7 +216,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (LockableResource rs : candidates) {
 			if (number != 0 && (selected.size() >= number))
 				break;
-			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
+
+			if (!rs.isReserved() && !rs.isLocked() &&
+					!rs.isQueued() && rs.isReservedForNode(node))
 				selected.add(rs);
 		}
 
@@ -275,12 +288,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param build The build that locks the resources
 	 * @return True if all the resources have been successfully dequeued and
 	 * locked (in order to be able to achieve this, none of the resources can
-	 * be reserved by an user or locked). Return false, if the process failed
+	 * be reserved by an user, reserved for another node other than the
+	 * one running this method or locked). Return false, if the process failed
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
 									 AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked())
+			if (r.isReserved() || r.isLocked() || !r.isReservedForThisNode())
 				return false;
 		}
 
@@ -310,13 +324,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param resources The resources that will be reserved
 	 * @param userName The name of the user that reserves the resources
 	 * @return True if all the resources have been successfully reserved
-	 * (to achieve this, none of the resources can be reserved by an user or locked).
+	 * (to achieve this, none of the resources can be reserved by an user,
+	 * reserved for another node other than the one running this method or locked).
 	 * Return false, if the process failed
 	 */
 	public synchronized boolean reserve(List<LockableResource> resources,
 										String userName) {
 		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked() || r.isQueued())
+			if (r.isReserved() || r.isLocked() || r.isQueued() || !r.isReservedForThisNode())
 				return false;
 		}
 

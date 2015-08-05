@@ -1,17 +1,23 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
+ *                                                                           *
+ * Resource reservation per node by Darius Mihai (mihai_darius22@yahoo.com)  *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                          *
+ *                                                                           *
+ * This file is part of the Jenkins Lockable Resources Plugin and is         *
+ * published under the MIT license.                                          *
+ *                                                                           *
+ * See the "LICENSE.txt" file for more information.                          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.Computer;
+import hudson.model.Executor;
+import hudson.model.Node;
 import hudson.model.Queue;
 
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -58,5 +64,24 @@ public class Utils {
 			return new LockableResourcesStruct(property, env);
 
 		return null;
+	}
+
+	/**
+	 * @return The name of the node that hosts the executor running this method
+	 */
+	public static String getNodeName() {
+		Executor exec = Executor.currentExecutor();
+
+		if (exec == null)
+			return "";
+
+		Computer c = exec.getOwner();
+		Node node = c.getNode();
+		String nodeName = null;
+
+		if(node != null)
+			nodeName = node.getNodeName();
+
+		return "".equals(nodeName) ? "master" : nodeName;
 	}
 }

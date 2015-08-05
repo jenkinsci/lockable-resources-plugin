@@ -54,7 +54,7 @@ public class LockableResourceTest {
 
 	@Before
 	public void setUp() {
-		this.instance = new LockableResource("r1", "d1", "l1 l2", "");
+		this.instance = new LockableResource("r1", "d1", "l1 l2", "", "");
 	}
 
 	@After
@@ -95,6 +95,17 @@ public class LockableResourceTest {
 	}
 
 	/**
+	 * Test of getReservedForNode method, of class LockableResource.
+	 */
+	@Test
+	public void testGetReservedForNode() {
+		System.out.println("getReservedForNode");
+		String expResult = null;
+		String result = instance.getReservedForNode();
+		assertEquals(expResult, result);
+	}
+
+	/**
 	 * Test of getReservedBy method, of class LockableResource.
 	 */
 	@Test
@@ -102,6 +113,17 @@ public class LockableResourceTest {
 		System.out.println("getReservedBy");
 		String expResult = null;
 		String result = instance.getReservedBy();
+		assertEquals(expResult, result);
+	}
+
+	/**
+	 * Test of isReservedFor method, of class LockableResource.
+	 */
+	@Test
+	public void testIsReservedForNode() {
+		System.out.println("isReservedFor");
+		boolean expResult = true;
+		boolean result = instance.isReservedForNode(null);
 		assertEquals(expResult, result);
 	}
 
@@ -189,7 +211,7 @@ public class LockableResourceTest {
 	public void testSetBuild() {
 		System.out.println("setBuild");
 		AbstractBuild lockedBy = null;
-		instance.setBuild(lockedBy)	;
+		instance.setBuild(lockedBy);
 	}
 
 	/**
@@ -212,6 +234,16 @@ public class LockableResourceTest {
 		String expResult = null;
 		String result = instance.getQueueItemProject();
 		assertEquals(expResult, result);
+	}
+
+	/**
+	 * Test of setReservedForNode method, of class LockableResource.
+	 */
+	@Test
+	public void testSetReservedForNode() {
+		System.out.println("setReservedForNode");
+		String nodeName = "";
+		instance.setReservedForNode(nodeName);
 	}
 
 	/**
@@ -252,7 +284,6 @@ public class LockableResourceTest {
 		String result = instance.toString();
 		assertEquals(expResult, result);
 	}
-
 
 	/**
 	 * Test of equals method, of class LockableResource.

@@ -1,11 +1,14 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
+ *                                                                           *
+ * Resource reservation per node by Darius Mihai (mihai_darius22@yahoo.com)  *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                          *
+ *                                                                           *
+ * This file is part of the Jenkins Lockable Resources Plugin and is         *
+ * published under the MIT license.                                          *
+ *                                                                           *
+ * See the "LICENSE.txt" file for more information.                          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
@@ -38,6 +41,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 	 */
 	@Override
 	public CauseOfBlockage canTake(Node node, Queue.BuildableItem item) {
+		/* Might no longer be required, but will leave it just to be sure */
 		// Skip locking for multiple configuration projects,
 		// only the child jobs will actually lock resources.
 		if (item.task instanceof MatrixProject)
@@ -75,9 +79,22 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 											project.getFullName(),
 											resourceNumber,
 											params,
-											LOGGER);
+											LOGGER,
+											node);
 
 			if (selected != null) {
+				/* just to be sure, double check if all the resources in the list can be
+				 * used by the given node. If any of the resources cannot
+				 * be used, return a 'BecauseWrongNode' type causeOfBlockage
+				 */
+				for (LockableResource r : selected) {
+					if (!r.isReservedForNode(node)) {
+						LOGGER.finest(project.getName() + " required some resources"
+								+ " that were not reserved for the current node");
+						return new BecauseWrongNode();
+					}
+				}
+
 				/* enqueue the resources for the itemId and project */
 				LockableResourcesManager.get().queueProject(selected,
 															item.id,
@@ -95,12 +112,11 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			 * added to the queue, return a causeOfBlockage, otherwise return null
 			 * as success
 			 */
-			if (LockableResourcesManager.get().queueId(resources.required, item.id)) {
+			if (LockableResourcesManager.get().queueId(resources.required, item.id, node)) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
-				LOGGER.finest(project.getName() + " waiting for resources "
-					+ resources.required);
+				LOGGER.finest(project.getName() + " waiting for resources " + resources.required);
 				return new BecauseResourcesLocked(resources);
 			}
 		}
@@ -123,4 +139,11 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		}
 	}
 
+	public static class BecauseWrongNode extends CauseOfBlockage {
+
+		@Override
+		public String getShortDescription() {
+			return "Attempted to run on a wrong node";
+		}
+	}
 }
