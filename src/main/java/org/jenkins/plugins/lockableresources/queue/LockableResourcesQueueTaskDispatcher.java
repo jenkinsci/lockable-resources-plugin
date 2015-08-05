@@ -27,8 +27,7 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
-	static final Logger LOGGER = Logger
-			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
+	static final Logger LOGGER = Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	/**
 	 * This method is called when Jenkins checks if this item (build configuration)
@@ -49,10 +48,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			return null;
 
 		LockableResourcesStruct resources = Utils.requiredResources(project);
-		if (resources == null ||
-			(resources.required.isEmpty() && resources.label.isEmpty())) {
+		if (resources == null || (resources.required.isEmpty() && resources.label.isEmpty()))
 			return null;
-		}
 
 		int resourceNumber;
 		try {
@@ -71,13 +68,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			    params.putAll(matrix.getCombination());
 			}
 
-			List<LockableResource> selected = LockableResourcesManager.get().queue(
-					resources,
-					item.id,
-					project.getFullName(),
-					resourceNumber,
-					params,
-					LOGGER);
+			List<LockableResource> selected = LockableResourcesManager.get()
+					.queue( resources,
+							item.id,
+							project.getFullName(),
+							resourceNumber,
+							params,
+							LOGGER);
 
 			if (selected != null) {
 				LOGGER.finest(project.getName() + " reserved resources " + selected);

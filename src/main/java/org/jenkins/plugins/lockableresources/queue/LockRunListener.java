@@ -30,8 +30,7 @@ import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	static final String LOG_PREFIX = "[lockable-resources]";
-	static final Logger LOGGER = Logger.getLogger(LockRunListener.class
-			.getName());
+	static final Logger LOGGER = Logger.getLogger(LockRunListener.class.getName());
 
 	/**
 	 * Method called at the start of the task. Displays information about the status of the
@@ -55,12 +54,11 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		if (proj != null) {
 			LockableResourcesStruct resources = Utils.requiredResources(proj);
 			if (resources != null) {
-				if (resources.requiredNumber != null || !resources.label.isEmpty()) {
-					required = LockableResourcesManager.get().
-						getResourcesFromProject(proj.getFullName());
-				} else {
+				if (resources.requiredNumber != null || !resources.label.isEmpty())
+					required = LockableResourcesManager.get().getResourcesFromProject(proj.getFullName());
+				else
 					required = resources.required;
-				}
+
 				if (LockableResourcesManager.get().lock(required, build)) {
 					build.addAction(LockedResourcesBuildAction
 							.fromResources(required));
@@ -70,9 +68,8 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 							+ " acquired lock on " + required);
 					if (resources.requiredVar != null) {
 						List<ParameterValue> params = new ArrayList<ParameterValue>();
-						params.add(new StringParameterValue(
-							resources.requiredVar,
-							required.toString().replaceAll("[\\]\\[]", "")));
+						params.add(new StringParameterValue(resources.requiredVar,
+															required.toString().replaceAll("[\\]\\[]", "")));
 						build.addAction(new ParametersAction(params));
 					}
 				} else {
@@ -105,8 +102,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			LockableResourcesManager.get().unlock(required, build);
 			listener.getLogger().printf("%s released lock on %s\n",
 					LOG_PREFIX, required);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
+			LOGGER.fine(build.getFullDisplayName() + " released lock on " + required);
 		}
 
 	}
@@ -127,8 +123,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {
 			LockableResourcesManager.get().unlock(required, build);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
+			LOGGER.fine(build.getFullDisplayName() + " released lock on " + required);
 		}
 	}
 

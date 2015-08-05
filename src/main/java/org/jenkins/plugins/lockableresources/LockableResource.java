@@ -60,8 +60,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private transient long queuingStarted = 0;
 
 	@DataBoundConstructor
-	public LockableResource(
-			String name, String description, String labels, String reservedBy) {
+	public LockableResource(String name,
+							String description,
+							String labels,
+							String reservedBy) {
 		this.name = name;
 		this.description = description;
 		this.labels = labels;
@@ -127,8 +129,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * @param params The parameters that will be checked
 	 * @return True if the script check against the binding is successful
 	 */
-	private boolean expressionMatches(String expression,
-			Map<String, Object> params) {
+	private boolean expressionMatches(  String expression,
+										Map<String, Object> params) {
 		Binding binding = new Binding(params);
 		binding.setVariable("resourceName", name);
 		binding.setVariable("resourceDescription", description);
@@ -263,11 +265,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 */
 	public Task getTask() {
 		Item item = Queue.getInstance().getItem(queueItemId);
-		if (item != null) {
+		if (item != null)
 			return item.task;
-		} else {
+		else
 			return null;
-		}
 	}
 
 	/**
@@ -362,16 +363,20 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
+
 		if (obj == null)
 			return false;
+
 		if (getClass() != obj.getClass())
 			return false;
+
 		LockableResource other = (LockableResource) obj;
 		if (name == null) {
 			if (other.name != null)
 				return false;
 		} else if (!name.equals(other.name))
 			return false;
+
 		return true;
 	}
 

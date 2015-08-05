@@ -38,8 +38,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	@DataBoundConstructor
 	public RequiredResourcesProperty(String resourceNames,
-			String resourceNamesVar, String resourceNumber,
-			String labelName) {
+									 String resourceNamesVar,
+									 String resourceNumber,
+									 String labelName) {
 		super();
 		this.resourceNames = resourceNames;
 		this.resourceNamesVar = resourceNamesVar;
@@ -144,54 +145,46 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 					if (!found)
 						wrongNames.add(name);
 				}
-				if (wrongNames.isEmpty()) {
+				if (wrongNames.isEmpty())
 					return FormValidation.ok();
-				} else {
-					return FormValidation
-							.error("The following resources do not exist: "
+				else
+					return FormValidation.error("The following resources do not exist: "
 									+ wrongNames);
-				}
 			}
 		}
 
-		public FormValidation doCheckLabelName(
-				@QueryParameter String value,
-				@QueryParameter String resourceNames) {
+		public FormValidation doCheckLabelName( @QueryParameter String value,
+												@QueryParameter String resourceNames) {
 			String label = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
-			if (label == null) {
+			if (label == null)
 				return FormValidation.ok();
-			} else if (names != null) {
-				return FormValidation.error(
-						"Only label or resources can be defined, not both.");
-			} else {
-				if (LockableResourcesManager.get().isValidLabel(label)) {
+			else if (names != null)
+				return FormValidation.error("Only label or resources can be defined, not both.");
+			else {
+				if (LockableResourcesManager.get().isValidLabel(label))
 					return FormValidation.ok();
-				} else {
-					return FormValidation.error(
-							"The label does not exist: " + label);
-				}
+				else
+					return FormValidation.error("The label does not exist: " + label);
 			}
 		}
 
 		public FormValidation doCheckResourceNumber(@QueryParameter String value,
-				@QueryParameter String resourceNames,
-				@QueryParameter String labelName) {
+													@QueryParameter String resourceNames,
+													@QueryParameter String labelName) {
 
 			String number = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
 			String label = Util.fixEmptyAndTrim(labelName);
 
-			if (number == null || number.equals("") || number.trim().equals("0")) {
+			if (number == null || number.equals("") || number.trim().equals("0"))
 				return FormValidation.ok();
-			}
 
 			int numAsInt;
 			try {
 				numAsInt = Integer.parseInt(number);
 			} catch(NumberFormatException e)  {
-				return FormValidation.error(
-					"Could not parse the given value as integer.");
+				return FormValidation.error("Could not parse the given value as integer.");
 			}
 			int numResources = 0;
 			if (names != null) {
@@ -209,8 +202,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			return FormValidation.ok();
 		}
 
-		public AutoCompletionCandidates doAutoCompleteLabelName(
-				@QueryParameter String value) {
+		public AutoCompletionCandidates doAutoCompleteLabelName(@QueryParameter String value) {
 			AutoCompletionCandidates c = new AutoCompletionCandidates();
 
 			value = Util.fixEmptyAndTrim(value);
@@ -222,15 +214,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			return c;
 		}
 
-		public AutoCompletionCandidates doAutoCompleteResourceNames(
-				@QueryParameter String value) {
+		public AutoCompletionCandidates doAutoCompleteResourceNames(@QueryParameter String value) {
 			AutoCompletionCandidates c = new AutoCompletionCandidates();
 
 			value = Util.fixEmptyAndTrim(value);
 
 			if (value != null) {
-				for (LockableResource r : LockableResourcesManager.get()
-						.getResources()) {
+				for (LockableResource r : LockableResourcesManager.get().getResources()) {
 					if (r.getName().startsWith(value))
 						c.add(r.getName());
 				}

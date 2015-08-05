@@ -28,15 +28,13 @@ public class LockableResourcesStruct {
 	/** The number of resources required */
 	public String requiredNumber;
 
-	public LockableResourcesStruct(RequiredResourcesProperty property,
-			EnvVars env) {
+	public LockableResourcesStruct( RequiredResourcesProperty property,
+									EnvVars env) {
 		required = new ArrayList<LockableResource>();
 		for (String name : property.getResources()) {
-			LockableResource r = LockableResourcesManager.get().fromName(
-				env.expand(name));
-			if (r != null) {
+			LockableResource r = LockableResourcesManager.get().fromName(env.expand(name));
+			if (r != null)
 				this.required.add(r);
-			}
 		}
 
 		label = env.expand(property.getLabelName());
@@ -50,6 +48,7 @@ public class LockableResourcesStruct {
 			requiredNumber = null;
 	}
 
+	@Override
 	public String toString() {
 		return "Required resources: " + this.required +
 			", Required label: " + this.label +

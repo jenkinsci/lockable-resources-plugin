@@ -58,9 +58,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
 			String rName = r.getQueueItemProject();
-			if (rName != null && rName.equals(fullName)) {
+			if (rName != null && rName.equals(fullName))
 				matching.add(r);
-			}
 		}
 		return matching;
 	}
@@ -73,10 +72,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
 			AbstractBuild<?, ?> rBuild = r.getBuild();
-			if (rBuild != null && rBuild == build) {
+			if (rBuild != null && rBuild == build)
 				matching.add(r);
-			}
 		}
+
 		return matching;
 	}
 
@@ -85,8 +84,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @return True if the given label is in the list of labels for any
 	 * resource, or false otherwise
 	 */
-	public Boolean isValidLabel(String label)
-	{
+	public Boolean isValidLabel(String label) {
 		return label.startsWith(LockableResource.GROOVY_LABEL_MARKER)
 				|| this.getAllLabels().contains(label);
 	}
@@ -95,8 +93,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @return Creates a set of labels containing all the labels associated with
 	 * the resources in the 'resources' field
 	 */
-	public Set<String> getAllLabels()
-	{
+	public Set<String> getAllLabels() {
 		Set<String> labels = new HashSet<String>();
 		for (LockableResource r : this.resources) {
 			String rl = r.getLabels();
@@ -111,12 +108,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param label
 	 * @return The amount of resources with the given label that are not locked, queued or reserved
 	 */
-	public int getFreeResourceAmount(String label)
-	{
+	public int getFreeResourceAmount(String label) {
 		int free = 0;
 		for (LockableResource r : this.resources) {
 			if (r.isLocked() || r.isQueued() || r.isReserved())
 				continue;
+
 			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
 				free += 1;
 		}
@@ -129,12 +126,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @return A list containing the resources that have the given label
 	 */
 	public List<LockableResource> getResourcesWithLabel(String label,
-			Map<String, Object> params) {
+														Map<String, Object> params) {
 		List<LockableResource> found = new ArrayList<LockableResource>();
-		for (LockableResource r : this.resources) {
+		for (LockableResource r : this.resources)
 			if (r.isValidLabel(label, params))
 				found.add(r);
-		}
+
 		return found;
 	}
 
@@ -143,12 +140,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @return The resource with the given name
 	 */
 	public LockableResource fromName(String resourceName) {
-		if (resourceName != null) {
-			for (LockableResource r : resources) {
+		if (resourceName != null)
+			for (LockableResource r : resources)
 				if (resourceName.equals(r.getName()))
 					return r;
-			}
-		}
+
 		return null;
 	}
 
@@ -160,8 +156,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @return True if the resources have been successfully queued, or false
 	 * otherwise
 	 */
-	public synchronized boolean queue(List<LockableResource> resources,
-			int queueItemId) {
+	public synchronized boolean queue(  List<LockableResource> resources,
+										int queueItemId) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
@@ -201,11 +197,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		List<LockableResource> candidates = new ArrayList<LockableResource>();
-		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+		if (requiredResources.label != null && requiredResources.label.isEmpty())
 			candidates = requiredResources.required;
-		} else {
+		else
 			candidates = getResourcesWithLabel(requiredResources.label, params);
-		}
 
 		for (LockableResource rs : candidates) {
 			if (number != 0 && (selected.size() >= number))
@@ -230,9 +225,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
-		for (LockableResource rsc : selected) {
+		for (LockableResource rsc : selected)
 			rsc.setQueued(queueItemId, queueItemProject);
-		}
 		return selected;
 	}
 
@@ -272,12 +266,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * be reserved by an user or locked). Return false, if the process failed
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+									AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked()) {
+			if (r.isReserved() || r.isLocked())
 				return false;
-			}
 		}
+
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);
@@ -291,7 +285,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param build The build that locks the resources
 	 */
 	public synchronized void unlock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+									AbstractBuild<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
@@ -308,15 +302,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Return false, if the process failed
 	 */
 	public synchronized boolean reserve(List<LockableResource> resources,
-			String userName) {
+										String userName) {
 		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked() || r.isQueued()) {
+			if (r.isReserved() || r.isLocked() || r.isQueued())
 				return false;
-			}
 		}
-		for (LockableResource r : resources) {
+
+		for (LockableResource r : resources)
 			r.setReservedBy(userName);
-		}
+
 		save();
 		return true;
 	}
@@ -325,9 +319,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param resources Unreserve all the resources in the given list
 	 */
 	public synchronized void unreserve(List<LockableResource> resources) {
-		for (LockableResource r : resources) {
+		for (LockableResource r : resources)
 			r.unReserve();
-		}
+
 		save();
 	}
 
@@ -341,9 +335,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param resources
 	 */
 	public synchronized void reset(List<LockableResource> resources) {
-		for (LockableResource r : resources) {
+		for (LockableResource r : resources)
 			r.reset();
-		}
+
 		save();
 	}
 

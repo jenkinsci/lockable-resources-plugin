@@ -44,8 +44,7 @@ public class Utils {
 	 * @return A LockableResourcesStruct variable that contains information
 	 * about the resources for the given project
 	 */
-	public static LockableResourcesStruct requiredResources(
-			AbstractProject<?, ?> project) {
+	public static LockableResourcesStruct requiredResources(AbstractProject<?, ?> project) {
 		RequiredResourcesProperty property = null;
 		EnvVars env = new EnvVars();
 
