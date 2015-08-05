@@ -12,6 +12,7 @@ import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
 import hudson.model.AbstractProject;
+import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
@@ -30,14 +31,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 	static final Logger LOGGER = Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	/**
-	 * This method is called when Jenkins checks if this item (build configuration)
-	 * can, or cannot, be run on any of the nodes in the network
-	 * @param item The item that can or cannot run on any node
-	 * @return A cause of blockage if the item cannot be built on any node,
-	 * or null if no errors occur
+	 * @param node The node that is checked if is able to run this queue item
+	 * @param item The item that is verified if can be run on the given node
+	 * @return A cause of blockage if the item cannot be built on the given
+	 * node, or null if no errors occur
 	 */
 	@Override
-	public CauseOfBlockage canRun(Queue.Item item) {
+	public CauseOfBlockage canTake(Node node, Queue.BuildableItem item) {
 		// Skip locking for multiple configuration projects,
 		// only the child jobs will actually lock resources.
 		if (item.task instanceof MatrixProject)
