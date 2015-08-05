@@ -19,9 +19,13 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class LockableResourcesStruct {
 
+	/** A list containing the global resources required */
 	public List<LockableResource> required;
+	/** The labels associated with the required resources */
 	public String label;
+	/** The name of the variable that will hold the required resources names */
 	public String requiredVar;
+	/** The number of resources required */
 	public String requiredNumber;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property,

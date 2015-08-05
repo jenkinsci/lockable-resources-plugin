@@ -30,6 +30,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 	static final Logger LOGGER = Logger
 			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
+	/**
+	 * This method is called when Jenkins checks if this item (build configuration)
+	 * can, or cannot, be run on any of the nodes in the network
+	 * @param item The item that can or cannot run on any node
+	 * @return A cause of blockage if the item cannot be built on any node,
+	 * or null if no errors occur
+	 */
 	@Override
 	public CauseOfBlockage canRun(Queue.Item item) {
 		// Skip locking for multiple configuration projects,

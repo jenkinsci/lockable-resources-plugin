@@ -18,12 +18,20 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class Utils {
 
+	/**
+	 * @param item The queue item for which to retrieve the project
+	 * @return The Jenkins project for the given queue item
+	 */
 	public static AbstractProject<?, ?> getProject(Queue.Item item) {
 		if (item.task instanceof AbstractProject)
 			return (AbstractProject<?, ?>) item.task;
 		return null;
 	}
 
+	/**
+	 * @param build The build for which to retrieve the project
+	 * @return The Jenkins project that the given build is part of
+	 */
 	public static AbstractProject<?, ?> getProject(AbstractBuild<?, ?> build) {
 		Object p = build.getParent();
 		if (p instanceof AbstractProject)
@@ -31,6 +39,11 @@ public class Utils {
 		return null;
 	}
 
+	/**
+	 * @param project The project for which a configuration is requested
+	 * @return A LockableResourcesStruct variable that contains information
+	 * about the resources for the given project
+	 */
 	public static LockableResourcesStruct requiredResources(
 			AbstractProject<?, ?> project) {
 		RequiredResourcesProperty property = null;

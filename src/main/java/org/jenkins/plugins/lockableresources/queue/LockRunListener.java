@@ -33,6 +33,16 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	static final Logger LOGGER = Logger.getLogger(LockRunListener.class
 			.getName());
 
+	/**
+	 * Method called at the start of the task. Displays information about the status of the
+	 * resources used by the task. The call happens `after` the start of the
+	 * task, so failing to obtain a lock on the resources does not influence the
+	 * way the task runs, but will cause problems for the overall project,
+	 * as the resource might be stuck, and the execution will start even though it
+	 * most likely shouldn't
+	 * @param build The build that started - can be a matrix configuration
+	 * @param listener Task listener - used for logging data
+	 */
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
 		// Skip locking for multiple configuration projects,
@@ -75,6 +85,12 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		}
 	}
 
+	/**
+	 * Called after a task has completed, in order to release the lock on any
+	 * resources that were locked by the current build
+	 * @param build The build that finished
+	 * @param listener Task listener - used for logging data
+	 */
 	@Override
 	public void onCompleted(AbstractBuild<?, ?> build, TaskListener listener) {
 		// Skip unlocking for multiple configuration projects,
@@ -95,6 +111,11 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	}
 
+	/**
+	 * Called when deleting a task, in order to release the lock
+	 * on the resources locked by the current build
+	 * @param build The deleted build
+	 */
 	@Override
 	public void onDeleted(AbstractBuild<?, ?> build) {
 		// Skip unlocking for multiple configuration projects,
