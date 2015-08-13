@@ -70,7 +70,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	/** A set of node names (slave names) that can use this resource; same as
 	 *  reservedForNodes, but names are split by whitespace
 	 */
-	private final transient Set<String> reservedForNodesSet;
+	private transient Set<String> reservedForNodesSet;
 
 	@DataBoundConstructor
 	public LockableResource(String name,
@@ -413,6 +413,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
+	 * Updates the 'reservedForNodesSet' based on the 'reservedForNodes' string
+	 */
+	public void updateReservedForNodesSet() {
+		reservedForNodesSet = new WhitespaceSet(reservedForNodes);
+	}
+
+	/**
 	 * Resets the value for the 'reservedBy' field
 	 */
 	public void unReserve() {
@@ -482,7 +489,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		public String toString() {
 			if(this.isEmpty())
 				return null;
-			
+
 			String result = "";
 			for(String s : this)
 				result += s + " ";

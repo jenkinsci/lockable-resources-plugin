@@ -12,6 +12,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
+import static hudson.init.InitMilestone.PLUGINS_STARTED;
+import hudson.init.Initializer;
 import hudson.model.AbstractBuild;
 import hudson.model.Node;
 
@@ -387,6 +389,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		} catch (JSONException e) {
 			return false;
 		}
+	}
+
+	/**
+	 * Called by the initializer method "updateAllResourceNodeRestrictions" in order
+	 * to update the resources 'reservedForNodesSet' fields
+	 */
+	private void updateResourcesNodeRestrictions() {
+		for(LockableResource r : this.resources)
+			r.updateReservedForNodesSet();
+	}
+
+	/**
+	 * Called by Jenkins at initialization; used to update the resources reservedForNodes
+	 * information
+	 */
+	@Initializer(after=PLUGINS_STARTED)
+	public static void updateAllResourceNodeRestrictions() {
+		LockableResourcesManager.get().updateResourcesNodeRestrictions();
 	}
 
 	public static LockableResourcesManager get() {
