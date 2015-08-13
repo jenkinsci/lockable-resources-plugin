@@ -1,18 +1,34 @@
 <!--
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                                         *
+ *                                                                                             *
+ * Automatic resource creation based on node labels by Darius Mihai (mihai_darius22@yahoo.com) *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                                            *
+ *                                                                                             *
+ * This file is part of the Jenkins Lockable Resources Plugin and is                           *
+ * published under the MIT license.                                                            *
+ *                                                                                             *
+ * See the "LICENSE.txt" file for more information.                                            *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
 	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 	<f:section title="${%Lockable Resources Manager}">
+		<f:entry title="${%Create automatic resources}" field="autoCreateResources">
+			<f:checkbox/>
+		</f:entry>
+		<f:entry title="${%Labels for automatic generation}">
+			<f:repeatable field="labelSets" header="${%Node labels}" minimum="0" add="${%Add label set}">
+				<table width="100%">
+					<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.autogen.LabelSet"/>
+					<f:entry title="">
+						<div align="right"><f:repeatableDeleteButton/></div>
+					</f:entry>
+				</table>
+			</f:repeatable>
+		</f:entry>
 		<f:entry title="${%Lockable Resources}">
-			<f:repeatable field="resources" header="${%Resource}" minimum="0" add="${%Add Lockable Resouce}">
+			<f:repeatable field="manualResources" header="${%Resource}" minimum="0" add="${%Add Lockable Resouce}">
 				<table width="100%">
 					<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>
 					<f:entry title="">
