@@ -101,7 +101,7 @@ public class LockableResourceTest {
 	public void testGetReservedForNode() {
 		System.out.println("getReservedForNode");
 		String expResult = null;
-		String result = instance.getReservedForNode();
+		String result = instance.getReservedForNodes();
 		assertEquals(expResult, result);
 	}
 

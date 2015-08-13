@@ -55,7 +55,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	/** Labels associated with this resource */
 	private final String labels;
 	/** The name(s) of the nodes that can use this resource */
-	private String reservedForNode;
+	private String reservedForNodes;
 	/** The name of the user that should be logged in, in order to use this resource */
 	private String reservedBy;
 
@@ -67,26 +67,24 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private transient AbstractBuild<?, ?> build = null;
 	/** The moment (UNIX time in seconds) when the resource was queued */
 	private transient long queuingStarted = 0;
-	/** A list of node names (slave names) that can use this resource; same as
-	 *  reservedForNode, names are split by whitespace
+	/** A set of node names (slave names) that can use this resource; same as
+	 *  reservedForNodes, but names are split by whitespace
 	 */
-	private transient Set<String> reservedForNodes;
+	private final transient Set<String> reservedForNodesSet;
 
 	@DataBoundConstructor
 	public LockableResource(String name,
 							String description,
 							String labels,
-							String reservedForNode,
+							String reservedForNodes,
 							String reservedBy) {
 		this.name = name;
 		this.description = description;
 		this.labels = labels;
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
-		this.reservedForNode = Util.fixEmptyAndTrim(reservedForNode);
+		this.reservedForNodes = Util.fixEmptyAndTrim(reservedForNodes);
 
-		this.reservedForNodes = new HashSet<String>();
-		this.reservedForNodes.addAll(Arrays.asList(reservedForNode.split("\\s+")));
-		this.reservedForNodes = this.reservedForNodes.isEmpty() ? null : this.reservedForNodes;
+		this.reservedForNodesSet = new WhitespaceSet(reservedForNodes);
 	}
 
 	/**
@@ -118,16 +116,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * or null if the resource is not reserved for any node
 	 */
 	@Exported
-	public String getReservedForNode() {
-		return reservedForNode;
+	public String getReservedForNodes() {
+		return reservedForNodes;
 	}
 
 	/**
-	 * @return A list of names of the nodes that reserved this resource, or null
+	 * @return A set of names of the nodes that reserved this resource, or null
 	 * if the resource is not reserved for any node
 	 */
-	public Set<String> getReservedForNodes() {
-		return reservedForNodes;
+	public Set<String> getReservedForNodesSet() {
+		return reservedForNodesSet;
 	}
 
 	/**
@@ -210,7 +208,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 		String nodeName = node.getNodeName().equals("") ? "master" : node.getNodeName();
 
-		return reservedForNodes == null || reservedForNodes.contains(nodeName);
+		return reservedForNodesSet.isEmpty() || reservedForNodesSet.contains(nodeName);
 	}
 
 	/**
@@ -218,7 +216,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * which this resource has been reserved for, or false otherwise
 	 */
 	public boolean isReservedForThisNode() {
-		return reservedForNodes == null || reservedForNodes.contains(Utils.getNodeName());
+		return reservedForNodesSet.isEmpty() || reservedForNodesSet.contains(Utils.getNodeName());
 	}
 
 	/**
@@ -380,15 +378,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * Adds a value to the 'reservedForNode' list if the
-	 * resource is not already reserved for that node
+	 * Adds a value to the 'reservedForNode' set if the resource is not already reserved for that node
 	 * @param nodeName Node name to be added
 	 */
 	public void setReservedForNode(String nodeName) {
-		if (!this.reservedForNodes.contains(nodeName)) {
-			this.reservedForNodes.add(nodeName);
-			this.reservedForNode += nodeName;
-		}
+		if(this.reservedForNodesSet.add(nodeName))
+			this.reservedForNodes = this.reservedForNodesSet.toString();
 	}
 
 	/**
@@ -400,25 +395,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * Removes a node name from the 'reservedForNode' list
+	 * Removes a node name from the 'reservedForNodesSet' set
 	 * @param nodeName The name of the node that will be removed
 	 */
 	public void unReserveForNode(String nodeName) {
-		this.reservedForNodes.remove(nodeName);
-
-		this.reservedForNode = new String();
-		for (String s : this.reservedForNodes)
-			this.reservedForNode += s + " ";
-
-		this.reservedForNode = this.reservedForNode.trim();
+		if(this.reservedForNodesSet.remove(nodeName))
+			this.reservedForNodes = this.reservedForNodesSet.toString();
 	}
 
 	/**
-	 * Removes all node names from the 'reservedForNode' list
+	 * Sets the 'reservedForNodes' and 'reservedForNodesSet' to null, thus removing all reservations
+	 * set for nodes
 	 */
 	public void unReserveForAllNodes() {
-		this.reservedForNode = null;
-		this.reservedForNodes.clear();
+		this.reservedForNodes    = null;
+		this.reservedForNodesSet.clear();
 	}
 
 	/**
@@ -471,6 +462,33 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			return false;
 
 		return true;
+	}
+
+	/**
+	 * Extension of class HashSet with overridden toString method in order to easily create a set out of
+	 * a string containing tokens separated by whitespace. This is used mainly for reservedForNodes.
+	 * The toString method will also return a string of tokens separated by whitespace; if the set is
+	 * empty it will return null instead.
+	 */
+	public static class WhitespaceSet extends HashSet<String> {
+
+		public WhitespaceSet(String str) {
+			super(Arrays.asList(str.split("\\s+")));
+			/* remove empty element, if it exists */
+			this.remove("");
+		}
+
+		@Override
+		public String toString() {
+			if(this.isEmpty())
+				return null;
+			
+			String result = "";
+			for(String s : this)
+				result += s + " ";
+
+			return result.trim();
+		}
 	}
 
 	@Extension

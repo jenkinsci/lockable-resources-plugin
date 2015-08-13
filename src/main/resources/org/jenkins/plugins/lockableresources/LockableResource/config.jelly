@@ -22,7 +22,7 @@
 	<f:entry title="${%Labels}" field="labels">
 		<f:textbox/>
 	</f:entry>
-	<f:entry title="${%Reserved for nodes}" field="reservedForNode">
+    <f:entry title="${%Reserved for nodes}" field="reservedForNodes">
 		<f:textbox/>
 	</f:entry>
 	<f:entry title="${%Reserved by user}" field="reservedBy">
