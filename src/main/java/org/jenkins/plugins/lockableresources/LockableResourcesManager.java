@@ -213,7 +213,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * otherwise
 	 */
 	public synchronized boolean queueId(List<LockableResource> resources,
-										int queueItemId,
+										long queueItemId,
 										Node node) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) ||
@@ -242,7 +242,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 */
 	public synchronized
 		List<LockableResource> findAvailableResources(LockableResourcesStruct requiredResources,
-	                                                  int queueItemId,
+	                                                  long queueItemId,
 	                                                  String queueItemProject,
 	                                                  int number,  // 0 means all
 	                                                  Map<String, Object> params,
@@ -300,7 +300,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @param queueItemProject The name of the project that enqueues the resource
 	 */
 	public synchronized void queueProject(  List<LockableResource> selected,
-											int queueItemId,
+											long queueItemId,
 											String queueItemProject) {
 		for (LockableResource rsc : selected)
 			rsc.setQueued(queueItemId, queueItemProject);
@@ -313,7 +313,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 */
 	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
 	                                            String project,
-	                                            int taskId,
+	                                            long taskId,
 	                                            Logger log) {
 		for (LockableResource r : resources) {
 			// This project might already have something in queue

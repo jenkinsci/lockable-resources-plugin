@@ -60,7 +60,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String reservedBy;
 
 	/** The id of the item that queued this resource */
-	private transient int queueItemId = NOT_QUEUED;
+	private transient long queueItemId = NOT_QUEUED;
 	/** The name of the project that queued this resource */
 	private transient String queueItemProject = null;
 	/** The build that locked this resource */
@@ -260,7 +260,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * @return True if queued by any other task than the given one, or false
 	 * otherwise
 	 */
-	public boolean isQueued(int taskId) {
+	public boolean isQueued(long taskId) {
 		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED && queueItemId != taskId;
 	}
@@ -270,7 +270,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * @return True if this resource is queued by the given task, or false
 	 * otherwise
 	 */
-	public boolean isQueuedByTask(int taskId) {
+	public boolean isQueuedByTask(long taskId) {
 		this.validateQueuingTimeout();
 		return queueItemId == taskId;
 	}
@@ -341,7 +341,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	/**
 	 * @return The value of queueItemId after validating the queue timeout
 	 */
-	public int getQueueItemId() {
+	public long getQueueItemId() {
 		this.validateQueuingTimeout();
 		return queueItemId;
 	}
@@ -359,7 +359,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * @param queueItemId Set the value for queueItemId and set the field
 	 * 'queuingStarted' to current time in seconds
 	 */
-	public void setQueued(int queueItemId) {
+	public void setQueued(long queueItemId) {
 		this.queueItemId = queueItemId;
 		this.queuingStarted = System.currentTimeMillis() / 1000;
 	}
@@ -370,7 +370,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * @param queueItemId The ID of the queue item that enqueues this resource
 	 * @param queueProjectName
 	 */
-	public void setQueued(int queueItemId, String queueProjectName) {
+	public void setQueued(long queueItemId, String queueProjectName) {
 		this.setQueued(queueItemId);
 		this.queueItemProject = queueProjectName;
 	}

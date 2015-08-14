@@ -75,7 +75,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			/* retreive a list of resources that can be used by this node */
 			List<LockableResource> selected = LockableResourcesManager.get()
 					.findAvailableResources(resources,
-											item.id,
+											item.getId(),
 											project.getFullName(),
 											resourceNumber,
 											params,
@@ -97,7 +97,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 				/* enqueue the resources for the itemId and project */
 				LockableResourcesManager.get().queueProject(selected,
-															item.id,
+															item.getId(),
 															project.getFullName());
 
 				LOGGER.finest(project.getName() + " reserved resources " + selected);
@@ -112,7 +112,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			 * added to the queue, return a causeOfBlockage, otherwise return null
 			 * as success
 			 */
-			if (LockableResourcesManager.get().queueId(resources.required, item.id, node)) {
+			if (LockableResourcesManager.get().queueId(resources.required, item.getId(), node)) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
