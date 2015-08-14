@@ -29,6 +29,7 @@ import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 
+import java.util.Collection;
 import java.util.Set;
 
 import org.jenkins.plugins.lockableresources.WhitespaceSet;
@@ -59,6 +60,22 @@ public class LabelSet extends AbstractDescribableImpl<LabelSet> {
 	 */
 	public Set<String> getLabelsSet() {
 		return this.labelsSet;
+	}
+
+	/**
+	 * @param toCheck A collection of labels to be checked
+	 * @return True if this 'labelsSet' contains all the labels in the given collection
+	 */
+	public boolean containsLabels(Collection<String> toCheck) {
+		return this.labelsSet.containsAll(toCheck);
+	}
+
+	/**
+	 * @param toCheck A LabelSet with labels to be checked
+	 * @return True if this 'labelsSet' contains all the labels in the given LabelSet's set
+	 */
+	public boolean containsLabels(LabelSet toCheck) {
+		return this.labelsSet.containsAll(toCheck.labelsSet);
 	}
 
 	/**
