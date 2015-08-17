@@ -12,7 +12,7 @@ import hudson.Plugin;
 import hudson.model.Api;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.Set;
 
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
@@ -28,8 +28,8 @@ public class LockableResources extends Plugin {
 	 * @return A resources list that can be accessed by a remote API
 	 */
 	@Exported
-	public List<LockableResource> getResources() {
-		return Collections.unmodifiableList(LockableResourcesManager.get()
+	public Set<LockableResource> getResources() {
+		return Collections.unmodifiableSet(LockableResourcesManager.get()
 				.getResources());
 	}
 

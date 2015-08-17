@@ -71,7 +71,7 @@ public class LockableResourcesRootAction implements RootAction {
 		return "lockable-resources";
 	}
 
-	public List<LockableResource> getResources() {
+	public Set<LockableResource> getResources() {
 		return LockableResourcesManager.get().getResources();
 	}
 
