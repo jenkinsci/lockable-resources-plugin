@@ -64,7 +64,7 @@ public class LabelSet extends AbstractDescribableImpl<LabelSet> {
 	/**
 	 * Used to update the 'labelsSet' based on the information in 'labels'
 	 */
-	public void updateLabelSet() {
+	public synchronized void updateLabelSet() {
 		if(this.labels != null)
 			this.labelsSet = new WhitespaceSet(this.labels);
 		else

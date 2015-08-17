@@ -426,7 +426,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	/**
 	 * Updates the 'reservedForNodesSet' based on the 'reservedForNodes' string
 	 */
-	public void updateReservedForNodesSet() {
+	public synchronized void updateReservedForNodesSet() {
 		if(reservedForNodes != null)
 			reservedForNodesSet = new WhitespaceSet(reservedForNodes);
 		else
