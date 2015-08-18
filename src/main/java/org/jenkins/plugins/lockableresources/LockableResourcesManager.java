@@ -440,11 +440,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	/**
-	 * Synchronized method used to add resources to the 'resources' list
+	 * Synchronized method used to add resources to the 'resources' list. If any of the resources already exists,
+	 * it will be updated instead.
 	 * @param toAdd A collection of resources to be added
 	 */
 	public void addAllResources(Collection<LockableResource> toAdd) {
 		synchronized(resources) {
+			/* update the status of the new resources to match that of the old resources */
+			checkOldResources(toAdd);
+			/* add new resources and replace resources that match */
+			resources.removeAll(toAdd);
 			resources.addAll(toAdd);
 		}
 	}
