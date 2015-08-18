@@ -47,11 +47,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public static final int NOT_QUEUED = 0;
 	private static final int QUEUE_TIMEOUT = 60;
 	public static final String GROOVY_LABEL_MARKER = "groovy:";
+	private static final String BROKEN_RESOURCE_DESCRIPTION = "Broken resource. Will be removed after unlock";
 
 	/** The name of this resource */
 	private final String name;
 	/** The description of this resource */
-	private final String description;
+	private String description;
 	/** Labels associated with this resource */
 	private final String labels;
 	/** The name(s) of the nodes that can use this resource */
@@ -73,6 +74,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 *  reservedForNodes, but names are split by whitespace
 	 */
 	private transient Set<String> reservedForNodesSet;
+	/** True if the resource is queued or locked when a delete attempt happened.
+	 *  When the build that locked it ends, the resource will be removed.
+	 */
+	private transient boolean isBroken = false;
 
 	@DataBoundConstructor
 	public LockableResource(String name,
@@ -356,6 +361,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
+	 * Method used to check if this resource has been broken. A broken resource means that an attempt to
+	 * remove it was made while the resource was used by a build. The resource itself will only be removed when
+	 * the build that used it ends.
+	 * @return True if the resource is broken, or false otherwise
+	 */
+	public boolean getIsBroken() {
+		return this.isBroken;
+	}
+
+	/**
 	 * @param queueItemId Set the value for queueItemId and set the field
 	 * 'queuingStarted' to current time in seconds
 	 */
@@ -438,6 +453,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 */
 	public void unReserve() {
 		this.reservedBy = null;
+	}
+
+	/**
+	 * Method used to break a resource. A broken resource means that an attempt to remove it was made
+	 * while the resource was used by a build. If a resource is marked as broken it will be
+	 * removed when the build that used it ends.
+	 */
+	public void breakResource() {
+		this.isBroken = true;
+		this.description = BROKEN_RESOURCE_DESCRIPTION;
 	}
 
 	/**
