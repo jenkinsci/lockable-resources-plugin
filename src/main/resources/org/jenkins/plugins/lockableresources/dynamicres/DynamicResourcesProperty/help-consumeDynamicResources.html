@@ -1,0 +1,16 @@
+<div>
+	<p>
+		If checked, each matrix configuration in this project will consume exactly <b>one</b>
+		resource created by other jobs. The dynamic resource's configuration is based on the matrix
+		configuration currently running (ignoring the axis marked as such), 
+		the injected parameter, and the name of this project.
+	<p>
+		The number of resources consumed is always equal to one; the build waits for any dynamic
+		resources that match its matrix configuration, have the same parameter name and value
+		as expected, and are created for this job. When such resource is found, it will be consumed
+		(destroyed) and the build will start.
+	<p style="color:red"><b>
+		The configuration for the dynamic resources created has to be identical to that of the
+		dynamic resources consumed. If any parameter in the configuration does not match,
+		the resources created will not be acknowledged as consumable by the other jobs.</b>
+</div>

@@ -1,0 +1,27 @@
+<div>
+	<p>
+		If the project creates or consumes dynamic resources, an unique token should be used
+		to differentiate between successive runs. This field defines the name for
+		this token. Regardless of where the parameter receives its value (it can either be
+		defined as a string parameter in the configuration via the "This build is parameterised"
+		option, or be injected by a trigger build).
+	<p style="color:red"><b>
+		All jobs (both generators and consumers) will have to use the same injected variable
+		(same name and value) to correctly identify dynamic resources.</b>
+	<p style="color:black">
+		If you choose to use a job that will trigger builds on other projects, you
+		could use the following system groovy script that inserts the current time in
+		milliseconds as a parameter named "CURRENT_TIME" in the environment of the build that
+		runs it (trigger build):<br>
+		-------------------------------------------------------------------------------------------------------<br>
+        import hudson.model.*<br><br>
+
+        def time = System.currentTimeMillis();<br>
+        def pa = new ParametersAction([new StringParameterValue("CURRENT_TIME", time.toString())])<br>
+        build.addAction(pa)<br>
+        -------------------------------------------------------------------------------------------------------
+	<p>
+		If a trigger job is used, it is recommended all jobs are triggered at the same time, and using the
+		"Predefined parameters" option, a parameter can be injected by specifying a name and value for it.
+		e.g. "CURRENT_TIME=${CURRENT_TIME}".
+</div>

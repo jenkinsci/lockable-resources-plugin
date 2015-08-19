@@ -1,0 +1,18 @@
+<div>
+	<p>
+		A list of axis names separated by whitespace to ignore when generating
+		dynamic resources configurations.
+	<p>
+		When generating configurations for dynamic resources, the matrix configuration is
+		used - each axis in the configuration is considered a distinct identifier. If any of
+		these identifiers are to be ignored, the axis name should be specified here.
+	<p>
+		For example, if the job creating resources should be limited to run on a single node,
+		a 'Slaves' type axis named 'nLabel' might be introduced in the matrix configuration to limit where
+		it can run. As the other jobs are not limited to run on any node, the 'nLabel' axis would
+		cause an incompatibility in configurations; because of this, 'nLabel' should be specified as an
+		axis to be ignored.
+	<p style="color:red">
+		Names that contain whitespace will be considered two or more separate names. Please do not
+		use whitespace when defining axis names.
+</div>
