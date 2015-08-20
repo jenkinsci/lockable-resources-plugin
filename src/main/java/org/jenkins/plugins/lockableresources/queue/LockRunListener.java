@@ -24,11 +24,13 @@ import hudson.model.StringParameterValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
+import org.jenkins.plugins.lockableresources.dynamicres.DynamicInfoData;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesProperty;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicUtils;
@@ -85,13 +87,12 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			 */
 			DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(proj);
 			if (dynamicProperty != null && dynamicProperty.getConsumeDynamicResources()) {
-				Map<?, ?> config = DynamicUtils.getDynamicResConfig(build,
-																	dynamicProperty.getInjectedId(),
-																	null,
-																	dynamicProperty.getIgnoredAxis(),
-																	null);
-				if (DynamicResourcesManager.consumeDynamicResource(config))
-					listener.getLogger().println("Consumed resource for: " + config);
+				DynamicInfoData data = new DynamicInfoData(dynamicProperty, build);
+
+				Set<Map<?, ?>> configs = DynamicUtils.getJobDynamicInfoConsume(dynamicProperty, data);
+
+				if (DynamicResourcesManager.consumeDynamicResources(configs))
+					listener.getLogger().println("Consumed resource for: " + configs);
 			}
 		}
 	}
@@ -114,18 +115,12 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		if (proj != null) {
 			DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(proj);
 			if (dynamicProperty != null && dynamicProperty.getCreateDynamicResources()) {
-				Map<?, ?> config;
+				DynamicInfoData data = new DynamicInfoData(dynamicProperty, build);
 
-				for (String generatedForJob : dynamicProperty.getGeneratedForJobs().split("\\s+")) {
-					config = DynamicUtils.getDynamicResConfig(  build,
-																dynamicProperty.getInjectedId(),
-																null,
-																dynamicProperty.getIgnoredAxis(),
-																generatedForJob);
+				Set<Map<?, ?>> configs = DynamicUtils.getJobDynamicInfoCreate(dynamicProperty, data);
 
-					if (DynamicResourcesManager.createDynamicResource(config))
-						listener.getLogger().println("Created resource for: " + config);
-				}
+				if (DynamicResourcesManager.createDynamicResources(configs))
+					listener.getLogger().println("Created resource for: " + configs);
 			}
 		}
 
@@ -137,6 +132,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					+ required);
 		}
 
+		DynamicUtils.buildEnded(build);
 	}
 
 	@Override
@@ -153,6 +149,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);
 		}
-	}
 
+		DynamicUtils.buildEnded(build);
+	}
 }

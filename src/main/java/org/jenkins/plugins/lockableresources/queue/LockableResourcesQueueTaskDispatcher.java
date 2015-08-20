@@ -22,10 +22,12 @@ import hudson.model.queue.CauseOfBlockage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.dynamicres.DynamicInfoData;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesProperty;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicUtils;
@@ -52,24 +54,27 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		/* check dynamic resources properties */
 		DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(project);
-		Map<?, ?> requiredDynamicResource;
+
+		Set<Map<?, ?>> requiredDynamicResources = null;
 		/* if the build should consume dynamic resources, get a dynamic resource configuration that
 		 * it should use
 		 */
-		if (dynamicProperty != null && dynamicProperty.getConsumeDynamicResources()) {
-			requiredDynamicResource = DynamicUtils.getDynamicResConfig( item,
-																		dynamicProperty.getInjectedId(),
-																		dynamicProperty.getIgnoredAxis(),
-																		null);
+		if (dynamicProperty != null ) {
+			DynamicInfoData data = new DynamicInfoData(dynamicProperty, item);
+			DynamicUtils.updateJobDynamicInfoIfRequired(dynamicProperty, data);
 
-			if (requiredDynamicResource != null) {
-				LOGGER.finest("Requesting resource: " + requiredDynamicResource);
+			if(dynamicProperty.getConsumeDynamicResources()) {
+				requiredDynamicResources = DynamicUtils.getJobDynamicInfoConsume(dynamicProperty, data);
 
-				/* if the build should consume resources, check if the resources for
-				 * the current configuration are available; if not, interrupt
-				 */
-				if (!DynamicResourcesManager.checkDynamicResource(requiredDynamicResource))
-					return new BecauseNoDynamicResource(requiredDynamicResource);
+				if (requiredDynamicResources != null) {
+					LOGGER.finest("Requesting dynamic resources: " + requiredDynamicResources);
+
+					/* if the build should consume resources, check if the resources for
+					 * the current configuration are available; if not, interrupt
+					 */
+					if(!DynamicResourcesManager.checkDynamicResources(requiredDynamicResources))
+						return new BecauseNoDynamicResources(requiredDynamicResources);
+				}
 			}
 		}
 
@@ -140,17 +145,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		}
 	}
 
-	public static class BecauseNoDynamicResource extends CauseOfBlockage {
+	public static class BecauseNoDynamicResources extends CauseOfBlockage {
 
-		private final Map<?, ?> dynamicResourceRequired;
+		private final Set<Map<?, ?>> dynamicResourcesRequired;
 
-		public BecauseNoDynamicResource(Map<?, ?> dynamicResourceRequired) {
-			this.dynamicResourceRequired = dynamicResourceRequired;
+		public BecauseNoDynamicResources(Set<Map<?, ?>> dynamicResourcesRequired) {
+			this.dynamicResourcesRequired = dynamicResourcesRequired;
 		}
 
 		@Override
 		public String getShortDescription() {
-			return "Required dynamic resource for config: " + dynamicResourceRequired.toString();
+			return "Required dynamic resource for config: " + dynamicResourcesRequired.toString();
 		}
 	}
 }

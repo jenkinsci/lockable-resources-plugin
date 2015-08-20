@@ -24,6 +24,8 @@
  */
 package org.jenkins.plugins.lockableresources.dynamicres;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +35,13 @@ public class DynamicResourcesManager {
 	 *  be saved on permanent memory
 	 */
 	private static final transient Set<Map<?, ?>> dynamicResources = new HashSet<Map<?, ?>>();
+
+	/** A map containing information about the resources that will be created or consumed by a random
+	 *  job. The job is identified using an unique name that can be obtained using DynamicUtils.
+	 *  getUniqueName.
+	 */
+	private static final transient
+			Map<String, DynamicInfo> dynamicResourcesInfo = new HashMap<String, DynamicInfo>();
 
 	/**
 	 * @param config The configuration for the dynamic resource to be created.
@@ -45,6 +54,19 @@ public class DynamicResourcesManager {
 			return false;
 
 		return dynamicResources.add(config);
+	}
+
+	/**
+	 * @param configs A collection of dynamic resources configurations to create.
+	 * Empty or null collections are ignored.
+	 * @return True if the configurations have been successfully added to the pool
+	 * of dynamic resources, or false otherwise
+	 */
+	public static synchronized Boolean createDynamicResources(Collection<Map<?, ?>> configs) {
+		if (configs == null || configs.isEmpty())
+			return false;
+
+		return dynamicResources.addAll(configs);
 	}
 
 	/**
@@ -61,6 +83,19 @@ public class DynamicResourcesManager {
 	}
 
 	/**
+	 * @param configs A collection of dynamic resources configurations to consume.
+	 * Empty or null collections are ignored.
+	 * @return True if the configurations have been successfully removed from the pool
+	 * of dynamic resources, or false otherwise
+	 */
+	public static synchronized Boolean consumeDynamicResources(Collection<Map<?, ?>> configs) {
+		if (configs == null || configs.isEmpty())
+			return false;
+
+		return dynamicResources.removeAll(configs);
+	}
+
+	/**
 	 * @param config The configuration of a possible dynamic resource.
 	 * Empty or null configurations always return false.
 	 * @return True if a dynamic resource for the given configuration is found, or false otherwise
@@ -73,9 +108,66 @@ public class DynamicResourcesManager {
 	}
 
 	/**
+	 * @param configs A collection of dynamic resources configurations to check.
+	 * Empty or null collections are ignored.
+	 * @return True if all configurations are found in the pool of dynamic resources, or false otherwise
+	 */
+	public static synchronized boolean checkDynamicResources(Collection<Map<?, ?>> configs) {
+		if (configs == null || configs.isEmpty())
+			return false;
+
+		return dynamicResources.containsAll(configs);
+	}
+
+	/**
 	 * This method will clear the dynamic resources list. ALL dynamic resources will be lost
 	 */
 	public static synchronized void destroyAllDynamicResources() {
 		dynamicResources.clear();
+	}
+
+	/**
+	 * @param jobName The job whose dynamic resources information is required
+	 * @return An object containing the dynamic resource configurations expected
+	 * to be created or consumed by the job
+	 */
+	public static synchronized DynamicInfo getJobDynamicInfo(String jobName) {
+		return dynamicResourcesInfo.get(jobName);
+	}
+
+	/**
+	 * @param jobName The job whose dynamic resources creation information is required
+	 * @return A set of dynamic resource configurations expected to be created by the job
+	 */
+	public static synchronized Set<Map<?, ?>> getJobWillCreate(String jobName) {
+		return dynamicResourcesInfo.get(jobName).getWillCreate();
+	}
+
+	/**
+	 * @param jobName The job whose dynamic resources consumption information is required
+	 * @return A set of dynamic resource configurations expected to be consumed by the job
+	 */
+	public static synchronized Set<Map<?, ?>> getJobWillConsume(String jobName) {
+		return dynamicResourcesInfo.get(jobName).getWillConsume();
+	}
+
+	/**
+	 * Method used to change the dynamic resources information for the job with the given name.
+	 * @param jobName The name of the job whose information is updated
+	 * @param willCreate Resources expected to be created by the job
+	 * @param willConsume Resources expected to be consumed by the job
+	 */
+	public static synchronized void setJobDynamicInfo(String jobName,
+														Set<Map<?, ?>> willCreate,
+														Set<Map<?, ?>> willConsume) {
+		dynamicResourcesInfo.put(jobName, new DynamicInfo(willCreate, willConsume));
+	}
+
+	/**
+	 * Method used to remove the dynamic resources information for the job with the given name.
+	 * @param jobName The name of the job that will have its information removed
+	 */
+	public static synchronized void destroyJobDynamicInfo(String jobName) {
+		dynamicResourcesInfo.remove(jobName);
 	}
 }

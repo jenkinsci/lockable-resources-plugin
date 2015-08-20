@@ -50,17 +50,42 @@ public class DynamicUtils {
 	}
 
 	/**
-	 * @param item The item whose last build is required
-	 * @return The last build found for item.task; can be a build with a matrix
-	 * configuration - use only to get the matrix configuration, as the returned
-	 * value might be an older build with different environment variables
+	 * @param item An item whose master job name is required
+	 * @return The name of the task, as defined in the Jenkins configuration page
 	 */
-	public static AbstractBuild<?, ?> getBuild(Queue.Item item) {
-		if (item.task instanceof AbstractProject) {
-			AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
-			return proj.getLastBuild();
-		}
-		return null;
+	public static String getJobName(Queue.Item item) {
+		return ((AbstractProject<?, ?>) item.task).getFullName().split("/")[0];
+	}
+
+	/**
+	 * @param build A build whose master job name is required
+	 * @return The name of the project, as defined in the Jenkins configuration page
+	 */
+	public static String getJobName(AbstractBuild<?, ?> build) {
+		return build.getProject().getFullName().split("/")[0];
+	}
+
+	/**
+	 * @param item An item whose task (project/job) name is used to get an "unique" name
+	 * @return An unique name for the item. Is formed by appending " - buildNumber" (buildNumber
+	 * is the actual value of the next build number) at the end of the job's name.
+	 * The next build number is used because calling this method with an item (from 'canRun') will
+	 * allow at best the retrieval of the last build finished (will return null if no build has
+	 * finished for this configuration)
+	 */
+	public static String getUniqueName(Queue.Item item) {
+		AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
+		return proj.getFullName() + " - " + proj.getNextBuildNumber();
+	}
+
+	/**
+	 * @param build A build whose project (job) name is used to get an "unique" name
+	 * @return An unique name for the build. Is formed by appending " - buildNumber" (buildNumber
+	 * is the actual value of this build's number) at the end of the job's name.
+	 */
+	public static String getUniqueName(AbstractBuild<?, ?> build) {
+		AbstractProject<?, ?> proj = build.getProject();
+		return proj.getFullName() + " - " + build.getNumber();
 	}
 
 	/**
@@ -82,10 +107,26 @@ public class DynamicUtils {
 	}
 
 	/**
+	 * @param item The item whose last build for the associated task is used to retrieve the
+	 * variable with the given name
+	 * @param variableName The name of the required variable (parameter)
+	 * @return The value of the variable found in the last build of the job for the
+	 * given Queue.Item's task. If the task associated with the item is a matrix configuration,
+	 * the value is read from the master job instead.
+	 */
+	public static String getBuildVariableValue( Queue.Item item,
+												String variableName) {
+		return getBuildVariables(item).get(variableName);
+	}
+
+	/**
 	 * @param build The build whose matrix configuration is required
-	 * @return A set corresponding to the matrix configuration of the project that the given build is part of
+	 * @return The matrix configuration for the project that the given build is part of
 	 */
 	public static Set<Entry<String, String>> getProjectConfiguration(AbstractBuild<?, ?> build) {
+		if(! (build.getProject() instanceof MatrixConfiguration))
+			return null;
+
 		MatrixConfiguration proj = (MatrixConfiguration) build.getProject();
 		Combination projectComb = proj.getCombination();
 
@@ -93,59 +134,41 @@ public class DynamicUtils {
 	}
 
 	/**
-	 * @param build The build whose configuration is required
-	 * @param injectedId The name of the variable used as a token (can be received from an upstream build).
-	 * Must be in characteristicEnvVars
-	 * @param injectedValue The value of the injected variable. null means value is read from build
-	 * @param ignoreAxis Names of axis in the current matrix configuration that will be ignored
-	 * when generating the dynamic resource configuration
-	 * @param generatedForJob The name of the job (only one) that should consume this resource
-	 * @return A map containing all matrix configuration axis and their respective values
-	 * (except the axis specified in ignoreAxis), a pair for injectedId-injectedValue,
-	 * and a pair for "RESERVED_FOR_JOB"-generatedForJob
+	 * @param item The item whose matrix configuration will be retrieved (using item.task)
+	 * @return The matrix configuration for the given item's task
 	 */
-	public static synchronized Map<?, ?> getDynamicResConfig(AbstractBuild<?, ?> build,
-															 String injectedId,
-															 String injectedValue,
-															 String ignoreAxis,
-															 String generatedForJob) {
-		if (build == null)
+	public static Set<Entry<String, String>> getProjectConfiguration(Queue.Item item) {
+		if(! (item.task instanceof MatrixConfiguration))
 			return null;
 
-		String jobName;
+		MatrixConfiguration proj = (MatrixConfiguration) item.task;
+		Combination projectComb = proj.getCombination();
+
+		return projectComb.entrySet();
+	}
+
+	/**
+	 * Method used to obtain a dynamic resource configuration for a job. The configuration
+	 * is based on the matrix configuration, ignoring axis marked as such, and the injectedId-injectedValue
+	 * pair. This pair is considered to be unique, and is used to avoid collisions during successive runs.
+	 * @param property The dynamic resources property for the job
+	 * @param data Extra information regarding dynamic resources usage - the name of the current
+	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
+	 * in property and the matrix configuration
+	 * @return An almost complete configuration for a dynamic resource (lacks job reservation)
+	 */
+	private static synchronized Map<?, ?> getDynamicResConfig(DynamicResourcesProperty property,
+															  DynamicInfoData data) {
 		Map<String, String> configuration = new HashMap<String, String>();
 
-		jobName = build.getCharacteristicEnvVars().get("JOB_NAME");
-		if (jobName == null)
-			return null;
-
-		/* Check the value for the token; if the configuration is requested
-		 * without sending the value as a parameter, it will extracted from the build's variables.
-		 */
-		if (injectedValue == null)
-			injectedValue = build.getBuildVariables().get(injectedId);
-		configuration.put(injectedId, injectedValue);
-
-		/* The JOB_NAME parameter should look like "master_job_name[/axis1=value1,]
-		 * [axis2=value2]...[axisN=valueN] - values in brackets are optional. Check if there are
-		 * axis_names - values pairs, and add them to the configuration
-		 */
-		String[] splitName = jobName.split("/");
-
-		/* add the name of the build that should consume the resource to the configuration.
-		 * If the received parameter is null, use the master_job_name instead.
-		 */
-		if (generatedForJob == null)
-			generatedForJob = splitName[0];
-
-		configuration.put("RESERVED_FOR_JOB", generatedForJob);
+		configuration.put(property.getInjectedId(), data.injectedValue);
 
 		Set<String> ignoredAxis = new HashSet<String>();
-		if (ignoreAxis != null)
-			ignoredAxis.addAll(Arrays.asList(ignoreAxis.split("\\s+")));
+		if (property.getIgnoredAxis() != null)
+			ignoredAxis.addAll(Arrays.asList(property.getIgnoredAxis().split("\\s+")));
 
-		if (build.getProject() instanceof MatrixConfiguration) {
-			for(Map.Entry mapE : getProjectConfiguration(build))
+		if (data.configuration != null) {
+			for(Map.Entry mapE : data.configuration)
 				if(! ignoredAxis.contains(mapE.getKey().toString()))
 					configuration.put(mapE.getKey().toString(), mapE.getValue().toString());
 		}
@@ -155,28 +178,96 @@ public class DynamicUtils {
 	}
 
 	/**
-	 * @param item The queue item whose configuration is required
-	 * @param injectedId The name of the variable used as a token (can be received from an upstream build)
-	 * Must be in characteristicEnvVars
-	 * @param ignoreAxis Axis names of the current matrix configuration that
-	 * will be ignored when generating resources
-	 * @param generatedForJob The name of the job (only one) that should consume this resource
-	 * @return A map containing all matrix configuration axis and their respective values
-	 * (except the axis in ignoredAxis), a pair for injectedId-injectedValue,
-	 * and a pair for "RESERVED_FOR_JOB"-generatedForJob
+	 * Method called to forcefully update the dynamic information for the job linked to the
+	 * given DynamicResourcesProperty.
+	 * @param property The dynamic resources property of the job
+	 * @param data Extra information regarding dynamic resources usage - the name of the current
+	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
+	 * in property and the matrix configuration
 	 */
-	public static synchronized Map<?, ?> getDynamicResConfig(Queue.Item item,
-															 String injectedId,
-															 String ignoreAxis,
-															 String generatedForJob) {
-		AbstractBuild<?, ?> currentBuild = getBuild(item);
-		String injectedValue = getBuildVariables(item).get(injectedId);
+	private static synchronized void updateJobDynamicInfo(DynamicResourcesProperty property,
+															DynamicInfoData data) {
 
-		return getDynamicResConfig( currentBuild,
-									injectedId,
-									injectedValue,
-									ignoreAxis,
-									generatedForJob);
+		Map<?, ?> configWithoutJobReservation = getDynamicResConfig(property, data);
+
+		Set<Map<?, ?>> createResources  = new HashSet<Map<?, ?>>();
+		Set<Map<?, ?>> consumeResources = new HashSet<Map<?, ?>>();
+
+		if(property.getGeneratedForJobs() != null)
+			for(String job : property.getGeneratedForJobs().split("\\s+")) {
+				Map newConfig = configWithoutJobReservation;
+				newConfig.put("RESERVED_FOR_JOB", job);
+
+				createResources.add(newConfig);
+			}
+
+		if(property.getConsumeDynamicResources()) {
+			Map newConfig = configWithoutJobReservation;
+			newConfig.put("RESERVED_FOR_JOB", data.jobName);
+
+			consumeResources.add(newConfig);
+		}
+
+		DynamicResourcesManager.setJobDynamicInfo(data.uniqueJobName, createResources, consumeResources);
 	}
 
+	/**
+	 * Method called to update the dynamic information for the job linked to the given
+	 * DynamicResourcesProperty, if it does not already exist.
+	 * @param property The dynamic resources property of the job
+	 * @param data Extra information regarding dynamic resources usage - the name of the current
+	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
+	 * in property and the matrix configuration
+	 */
+	public static synchronized void updateJobDynamicInfoIfRequired(DynamicResourcesProperty property,
+																	 DynamicInfoData data) {
+		if(DynamicResourcesManager.getJobDynamicInfo(data.uniqueJobName) == null)
+			updateJobDynamicInfo(property, data);
+	}
+
+	/**
+	 * Method called to retrieve the dynamic information about dynamic resource creation
+	 * for the job linked to the given DynamicResourcesProperty. If the info is not available,
+	 * it will be updated.
+	 * @param property The dynamic resources property of the job
+	 * @param data Extra information regarding dynamic resources usage - the name of the current
+	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
+	 * in property and the matrix configuration
+	 * @return The dynamic information regarding dynamic resource creation
+	 */
+	public static synchronized Set<Map<?, ?>> getJobDynamicInfoCreate(DynamicResourcesProperty property,
+																		DynamicInfoData data) {
+		updateJobDynamicInfoIfRequired(property, data);
+
+		return DynamicResourcesManager.getJobWillCreate(data.uniqueJobName);
+	}
+
+	/**
+	 * Method called to retrieve the dynamic information about dynamic resource consumption
+	 * for the job linked to the given DynamicResourcesProperty. If the info is not available,
+	 * it will be updated.
+	 * @param property The dynamic resources property of the job
+	 * @param data Extra information regarding dynamic resources usage - the name of the current
+	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
+	 * in property and the matrix configuration
+	 * @return The dynamic information regarding dynamic resource consumption for the item
+	 */
+	public static synchronized Set<Map<?, ?>> getJobDynamicInfoConsume(DynamicResourcesProperty property,
+																		 DynamicInfoData data) {
+		updateJobDynamicInfoIfRequired(property, data);
+
+		return DynamicResourcesManager.getJobWillConsume(data.uniqueJobName);
+	}
+
+	/**
+	 * Method used to delete the dynamic information of the job the build is part of.
+	 * <p>
+	 * Usually called in 'onCompleted' and 'onDeleted' methods in LockRunListener.
+	 * @param currentBuild The build whose dynamic information is removed
+	 */
+	public static synchronized void buildEnded(AbstractBuild<?, ?> currentBuild) {
+		String uniqueName = getUniqueName(currentBuild);
+
+		DynamicResourcesManager.destroyJobDynamicInfo(uniqueName);
+	}
 }
