@@ -24,16 +24,18 @@
  */
 package org.jenkins.plugins.lockableresources.dynamicres;
 
+import hudson.matrix.Combination;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Queue;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 public class DynamicUtils {
 	/**
@@ -77,6 +79,17 @@ public class DynamicUtils {
 		}
 
 		return null;
+	}
+
+	/**
+	 * @param build The build whose matrix configuration is required
+	 * @return A set corresponding to the matrix configuration of the project that the given build is part of
+	 */
+	public static Set<Entry<String, String>> getProjectConfiguration(AbstractBuild<?, ?> build) {
+		MatrixConfiguration proj = (MatrixConfiguration) build.getProject();
+		Combination projectComb = proj.getCombination();
+
+		return projectComb.entrySet();
 	}
 
 	/**
@@ -127,22 +140,14 @@ public class DynamicUtils {
 
 		configuration.put("RESERVED_FOR_JOB", generatedForJob);
 
-		List<String> ignoredAxis = new ArrayList<String>();
+		Set<String> ignoredAxis = new HashSet<String>();
 		if (ignoreAxis != null)
-			ignoredAxis = Arrays.asList(ignoreAxis.split("\\s+"));
+			ignoredAxis.addAll(Arrays.asList(ignoreAxis.split("\\s+")));
 
-		if (splitName.length > 1) {
-			String pairs = splitName[1];
-			for (String pair : pairs.split(",")) {
-				String[] mapEntry = pair.split("=");
-
-				if (mapEntry.length < 2)
-					continue;
-
-				/* add pairs that are not marked to be ignored */
-				if (!ignoredAxis.contains(mapEntry[0]))
-					configuration.put(mapEntry[0], mapEntry[1]);
-			}
+		if (build.getProject() instanceof MatrixConfiguration) {
+			for(Map.Entry mapE : getProjectConfiguration(build))
+				if(! ignoredAxis.contains(mapE.getKey().toString()))
+					configuration.put(mapE.getKey().toString(), mapE.getValue().toString());
 		}
 
 		/* the size should be at least 2, since one of the elements is the injectedId */
