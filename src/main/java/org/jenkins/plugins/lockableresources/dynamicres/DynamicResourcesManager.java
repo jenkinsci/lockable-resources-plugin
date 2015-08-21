@@ -44,6 +44,13 @@ public class DynamicResourcesManager {
 			Map<String, DynamicInfo> dynamicResourcesInfo = new HashMap<String, DynamicInfo>();
 
 	/**
+	 * @return The set of available dynamicResources
+	 */
+	public static Set<Map<?, ?>> getDynamicResources() {
+		return dynamicResources;
+	}
+
+	/**
 	 * @param config The configuration for the dynamic resource to be created.
 	 * Empty or null configurations always return false.
 	 * @return True if a dynamic resource for the given configuration is successfully added to the dynamic
@@ -124,6 +131,13 @@ public class DynamicResourcesManager {
 	 */
 	public static synchronized void destroyAllDynamicResources() {
 		dynamicResources.clear();
+	}
+
+	/**
+	 * @return All available information about dynamic resource creation and consumption
+	 */
+	public static Map<String, DynamicInfo> getDynamicResourcesInfo() {
+		return dynamicResourcesInfo;
 	}
 
 	/**
