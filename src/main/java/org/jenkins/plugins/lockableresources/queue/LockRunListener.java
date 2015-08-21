@@ -34,6 +34,7 @@ import org.jenkins.plugins.lockableresources.dynamicres.DynamicInfoData;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesProperty;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicUtils;
+import org.jenkins.plugins.lockableresources.dynamicres.actions.DynamicResourcesBuildAction;
 
 @Extension
 public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
@@ -86,13 +87,17 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			 * dynamic resource for the current configuration.
 			 */
 			DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(proj);
-			if (dynamicProperty != null && dynamicProperty.getConsumeDynamicResources()) {
-				DynamicInfoData data = new DynamicInfoData(dynamicProperty, build);
+			if (dynamicProperty != null) {
+				build.addAction(new DynamicResourcesBuildAction(build));
 
-				Set<Map<?, ?>> configs = DynamicUtils.getJobDynamicInfoConsume(dynamicProperty, data);
+				if(dynamicProperty.getConsumeDynamicResources()) {
+					DynamicInfoData data = new DynamicInfoData(dynamicProperty, build);
 
-				if (DynamicResourcesManager.consumeDynamicResources(configs))
-					listener.getLogger().println("Consumed resource for: " + configs);
+					Set<Map<?, ?>> configs = DynamicUtils.getJobDynamicInfoConsume(dynamicProperty, data);
+
+					if (DynamicResourcesManager.consumeDynamicResources(configs))
+						listener.getLogger().println("Consumed resource for: " + configs);
+				}
 			}
 		}
 	}
