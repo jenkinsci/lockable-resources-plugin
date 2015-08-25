@@ -67,25 +67,34 @@ public class DynamicUtils {
 
 	/**
 	 * @param item An item whose task (project/job) name is used to get an "unique" name
-	 * @return An unique name for the item. Is formed by appending " - buildNumber" (buildNumber
-	 * is the actual value of the next build number) at the end of the job's name.
-	 * The next build number is used because calling this method with an item (from 'canRun') will
-	 * allow at best the retrieval of the last build finished (will return null if no build has
-	 * finished for this configuration)
+	 * @return An unique name for the item. Is formed by appending " - buildNumber" at the
+	 * end of the full name of the build (name + matrix configuration). (Note: buildNumber is
+	 * the actual value of project's next build number. If the project is a MatrixConfiguration,
+	 * the master job's build number is used instead).
 	 */
 	public static String getUniqueName(Queue.Item item) {
 		AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
+
+		if(proj instanceof MatrixConfiguration)
+			return proj.getFullName() + " - " + ((AbstractProject<?, ?>) proj.getParent()).getNextBuildNumber();
+
 		return proj.getFullName() + " - " + proj.getNextBuildNumber();
 	}
 
 	/**
 	 * @param build A build whose project (job) name is used to get an "unique" name
-	 * @return An unique name for the build. Is formed by appending " - buildNumber" (buildNumber
-	 * is the actual value of this build's number) at the end of the job's name.
+	 * @return An unique name for the build. Is formed by appending " - buildNumber" at the
+	 * end of the full name of the build (name + matrix configuration). (Note: buildNumber is
+	 * the actual value of the project's next build number. If the project is a MatrixConfiguration,
+	 * the master job's build number is used instead).
 	 */
 	public static String getUniqueName(AbstractBuild<?, ?> build) {
 		AbstractProject<?, ?> proj = build.getProject();
-		return proj.getFullName() + " - " + build.getNumber();
+
+		if(proj instanceof MatrixConfiguration)
+			return proj.getFullName() + " - " + ((AbstractProject<?, ?>) proj.getParent()).getNextBuildNumber();
+
+		return proj.getFullName() + " - " + proj.getNextBuildNumber();
 	}
 
 	/**
