@@ -27,9 +27,6 @@ THE SOFTWARE.
 					name="dynamic-resources-prop"
 					checked="${instance!=null}">
 		<f:nested>
-			<f:entry title="${%Injected parameter name}" field="injectedId">
-				<f:textbox/>
-			</f:entry>
 			<f:entry title="${%Create dynamic resources for other builds}" field="createDynamicResources">
 				<f:checkbox/>
 			</f:entry>

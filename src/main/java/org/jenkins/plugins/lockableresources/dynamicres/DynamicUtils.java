@@ -38,6 +38,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 public class DynamicUtils {
+
+	/** A string used to identify the token in dynamic resources configurations */
+	public final static String DYNAMICRES_TOKENID = "DYNAMIC_RESOURCES_TOKEN";
+	/** A map used to identify tokens used by projects for dynamic resource configurations */
+	private final static transient Map<String, String> tokens = new HashMap<String, String>();
+
 	/**
 	 * @param project The project whose DynamicResourcesProperty is required
 	 * @return The DynamicResourcesProperty attached to this project
@@ -98,34 +104,33 @@ public class DynamicUtils {
 	}
 
 	/**
-	 * @param item The item whose build variables are required
-	 * @return The build variables associated with the last build of the given Queue.Item's task.
-	 * If the task associated with the item is a matrix configuration, the build variables of the master job
-	 * are returned instead.
+	 * Used to create an id for the project, based on the name of its master job and the next build number.
+	 * @param project A project whose master job is used
+	 * @return An (unique) identifier
 	 */
-	public static Map<String, String> getBuildVariables(Queue.Item item) {
-		if (item.task instanceof AbstractProject) {
-			AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
-			if(proj instanceof MatrixConfiguration)
-				return ((AbstractProject<?, ?>) proj.getParent()).getLastBuild().getBuildVariables();
-			else
-				return proj.getLastBuild().getBuildVariables();
-		}
+	private static String getCurrentRunTokenID(AbstractProject<?, ?> project) {
+		AbstractProject<?, ?> proj = project;
 
-		return null;
+		if(proj instanceof MatrixConfiguration)
+			proj = (AbstractProject<?, ?>) proj.getParent();
+
+		return proj.getFullName() + " - " + proj.getNextBuildNumber();
 	}
 
 	/**
-	 * @param item The item whose last build for the associated task is used to retrieve the
-	 * variable with the given name
-	 * @param variableName The name of the required variable (parameter)
-	 * @return The value of the variable found in the last build of the job for the
-	 * given Queue.Item's task. If the task associated with the item is a matrix configuration,
-	 * the value is read from the master job instead.
+	 * Used to create an id for the project, based on the name of its master job and the next build number.
+	 * <p>
+	 * As the project has not yet started, the next build number + 1 is used instead.
+	 * @param project A project whose master job is used
+	 * @return An (unique) identifier
 	 */
-	public static String getBuildVariableValue( Queue.Item item,
-												String variableName) {
-		return getBuildVariables(item).get(variableName);
+	private static String getFutureRunTokenID(AbstractProject<?, ?> project) {
+		AbstractProject<?, ?> proj = project;
+
+		if(proj instanceof MatrixConfiguration)
+			proj = (AbstractProject<?, ?>) proj.getParent();
+
+		return proj.getFullName() + " - " + (proj.getNextBuildNumber() + 1);
 	}
 
 	/**
@@ -158,8 +163,8 @@ public class DynamicUtils {
 
 	/**
 	 * Method used to obtain a dynamic resource configuration for a job. The configuration
-	 * is based on the matrix configuration, ignoring axis marked as such, and the injectedId-injectedValue
-	 * pair. This pair is considered to be unique, and is used to avoid collisions during successive runs.
+	 * is based on the matrix configuration, ignoring axis marked as such, and the token for the job.
+	 * This token is considered to be unique, and is used to avoid collisions during successive runs.
 	 * @param property The dynamic resources property for the job
 	 * @param data Extra information regarding dynamic resources usage - the name of the current
 	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
@@ -170,7 +175,7 @@ public class DynamicUtils {
 															  DynamicInfoData data) {
 		Map<String, String> configuration = new HashMap<String, String>();
 
-		configuration.put(property.getInjectedId(), data.injectedValue);
+		configuration.put(DYNAMICRES_TOKENID, data.tokenValue);
 
 		Set<String> ignoredAxis = new HashSet<String>();
 		if (property.getIgnoredAxis() != null)
@@ -182,7 +187,7 @@ public class DynamicUtils {
 					configuration.put(mapE.getKey().toString(), mapE.getValue().toString());
 		}
 
-		/* the size should be at least 2, since one of the elements is the injectedId */
+		/* the size should be at least 2, since one of the elements is the token */
 		return configuration.size() < 2 ? null : configuration;
 	}
 
@@ -191,8 +196,8 @@ public class DynamicUtils {
 	 * given DynamicResourcesProperty.
 	 * @param property The dynamic resources property of the job
 	 * @param data Extra information regarding dynamic resources usage - the name of the current
-	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
-	 * in property and the matrix configuration
+	 * job, an unique identifier for this job, the value of the token created for the job
+	 * and the matrix configuration
 	 */
 	private static synchronized void updateJobDynamicInfo(DynamicResourcesProperty property,
 															DynamicInfoData data) {
@@ -225,8 +230,8 @@ public class DynamicUtils {
 	 * DynamicResourcesProperty, if it does not already exist.
 	 * @param property The dynamic resources property of the job
 	 * @param data Extra information regarding dynamic resources usage - the name of the current
-	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
-	 * in property and the matrix configuration
+	 * job, an unique identifier for this job, the value of the token created for the job
+	 * and the matrix configuration
 	 */
 	public static synchronized void updateJobDynamicInfoIfRequired(DynamicResourcesProperty property,
 																	 DynamicInfoData data) {
@@ -240,8 +245,8 @@ public class DynamicUtils {
 	 * it will be updated.
 	 * @param property The dynamic resources property of the job
 	 * @param data Extra information regarding dynamic resources usage - the name of the current
-	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
-	 * in property and the matrix configuration
+	 * job, an unique identifier for this job, the value of the token created for the job
+	 * and the matrix configuration
 	 * @return The dynamic information regarding dynamic resource creation
 	 */
 	public static synchronized Set<Map<?, ?>> getJobDynamicInfoCreate(DynamicResourcesProperty property,
@@ -257,9 +262,9 @@ public class DynamicUtils {
 	 * it will be updated.
 	 * @param property The dynamic resources property of the job
 	 * @param data Extra information regarding dynamic resources usage - the name of the current
-	 * job, an unique identifier for this job, the value of the parameter named by 'injectedId'
-	 * in property and the matrix configuration
-	 * @return The dynamic information regarding dynamic resource consumption for the item
+	 * job, an unique identifier for this job, the value of the token created for the job
+	 * and the matrix configuration
+	 * @return The dynamic information regarding dynamic resource consumption
 	 */
 	public static synchronized Set<Map<?, ?>> getJobDynamicInfoConsume(DynamicResourcesProperty property,
 																		 DynamicInfoData data) {
@@ -269,7 +274,74 @@ public class DynamicUtils {
 	}
 
 	/**
-	 * Method used to delete the dynamic information of the job the build is part of.
+	 * Retrieves the value of a token created for the item's task, based on the name
+	 * of its master job and next build number
+	 * @param item An item whose task is used to create a name to identify the token
+	 * @return The value of the token
+	 */
+	public static String getProjectToken(Queue.Item item) {
+		AbstractProject<?, ?> proj = (AbstractProject<?, ?>) item.task;
+
+		String projectUniqueName = getCurrentRunTokenID(proj);
+		String currentTime = tokens.get(projectUniqueName);
+
+		if(currentTime == null) {
+			currentTime = String.valueOf(System.currentTimeMillis());
+			tokens.put(projectUniqueName, currentTime);
+		}
+
+		return currentTime;
+	}
+
+	/**
+	 * Retrieves the value of a token created for the build's project, based on the name
+	 * of its master job and next build number
+	 * @param build A build whose project is used to create a name to identify the token
+	 * @return The value of the token
+	 */
+	public static String getProjectToken(AbstractBuild<?, ?> build) {
+		AbstractProject<?, ?> proj = build.getProject();
+
+		String projectUniqueName = getCurrentRunTokenID(proj);
+		String currentTime = tokens.get(projectUniqueName);
+
+		if(currentTime == null) {
+			currentTime = String.valueOf(System.currentTimeMillis());
+			tokens.put(projectUniqueName, currentTime);
+		}
+
+		return currentTime;
+	}
+
+	/**
+	 * Creates tokens for all projects that will be triggered by the build's master job, with the same
+	 * token as the one used by the build itself. If no token is found for the build, the current time
+	 * will be used instead.
+	 * <p>
+	 * Only downstream projects that use dynamic resources are considered.
+	 * @param build The build whose master job will trigger other jobs
+	 */
+	public static void createTokensForDownstream(AbstractBuild<?, ?> build) {
+		AbstractProject<?, ?> proj = build.getProject();
+		if(proj instanceof MatrixConfiguration)
+			proj = (AbstractProject<?, ?>) proj.getParent();
+
+		String projectUniqueName = getCurrentRunTokenID(proj);
+		String currentTime = tokens.get(projectUniqueName);
+		currentTime = currentTime == null ? String.valueOf(System.currentTimeMillis()) : currentTime;
+
+		for(AbstractProject<?, ?> downstream : proj.getDownstreamProjects()) {
+			DynamicResourcesProperty downProperty = getDynamicProperty(downstream);
+
+			if(downProperty != null)
+				tokens.put(getFutureRunTokenID(downstream), currentTime);
+		}
+
+		tokens.remove(projectUniqueName);
+	}
+
+	/**
+	 * Method used to delete the dynamic information for the job linked to the build and its token.
 	 * <p>
 	 * Usually called in 'onCompleted' and 'onDeleted' methods in LockRunListener.
 	 * @param currentBuild The build whose dynamic information is removed
@@ -278,5 +350,6 @@ public class DynamicUtils {
 		String uniqueName = getUniqueName(currentBuild);
 
 		DynamicResourcesManager.destroyJobDynamicInfo(uniqueName);
+		tokens.remove(uniqueName);
 	}
 }

@@ -3,7 +3,7 @@
 		If checked, each matrix configuration in this project will consume exactly <b>one</b>
 		resource created by other jobs. The dynamic resource's configuration is based on the matrix
 		configuration currently running (ignoring the axis marked as such), 
-		the injected parameter, and the name of this project.
+		the value of a token, and the name of this project.
 	<p>
 		The number of resources consumed is always equal to one; the build waits for any dynamic
 		resources that match its matrix configuration, have the same parameter name and value

@@ -33,7 +33,7 @@ import java.util.Set;
  * Class used to store data that will be used when requesting or updating dynamic resources
  * information. Contains the real name of the job as 'jobName', according to Jenkins, an (unique) name
  * that will be used to store information about the job as 'uniqueJobName', the value of the
- * parameter named by injectedId as 'injectedValue' and a matrix configuration
+ * token created for the job as 'tokenValue' and the matrix configuration as 'configuration'
  */
 public class DynamicInfoData {
 
@@ -43,20 +43,20 @@ public class DynamicInfoData {
 	public final Set<Entry<String, String>> configuration;
 	/** An unique name used to identify the job when retrieving dynamic resources information */
 	public  final String uniqueJobName;
-	/** The value of the parameter named by 'injectedId' in DynamicResourcesProperty */
-	public  final String injectedValue;
+	/** The value of the token created for the job */
+	public  final String tokenValue;
 
 	public DynamicInfoData(DynamicResourcesProperty property, Queue.Item item) {
 		this.jobName       = DynamicUtils.getJobName(item);
 		this.configuration = DynamicUtils.getProjectConfiguration(item);
-		this.injectedValue = DynamicUtils.getBuildVariableValue(item, property.getInjectedId());
+		this.tokenValue    = DynamicUtils.getProjectToken(item);
 		this.uniqueJobName = DynamicUtils.getUniqueName(item);
 	}
 
 	public DynamicInfoData(DynamicResourcesProperty property, AbstractBuild<?, ?> build) {
 		this.jobName       = DynamicUtils.getJobName(build);
 		this.configuration = DynamicUtils.getProjectConfiguration(build);
-		this.injectedValue = build.getBuildVariables().get(property.getInjectedId());
+		this.tokenValue	   = DynamicUtils.getProjectToken(build);
 		this.uniqueJobName = DynamicUtils.getUniqueName(build);
 	}
 }

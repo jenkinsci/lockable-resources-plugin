@@ -106,8 +106,10 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	public void onCompleted(AbstractBuild<?, ?> build, TaskListener listener) {
 		// Skip unlocking for multiple configuration projects,
 		// only the child jobs will actually unlock resources.
-		if (build instanceof MatrixBuild)
+		if (build instanceof MatrixBuild) {
+			DynamicUtils.createTokensForDownstream(build);
 			return;
+		}
 
 		// obviously project name cannot be obtained here
 		List<LockableResource> required = LockableResourcesManager.get()
