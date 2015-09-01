@@ -341,7 +341,7 @@ public class DynamicUtils {
 	}
 
 	/**
-	 * Method used to delete the dynamic information for the job linked to the build and its token.
+	 * Method used to delete the dynamic information for the job linked to the build.
 	 * <p>
 	 * Usually called in 'onCompleted' and 'onDeleted' methods in LockRunListener.
 	 * @param currentBuild The build whose dynamic information is removed
@@ -350,6 +350,5 @@ public class DynamicUtils {
 		String uniqueName = getUniqueName(currentBuild);
 
 		DynamicResourcesManager.destroyJobDynamicInfo(uniqueName);
-		tokens.remove(uniqueName);
 	}
 }
