@@ -46,17 +46,21 @@ public class DynamicResourcesProperty extends JobProperty<Job<?, ?>> {
 	private final String ignoredAxis;
 	/* The job(s) that should consume the dynamic resources created by this job */
 	private final String generatedForJobs;
+	/* The job(s) that should create the dynamic resources that will be consumed by this job */
+	private final String generatedByJobs;
 
 	@DataBoundConstructor
 	public DynamicResourcesProperty(Boolean createDynamicResources,
 									Boolean consumeDynamicResources,
 									String ignoredAxis,
-									String generatedForJobs) {
+									String generatedForJobs,
+									String generatedByJobs) {
 		super();
 		this.createDynamicResources = createDynamicResources;
 		this.consumeDynamicResources = consumeDynamicResources;
 		this.ignoredAxis = ignoredAxis;
 		this.generatedForJobs = generatedForJobs;
+		this.generatedByJobs = generatedByJobs;
 	}
 
 	/**
@@ -87,6 +91,14 @@ public class DynamicResourcesProperty extends JobProperty<Job<?, ?>> {
 	 */
 	public String getGeneratedForJobs() {
 		return generatedForJobs;
+	}
+
+	/**
+	 * @return A string containing the names of the jobs that should create the dynamic resources
+	 * that will be consumed by this job
+	 */
+	public String getGeneratedByJobs() {
+		return generatedByJobs;
 	}
 
 	@Extension
@@ -120,6 +132,7 @@ public class DynamicResourcesProperty extends JobProperty<Job<?, ?>> {
 			Boolean consumeDynamicResources = json.getBoolean("consumeDynamicResources");
 			String ignoredAxis = Util.fixEmptyAndTrim(json.getString("ignoredAxis"));
 			String generatedForJobs = Util.fixEmptyAndTrim(json.getString("generatedForJobs"));
+			String generatedByJobs = Util.fixEmptyAndTrim(json.getString("generatedByJobs"));
 
 			if (consumeDynamicResources == false && createDynamicResources == false)
 				return null;
@@ -127,7 +140,8 @@ public class DynamicResourcesProperty extends JobProperty<Job<?, ?>> {
 			return new DynamicResourcesProperty(createDynamicResources,
 												consumeDynamicResources,
 												ignoredAxis,
-												generatedForJobs);
+												generatedForJobs,
+												generatedByJobs);
 		}
 
 		/**
@@ -148,6 +162,27 @@ public class DynamicResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.ok();
 
 			return FormValidation.error("The created dynamic resources must be reserved for a job.");
+		}
+
+		/**
+		 * Verify if the 'generatedByJobs' field has a correct format. If the job should consume
+		 * dynamic resources, the field should be a non empty string.
+		 * @param value The value of the 'generatedByJobs' field
+		 * @param consumeDynamicResources Whether the job should consume dynamic resources
+		 * @return OK if the definition is acceptable, or an error otherwise
+		 */
+		public FormValidation doCheckGeneratedByJobs( @QueryParameter String value,
+													  @QueryParameter Boolean consumeDynamicResources) {
+
+			String generatedByJobs = Util.fixEmptyAndTrim(value);
+			if (generatedByJobs == null && !consumeDynamicResources)
+				return FormValidation.ok();
+
+			if (generatedByJobs != null && !generatedByJobs.isEmpty())
+				return FormValidation.ok();
+
+			return FormValidation.error("The job should check if there is at least one resource "
+										+ "created for it by another job.");
 		}
 	}
 }

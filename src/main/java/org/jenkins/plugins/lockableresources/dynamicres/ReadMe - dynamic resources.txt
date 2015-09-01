@@ -28,5 +28,5 @@ build associated with a similar matrix configuration of job "B". "Similar" means
 that the matrix configurations are identical, or can become identical by removing
 one or more of the axis in the matrix configurations of either job.
 	The resource creation can be 1:N (one matrix configuration can create any
-number of dynamic resources for other jobs), but consumption always requires one
-dynamic resource that has the required configuration.
+number of dynamic resources for other jobs), and the consumption can be N:1
+(the job can consume any number of dynamic resources).
