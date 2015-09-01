@@ -209,14 +209,14 @@ public class DynamicUtils {
 
 		if(property.getGeneratedForJobs() != null)
 			for(String job : property.getGeneratedForJobs().split("\\s+")) {
-				Map newConfig = configWithoutJobReservation;
+				Map newConfig = new HashMap(configWithoutJobReservation);
 				newConfig.put("RESERVED_FOR_JOB", job);
 
 				createResources.add(newConfig);
 			}
 
 		if(property.getConsumeDynamicResources()) {
-			Map newConfig = configWithoutJobReservation;
+			Map newConfig = new HashMap(configWithoutJobReservation);
 			newConfig.put("RESERVED_FOR_JOB", data.jobName);
 
 			consumeResources.add(newConfig);
