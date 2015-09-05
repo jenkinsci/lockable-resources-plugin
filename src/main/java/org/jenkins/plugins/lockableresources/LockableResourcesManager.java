@@ -414,7 +414,7 @@ public class LockableResourcesManager extends Plugin {
 		Set<String> resLabels = res.getModifyableLabelSet();
 		boolean result = resLabels.add(label);
 		if ( result ) {
-			buildCaches();
+			save();
 		}
 		return result;
 	}
@@ -423,7 +423,7 @@ public class LockableResourcesManager extends Plugin {
 		Set<String> resLabels = res.getModifyableLabelSet();
 		boolean result = resLabels.remove(label);
 		if ( result ) {
-			buildCaches();
+			save();
 		}
 		return result;
 	}
