@@ -10,6 +10,7 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.Extension;
+import hudson.model.Api;
 import hudson.model.RootAction;
 import hudson.model.User;
 import hudson.security.AccessDeniedException2;
@@ -20,6 +21,7 @@ import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -33,8 +35,11 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 @Extension
+@ExportedBean
 public class LockableResourcesRootAction implements RootAction {
 
 	public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
@@ -72,8 +77,13 @@ public class LockableResourcesRootAction implements RootAction {
 		return "lockable-resources";
 	}
 
+	public Api getApi() {
+		return new Api(this);
+	}
+
+	@Exported
 	public Collection<LockableResource> getResources() {
-		return LockableResourcesManager.get().getResources();
+		return Collections.unmodifiableCollection(LockableResourcesManager.get().getResources());
 	}
 
 	public int getFreeResourceAmount(String label) {
@@ -85,7 +95,7 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
 	public Set<String> getAllLabels() {
-		return LockableResourcesManager.get().getAllLabels();
+		return Collections.unmodifiableSet(LockableResourcesManager.get().getAllLabels());
 	}
 
 	public int getNumberOfAllLabels() {

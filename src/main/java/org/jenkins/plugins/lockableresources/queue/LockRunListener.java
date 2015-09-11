@@ -12,6 +12,7 @@ package org.jenkins.plugins.lockableresources.queue;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
+import hudson.matrix.MatrixBuild;
 import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
@@ -42,6 +43,11 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	@Override
 	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
+		// Skip locking for multiple configuration projects,
+		// only the child jobs will actually lock resources.
+		if (build instanceof MatrixBuild)
+			return;
+
 		AbstractProject<?, ?> proj = Utils.getProject(build);
 		LockedResourcesBuildAction requiredResourcesAction = build.getAction(LockedResourcesBuildAction.class);
 		if ( proj != null && requiredResourcesAction != null && !requiredResourcesAction.matchedResources.isEmpty() ) {
@@ -89,6 +95,11 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	@Override
 	public void onCompleted(AbstractBuild<?, ?> build, TaskListener listener) {
+		// Skip unlocking for multiple configuration projects,
+		// only the child jobs will actually unlock resources.
+		if (build instanceof MatrixBuild)
+			return;
+
 		// obviously project name cannot be obtained here
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
@@ -104,6 +115,11 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 
 	@Override
 	public void onDeleted(AbstractBuild<?, ?> build) {
+		// Skip unlocking for multiple configuration projects,
+		// only the child jobs will actually unlock resources.
+		if (build instanceof MatrixBuild)
+			return;
+
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {

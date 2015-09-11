@@ -9,6 +9,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.EnvVars;
 import hudson.Util;
 
 import java.util.Collections;
@@ -27,23 +28,25 @@ public class LockableResourcesStruct {
 	public final String requiredVar;
 	public final String requiredNumber;
 
-	public LockableResourcesStruct(RequiredResourcesProperty property) {
+	public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
 		this(
 				property.getResourceNames(),
 				property.getResourceNamesVar(),
-				property.getResourceNumber()
+				property.getResourceNumber(),
+				env
 		);
 	}
 
 	public LockableResourcesStruct( RequiredResourcesParameterValue param ) {
-		this(param.value, null, null);
+		this(param.value, null, null, new EnvVars());
 	}
 
-	private LockableResourcesStruct( String requiredNames, String requiredVar, String requiredNumber ) {
+	private LockableResourcesStruct( String requiredNames, String requiredVar, String requiredNumber, EnvVars env ) {
 		Set<LockableResource> required = new LinkedHashSet<LockableResource>();
 		requiredNames = Util.fixEmptyAndTrim(requiredNames);
 		if ( requiredNames != null ) {
 			for ( String name : requiredNames.split("\\s+") ) {
+				name = env.expand(name);
 				LockableResource r = LockableResourcesManager.get().fromName(
 					name);
 				if (r != null) {
