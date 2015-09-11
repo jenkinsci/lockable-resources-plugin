@@ -27,4 +27,9 @@ public class Constants {
 	 * Plugin icon file (48x48).
 	 */
 	public static final String ICON_LARGE = "/plugin/lockable-resources/img/device-48x48.png";
+
+	/**
+	 * Prefix for groovy expression to evaluate potential resources.
+	 */
+	public static final String GROOVY_LABEL_MARKER = "groovy:";
 }

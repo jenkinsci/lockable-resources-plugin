@@ -178,21 +178,26 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 			int numResources = 0;
 			if (names != null) {
-				HashSet<String> resources = new HashSet<String>();
-				resources.addAll(Arrays.asList(names.split(RESOURCES_SPLIT_REGEX)));
-				Iterator<String> it = resources.iterator();
-				HashSet<String> labelResources = new HashSet<String>();
-				while ( it.hasNext() ) {
-					String resource = it.next();
-					if ( manager.fromName(resource) == null ) {
-						it.remove();
-						for ( LockableResource r : manager.getResourcesWithLabel(resource) ) {
-							labelResources.add(r.getName());
+				if ( names.startsWith(Constants.GROOVY_LABEL_MARKER) ) {
+					numResources = Integer.MAX_VALUE;
+				}
+				else {
+					HashSet<String> resources = new HashSet<String>();
+					resources.addAll(Arrays.asList(names.split(RESOURCES_SPLIT_REGEX)));
+					Iterator<String> it = resources.iterator();
+					HashSet<String> labelResources = new HashSet<String>();
+					while ( it.hasNext() ) {
+						String resource = it.next();
+						if ( manager.fromName(resource) == null ) {
+							it.remove();
+							for ( LockableResource r : manager.getResourcesWithLabel(resource) ) {
+								labelResources.add(r.getName());
+							}
 						}
 					}
+					resources.addAll(labelResources);
+					numResources = resources.size();
 				}
-				resources.addAll(labelResources);
-				numResources = resources.size();
 			}
 
 			if (numResources < numAsInt) {

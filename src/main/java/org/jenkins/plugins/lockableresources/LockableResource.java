@@ -14,6 +14,8 @@ import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.converters.collections.CollectionConverter;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.mapper.Mapper;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -31,6 +33,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import static org.jenkins.plugins.lockableresources.Constants.*;
 
@@ -44,6 +49,7 @@ public class LockableResource
 		extends AbstractDescribableImpl<LockableResource>
 		implements Comparable<LockableResource> {
 
+	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 	public static final int NOT_QUEUED = 0;
 	private static final int QUEUE_TIMEOUT = 60 * 1000;
 
@@ -111,8 +117,35 @@ public class LockableResource
 		return Collections.unmodifiableSet(labels);
 	}
 
-	public Boolean isValidLabel(String candidate) {
+	public boolean isValidLabel(String candidate) {
+		if ( candidate.startsWith(Constants.GROOVY_LABEL_MARKER) ) {
+			throw new UnsupportedOperationException("Groovy expressions not supported by this method.");
+		}
 		return labels.contains(candidate);
+	}
+
+	public boolean expressionMatches(String expression, Map<String,String> params) {
+		Binding binding = new Binding(params);
+		binding.setVariable("resourceName", name);
+		binding.setVariable("resourceDescription", description);
+		binding.setVariable("resourceLabels", labels);
+		String expressionToEvaluate = expression.replace(Constants.GROOVY_LABEL_MARKER, "");
+		GroovyShell shell = new GroovyShell(binding);
+		try {
+			Object result = shell.evaluate(expressionToEvaluate);
+			if (LOGGER.isLoggable(Level.FINE)) {
+				LOGGER.fine("Checked resource " + name + " for " + expression
+						+ " with " + binding + " -> " + result);
+			}
+			return (Boolean) result;
+		} catch (Exception e) {
+			LOGGER.log(
+					Level.SEVERE,
+					"Cannot get boolean result out of groovy expression '"
+							+ expressionToEvaluate + "' on (" + binding + ")",
+					e);
+			return false;
+		}
 	}
 
 	@Exported

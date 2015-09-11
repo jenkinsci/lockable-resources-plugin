@@ -15,6 +15,7 @@ import hudson.Util;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import org.jenkins.plugins.lockableresources.Constants;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -45,15 +46,19 @@ public class LockableResourcesStruct {
 		Set<LockableResource> required = new LinkedHashSet<LockableResource>();
 		requiredNames = Util.fixEmptyAndTrim(requiredNames);
 		if ( requiredNames != null ) {
-			for ( String name : requiredNames.split("\\s+") ) {
-				name = env.expand(name);
-				LockableResource r = LockableResourcesManager.get().fromName(
-					name);
-				if (r != null) {
-					required.add(r);
-				}
-				else {
-					required.addAll(LockableResourcesManager.get().getResourcesWithLabel(name));
+			if ( requiredNames.startsWith(Constants.GROOVY_LABEL_MARKER) ) {
+				required.addAll(LockableResourcesManager.get().getResourcesForExpression(requiredNames, env));
+			}
+			else {
+				for ( String name : requiredNames.split("\\s+") ) {
+					name = env.expand(name);
+					LockableResource r = LockableResourcesManager.get().fromName(name);
+					if (r != null) {
+						required.add(r);
+					}
+					else {
+						required.addAll(LockableResourcesManager.get().getResourcesWithLabel(name));
+					}
 				}
 			}
 		}

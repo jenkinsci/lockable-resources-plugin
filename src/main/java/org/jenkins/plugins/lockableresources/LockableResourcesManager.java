@@ -117,7 +117,7 @@ public class LockableResourcesManager extends Plugin {
 	public boolean isValidLabel(String label)
 	{
 		if (label == null) return false;
-		return this.labelsCache.containsKey(label);
+		return label.startsWith(Constants.GROOVY_LABEL_MARKER) || this.labelsCache.containsKey(label);
 	}
 
 	public Set<String> getAllLabels()
@@ -153,8 +153,22 @@ public class LockableResourcesManager extends Plugin {
 		}
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
-			if (r.isValidLabel(label))
-				found.add(r);
+			if (r.isValidLabel(label)) found.add(r);
+		}
+		return found;
+	}
+
+	/**
+	 * Evaluates a groovy expression to find matching resources.
+	 * 
+	 * @param expr
+	 * @param params
+	 * @return 
+	 */
+	public List<LockableResource> getResourcesForExpression(String expr, Map<String,String> params) {
+		List<LockableResource> found = new ArrayList<LockableResource>();
+		for (LockableResource r : this.resources) {
+			if (r.expressionMatches(expr, params)) found.add(r);
 		}
 		return found;
 	}
