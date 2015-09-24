@@ -23,4 +23,14 @@
 	<f:entry title="${%Reserved by}" field="reservedBy">
 		<f:textbox/>
 	</f:entry>
+	<f:entry title="Properties">
+		<f:repeatable field="properties" header="Property" minimum="0" add="Add Property">
+			<table width="100%">
+				<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResourceProperty"/>
+				<f:entry title="">
+					<div align="right"><f:repeatableDeleteButton/></div>
+				</f:entry>
+			</table>
+		</f:repeatable>
+	</f:entry>
 </j:jelly>

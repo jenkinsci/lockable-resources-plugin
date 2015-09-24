@@ -31,6 +31,9 @@ public class LockableResourcesStruct implements Serializable {
 	public String label;
 	public String requiredVar;
 	public String requiredNumber;
+	public boolean injectResourcesProperties;
+	public boolean prefixResourcesProperties;
+	public boolean upperCaseResourcesProperties;
 
 	@CheckForNull
 	private final SerializableSecureGroovyScript serializableResourceMatchScript;
@@ -59,8 +62,12 @@ public class LockableResourcesStruct implements Serializable {
 		requiredVar = property.getResourceNamesVar();
 
 		requiredNumber = property.getResourceNumber();
-		if (requiredNumber != null && requiredNumber.equals("0"))
+		injectResourcesProperties = property.isInjectResourcesProperties();
+		prefixResourcesProperties = property.isPrefixResourcesProperties();
+		upperCaseResourcesProperties = property.isUpperCaseResourcesProperties();
+		if (requiredNumber != null && requiredNumber.equals("0")) {
 			requiredNumber = null;
+		}
 	}
 
 	/**

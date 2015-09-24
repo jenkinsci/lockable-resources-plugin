@@ -64,6 +64,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String description = "";
 	private String labels = "";
 	private String reservedBy = null;
+	private List<LockableResourceProperty> properties = new ArrayList<LockableResourceProperty>();
 
 	private long queueItemId = NOT_QUEUED;
 	private String queueItemProject = null;
@@ -98,6 +99,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		if (queuedContexts == null) { // this field was added after the initial version if this class
 			queuedContexts = new ArrayList<StepContext>();
 		}
+		if (properties == null) {
+		    properties = new ArrayList<LockableResourceProperty>();
+        }
 		return this;
 	}
 
@@ -130,6 +134,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public String getLabels() {
 		return labels;
 	}
+
+    @Exported
+    public List<LockableResourceProperty> getProperties() {
+        return properties;
+    }
+
+    @DataBoundSetter
+    public void setProperties(List<LockableResourceProperty> properties) {
+	    this.properties = properties==null?new ArrayList<LockableResourceProperty>():properties;
+    }
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
 		return labelsContain(candidate);

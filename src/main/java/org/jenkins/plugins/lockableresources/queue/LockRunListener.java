@@ -19,8 +19,10 @@ import hudson.model.StringParameterValue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Logger;
 
+import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
@@ -65,6 +67,26 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 							build.addAction(new ResourceVariableNameAction(new StringParameterValue(
 									resources.requiredVar,
 									required.toString().replaceAll("[\\]\\[]", ""))));
+						}
+
+						if (resources.injectResourcesProperties) {
+							for (LockableResource lr : required) {
+								List<LockableResourceProperty> properties = lr.getProperties();
+								for (LockableResourceProperty lrp : properties) {
+                                    String propertyName = lrp.getName();
+                                    String propertyValue = lrp.getValue();
+
+                                    if (resources.prefixResourcesProperties && resources.requiredVar != null) {
+                                        propertyName = resources.requiredVar + "_" + propertyName;
+                                    }
+                                    if (resources.upperCaseResourcesProperties) {
+                                        propertyName = propertyName.toUpperCase(Locale.ENGLISH);
+                                    }
+                                    build.addAction(new ResourceVariableNameAction(new StringParameterValue(
+                                            propertyName,
+                                            propertyValue)));
+								}
+							}
 						}
 					} else {
 						listener.getLogger().printf("%s failed to lock %s%n",
