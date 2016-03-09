@@ -16,6 +16,7 @@ import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
 import hudson.model.Descriptor;
 import hudson.model.Queue;
+import hudson.model.Run;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
 import hudson.model.User;
@@ -30,8 +31,11 @@ import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
+
+import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> {
@@ -42,22 +46,37 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public static final String GROOVY_LABEL_MARKER = "groovy:";
 
 	private final String name;
-	private final String description;
-	private final String labels;
-	private String reservedBy;
+	private String description = "";
+	private String labels = "";
+	private String reservedBy = null;
 
 	private transient int queueItemId = NOT_QUEUED;
 	private transient String queueItemProject = null;
-	private transient AbstractBuild<?, ?> build = null;
+	private transient Run<?, ?> build = null;
 	private transient long queuingStarted = 0;
 
-	@DataBoundConstructor
+	@Deprecated
 	public LockableResource(
 			String name, String description, String labels, String reservedBy) {
 		this.name = name;
 		this.description = description;
 		this.labels = labels;
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
+	}
+
+	@DataBoundConstructor
+	public LockableResource(String name) {
+		this.name = name;
+	}
+
+	@DataBoundSetter
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	@DataBoundSetter
+	public void setLabels(String labels) {
+		this.labels = labels;
 	}
 
 	@Exported
@@ -163,8 +182,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return build != null;
 	}
 
-	public AbstractBuild<?, ?> getBuild() {
+	@WithBridgeMethods(value=AbstractBuild.class, adapterMethod="getAbstractBuild")
+	public Run<?, ?> getBuild() {
 		return build;
+	}
+
+	/**
+	 * @see {@link WithBridgeMethods}
+	 */
+	@Deprecated
+	private Object getAbstractBuild(final Run owner, final Class targetClass) {
+		return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
 	}
 
 	@Exported
@@ -175,7 +203,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			return null;
 	}
 
-	public void setBuild(AbstractBuild<?, ?> lockedBy) {
+	public void setBuild(Run<?, ?> lockedBy) {
 		this.build = lockedBy;
 	}
 
@@ -216,6 +244,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 	}
 
+	@DataBoundSetter
 	public void setReservedBy(String userName) {
 		this.reservedBy = userName;
 	}

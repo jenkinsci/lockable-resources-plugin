@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
 import hudson.model.AbstractBuild;
+import hudson.model.Run;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -60,7 +61,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
-			AbstractBuild<?, ?> rBuild = r.getBuild();
+			Run<?, ?> rBuild = r.getBuild();
 			if (rBuild != null && rBuild == build) {
 				matching.add(r);
 			}
@@ -206,7 +207,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean lock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+			Run<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
 				return false;
@@ -220,7 +221,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+			Run<?, ?> build) {
 		for (LockableResource r : resources) {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
