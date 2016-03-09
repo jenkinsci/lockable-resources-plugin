@@ -13,7 +13,7 @@
 	<parent>
 		<groupId>org.jenkins-ci.plugins</groupId>
 		<artifactId>plugin</artifactId>
-		<version>1.509.4</version>
+		<version>1.580.3</version>
 	</parent>
 
 	<groupId>org.6wind.jenkins</groupId>
@@ -54,6 +54,11 @@
 			<artifactId>mailer</artifactId>
 			<version>1.5</version>
 		</dependency>
+		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-step-api</artifactId>
+			<version>1.14</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -61,10 +66,11 @@
 			<plugin>
 				<groupId>org.jenkins-ci.tools</groupId>
 				<artifactId>maven-hpi-plugin</artifactId>
-				<version>1.96</version>
-				<extensions>true</extensions>
 				<configuration>
-					<contextPath>/</contextPath>
+					<loggers>
+						<org.jenkinsci.plugins.workflow>FINE</org.jenkinsci.plugins.workflow>
+						<org.jenkinsci.plugins.durabletask>FINE</org.jenkinsci.plugins.durabletask>
+					</loggers>
 				</configuration>
 			</plugin>
 			<plugin>
