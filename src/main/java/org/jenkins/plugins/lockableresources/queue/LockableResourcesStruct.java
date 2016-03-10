@@ -46,6 +46,14 @@ public class LockableResourcesStruct {
 			requiredNumber = null;
 	}
 
+	public LockableResourcesStruct(String resource) {
+		required = new ArrayList<LockableResource>();
+		LockableResource r = LockableResourcesManager.get().fromName(resource);
+		if (r != null) {
+			this.required.add(r);
+		}
+	}
+
 	public String toString() {
 		return "Required resources: " + this.required +
 			", Required label: " + this.label +
