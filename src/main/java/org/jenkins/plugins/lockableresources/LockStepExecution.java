@@ -5,13 +5,17 @@ import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nonnull;
+
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecution;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
+import org.jenkinsci.plugins.workflow.steps.StepExecution;
 
+import com.google.common.base.Function;
 import com.google.inject.Inject;
 
 import hudson.model.Run;
@@ -31,6 +35,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	private transient volatile ScheduledFuture<?> task;
 	private BodyExecution body;
+	private final String id = UUID.randomUUID().toString();
 
 	@Override
 	public boolean start() throws Exception {
@@ -39,17 +44,18 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	}
 
 	private void tryLock(long delay) {
-		Timer.get().schedule(new Runnable() {
+		task = Timer.get().schedule(new Runnable() {
 			@Override
 			public void run() {
-				if (!proceed()) {
-					tryLock(1000); // try to lock every second
+				task = null;
+				if (!lockAndProceed()) {
+					retry(id, 1000); // try to lock every second
 				}
 			}
 		}, delay, TimeUnit.MILLISECONDS);
 	}
 
-	private boolean proceed() {
+	private boolean lockAndProceed() {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
 		if (LockableResourcesManager.get().lock(resourceHolder.required, run)) {
 			listener.getLogger().println("Lock aquired on [" + step.resource + "]");
@@ -61,6 +67,19 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		} else {
 			return false;
 		}
+	}
+
+	private static void retry(final String id, final long delay) {
+		// retry only if the the execution of this step has not being requested to stop
+		StepExecution.applyAll(LockStepExecution.class, new Function<LockStepExecution, Void>() {
+			@Override
+			public Void apply(@Nonnull LockStepExecution execution) {
+				if (execution.id.equals(id)) {
+					execution.tryLock(delay);
+				}
+				return null;
+			}
+		});
 	}
 
 	private static final class Callback extends BodyExecutionCallback.TailCall {
@@ -87,6 +106,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		if (body != null) {
 			body.cancel(cause);
 		}
+		if (task != null) {
+			task.cancel(false);
+		}
+		getContext().onFailure(cause);
 	}
 
 	private static final long serialVersionUID = 1L;

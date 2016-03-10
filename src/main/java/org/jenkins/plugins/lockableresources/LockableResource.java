@@ -50,10 +50,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String labels = "";
 	private String reservedBy = null;
 
-	private transient int queueItemId = NOT_QUEUED;
-	private transient String queueItemProject = null;
+	private int queueItemId = NOT_QUEUED;
+	private String queueItemProject = null;
 	private transient Run<?, ?> build = null;
-	private transient long queuingStarted = 0;
+	// Needed to make the state non-transient
+	private String buildExternalizableId = null;
+	private long queuingStarted = 0;
 
 	@Deprecated
 	public LockableResource(
@@ -184,6 +186,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@WithBridgeMethods(value=AbstractBuild.class, adapterMethod="getAbstractBuild")
 	public Run<?, ?> getBuild() {
+		if (build == null && buildExternalizableId != null) {
+			build = Run.fromExternalizableId(buildExternalizableId);
+		}
 		return build;
 	}
 
@@ -205,6 +210,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	public void setBuild(Run<?, ?> lockedBy) {
 		this.build = lockedBy;
+		this.buildExternalizableId = lockedBy.getExternalizableId();
 	}
 
 	public Task getTask() {
