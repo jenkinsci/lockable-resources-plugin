@@ -58,6 +58,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	private boolean lockAndProceed() {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
 		if (LockableResourcesManager.get().lock(resourceHolder.required, run)) {
+			LockableResourcesManager.get().save(); // save state
 			listener.getLogger().println("Lock aquired on [" + step.resource + "]");
 			body = getContext().newBodyInvoker().
 				withCallback(new Callback(resourceHolder, run)).
@@ -82,19 +83,34 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		});
 	}
 
-	private static final class Callback extends BodyExecutionCallback.TailCall {
+	private static final class Callback extends BodyExecutionCallback {
 
 		private final LockableResourcesStruct resourceHolder;
-		private final Run<?, ?> run;
+		private transient Run<?, ?> run;
+		private final String buildExternalizableId;
 
 		Callback(LockableResourcesStruct resourceHolder, Run<?, ?> run) {
 			this.resourceHolder = resourceHolder;
 			this.run = run;
+			this.buildExternalizableId = run.getExternalizableId();
 		}
 
 		@Override
-		protected void finished(StepContext context) throws Exception {
+		public void onSuccess(StepContext context, Object result) {
+			if (run == null && buildExternalizableId != null) {
+				run = Run.fromExternalizableId(buildExternalizableId);
+			}
 			LockableResourcesManager.get().unlock(resourceHolder.required, run);
+			context.onSuccess(result);
+		}
+
+		@Override
+		public void onFailure(StepContext context, Throwable t) {
+			if (run == null && buildExternalizableId != null) {
+				run = Run.fromExternalizableId(buildExternalizableId);
+			}
+			LockableResourcesManager.get().unlock(resourceHolder.required, run);
+			context.onFailure(t);
 		}
 
 		private static final long serialVersionUID = 1L;

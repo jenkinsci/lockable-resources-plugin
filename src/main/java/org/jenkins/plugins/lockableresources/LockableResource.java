@@ -22,6 +22,7 @@ import hudson.model.Queue.Task;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 
 @ExportedBean(defaultVisibility = 999)
-public class LockableResource extends AbstractDescribableImpl<LockableResource> {
+public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
 
 	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 	public static final int NOT_QUEUED = 0;
@@ -210,7 +211,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	public void setBuild(Run<?, ?> lockedBy) {
 		this.build = lockedBy;
-		this.buildExternalizableId = lockedBy.getExternalizableId();
+		if (lockedBy != null) {
+			this.buildExternalizableId = lockedBy.getExternalizableId();
+		} else {
+			this.buildExternalizableId = null;
+		}
 	}
 
 	public Task getTask() {
@@ -252,7 +257,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@DataBoundSetter
 	public void setReservedBy(String userName) {
-		this.reservedBy = userName;
+		this.reservedBy = Util.fixEmptyAndTrim(userName);
 	}
 
 	public void unReserve() {
@@ -304,4 +309,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 
 	}
+
+	private static final long serialVersionUID = 1L;
 }

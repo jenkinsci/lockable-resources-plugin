@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.EnvVars;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,7 +18,7 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
-public class LockableResourcesStruct {
+public class LockableResourcesStruct implements Serializable {
 
 	public List<LockableResource> required;
 	public String label;
@@ -60,4 +61,6 @@ public class LockableResourcesStruct {
 			", Variable name: " + this.requiredVar +
 			", Number of resources: " + this.requiredNumber;
 	}
+
+	private static final long serialVersionUID = 1L;
 }
