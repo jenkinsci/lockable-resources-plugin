@@ -200,8 +200,8 @@ public class LockableResourceTest {
 	@Test
 	public void testGetQueueItemId() {
 		System.out.println("getQueueItemId");
-		int expResult = 0;
-		int result = instance.getQueueItemId();
+		long expResult = 0;
+		long result = instance.getQueueItemId();
 		assertEquals(expResult, result);
 	}
 

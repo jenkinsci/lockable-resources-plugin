@@ -1,9 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
-import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import javax.annotation.Nonnull;
 
@@ -36,10 +36,16 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	private transient volatile ScheduledFuture<?> task;
 	private BodyExecution body;
 	private final String id = UUID.randomUUID().toString();
+	private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
 	@Override
 	public boolean start() throws Exception {
-		tryLock(0);
+		listener.getLogger().println("Trying to acquire lock on [" + step.resource + "]");
+		if (!lockAndProceed()) {
+			listener.getLogger().println(new LockableResourcesStruct(step.resource).required.get(0).getLockCause());
+			listener.getLogger().println("Waiting for lock...");
+			tryLock(0);
+		}
 		return false;
 	}
 
@@ -57,15 +63,17 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	private boolean lockAndProceed() {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
+		LOGGER.finest("Trying to acquire [" + step.resource + "]");
 		if (LockableResourcesManager.get().lock(resourceHolder.required, run)) {
-			LockableResourcesManager.get().save(); // save state
-			listener.getLogger().println("Lock aquired on [" + step.resource + "]");
+			listener.getLogger().println("Lock acquired on [" + step.resource + "]");
+			LOGGER.finest("Lock acquired on [" + step.resource + "]");
 			body = getContext().newBodyInvoker().
 				withCallback(new Callback(resourceHolder, run)).
 				withDisplayName(null).
 				start();
 			return true;
 		} else {
+			resourceHolder.required.get(0).getLockCause();
 			return false;
 		}
 	}
@@ -90,6 +98,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		private final String buildExternalizableId;
 
 		Callback(LockableResourcesStruct resourceHolder, Run<?, ?> run) {
+			// It's granted to contain one item (and only one for now)
 			this.resourceHolder = resourceHolder;
 			this.run = run;
 			this.buildExternalizableId = run.getExternalizableId();
@@ -97,20 +106,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		@Override
 		public void onSuccess(StepContext context, Object result) {
-			if (run == null && buildExternalizableId != null) {
-				run = Run.fromExternalizableId(buildExternalizableId);
-			}
-			LockableResourcesManager.get().unlock(resourceHolder.required, run);
+			unlock(context);
 			context.onSuccess(result);
 		}
 
 		@Override
 		public void onFailure(StepContext context, Throwable t) {
+			unlock(context);
+			context.onFailure(t);
+		}
+
+		private void unlock(StepContext context) {
 			if (run == null && buildExternalizableId != null) {
 				run = Run.fromExternalizableId(buildExternalizableId);
 			}
 			LockableResourcesManager.get().unlock(resourceHolder.required, run);
-			context.onFailure(t);
+			try {
+				// It's granted to contain one (and only one for now)
+				context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
+				LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
+			} catch (Exception e) {
+				context.onFailure(e);
+			}
 		}
 
 		private static final long serialVersionUID = 1L;

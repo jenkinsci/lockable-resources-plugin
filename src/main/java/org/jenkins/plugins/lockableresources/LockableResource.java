@@ -38,6 +38,8 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
 
@@ -51,7 +53,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String labels = "";
 	private String reservedBy = null;
 
-	private int queueItemId = NOT_QUEUED;
+	private long queueItemId = NOT_QUEUED;
 	private String queueItemProject = null;
 	private transient Run<?, ?> build = null;
 	// Needed to make the state non-transient
@@ -164,12 +166,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	// returns True if queued by any other task than the given one
-	public boolean isQueued(int taskId) {
+	public boolean isQueued(long taskId) {
 		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED && queueItemId != taskId;
 	}
 
-	public boolean isQueuedByTask(int taskId) {
+	public boolean isQueuedByTask(long taskId) {
 		this.validateQueuingTimeout();
 		return queueItemId == taskId;
 	}
@@ -182,7 +184,23 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@Exported
 	public boolean isLocked() {
-		return build != null;
+		return getBuild() != null;
+	}
+
+	/**
+	 * Resolve the lock cause for this resource. It can be reserved or locked.
+	 *
+	 * @return the lock cause or null if not locked
+	 */
+	@CheckForNull
+	public String getLockCause() {
+		if (isReserved()) {
+			return String.format("[%s] is reserved by %s", name, reservedBy);
+		}
+		if (isLocked()) {
+			return String.format("[%s] is locked by %s", name, buildExternalizableId);
+		}
+		return null;
 	}
 
 	@WithBridgeMethods(value=AbstractBuild.class, adapterMethod="getAbstractBuild")
@@ -203,8 +221,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@Exported
 	public String getBuildName() {
-		if (build != null)
-			return build.getFullDisplayName();
+		if (getBuild() != null)
+			return getBuild().getFullDisplayName();
 		else
 			return null;
 	}
@@ -227,7 +245,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 	}
 
-	public int getQueueItemId() {
+	public long getQueueItemId() {
 		this.validateQueuingTimeout();
 		return queueItemId;
 	}
@@ -237,12 +255,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return this.queueItemProject;
 	}
 
-	public void setQueued(int queueItemId) {
+	public void setQueued(long queueItemId) {
 		this.queueItemId = queueItemId;
 		this.queuingStarted = System.currentTimeMillis() / 1000;
 	}
 
-	public void setQueued(int queueItemId, String queueProjectName) {
+	public void setQueued(long queueItemId, String queueProjectName) {
 		this.setQueued(queueItemId);
 		this.queueItemProject = queueProjectName;
 	}
