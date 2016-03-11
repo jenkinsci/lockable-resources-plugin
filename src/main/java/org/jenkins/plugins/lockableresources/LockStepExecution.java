@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -91,7 +92,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		});
 	}
 
-	private static final class Callback extends BodyExecutionCallback {
+	private static final class Callback extends BodyExecutionCallback.TailCall {
 
 		private final LockableResourcesStruct resourceHolder;
 		private transient Run<?, ?> run;
@@ -104,30 +105,18 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			this.buildExternalizableId = run.getExternalizableId();
 		}
 
-		@Override
-		public void onSuccess(StepContext context, Object result) {
+		protected void finished(StepContext context) throws Exception {
 			unlock(context);
-			context.onSuccess(result);
 		}
 
-		@Override
-		public void onFailure(StepContext context, Throwable t) {
-			unlock(context);
-			context.onFailure(t);
-		}
-
-		private void unlock(StepContext context) {
+		private void unlock(StepContext context) throws IOException, InterruptedException {
 			if (run == null && buildExternalizableId != null) {
 				run = Run.fromExternalizableId(buildExternalizableId);
 			}
 			LockableResourcesManager.get().unlock(resourceHolder.required, run);
-			try {
-				// It's granted to contain one (and only one for now)
-				context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
-				LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
-			} catch (Exception e) {
-				context.onFailure(e);
-			}
+			// It's granted to contain one (and only one for now)
+			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
+			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
 		}
 
 		private static final long serialVersionUID = 1L;
