@@ -120,7 +120,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean queue(List<LockableResource> resources,
-			int queueItemId) {
+			long queueItemId) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
@@ -130,7 +130,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
-	                                                 int queueItemId,
+	                                                 long queueItemId,
 	                                                 String queueItemProject,
 	                                                 int number,  // 0 means all
 	                                                 Map<String, Object> params,
@@ -185,7 +185,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	// Return false if another item queued for this project -> bail out
 	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
 	                                            String project,
-	                                            int taskId,
+	                                            long taskId,
 	                                            Logger log) {
 		for (LockableResource r : resources) {
 			// This project might already have something in queue
@@ -216,6 +216,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);
+			save();
 		}
 		return true;
 	}
@@ -226,6 +227,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (build == null || build == r.getBuild()) {
 				r.unqueue();
 				r.setBuild(null);
+				save();
 			}
 		}
 	}

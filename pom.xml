@@ -13,7 +13,7 @@
 	<parent>
 		<groupId>org.jenkins-ci.plugins</groupId>
 		<artifactId>plugin</artifactId>
-		<version>1.580.3</version>
+		<version>1.609.1</version>
 	</parent>
 
 	<groupId>org.6wind.jenkins</groupId>
@@ -27,6 +27,12 @@
 		resource which is already locked, it will wait for the resource to be free.
 	</description>
 	<url>https://wiki.jenkins-ci.org/display/JENKINS/Lockable+Resources+Plugin</url>
+
+	<properties>
+		<!-- First version including TailCall is 1.9, and the same baseline is maintained
+		until 1.14, so let's pick up the greatest -->
+		<workflow.version>1.14</workflow.version>
+	</properties>
 
 	<licenses>
 		<license>
@@ -46,6 +52,16 @@
 			</roles>
 			<timezone>CET</timezone>
 		</developer>
+		<developer>
+			<id>amuniz</id>
+			<name>Antonio Muñiz</name>
+			<email>amuniz@cloudbees.com</email>
+			<roles>
+				<role>developer</role>
+				<role>maintainer</role>
+			</roles>
+			<timezone>CET</timezone>
+		</developer>
 	</developers>
 
 	<dependencies>
@@ -57,12 +73,17 @@
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
 			<artifactId>workflow-step-api</artifactId>
-			<version>1.4</version>
+			<version>${workflow.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>matrix-project</artifactId>
 			<version>1.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.findbugs</groupId>
+			<artifactId>annotations</artifactId>
+			<version>3.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.infradna.tool</groupId>
@@ -73,7 +94,7 @@
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
 			<artifactId>workflow-aggregator</artifactId>
-			<version>1.4</version>
+			<version>${workflow.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
