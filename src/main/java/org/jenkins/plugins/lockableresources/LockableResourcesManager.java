@@ -247,13 +247,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
 			Run<?, ?> build) {
-		for (LockableResource r : resources) {
-			// TODO: is this part still needed (the internal state is update below)
-			//if (build == null || build.getExternalizableId().equals(r.getBuild().getExternalizableId())) {
-			//	r.unqueue();
-			//	r.setBuild(null);
-			//}
-
+		for (LockableResource r : resourcesToUnLock) {
+			// Seach the resource in the internal list un unlock it
 			for (LockableResource internal : resources) {
 				if (internal.getName().equals(r.getName())) {
 					if (build == null || build.getExternalizableId().equals(internal.getBuild().getExternalizableId())) {

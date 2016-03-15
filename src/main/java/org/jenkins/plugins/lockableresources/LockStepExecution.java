@@ -129,7 +129,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 				run = Run.fromExternalizableId(buildExternalizableId);
 			}
 			LockableResourcesManager.get().unlock(resourceHolder.required, run);
-			LockableResourcesManager.get().save();
 			// It's granted to contain one (and only one for now)
 			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
 			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
