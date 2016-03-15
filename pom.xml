@@ -106,6 +106,12 @@
 			<classifier>tests</classifier>
 			<scope>test</scope>
 		</dependency>
+		<dependency> <!-- Required by workflow-cps-global-lib (transitive of git-server) -->
+			<groupId>org.jenkins-ci.modules</groupId>
+			<artifactId>sshd</artifactId>
+			<version>1.6</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

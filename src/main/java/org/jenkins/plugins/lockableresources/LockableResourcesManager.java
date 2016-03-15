@@ -216,20 +216,58 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (LockableResource r : resources) {
 			r.unqueue();
 			r.setBuild(build);
+			r.removeFromQueue(build);
 			save();
 		}
 		return true;
 	}
 
-	public synchronized void unlock(List<LockableResource> resources,
-			Run<?, ?> build) {
+	public synchronized boolean isNextInQueue(List<LockableResource> resources, Run<?, ?> build) {
 		for (LockableResource r : resources) {
-			if (build == null || build == r.getBuild()) {
-				r.unqueue();
-				r.setBuild(null);
-				save();
+			if (!r.isNextInQueue(build)) {
+				return false;
 			}
 		}
+		return true;
+	}
+
+	public synchronized void addToQueue(List<LockableResource> resources, Run<?, ?> build) {
+		for (LockableResource r : resources) {
+			r.addToQueue(build);
+		}
+		save();
+	}
+
+	public synchronized void removeFromQueue(List<LockableResource> resources, Run<?, ?> build) {
+		for (LockableResource r : resources) {
+			r.removeFromQueue(build);
+		}
+		save();
+	}
+
+	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
+			Run<?, ?> build) {
+		for (LockableResource r : resources) {
+			// TODO: is this part still needed (the internal state is update below)
+			//if (build == null || build.getExternalizableId().equals(r.getBuild().getExternalizableId())) {
+			//	r.unqueue();
+			//	r.setBuild(null);
+			//}
+
+			for (LockableResource internal : resources) {
+				if (internal.getName().equals(r.getName())) {
+					if (build == null || build.getExternalizableId().equals(internal.getBuild().getExternalizableId())) {
+						internal.unqueue();
+						internal.setBuild(null);
+						save();
+					}
+				}
+			}
+		}
+	}
+
+	public synchronized String getLockCause(String r) {
+		return new LockableResourcesStruct(r).required.get(0).getLockCause();
 	}
 
 	public synchronized boolean reserve(List<LockableResource> resources,

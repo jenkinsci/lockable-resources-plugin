@@ -23,6 +23,7 @@ import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 
+import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
@@ -55,10 +57,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private long queueItemId = NOT_QUEUED;
 	private String queueItemProject = null;
-	private transient Run<?, ?> build = null;
+	private transient  Run<?, ?> build = null;
 	// Needed to make the state non-transient
 	private String buildExternalizableId = null;
 	private long queuingStarted = 0;
+
+	/**
+	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
+	 * otherwise (freestyle builds) regular Jenkins builds queue is used.
+	 */
+	private List<String> queuedBuilds = new ArrayList<String>();
 
 	@Deprecated
 	public LockableResource(
@@ -97,6 +105,30 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getLabels() {
 		return labels;
+	}
+
+	public void addToQueue(Run<?, ?> b) {
+		if (!queuedBuilds.contains(b.getExternalizableId())) {
+			queuedBuilds.add(b.getExternalizableId());
+		}
+	}
+
+	public void removeFromQueue(Run<?, ?> b) {
+		if (queuedBuilds.size() > 0) {
+			if (queuedBuilds.get(0).equals(b.getExternalizableId())) {
+				queuedBuilds.remove(0);
+			} else {
+				throw new IllegalArgumentException("Trying to unqueue a wrong build: " + b.getExternalizableId());
+			}
+		}
+		// else no items in queue, return quietly
+	}
+
+	public boolean isNextInQueue(Run<?, ?> b) {
+		if (queuedBuilds.size() > 0) {
+			return queuedBuilds.get(0).equals(b.getExternalizableId());
+		}
+		return true;
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {

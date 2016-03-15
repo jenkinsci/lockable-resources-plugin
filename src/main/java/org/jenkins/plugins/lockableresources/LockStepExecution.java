@@ -26,7 +26,7 @@ import jenkins.util.Timer;
 public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	@Inject(optional = true)
-	private transient LockStep step;
+	private LockStep step;
 
 	@StepContextParameter
 	private transient Run<?, ?> run;
@@ -35,7 +35,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	private transient TaskListener listener;
 
 	private transient volatile ScheduledFuture<?> task;
-	private BodyExecution body;
+	private volatile BodyExecution body;
 	private final String id = UUID.randomUUID().toString();
 	private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
@@ -43,11 +43,23 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	public boolean start() throws Exception {
 		listener.getLogger().println("Trying to acquire lock on [" + step.resource + "]");
 		if (!lockAndProceed()) {
-			listener.getLogger().println(new LockableResourcesStruct(step.resource).required.get(0).getLockCause());
+			listener.getLogger().println(LockableResourcesManager.get().getLockCause(step.resource));
 			listener.getLogger().println("Waiting for lock...");
 			tryLock(0);
 		}
 		return false;
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		//LockableResourcesManager.get().load();
+		if (body == null) {
+			// Restarted while waiting to lock the resource
+			LOGGER.fine("Resuming lock step on [" + run.getExternalizableId() + "], retrying to acquire lock");
+			tryLock(0);
+		}
+		// the body was already started, nothing to do here
 	}
 
 	private void tryLock(long delay) {
@@ -62,25 +74,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}, delay, TimeUnit.MILLISECONDS);
 	}
 
-	private boolean lockAndProceed() {
+	private synchronized boolean lockAndProceed() {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
-		LOGGER.finest("Trying to acquire [" + step.resource + "]");
-		if (LockableResourcesManager.get().lock(resourceHolder.required, run)) {
+		LOGGER.finest("Trying to acquire [" + step.resource + "] by " + run.getExternalizableId());
+		// force load from disk to avoid not commited memory between threads
+		LockableResourcesManager.get().addToQueue(resourceHolder.required, run);
+		if (LockableResourcesManager.get().isNextInQueue(resourceHolder.required, run) && 
+				LockableResourcesManager.get().lock(resourceHolder.required, run)) {
 			listener.getLogger().println("Lock acquired on [" + step.resource + "]");
-			LOGGER.finest("Lock acquired on [" + step.resource + "]");
+			LOGGER.finest("Lock acquired on [" + step.resource + "] by " + run.getExternalizableId());
 			body = getContext().newBodyInvoker().
 				withCallback(new Callback(resourceHolder, run)).
 				withDisplayName(null).
 				start();
 			return true;
 		} else {
-			resourceHolder.required.get(0).getLockCause();
+			//listener.getLogger().println(LockableResourcesManager.get().getLockCause(step.resource));
 			return false;
 		}
 	}
 
 	private static void retry(final String id, final long delay) {
-		// retry only if the the execution of this step has not being requested to stop
+		// retry only if the the execution of this step has not being somehow stopped
 		StepExecution.applyAll(LockStepExecution.class, new Function<LockStepExecution, Void>() {
 			@Override
 			public Void apply(@Nonnull LockStepExecution execution) {
@@ -114,6 +129,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 				run = Run.fromExternalizableId(buildExternalizableId);
 			}
 			LockableResourcesManager.get().unlock(resourceHolder.required, run);
+			LockableResourcesManager.get().save();
 			// It's granted to contain one (and only one for now)
 			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
 			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
