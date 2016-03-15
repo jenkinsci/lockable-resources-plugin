@@ -98,7 +98,8 @@ public class LockStepTest {
 				story.j.waitForMessage("Lock acquired on [resource1]", b2);
 				story.j.assertLogContains("Waiting for lock...", b3);
 				SemaphoreStep.success("wait-inside/2", null);
-				story.j.waitForMessage("Lock acquired on [resource1]", b3);
+				SemaphoreStep.waitForStart("wait-inside/3", b3);
+				story.j.assertLogContains("Lock acquired on [resource1]", b3);
 				SemaphoreStep.success("wait-inside/3", null);
 				story.j.waitForMessage("Finish", b3);
 			}
