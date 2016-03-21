@@ -208,7 +208,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			return c;
 		}
 
-		public AutoCompletionCandidates doAutoCompleteResourceNames(
+		public static AutoCompletionCandidates doAutoCompleteResourceNames(
 				@QueryParameter String value) {
 			AutoCompletionCandidates c = new AutoCompletionCandidates();
 

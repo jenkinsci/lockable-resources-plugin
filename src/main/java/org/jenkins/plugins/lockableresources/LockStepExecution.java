@@ -1,5 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
+import static java.util.logging.Level.WARNING;
+
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
@@ -19,8 +21,11 @@ import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import com.google.common.base.Function;
 import com.google.inject.Inject;
 
+import hudson.model.Executor;
+import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import jenkins.model.CauseOfInterruption;
 import jenkins.util.Timer;
 
 public class LockStepExecution extends AbstractStepExecutionImpl {
@@ -77,8 +82,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	private synchronized boolean lockAndProceed() {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
 		LOGGER.finest("Trying to acquire [" + step.resource + "] by " + run.getExternalizableId());
-		// force load from disk to avoid not commited memory between threads
-		LockableResourcesManager.get().addToQueue(resourceHolder.required, run);
+		// Apply maxWaiting if needed
+		Run<?, ?> older = LockableResourcesManager.get().addToQueue(resourceHolder.required, run, step.maxWaiting);
+		applyMaxWaiting(older, resourceHolder);
 		if (LockableResourcesManager.get().isNextInQueue(resourceHolder.required, run) && 
 				LockableResourcesManager.get().lock(resourceHolder.required, run)) {
 			listener.getLogger().println("Lock acquired on [" + step.resource + "]");
@@ -89,8 +95,24 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 				start();
 			return true;
 		} else {
-			//listener.getLogger().println(LockableResourcesManager.get().getLockCause(step.resource));
 			return false;
+		}
+	}
+
+	private void applyMaxWaiting(Run<?, ?> older, LockableResourcesStruct resourceHolder) {
+		if (older != null) {
+			// No more builds accepted waiting, cancel the older one
+			Executor e = older.getExecutor();
+			if (e != null) {
+				if (older.equals(run)) {
+					e.interrupt(Result.NOT_BUILT, new CanceledCause("The wait limit was reached and there was a newer build already waiting to lock [" +step.resource + "]"));
+				} else {
+					e.interrupt(Result.NOT_BUILT, new CanceledCause(run));
+				}
+			} else{
+				LOGGER.log(WARNING, "could not cancel an older flow because it has no assigned executor");
+			}
+			LockableResourcesManager.get().removeFromQueue(resourceHolder.required, older);
 		}
 	}
 
@@ -147,6 +169,43 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			task.cancel(false);
 		}
 		getContext().onFailure(cause);
+	}
+
+	/**
+	 * Records that a build was canceled because it reached a milestone but a
+	 * newer build already passed it, or a newer build
+	 * {@link Milestone#wentAway(Run)} from the last milestone the build passed.
+	 */
+	public static final class CanceledCause extends CauseOfInterruption {
+
+		private static final long serialVersionUID = 1;
+
+		private final String newerBuild;
+		private final String cause;
+
+		CanceledCause(Run<?, ?> newerBuild) {
+			this.newerBuild = newerBuild.getExternalizableId();
+			this.cause = null;
+		}
+
+		CanceledCause(String cause) {
+			this.cause = cause;
+			this.newerBuild = null;
+		}
+
+		public Run<?, ?> getNewerBuild() {
+			return Run.fromExternalizableId(newerBuild);
+		}
+
+		@Override
+		public String getShortDescription() {
+			if (newerBuild != null) {
+				return "Superseded by " + getNewerBuild().getDisplayName();
+			} else {
+				return cause;
+			}
+		}
+
 	}
 
 	private static final long serialVersionUID = 1L;

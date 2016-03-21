@@ -108,9 +108,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public void addToQueue(Run<?, ?> b) {
-		if (!queuedBuilds.contains(b.getExternalizableId())) {
+		if (!isInQueue(b)) {
 			queuedBuilds.add(b.getExternalizableId());
 		}
+	}
+
+	public boolean isInQueue(Run<?, ?> b) {
+		return queuedBuilds.contains(b.getExternalizableId());
+	}
+
+	public Integer getBuildsInQueue() {
+		return queuedBuilds.size();
 	}
 
 	public void removeFromQueue(Run<?, ?> b) {
@@ -122,6 +130,24 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			}
 		}
 		// else no items in queue, return quietly
+	}
+
+	public String getOlderBuildInQueue(Run<?, ?> build) {
+		String older = null;
+		List<String> builds = new ArrayList<String>();
+		builds.addAll(queuedBuilds);
+		builds.add(build.getExternalizableId());
+		for (String b : builds) {
+			String job = b.split("#")[0];
+			String number = b.split("#")[1];
+			if (older == null && job.equals(build.getParent().getFullName())) {
+				older = b;
+			} else if (job.equals(build.getParent().getFullName()) && 
+					new Integer(number) < new Integer(older.split("#")[1])) {
+				older = b;
+			}
+		}
+		return older;
 	}
 
 	public boolean isNextInQueue(Run<?, ?> b) {

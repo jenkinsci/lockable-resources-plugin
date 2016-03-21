@@ -5,12 +5,17 @@ import java.io.Serializable;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 
 import hudson.Extension;
+import hudson.model.AutoCompletionCandidates;
 
 public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public final String resource;
+
+	public Integer maxWaiting;
 
 	@DataBoundConstructor
 	public LockStep(String resource) {
@@ -21,6 +26,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 			throw new IllegalArgumentException("resource [" + resource + "] does not exist, missing global definition?");
 		}
 		this.resource = resource;
+	}
+
+	@DataBoundSetter
+	public void setMaxWaiting(Integer maxWaiting) {
+		this.maxWaiting = maxWaiting;
 	}
 
 	@Extension
@@ -37,12 +47,16 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 		@Override
 		public String getDisplayName() {
-			return "Lock";
+			return "Lock shared resources to manage concurrency";
 		}
 
 		@Override
 		public boolean takesImplicitBlockArgument() {
 			return true;
+		}
+
+		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
+			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
 		}
 	}
 

@@ -231,11 +231,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
-	public synchronized void addToQueue(List<LockableResource> resources, Run<?, ?> build) {
+	/**
+	 * Returns null if the build is accepted into the queue, or the older build in the queue if not accepted.
+	 * The returned build could be in incoming one if it is the older.
+	 */
+	public synchronized Run<?, ?> addToQueue(List<LockableResource> resources, Run<?, ?> build, Integer limit) {
+		boolean modified = false;
+		Run<?, ?> older = null;
 		for (LockableResource r : resources) {
-			r.addToQueue(build);
+			if (!r.isInQueue(build)) {
+				if (limit != null && r.getBuildsInQueue() >= limit) {
+					String olderId = r.getOlderBuildInQueue(build);
+					// The incoming build is not the older one, so add it to the queue
+					if (!olderId.equals(build.getExternalizableId())) {
+						r.addToQueue(build);
+					}
+					older = Run.fromExternalizableId(olderId);
+					// If the build can not aquire one of the requested resources, then it does not make sense to anything else
+					break;
+				}
+				r.addToQueue(build);
+				modified = true;
+			}
 		}
-		save();
+		if (modified) {
+			save();
+		}
+		return older;
 	}
 
 	public synchronized void removeFromQueue(List<LockableResource> resources, Run<?, ?> build) {
@@ -251,7 +273,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			// Seach the resource in the internal list un unlock it
 			for (LockableResource internal : resources) {
 				if (internal.getName().equals(r.getName())) {
-					if (build == null || build.getExternalizableId().equals(internal.getBuild().getExternalizableId())) {
+					if (build == null || 
+							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
 						internal.unqueue();
 						internal.setBuild(null);
 						save();
