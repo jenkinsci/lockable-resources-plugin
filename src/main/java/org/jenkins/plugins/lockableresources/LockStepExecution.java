@@ -5,7 +5,6 @@ import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
-import org.jenkinsci.plugins.workflow.steps.BodyExecution;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
@@ -26,23 +25,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	@StepContextParameter
 	private transient TaskListener listener;
 
-	private volatile BodyExecution body;
 	private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
 	@Override
 	public boolean start() throws Exception {
 		listener.getLogger().println("Trying to acquire lock on [" + step.resource + "]");
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
-		if(LockableResourcesManager.get().lock(resourceHolder.required, run, getContext())) {
-			proceed(getContext(), step.resource);
-		} else {
+		if(!LockableResourcesManager.get().lock(resourceHolder.required, run, getContext(), step.inversePrecedence)) {
 			// we have to wait
-			listener.getLogger().println("Resource locked, waiting...");
-		}
+			listener.getLogger().println("[" + step.resource + "] is locked, waiting...");
+		} // proceed is called inside lock otherwise
 		return false;
 	}
 
-	public static void proceed(StepContext context, String resource) {
+	public static void proceed(StepContext context, String resource, boolean inversePrecedence) {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resource);
 		Run<?, ?> r = null;
 		try {
@@ -55,7 +51,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		LOGGER.finest("Lock acquired on [" + resource + "] by " + r.getExternalizableId());
 		context.newBodyInvoker().
-			withCallback(new Callback(resourceHolder, r)).
+			withCallback(new Callback(resourceHolder, r, inversePrecedence)).
 			withDisplayName(null).
 			start();
 	}
@@ -65,12 +61,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		private final LockableResourcesStruct resourceHolder;
 		private transient Run<?, ?> run;
 		private final String buildExternalizableId;
+		private final boolean inversePrecedence;
 
-		Callback(LockableResourcesStruct resourceHolder, Run<?, ?> run) {
+		Callback(LockableResourcesStruct resourceHolder, Run<?, ?> run, boolean inversePrecedence) {
 			// It's granted to contain one item (and only one for now)
 			this.resourceHolder = resourceHolder;
 			this.run = run;
 			this.buildExternalizableId = run.getExternalizableId();
+			this.inversePrecedence = inversePrecedence;
 		}
 
 		protected void finished(StepContext context) throws Exception {
@@ -81,10 +79,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			if (run == null && buildExternalizableId != null) {
 				run = Run.fromExternalizableId(buildExternalizableId);
 			}
-			LockableResourcesManager.get().unlock(resourceHolder.required, run, context);
+			LockableResourcesManager.get().unlock(resourceHolder.required, run, context, inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
 			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
-			context.onSuccess(null);
 		}
 
 		private static final long serialVersionUID = 1L;

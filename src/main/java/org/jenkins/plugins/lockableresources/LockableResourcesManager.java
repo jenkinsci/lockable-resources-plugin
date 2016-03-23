@@ -15,6 +15,7 @@ import hudson.model.Run;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -208,12 +209,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 		return true;
 	}
+	
+	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+		return lock(resources, build, context, false);
+	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context) {
+			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		boolean needToWait = false;
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
@@ -229,7 +234,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				r.unqueue();
 				r.setBuild(build);
 				if (context != null) {
-					LockStepExecution.proceed(context, r.getName());
+					LockStepExecution.proceed(context, r.getName(), inversePrecedence);
 					break;
 				}
 			}
@@ -237,9 +242,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 		return !needToWait;
 	}
-
+	
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
 			Run<?, ?> build, @Nullable StepContext context) {
+		unlock(resourcesToUnLock, build, context, false);
+	}
+
+	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
+			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		for (LockableResource r : resourcesToUnLock) {
 			// Search the resource in the internal list to unlock it
 			for (LockableResource internal : resources) {
@@ -248,12 +258,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
 						if (context != null) {
 							// this will remove the context from the queue and setBuild(null) if there are no more contexts
-							StepContext nextContext = internal.getNextQueuedContext();
+							StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
 							if (nextContext != null) {
-								LockStepExecution.proceed(nextContext, internal.getName());
-								if (internal.getBuildsInQueue() > 0) {
-									internal.setBuild(null);
+								try {
+									internal.setBuild(nextContext.get(Run.class));
+								} catch (Exception e) {
+									throw new IllegalStateException("Can not access the context of a running build", e);
 								}
+								LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
+							} else {
+								// No more contexts, unlock resource
+								internal.setBuild(null);
 							}
 							break;
 						} else {

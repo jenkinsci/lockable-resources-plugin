@@ -15,7 +15,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public final String resource;
 
-	public Integer maxWaiting;
+	public boolean inversePrecedence = false;
 
 	@DataBoundConstructor
 	public LockStep(String resource) {
@@ -29,8 +29,8 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	}
 
 	@DataBoundSetter
-	public void setMaxWaiting(Integer maxWaiting) {
-		this.maxWaiting = maxWaiting;
+	public void setInversePrecedence(boolean inversePrecedence) {
+		this.inversePrecedence = inversePrecedence;
 	}
 
 	@Extension
@@ -47,7 +47,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 		@Override
 		public String getDisplayName() {
-			return "Lock shared resources to manage concurrency";
+			return "Lock shared resource";
 		}
 
 		@Override

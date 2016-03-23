@@ -111,7 +111,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 
-	public Integer getBuildsInQueue() {
+	public Integer getContextsInQueue() {
 		return queuedContexts.size();
 	}
 
@@ -298,44 +298,30 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * if there are no more contexts for that build.
 	 */
 	@CheckForNull
-	public StepContext getNextQueuedContext() {
+	public StepContext getNextQueuedContext(boolean inversePrecedence) {
 		if (queuedContexts.size() > 0) {
-			StepContext nextContext = queuedContexts.remove(0);
-			Run<?, ?> nextContextRun;
-			try {
-				nextContextRun = nextContext.get(Run.class);
-			} catch (Exception e) {
-				// This should not happen, but let's remove it and get the next
-				queuedContexts.remove(nextContext);
-				return getNextQueuedContext();
+			if (!inversePrecedence) {
+				return queuedContexts.remove(0);
+			} else {
+				int newest = 0;
+				int index = 0;
+				int newestIndex = 0;
+				for (StepContext c : queuedContexts) {
+					try {
+						Run<?, ?> run = c.get(Run.class);
+						if (run.getNumber() > newest) {
+							newest = run.getNumber();
+							newestIndex = index;
+						}
+					} catch (Exception e) {
+						// skip this one
+					}
+					index++;
+				}
+				return queuedContexts.remove(newestIndex);
 			}
-			if (!isThereAnotherContextForTheSameRun(nextContextRun)) {
-				setBuild(null);
-			}
-			return nextContext;
 		}
 		return null;
-	}
-
-	private boolean isThereAnotherContextForTheSameRun(Run<?, ?> nextContextRun) {
-		boolean thereIsAnotherContextForTheSameRun = false;
-		Iterator<StepContext> it = queuedContexts.iterator();
-		while (it.hasNext()) {
-			StepContext c = it.next();
-			Run<?, ?> waitingRun;
-			try {
-				waitingRun = c.get(Run.class);
-			} catch (Exception e) {
-				// this should not happen, but let's remove it anyway
-				it.remove();
-				continue;
-			}
-			if (nextContextRun.getExternalizableId().equals(waitingRun.getExternalizableId())) {
-				thereIsAnotherContextForTheSameRun = true;
-				break;
-			}
-		}
-		return thereIsAnotherContextForTheSameRun;
 	}
 
 	@DataBoundSetter

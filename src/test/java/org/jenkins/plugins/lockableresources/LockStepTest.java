@@ -38,22 +38,93 @@ public class LockStepTest {
 
 				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
 				// Ensure that b2 reaches the lock before b3
-				story.j.waitForMessage("[resource1] is locked by p#1", b2);
+				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
 				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
 				// Both 2 and 3 are waiting for locking resource1
 
-				story.j.waitForMessage("[resource1] is locked by p#1", b3);
+				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
 
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
 				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
 
+				// #2 gets the lock before #3 (in the order as they requested the lock)
 				story.j.waitForMessage("Lock acquired on [resource1]", b2);
-				story.j.assertLogContains("Waiting for lock...", b3);
 				SemaphoreStep.success("wait-inside/2", null);
 				story.j.waitForMessage("Lock acquired on [resource1]", b3);
 				SemaphoreStep.success("wait-inside/3", null);
 				story.j.waitForMessage("Finish", b3);
+			}
+		});
+	}
+
+	@Test
+	public void lockInverseOrder() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				defineResource("resource1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock(resource: 'resource1', inversePrecedence: true) {\n" +
+						"	semaphore 'wait-inside'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+				// Ensure that b2 reaches the lock before b3
+				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
+				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
+				// Both 2 and 3 are waiting for locking resource1
+
+				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
+
+				// Unlock resource1
+				SemaphoreStep.success("wait-inside/1", null);
+				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+
+				// #3 gets the lock before #2 because of inversePrecedence
+				story.j.waitForMessage("Lock acquired on [resource1]", b3);
+				SemaphoreStep.success("wait-inside/2", null);
+				story.j.waitForMessage("Lock acquired on [resource1]", b2);
+				SemaphoreStep.success("wait-inside/3", null);
+				story.j.waitForMessage("Finish", b3);
+			}
+		});
+	}
+
+	@Test
+	public void parallelLock() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				defineResource("resource1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"parallel a: {\n" +
+						"	sleep 5\n" +
+						"	lock('resource1') {\n" +
+						"		sleep 5\n" +
+						"	}\n" +
+						"}, b: {\n" +
+						"	lock('resource1') {\n" +
+						"		semaphore 'wait-b'\n" +
+						"	}\n" +
+						"}\n"
+				));
+
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-b/1", b1);
+				// both messages are in the log because branch b acquired the lock and branch a is waiting to lock
+				story.j.waitForMessage("[b] Lock acquired on [resource1]", b1);
+				story.j.waitForMessage("[a] [resource1] is locked, waiting...", b1);
+
+				SemaphoreStep.success("wait-b/1", null);
+
+				story.j.waitForMessage("[a] Lock acquired on [resource1]", b1);
 			}
 		});
 	}
@@ -75,11 +146,11 @@ public class LockStepTest {
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
 				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
 				// Ensure that b2 reaches the lock before b3
-				story.j.waitForMessage("[resource1] is locked by p#1", b2);
+				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
 				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
 				// Both 2 and 3 are waiting for locking resource1
 
-				story.j.waitForMessage("[resource1] is locked by p#1", b3);
+				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
 			}
 		});
 
@@ -96,51 +167,12 @@ public class LockStepTest {
 				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
 
 				story.j.waitForMessage("Lock acquired on [resource1]", b2);
-				story.j.assertLogContains("Waiting for lock...", b3);
+				story.j.assertLogContains("[resource1] is locked, waiting...", b3);
 				SemaphoreStep.success("wait-inside/2", null);
 				SemaphoreStep.waitForStart("wait-inside/3", b3);
 				story.j.assertLogContains("Lock acquired on [resource1]", b3);
 				SemaphoreStep.success("wait-inside/3", null);
 				story.j.waitForMessage("Finish", b3);
-			}
-		});
-	}
-	
-	@Test
-	public void maxWaiting() {
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				defineResource("resource1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1', maxWaiting: 2) {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
-				));
-				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-				SemaphoreStep.waitForStart("wait-inside/1", b1);
-
-				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
-				// Ensure that b2 reaches the lock before b3
-				story.j.waitForMessage("[resource1] is locked by p#1", b2);
-				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
-				// Both 2 and 3 are waiting for locking resource1
-				story.j.waitForMessage("[resource1] is locked by p#1", b3);
-
-				WorkflowRun b4 = p.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("Superseded by #4", b2);
-
-				// Unlock resource1
-				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
-
-				story.j.waitForMessage("Lock acquired on [resource1]", b3);
-				SemaphoreStep.success("wait-inside/2", null);
-				story.j.waitForMessage("Lock acquired on [resource1]", b4);
-				SemaphoreStep.success("wait-inside/3", null);
-				story.j.waitForMessage("Finish", b4);
 			}
 		});
 	}
