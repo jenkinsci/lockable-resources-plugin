@@ -27,7 +27,10 @@ import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
+
+import edu.umd.cs.findbugs.annotations.Nullable;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
@@ -206,77 +209,57 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	/**
+	 * Try to lock the resource and return true if locked.
+	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build) {
+			Run<?, ?> build, @Nullable StepContext context) {
+		boolean needToWait = false;
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
-				return false;
-			}
-		}
-		for (LockableResource r : resources) {
-			r.unqueue();
-			r.setBuild(build);
-			r.removeFromQueue(build);
-			save();
-		}
-		return true;
-	}
-
-	public synchronized boolean isNextInQueue(List<LockableResource> resources, Run<?, ?> build) {
-		for (LockableResource r : resources) {
-			if (!r.isNextInQueue(build)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * Returns null if the build is accepted into the queue, or the older build in the queue if not accepted.
-	 * The returned build could be in incoming one if it is the older.
-	 */
-	public synchronized Run<?, ?> addToQueue(List<LockableResource> resources, Run<?, ?> build, Integer limit) {
-		boolean modified = false;
-		Run<?, ?> older = null;
-		for (LockableResource r : resources) {
-			if (!r.isInQueue(build)) {
-				if (limit != null && r.getBuildsInQueue() >= limit) {
-					String olderId = r.getOlderBuildInQueue(build);
-					// The incoming build is not the older one, so add it to the queue
-					if (!olderId.equals(build.getExternalizableId())) {
-						r.addToQueue(build);
-					}
-					older = Run.fromExternalizableId(olderId);
-					// If the build can not aquire one of the requested resources, then it does not make sense to anything else
+				needToWait = true;
+				if (context != null) {
+					r.queueAdd(context);
 					break;
 				}
-				r.addToQueue(build);
-				modified = true;
 			}
 		}
-		if (modified) {
-			save();
-		}
-		return older;
-	}
-
-	public synchronized void removeFromQueue(List<LockableResource> resources, Run<?, ?> build) {
-		for (LockableResource r : resources) {
-			r.removeFromQueue(build);
+		if (!needToWait) {
+			for (LockableResource r : resources) {
+				r.unqueue();
+				r.setBuild(build);
+				if (context != null) {
+					LockStepExecution.proceed(context, r.getName());
+					break;
+				}
+			}
 		}
 		save();
+		return !needToWait;
 	}
 
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
-			Run<?, ?> build) {
+			Run<?, ?> build, @Nullable StepContext context) {
 		for (LockableResource r : resourcesToUnLock) {
-			// Seach the resource in the internal list un unlock it
+			// Search the resource in the internal list to unlock it
 			for (LockableResource internal : resources) {
 				if (internal.getName().equals(r.getName())) {
-					if (build == null || 
+					if (build == null ||
 							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
-						internal.unqueue();
-						internal.setBuild(null);
+						if (context != null) {
+							// this will remove the context from the queue and setBuild(null) if there are no more contexts
+							StepContext nextContext = internal.getNextQueuedContext();
+							if (nextContext != null) {
+								LockStepExecution.proceed(nextContext, internal.getName());
+								if (internal.getBuildsInQueue() > 0) {
+									internal.setBuild(null);
+								}
+							}
+							break;
+						} else {
+							internal.unqueue();
+							internal.setBuild(null);
+						}
 						save();
 					}
 				}

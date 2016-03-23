@@ -22,9 +22,11 @@ import hudson.model.Queue.Task;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -32,6 +34,7 @@ import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -64,9 +67,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	/**
 	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
-	 * otherwise (freestyle builds) regular Jenkins builds queue is used.
+	 * otherwise (freestyle builds) regular Jenkins queue is used.
 	 */
-	private List<String> queuedBuilds = new ArrayList<String>();
+	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
 
 	@Deprecated
 	public LockableResource(
@@ -107,54 +110,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return labels;
 	}
 
-	public void addToQueue(Run<?, ?> b) {
-		if (!isInQueue(b)) {
-			queuedBuilds.add(b.getExternalizableId());
-		}
-	}
-
-	public boolean isInQueue(Run<?, ?> b) {
-		return queuedBuilds.contains(b.getExternalizableId());
-	}
 
 	public Integer getBuildsInQueue() {
-		return queuedBuilds.size();
-	}
-
-	public void removeFromQueue(Run<?, ?> b) {
-		if (queuedBuilds.size() > 0) {
-			if (queuedBuilds.get(0).equals(b.getExternalizableId())) {
-				queuedBuilds.remove(0);
-			} else {
-				throw new IllegalArgumentException("Trying to unqueue a wrong build: " + b.getExternalizableId());
-			}
-		}
-		// else no items in queue, return quietly
-	}
-
-	public String getOlderBuildInQueue(Run<?, ?> build) {
-		String older = null;
-		List<String> builds = new ArrayList<String>();
-		builds.addAll(queuedBuilds);
-		builds.add(build.getExternalizableId());
-		for (String b : builds) {
-			String job = b.split("#")[0];
-			String number = b.split("#")[1];
-			if (older == null && job.equals(build.getParent().getFullName())) {
-				older = b;
-			} else if (job.equals(build.getParent().getFullName()) && 
-					new Integer(number) < new Integer(older.split("#")[1])) {
-				older = b;
-			}
-		}
-		return older;
-	}
-
-	public boolean isNextInQueue(Run<?, ?> b) {
-		if (queuedBuilds.size() > 0) {
-			return queuedBuilds.get(0).equals(b.getExternalizableId());
-		}
-		return true;
+		return queuedContexts.size();
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
@@ -329,6 +287,55 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			if (now - queuingStarted > QUEUE_TIMEOUT)
 				unqueue();
 		}
+	}
+
+	public void queueAdd(StepContext context) {
+		queuedContexts.add(context);
+	}
+
+	/**
+	 * It removes the returned context from the queue and set the holding build (@link {@link #build}) to null
+	 * if there are no more contexts for that build.
+	 */
+	@CheckForNull
+	public StepContext getNextQueuedContext() {
+		if (queuedContexts.size() > 0) {
+			StepContext nextContext = queuedContexts.remove(0);
+			Run<?, ?> nextContextRun;
+			try {
+				nextContextRun = nextContext.get(Run.class);
+			} catch (Exception e) {
+				// This should not happen, but let's remove it and get the next
+				queuedContexts.remove(nextContext);
+				return getNextQueuedContext();
+			}
+			if (!isThereAnotherContextForTheSameRun(nextContextRun)) {
+				setBuild(null);
+			}
+			return nextContext;
+		}
+		return null;
+	}
+
+	private boolean isThereAnotherContextForTheSameRun(Run<?, ?> nextContextRun) {
+		boolean thereIsAnotherContextForTheSameRun = false;
+		Iterator<StepContext> it = queuedContexts.iterator();
+		while (it.hasNext()) {
+			StepContext c = it.next();
+			Run<?, ?> waitingRun;
+			try {
+				waitingRun = c.get(Run.class);
+			} catch (Exception e) {
+				// this should not happen, but let's remove it anyway
+				it.remove();
+				continue;
+			}
+			if (nextContextRun.getExternalizableId().equals(waitingRun.getExternalizableId())) {
+				thereIsAnotherContextForTheSameRun = true;
+				break;
+			}
+		}
+		return thereIsAnotherContextForTheSameRun;
 	}
 
 	@DataBoundSetter

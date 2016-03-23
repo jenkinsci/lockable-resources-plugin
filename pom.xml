@@ -85,14 +85,14 @@
 			<artifactId>annotations</artifactId>
 			<version>3.0.0</version>
 		</dependency>
-
-		<!-- Testing scope -->
 		<dependency>
 			<groupId>com.infradna.tool</groupId>
 			<artifactId>bridge-method-annotation</artifactId>
 			<version>1.14</version>
 			<optional>true</optional>
 		</dependency>
+
+		<!-- Testing scope -->
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
 			<artifactId>workflow-aggregator</artifactId>

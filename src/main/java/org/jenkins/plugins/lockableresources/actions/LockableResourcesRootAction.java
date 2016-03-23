@@ -100,7 +100,7 @@ public class LockableResourcesRootAction implements RootAction {
 
 		List<LockableResource> resources = new ArrayList<LockableResource>();
 		resources.add(r);
-		LockableResourcesManager.get().unlock(resources, null);
+		LockableResourcesManager.get().unlock(resources, null, null);
 
 		rsp.forwardToPreviousPage(req);
 	}
