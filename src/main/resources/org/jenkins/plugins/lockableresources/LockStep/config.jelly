@@ -3,7 +3,7 @@
 	<f:entry title="${%Resource}" field="resource">
 		<f:textbox/>
 	</f:entry>
-	<f:entry title="${%Limit waiting builds}" field="maxWaiting">
-		<f:number clazz="positive-number"/>
+	<f:entry title="${%Inverse precedence}" field="inversePrecedence">
+		<f:checkbox/>
 	</f:entry>
 </j:jelly>
