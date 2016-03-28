@@ -85,6 +85,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.name = name;
 	}
 
+	private Object readResolve() {
+		if (queuedContexts == null) { // this field was added after the initial version if this class
+			queuedContexts = new ArrayList<StepContext>();
+		}
+		return this;
+	}
+
 	@DataBoundSetter
 	public void setDescription(String description) {
 		this.description = description;
