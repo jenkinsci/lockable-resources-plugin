@@ -12,6 +12,9 @@ import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 
+import hudson.model.FreeStyleProject;
+import hudson.tasks.Shell;
+
 public class LockStepTest {
 
 	@Rule
@@ -173,6 +176,34 @@ public class LockStepTest {
 				story.j.assertLogContains("Lock acquired on [resource1]", b3);
 				SemaphoreStep.success("wait-inside/3", null);
 				story.j.waitForMessage("Finish", b3);
+			}
+		});
+	}
+
+	@Test
+	public void interoperability() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				defineResource("resource1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n" +
+						"	echo 'Locked'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+
+				FreeStyleProject f = story.j.createFreeStyleProject("f");
+				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
+				f.getBuildersList().add(new Shell("sleep 10"));
+				f.scheduleBuild2(0).waitForStart();
+
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("[resource1] is locked, waiting...", b1);
+
+				// Wait for lock after the freestyle finishes
+				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
 			}
 		});
 	}
