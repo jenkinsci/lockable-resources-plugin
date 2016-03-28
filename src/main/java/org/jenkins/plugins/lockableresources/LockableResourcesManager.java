@@ -256,30 +256,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				if (internal.getName().equals(r.getName())) {
 					if (build == null ||
 							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
-						if (context != null) {
-							// this will remove the context from the queue and setBuild(null) if there are no more contexts
-							StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
-							if (nextContext != null) {
-								try {
-									internal.setBuild(nextContext.get(Run.class));
-								} catch (Exception e) {
-									throw new IllegalStateException("Can not access the context of a running build", e);
-								}
-								LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
-							} else {
-								// No more contexts, unlock resource
-								internal.setBuild(null);
+						// this will remove the context from the queue and setBuild(null) if there are no more contexts
+						StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
+						if (nextContext != null) {
+							try {
+								internal.setBuild(nextContext.get(Run.class));
+							} catch (Exception e) {
+								throw new IllegalStateException("Can not access the context of a running build", e);
 							}
-							break;
+							LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
 						} else {
+							// No more contexts, unlock resource
 							internal.unqueue();
 							internal.setBuild(null);
 						}
-						save();
 					}
 				}
 			}
 		}
+		save();
 	}
 
 	public synchronized String getLockCause(String r) {
