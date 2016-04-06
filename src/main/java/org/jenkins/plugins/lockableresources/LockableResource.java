@@ -301,8 +301,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * It removes the returned context from the queue and set the holding build (@link {@link #build}) to null
-	 * if there are no more contexts for that build.
+	 * Returns the next context (if exists) waiting to get thye lock.
+	 * It removes the returned context from the queue.
 	 */
 	@CheckForNull
 	public StepContext getNextQueuedContext(boolean inversePrecedence) {
@@ -310,21 +310,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			if (!inversePrecedence) {
 				return queuedContexts.remove(0);
 			} else {
-				int newest = 0;
+				long newest = 0;
 				int index = 0;
 				int newestIndex = 0;
-				for (StepContext c : queuedContexts) {
+				for(Iterator<StepContext> iterator = queuedContexts.iterator(); iterator.hasNext();) {
+					StepContext c = iterator.next();
 					try {
 						Run<?, ?> run = c.get(Run.class);
-						if (run.getNumber() > newest) {
-							newest = run.getNumber();
+						if (run.getStartTimeInMillis() > newest) {
+							newest = run.getStartTimeInMillis();
 							newestIndex = index;
 						}
 					} catch (Exception e) {
-						// skip this one
+						// skip this one and remove from queue
+						iterator.remove();
+						LOGGER.log(Level.FINE, "Skipping queued context as it does not hold a Run object", e);
 					}
 					index++;
 				}
+				
 				return queuedContexts.remove(newestIndex);
 			}
 		}
