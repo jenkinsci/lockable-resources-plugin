@@ -1,6 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
 
+import java.io.IOException;
+import java.util.concurrent.Semaphore;
+
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -11,9 +14,13 @@ import org.junit.Test;
 import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
+import org.jvnet.hudson.test.TestBuilder;
 
+import hudson.Launcher;
+import hudson.model.AbstractBuild;
+import hudson.model.BuildListener;
+import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
-import hudson.tasks.Shell;
 
 public class LockStepTest {
 
@@ -182,6 +189,7 @@ public class LockStepTest {
 
 	@Test
 	public void interoperability() {
+		final Semaphore semaphore = new Semaphore(1);
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
@@ -196,17 +204,78 @@ public class LockStepTest {
 
 				FreeStyleProject f = story.j.createFreeStyleProject("f");
 				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
-				f.getBuildersList().add(new Shell("sleep 10"));
+				f.getBuildersList().add(new TestBuilder() {
+
+					@Override
+					public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
+						semaphore.acquire();
+						return true;
+					}
+
+				});
+				semaphore.acquire();
 				f.scheduleBuild2(0).waitForStart();
 
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				story.j.waitForMessage("[resource1] is locked, waiting...", b1);
+				semaphore.release();
 
 				// Wait for lock after the freestyle finishes
 				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
 			}
 		});
 	}
+
+	@Test
+	public void interoperabilityOnRestart() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				defineResource("resource1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n" +
+						"	semaphore 'wait-inside'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+				FreeStyleProject f = story.j.createFreeStyleProject("f");
+				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
+
+				f.scheduleBuild2(0);
+
+				while(story.j.jenkins.getQueue().getItems().length != 1) {
+					System.out.println("Waiting for freestyle to be queued...");
+					Thread.sleep(1000);
+				}
+			}
+		});
+
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				WorkflowJob p = story.j.jenkins.getItemByFullName("p", WorkflowJob.class);
+				FreeStyleProject f = story.j.jenkins.getItemByFullName("f", FreeStyleProject.class);
+				WorkflowRun b1 = p.getBuildByNumber(1);
+
+
+				// Unlock resource1
+				SemaphoreStep.success("wait-inside/1", null);
+				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+				FreeStyleBuild fb1 = null;
+				while((fb1 = f.getBuildByNumber(1)) == null) {
+					System.out.println("Waiting for freestyle #1 to start building...");
+					Thread.sleep(1000);
+				}
+
+				story.j.waitForMessage("acquired lock on [resource1]", fb1);
+			}
+		});
+	}
+
 
 	private void defineResource(String r) {
 		LockableResourcesManager.get().getResources().add(new LockableResource(r));
