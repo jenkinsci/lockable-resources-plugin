@@ -51,7 +51,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		LOGGER.finest("Lock acquired on [" + resource + "] by " + r.getExternalizableId());
 		context.newBodyInvoker().
-			withCallback(new Callback(resourceHolder, r, inversePrecedence)).
+			withCallback(new Callback(resourceHolder, inversePrecedence)).
 			withDisplayName(null).
 			start();
 	}
@@ -59,15 +59,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	private static final class Callback extends BodyExecutionCallback.TailCall {
 
 		private final LockableResourcesStruct resourceHolder;
-		private transient Run<?, ?> run;
-		private final String buildExternalizableId;
 		private final boolean inversePrecedence;
 
-		Callback(LockableResourcesStruct resourceHolder, Run<?, ?> run, boolean inversePrecedence) {
+		Callback(LockableResourcesStruct resourceHolder, boolean inversePrecedence) {
 			// It's granted to contain one item (and only one for now)
 			this.resourceHolder = resourceHolder;
-			this.run = run;
-			this.buildExternalizableId = run.getExternalizableId();
 			this.inversePrecedence = inversePrecedence;
 		}
 
@@ -76,10 +72,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}
 
 		private void unlock(StepContext context) throws IOException, InterruptedException {
-			if (run == null && buildExternalizableId != null) {
-				run = Run.fromExternalizableId(buildExternalizableId);
-			}
-			LockableResourcesManager.get().unlock(resourceHolder.required, run, context, inversePrecedence);
+			LockableResourcesManager.get().unlock(resourceHolder.required, context.get(Run.class), context, inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
 			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
 		}
@@ -92,5 +85,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	public void stop(Throwable cause) throws Exception {
 		// NO-OP
 	}
+
+	private static final long serialVersionUID = 1L;
 
 }
