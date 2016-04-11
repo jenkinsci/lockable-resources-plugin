@@ -1,6 +1,5 @@
 package org.jenkins.plugins.lockableresources;
 
-
 import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
@@ -21,6 +20,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
+import hudson.model.Result;
 
 public class LockStepTest {
 
@@ -29,6 +29,26 @@ public class LockStepTest {
 
 	@ClassRule
 	public static BuildWatcher buildWatcher = new BuildWatcher();
+
+	@Test
+	public void autoCreateResource() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n" +
+						"	echo 'Resource locked'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForCompletion(b1);
+				story.j.assertBuildStatus(Result.SUCCESS, b1);
+				story.j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
+			}
+		});
+	}
 
 	@Test
 	public void lockOrder() {

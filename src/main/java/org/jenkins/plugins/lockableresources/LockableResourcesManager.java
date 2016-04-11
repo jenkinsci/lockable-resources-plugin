@@ -15,7 +15,6 @@ import hudson.model.Run;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -279,6 +278,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public synchronized String getLockCause(String r) {
 		return new LockableResourcesStruct(r).required.get(0).getLockCause();
+	}
+
+	/**
+	 * Creates the resource if it does not exist.
+	 */
+	public synchronized boolean createResource(String name) {
+		LockableResource existent = fromName(name);
+		if (existent == null) {
+			getResources().add(new LockableResource(name));
+			save();
+			return true;
+		}
+		return false;
 	}
 
 	public synchronized boolean reserve(List<LockableResource> resources,

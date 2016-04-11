@@ -22,9 +22,6 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		if (resource == null || resource.isEmpty()) {
 			throw new IllegalArgumentException("must specify resource");
 		}
-		if (LockableResourcesManager.get().fromName(resource) == null) {
-			throw new IllegalArgumentException("resource [" + resource + "] does not exist, missing global definition?");
-		}
 		this.resource = resource;
 	}
 

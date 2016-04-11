@@ -29,6 +29,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	@Override
 	public boolean start() throws Exception {
+		if (LockableResourcesManager.get().createResource(step.resource)) {
+			listener.getLogger().println("Resource [" + step.resource + "] did not exist. Created.");
+		}
 		listener.getLogger().println("Trying to acquire lock on [" + step.resource + "]");
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(step.resource);
 		if(!LockableResourcesManager.get().lock(resourceHolder.required, run, getContext(), step.inversePrecedence)) {
