@@ -293,6 +293,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return false;
 	}
 
+	public synchronized boolean cleanWaitingContext(LockableResource resource, StepContext context) {
+		for (LockableResource r : resources) {
+			if (r.equals(resource)) {
+				return r.remove(context);
+			}
+		}
+		return false;
+	}
+
 	public synchronized boolean reserve(List<LockableResource> resources,
 			String userName) {
 		for (LockableResource r : resources) {

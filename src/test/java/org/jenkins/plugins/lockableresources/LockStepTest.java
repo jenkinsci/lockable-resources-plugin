@@ -55,7 +55,7 @@ public class LockStepTest {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				defineResource("resource1");
+				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"lock('resource1') {\n" +
@@ -93,7 +93,7 @@ public class LockStepTest {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				defineResource("resource1");
+				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"lock(resource: 'resource1', inversePrecedence: true) {\n" +
@@ -131,7 +131,7 @@ public class LockStepTest {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				defineResource("resource1");
+				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"parallel a: {\n" +
@@ -164,7 +164,7 @@ public class LockStepTest {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				defineResource("resource1");
+				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"lock('resource1') {\n" +
@@ -213,7 +213,7 @@ public class LockStepTest {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				defineResource("resource1");
+				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"lock('resource1') {\n" +
@@ -251,7 +251,7 @@ public class LockStepTest {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				defineResource("resource1");
+				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"lock('resource1') {\n" +
@@ -295,11 +295,4 @@ public class LockStepTest {
 			}
 		});
 	}
-
-
-	private void defineResource(String r) {
-		LockableResourcesManager.get().getResources().add(new LockableResource(r));
-		LockableResourcesManager.get().save();
-	}
-
 }

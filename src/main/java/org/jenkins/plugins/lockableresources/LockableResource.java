@@ -305,7 +305,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * It removes the returned context from the queue.
 	 */
 	@CheckForNull
-	public StepContext getNextQueuedContext(boolean inversePrecedence) {
+	/* package */ StepContext getNextQueuedContext(boolean inversePrecedence) {
 		if (queuedContexts.size() > 0) {
 			if (!inversePrecedence) {
 				return queuedContexts.remove(0);
@@ -333,6 +333,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			}
 		}
 		return null;
+	}
+
+	/* package */ boolean remove(StepContext context) {
+		return queuedContexts.remove(context);
 	}
 
 	@DataBoundSetter

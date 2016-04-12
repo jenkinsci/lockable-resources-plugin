@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
@@ -71,10 +72,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}
 
 		protected void finished(StepContext context) throws Exception {
-			unlock(context);
-		}
-
-		private void unlock(StepContext context) throws IOException, InterruptedException {
 			LockableResourcesManager.get().unlock(resourceHolder.required, context.get(Run.class), context, inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
 			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
@@ -86,7 +83,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	@Override
 	public void stop(Throwable cause) throws Exception {
-		// NO-OP
+		boolean cleaned = LockableResourcesManager.get().cleanWaitingContext(LockableResourcesManager.get().fromName(step.resource), getContext());
+		if (!cleaned) {
+			LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource witing list. The context is not in the waiting list.");
+		}
+		getContext().onFailure(cause);
 	}
 
 	private static final long serialVersionUID = 1L;
