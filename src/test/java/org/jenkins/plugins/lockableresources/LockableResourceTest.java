@@ -26,6 +26,8 @@ package org.jenkins.plugins.lockableresources;
 
 
 import hudson.model.AbstractBuild;
+import hudson.model.Run;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -177,8 +179,8 @@ public class LockableResourceTest {
 	@Test
 	public void testGetBuild() {
 		System.out.println("getBuild");
-		AbstractBuild expResult = null;
-		AbstractBuild result = instance.getBuild();
+		Run<?, ?> expResult = null;
+		Run<?, ?> result = instance.getBuild();
 		assertEquals(expResult, result);
 	}
 
@@ -198,8 +200,8 @@ public class LockableResourceTest {
 	@Test
 	public void testGetQueueItemId() {
 		System.out.println("getQueueItemId");
-		int expResult = 0;
-		int result = instance.getQueueItemId();
+		long expResult = 0;
+		long result = instance.getQueueItemId();
 		assertEquals(expResult, result);
 	}
 

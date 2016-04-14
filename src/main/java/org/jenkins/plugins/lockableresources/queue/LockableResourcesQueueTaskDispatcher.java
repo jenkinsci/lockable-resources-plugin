@@ -66,7 +66,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 			List<LockableResource> selected = LockableResourcesManager.get().queue(
 					resources,
-					item.id,
+					item.getId(),
 					project.getFullName(),
 					resourceNumber,
 					params,
@@ -81,7 +81,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 
 		} else {
-			if (LockableResourcesManager.get().queue(resources.required, item.id)) {
+			if (LockableResourcesManager.get().queue(resources.required, item.getId())) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {

@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
 import hudson.model.AbstractBuild;
+import hudson.model.Run;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -26,7 +27,10 @@ import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
+
+import edu.umd.cs.findbugs.annotations.Nullable;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
@@ -60,7 +64,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
-			AbstractBuild<?, ?> rBuild = r.getBuild();
+			Run<?, ?> rBuild = r.getBuild();
 			if (rBuild != null && rBuild == build) {
 				matching.add(r);
 			}
@@ -119,7 +123,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean queue(List<LockableResource> resources,
-			int queueItemId) {
+			long queueItemId) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
@@ -129,7 +133,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
-	                                                 int queueItemId,
+	                                                 long queueItemId,
 	                                                 String queueItemProject,
 	                                                 int number,  // 0 means all
 	                                                 Map<String, Object> params,
@@ -184,7 +188,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	// Return false if another item queued for this project -> bail out
 	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
 	                                            String project,
-	                                            int taskId,
+	                                            long taskId,
 	                                            Logger log) {
 		for (LockableResource r : resources) {
 			// This project might already have something in queue
@@ -204,29 +208,98 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 		return true;
 	}
-
-	public synchronized boolean lock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
-		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked()) {
-				return false;
-			}
-		}
-		for (LockableResource r : resources) {
-			r.unqueue();
-			r.setBuild(build);
-		}
-		return true;
+	
+	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+		return lock(resources, build, context, false);
 	}
 
-	public synchronized void unlock(List<LockableResource> resources,
-			AbstractBuild<?, ?> build) {
+	/**
+	 * Try to lock the resource and return true if locked.
+	 */
+	public synchronized boolean lock(List<LockableResource> resources,
+			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
+		boolean needToWait = false;
 		for (LockableResource r : resources) {
-			if (build == null || build == r.getBuild()) {
-				r.unqueue();
-				r.setBuild(null);
+			if (r.isReserved() || r.isLocked()) {
+				needToWait = true;
+				if (context != null) {
+					r.queueAdd(context);
+					break;
+				}
 			}
 		}
+		if (!needToWait) {
+			for (LockableResource r : resources) {
+				r.unqueue();
+				r.setBuild(build);
+				if (context != null) {
+					LockStepExecution.proceed(context, r.getName(), inversePrecedence);
+					break;
+				}
+			}
+		}
+		save();
+		return !needToWait;
+	}
+	
+	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
+			Run<?, ?> build, @Nullable StepContext context) {
+		unlock(resourcesToUnLock, build, context, false);
+	}
+
+	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
+			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
+		for (LockableResource r : resourcesToUnLock) {
+			// Search the resource in the internal list to unlock it
+			for (LockableResource internal : resources) {
+				if (internal.getName().equals(r.getName())) {
+					if (build == null ||
+							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
+						// this will remove the context from the queue and setBuild(null) if there are no more contexts
+						StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
+						if (nextContext != null) {
+							try {
+								internal.setBuild(nextContext.get(Run.class));
+							} catch (Exception e) {
+								throw new IllegalStateException("Can not access the context of a running build", e);
+							}
+							LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
+						} else {
+							// No more contexts, unlock resource
+							internal.unqueue();
+							internal.setBuild(null);
+						}
+					}
+				}
+			}
+		}
+		save();
+	}
+
+	public synchronized String getLockCause(String r) {
+		return new LockableResourcesStruct(r).required.get(0).getLockCause();
+	}
+
+	/**
+	 * Creates the resource if it does not exist.
+	 */
+	public synchronized boolean createResource(String name) {
+		LockableResource existent = fromName(name);
+		if (existent == null) {
+			getResources().add(new LockableResource(name));
+			save();
+			return true;
+		}
+		return false;
+	}
+
+	public synchronized boolean cleanWaitingContext(LockableResource resource, StepContext context) {
+		for (LockableResource r : resources) {
+			if (r.equals(resource)) {
+				return r.remove(context);
+			}
+		}
+		return false;
 	}
 
 	public synchronized boolean reserve(List<LockableResource> resources,

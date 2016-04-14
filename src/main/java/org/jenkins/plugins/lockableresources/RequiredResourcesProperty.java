@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
 import hudson.Util;
+import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
@@ -73,6 +74,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		@Override
 		public String getDisplayName() {
 			return "Required Lockable Resources";
+		}
+
+		@Override
+		public boolean isApplicable(Class<? extends Job> jobType) {
+			return AbstractProject.class.isAssignableFrom(jobType);
 		}
 
 		@Override
@@ -202,7 +208,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			return c;
 		}
 
-		public AutoCompletionCandidates doAutoCompleteResourceNames(
+		public static AutoCompletionCandidates doAutoCompleteResourceNames(
 				@QueryParameter String value) {
 			AutoCompletionCandidates c = new AutoCompletionCandidates();
 

@@ -16,12 +16,17 @@ import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
 import hudson.model.Descriptor;
 import hudson.model.Queue;
+import hudson.model.Run;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -29,12 +34,19 @@ import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 
+import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
+import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+
 @ExportedBean(defaultVisibility = 999)
-public class LockableResource extends AbstractDescribableImpl<LockableResource> {
+public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
 
 	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 	public static final int NOT_QUEUED = 0;
@@ -42,22 +54,52 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public static final String GROOVY_LABEL_MARKER = "groovy:";
 
 	private final String name;
-	private final String description;
-	private final String labels;
-	private String reservedBy;
+	private String description = "";
+	private String labels = "";
+	private String reservedBy = null;
 
-	private transient int queueItemId = NOT_QUEUED;
-	private transient String queueItemProject = null;
-	private transient AbstractBuild<?, ?> build = null;
-	private transient long queuingStarted = 0;
+	private long queueItemId = NOT_QUEUED;
+	private String queueItemProject = null;
+	private transient  Run<?, ?> build = null;
+	// Needed to make the state non-transient
+	private String buildExternalizableId = null;
+	private long queuingStarted = 0;
 
-	@DataBoundConstructor
+	/**
+	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
+	 * otherwise (freestyle builds) regular Jenkins queue is used.
+	 */
+	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
+
+	@Deprecated
 	public LockableResource(
 			String name, String description, String labels, String reservedBy) {
 		this.name = name;
 		this.description = description;
 		this.labels = labels;
 		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
+	}
+
+	@DataBoundConstructor
+	public LockableResource(String name) {
+		this.name = name;
+	}
+
+	private Object readResolve() {
+		if (queuedContexts == null) { // this field was added after the initial version if this class
+			queuedContexts = new ArrayList<StepContext>();
+		}
+		return this;
+	}
+
+	@DataBoundSetter
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	@DataBoundSetter
+	public void setLabels(String labels) {
+		this.labels = labels;
 	}
 
 	@Exported
@@ -73,6 +115,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getLabels() {
 		return labels;
+	}
+
+
+	public Integer getContextsInQueue() {
+		return queuedContexts.size();
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
@@ -142,12 +189,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	// returns True if queued by any other task than the given one
-	public boolean isQueued(int taskId) {
+	public boolean isQueued(long taskId) {
 		this.validateQueuingTimeout();
 		return queueItemId != NOT_QUEUED && queueItemId != taskId;
 	}
 
-	public boolean isQueuedByTask(int taskId) {
+	public boolean isQueuedByTask(long taskId) {
 		this.validateQueuingTimeout();
 		return queueItemId == taskId;
 	}
@@ -160,23 +207,56 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	@Exported
 	public boolean isLocked() {
-		return build != null;
+		return getBuild() != null;
 	}
 
-	public AbstractBuild<?, ?> getBuild() {
+	/**
+	 * Resolve the lock cause for this resource. It can be reserved or locked.
+	 *
+	 * @return the lock cause or null if not locked
+	 */
+	@CheckForNull
+	public String getLockCause() {
+		if (isReserved()) {
+			return String.format("[%s] is reserved by %s", name, reservedBy);
+		}
+		if (isLocked()) {
+			return String.format("[%s] is locked by %s", name, buildExternalizableId);
+		}
+		return null;
+	}
+
+	@WithBridgeMethods(value=AbstractBuild.class, adapterMethod="getAbstractBuild")
+	public Run<?, ?> getBuild() {
+		if (build == null && buildExternalizableId != null) {
+			build = Run.fromExternalizableId(buildExternalizableId);
+		}
 		return build;
+	}
+
+	/**
+	 * @see {@link WithBridgeMethods}
+	 */
+	@Deprecated
+	private Object getAbstractBuild(final Run owner, final Class targetClass) {
+		return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
 	}
 
 	@Exported
 	public String getBuildName() {
-		if (build != null)
-			return build.getFullDisplayName();
+		if (getBuild() != null)
+			return getBuild().getFullDisplayName();
 		else
 			return null;
 	}
 
-	public void setBuild(AbstractBuild<?, ?> lockedBy) {
+	public void setBuild(Run<?, ?> lockedBy) {
 		this.build = lockedBy;
+		if (lockedBy != null) {
+			this.buildExternalizableId = lockedBy.getExternalizableId();
+		} else {
+			this.buildExternalizableId = null;
+		}
 	}
 
 	public Task getTask() {
@@ -188,7 +268,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 	}
 
-	public int getQueueItemId() {
+	public long getQueueItemId() {
 		this.validateQueuingTimeout();
 		return queueItemId;
 	}
@@ -198,12 +278,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return this.queueItemProject;
 	}
 
-	public void setQueued(int queueItemId) {
+	public void setQueued(long queueItemId) {
 		this.queueItemId = queueItemId;
 		this.queuingStarted = System.currentTimeMillis() / 1000;
 	}
 
-	public void setQueued(int queueItemId, String queueProjectName) {
+	public void setQueued(long queueItemId, String queueProjectName) {
 		this.setQueued(queueItemId);
 		this.queueItemProject = queueProjectName;
 	}
@@ -216,8 +296,52 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 	}
 
+	public void queueAdd(StepContext context) {
+		queuedContexts.add(context);
+	}
+
+	/**
+	 * Returns the next context (if exists) waiting to get thye lock.
+	 * It removes the returned context from the queue.
+	 */
+	@CheckForNull
+	/* package */ StepContext getNextQueuedContext(boolean inversePrecedence) {
+		if (queuedContexts.size() > 0) {
+			if (!inversePrecedence) {
+				return queuedContexts.remove(0);
+			} else {
+				long newest = 0;
+				int index = 0;
+				int newestIndex = 0;
+				for(Iterator<StepContext> iterator = queuedContexts.iterator(); iterator.hasNext();) {
+					StepContext c = iterator.next();
+					try {
+						Run<?, ?> run = c.get(Run.class);
+						if (run.getStartTimeInMillis() > newest) {
+							newest = run.getStartTimeInMillis();
+							newestIndex = index;
+						}
+					} catch (Exception e) {
+						// skip this one and remove from queue
+						iterator.remove();
+						LOGGER.log(Level.FINE, "Skipping queued context as it does not hold a Run object", e);
+					}
+					index++;
+				}
+				
+				return queuedContexts.remove(newestIndex);
+			}
+		}
+		return null;
+	}
+
+	/* package */ boolean remove(StepContext context) {
+		return queuedContexts.remove(context);
+	}
+
+	@DataBoundSetter
 	public void setReservedBy(String userName) {
-		this.reservedBy = userName;
+		this.reservedBy = Util.fixEmptyAndTrim(userName);
 	}
 
 	public void unReserve() {
@@ -269,4 +393,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		}
 
 	}
+
+	private static final long serialVersionUID = 1L;
 }
