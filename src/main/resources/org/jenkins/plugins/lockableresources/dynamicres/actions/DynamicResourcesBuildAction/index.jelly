@@ -1,0 +1,62 @@
+<!--
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                     *
+ *                                                                         *
+ * Dynamic resources management by Darius Mihai (mihai_darius22@yahoo.com  *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                        *
+ *                                                                         *
+ * This file is part of the Jenkins Lockable Resources Plugin and is       *
+ * published under the MIT license.                                        *
+ *                                                                         *
+ * See the "LICENSE.txt" file for more information.                        *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ -->
+
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+	<l:layout title="${it.displayName}">
+		<j:invokeStatic var="currentThread" className="java.lang.Thread" method="currentThread" />
+		<j:invoke var="buildClass" on="${currentThread.contextClassLoader}" method="loadClass">
+			<j:arg value="hudson.model.AbstractBuild" />
+		</j:invoke>
+		<j:set var="build" value="${request.findAncestorObject(buildClass)}" />
+		<st:include page="sidepanel.jelly" it="${build}" />
+		<l:main-panel>
+			<h1>${%Dynamic Resources}</h1>
+			<br><br></br></br>
+			
+			<p> This build creates the following dynamic resources:</p>
+			<table class="pane" style="width: 50%;">
+				<tr>
+					<td class="pane-header">Resource configuration</td>
+				</tr>
+			<j:forEach var="dynamicRes" items="${it.createdByJob}">
+				<tr>
+					<td class="pane">
+						<b><i>${dynamicRes}</i></b>
+					</td>
+				</tr>
+			</j:forEach>
+			</table>
+			<p> Total amount of dynamic resources created: ${it.createdAmount} </p>
+			<br><br></br></br>
+			
+			<p> This build consumes the following dynamic resources:</p>
+			<table class="pane" style="width: 50%;">
+				<tr>
+					<td class="pane-header">Resource configuration</td>
+				</tr>
+			<j:forEach var="dynamicRes" items="${it.consumedByJob}">
+				<tr>
+					<td class="pane">
+						<b><i>${dynamicRes}</i></b>
+					</td>
+				</tr>
+			</j:forEach>
+			</table>
+			<p> Total amount of dynamic resources consumed: ${it.consumedAmount} </p>
+		</l:main-panel>
+	</l:layout>
+</j:jelly>

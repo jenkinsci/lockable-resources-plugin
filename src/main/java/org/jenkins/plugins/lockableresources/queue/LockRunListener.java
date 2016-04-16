@@ -1,11 +1,14 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
+ *                                                                           *
+ * Dynamic resources management by Darius Mihai (mihai_darius22@yahoo.com)   *
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.                          *
+ *                                                                           *
+ * This file is part of the Jenkins Lockable Resources Plugin and is         *
+ * published under the MIT license.                                          *
+ *                                                                           *
+ * See the "LICENSE.txt" file for more information.                          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
@@ -20,11 +23,18 @@ import hudson.model.StringParameterValue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
+import org.jenkins.plugins.lockableresources.dynamicres.DynamicInfoData;
+import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
+import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesProperty;
+import org.jenkins.plugins.lockableresources.dynamicres.DynamicUtils;
+import org.jenkins.plugins.lockableresources.dynamicres.actions.DynamicResourcesBuildAction;
 
 @Extension
 public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
@@ -72,6 +82,23 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 							+ required);
 				}
 			}
+
+			/* check if the build should consume dynamic resources; if so, consume a
+			 * dynamic resource for the current configuration.
+			 */
+			DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(proj);
+			if (dynamicProperty != null) {
+				build.addAction(new DynamicResourcesBuildAction(build));
+
+				if(dynamicProperty.getConsumeDynamicResources()) {
+					DynamicInfoData data = new DynamicInfoData(dynamicProperty, build);
+
+					Set<Map<?, ?>> configs = DynamicUtils.getJobDynamicInfoConsume(dynamicProperty, data);
+
+					if (DynamicResourcesManager.consumeDynamicResources(configs))
+						listener.getLogger().println("Consumed resource for: " + configs);
+				}
+			}
 		}
 	}
 
@@ -79,12 +106,31 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	public void onCompleted(AbstractBuild<?, ?> build, TaskListener listener) {
 		// Skip unlocking for multiple configuration projects,
 		// only the child jobs will actually unlock resources.
-		if (build instanceof MatrixBuild)
+		if (build instanceof MatrixBuild) {
+			DynamicUtils.createTokensForDownstream(build);
 			return;
+		}
 
 		// obviously project name cannot be obtained here
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
+
+		/* check if the build should create dynamic resources; if so, create a
+		 * resource for the each possible configuration
+		 */
+		AbstractProject<?, ?> proj = Utils.getProject(build);
+		if (proj != null) {
+			DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(proj);
+			if (dynamicProperty != null && dynamicProperty.getCreateDynamicResources()) {
+				DynamicInfoData data = new DynamicInfoData(dynamicProperty, build);
+
+				Set<Map<?, ?>> configs = DynamicUtils.getJobDynamicInfoCreate(dynamicProperty, data);
+
+				if (DynamicResourcesManager.createDynamicResources(configs))
+					listener.getLogger().println("Created resource for: " + configs);
+			}
+		}
+
 		if (required.size() > 0) {
 			LockableResourcesManager.get().unlock(required, build, null);
 			listener.getLogger().printf("%s released lock on %s\n",
@@ -93,6 +139,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					+ required);
 		}
 
+		DynamicUtils.buildEnded(build);
 	}
 
 	@Override
@@ -109,6 +156,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);
 		}
-	}
 
+		DynamicUtils.buildEnded(build);
+	}
 }
