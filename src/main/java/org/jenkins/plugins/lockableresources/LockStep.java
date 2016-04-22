@@ -11,23 +11,43 @@ import org.kohsuke.stapler.QueryParameter;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
+
 public class LockStep extends AbstractStepImpl implements Serializable {
 
-	public final String resource;
+	public String resource = null;
+
+	public String label = null;
+
+	public int quantity = 0;
 
 	public boolean inversePrecedence = false;
 
 	@DataBoundConstructor
-	public LockStep(String resource) {
-		if (resource == null || resource.isEmpty()) {
-			throw new IllegalArgumentException("must specify resource");
-		}
-		this.resource = resource;
+	public LockStep() {
 	}
 
 	@DataBoundSetter
 	public void setInversePrecedence(boolean inversePrecedence) {
 		this.inversePrecedence = inversePrecedence;
+	}
+
+	@DataBoundSetter
+	public void setResource(@Nullable String resource) {
+		this.resource = resource;
+	}
+
+	@DataBoundSetter
+	public void setLabel(@Nullable String label) {
+		if (label != null && !label.isEmpty())
+		{
+			this.label = label;
+		}
+	}
+
+	@DataBoundSetter
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
 	}
 
 	@Extension
@@ -55,6 +75,24 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
 			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
 		}
+	}
+
+	public String toString() {
+		// a label takes always priority
+		if (this.label != null)
+		{
+			if (this.quantity > 0)
+			{
+				return "Label: " + this.label + ", Quantity: " + this.quantity;
+			}
+			return "Label: " + this.label;
+		}
+		// make sure there is an actual resource specified
+		if (this.resource != null)
+		{
+			return this.resource;
+		}
+		return "";
 	}
 
 	private static final long serialVersionUID = 1L;
