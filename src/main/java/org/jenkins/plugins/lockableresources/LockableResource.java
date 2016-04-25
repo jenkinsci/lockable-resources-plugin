@@ -65,6 +65,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String buildExternalizableId = null;
 	private long queuingStarted = 0;
 
+	/**
+	 * Was used within the initial implementation of Pipeline functionality
+	 * using {@link LockStep}, but became deprecated once several resources
+	 * could be locked at once. See queuedContexts in {@link LockableResourcesManager}.
+	 */
+	@Deprecated
+	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
+
 	@Deprecated
 	public LockableResource(
 			String name, String description, String labels, String reservedBy) {
@@ -77,6 +85,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@DataBoundConstructor
 	public LockableResource(String name) {
 		this.name = name;
+	}
+
+	private Object readResolve() {
+		if (queuedContexts == null) { // this field was added after the initial version if this class
+			queuedContexts = new ArrayList<StepContext>();
+		}
+		return this;
+	}
+
+	@Deprecated
+	public List<StepContext> getQueuedContexts() {
+		return this.queuedContexts;
 	}
 
 	@DataBoundSetter

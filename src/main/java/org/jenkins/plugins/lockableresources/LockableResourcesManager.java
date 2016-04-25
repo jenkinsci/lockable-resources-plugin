@@ -364,10 +364,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	private QueuedContextStruct getNextQueuedContext(List<String> resourceNamesToUnLock, boolean inversePrecedence) {
-		if (this.queuedContexts == null) {
-			return null;
-		}
-
 		QueuedContextStruct newestEntry = null;
 		List<LockableResource> requiredResourceForNextContext = null;
 		if (!inversePrecedence) {
