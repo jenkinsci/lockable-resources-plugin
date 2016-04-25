@@ -1,14 +1,11 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
- *                                                                           *
- * Dynamic resources management by Darius Mihai (mihai_darius22@yahoo.com)   *
- * Copyright (C) 2015 Freescale Semiconductor, Inc.                          *
- *                                                                           *
- * This file is part of the Jenkins Lockable Resources Plugin and is         *
- * published under the MIT license.                                          *
- *                                                                           *
- * See the "LICENSE.txt" file for more information.                          *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+ *                                                                     *
+ * This file is part of the Jenkins Lockable Resources Plugin and is   *
+ * published under the MIT license.                                    *
+ *                                                                     *
+ * See the "LICENSE.txt" file for more information.                    *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
@@ -22,15 +19,10 @@ import hudson.model.queue.CauseOfBlockage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
-import org.jenkins.plugins.lockableresources.dynamicres.DynamicInfoData;
-import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
-import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesProperty;
-import org.jenkins.plugins.lockableresources.dynamicres.DynamicUtils;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
@@ -49,35 +41,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		if (project == null)
 			return null;
 
-		/* get the required lockable resources */
 		LockableResourcesStruct resources = Utils.requiredResources(project);
-
-		/* check dynamic resources properties */
-		DynamicResourcesProperty dynamicProperty = DynamicUtils.getDynamicProperty(project);
-
-		Set<Map<?, ?>> requiredDynamicResources = null;
-		/* if the build should consume dynamic resources, get a dynamic resource configuration that
-		 * it should use
-		 */
-		if (dynamicProperty != null ) {
-			DynamicInfoData data = new DynamicInfoData(dynamicProperty, item);
-			DynamicUtils.updateJobDynamicInfoIfRequired(dynamicProperty, data);
-
-			if(dynamicProperty.getConsumeDynamicResources()) {
-				requiredDynamicResources = DynamicUtils.getJobDynamicInfoConsume(dynamicProperty, data);
-
-				if (requiredDynamicResources != null) {
-					LOGGER.finest("Requesting dynamic resources: " + requiredDynamicResources);
-
-					/* if the build should consume resources, check if the resources for
-					 * the current configuration are available; if not, interrupt
-					 */
-					if(!DynamicResourcesManager.checkDynamicResources(requiredDynamicResources))
-						return new BecauseNoDynamicResources(requiredDynamicResources);
-				}
-			}
-		}
-
 		if (resources == null ||
 			(resources.required.isEmpty() && resources.label.isEmpty())) {
 			return null;
@@ -145,17 +109,4 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		}
 	}
 
-	public static class BecauseNoDynamicResources extends CauseOfBlockage {
-
-		private final Set<Map<?, ?>> dynamicResourcesRequired;
-
-		public BecauseNoDynamicResources(Set<Map<?, ?>> dynamicResourcesRequired) {
-			this.dynamicResourcesRequired = dynamicResourcesRequired;
-		}
-
-		@Override
-		public String getShortDescription() {
-			return "Required dynamic resource for config: " + dynamicResourcesRequired.toString();
-		}
-	}
 }
