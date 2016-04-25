@@ -270,22 +270,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
 			Run<?, ?> build, @Nullable StepContext context) {
-		unlock(resourcesToUnLock, build, context, null, false);
+		unlock(resourcesToUnLock, build, context, false);
 	}
 
 	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
-			Run<?, ?> build, @Nullable StepContext context,
-			@Nullable List<String> resourceNamesToUnLock, boolean inversePrecedence) {
-		// create list of names on the fly if necessary
-		if (resourceNamesToUnLock == null) {
-			resourceNamesToUnLock = new ArrayList<String>();
-		}
-
-		// add names from legacy list to new list of names
+			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
+		List<String> resourceNamesToUnLock = new ArrayList<String>();
 		if (resourcesToUnLock != null) {
 			for (LockableResource r : resources) {
 				resourceNamesToUnLock.add(r.getName());
 			}
+		}
+
+		this.unlockNames(resourceNamesToUnLock, build, context, inversePrecedence);
+	}
+
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock,
+			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
+		// make sure there is a list of resource names to unlock
+		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.size() == 0)) {
+			return;
 		}
 
 		// check if there are resources which can be unlocked (and shall not be unlocked)

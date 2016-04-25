@@ -12,11 +12,14 @@ import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 public class LockStep extends AbstractStepImpl implements Serializable {
 
+	@CheckForNull
 	public String resource = null;
 
+	@CheckForNull
 	public String label = null;
 
 	public int quantity = 0;
@@ -33,14 +36,13 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	}
 
 	@DataBoundSetter
-	public void setResource(@Nullable String resource) {
+	public void setResource(String resource) {
 		this.resource = resource;
 	}
 
 	@DataBoundSetter
-	public void setLabel(@Nullable String label) {
-		if (label != null && !label.isEmpty())
-		{
+	public void setLabel(String label) {
+		if (!label.isEmpty()) {
 			this.label = label;
 		}
 	}
@@ -79,17 +81,14 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public String toString() {
 		// a label takes always priority
-		if (this.label != null)
-		{
-			if (this.quantity > 0)
-			{
+		if (this.label != null) {
+			if (this.quantity > 0) {
 				return "Label: " + this.label + ", Quantity: " + this.quantity;
 			}
 			return "Label: " + this.label;
 		}
 		// make sure there is an actual resource specified
-		if (this.resource != null)
-		{
+		if (this.resource != null) {
 			return this.resource;
 		}
 		return "";
