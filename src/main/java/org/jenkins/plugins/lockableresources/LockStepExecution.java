@@ -73,7 +73,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		protected void finished(StepContext context) throws Exception {
 			LockableResourcesManager.get().unlock(resourceHolder.required, context.get(Run.class), context, inversePrecedence);
-			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceHolder.required.get(0) + "]");
+			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceHolder.required.get(0) + "]");
 			LOGGER.finest("Lock released on [" + resourceHolder.required.get(0) + "]");
 		}
 

@@ -76,7 +76,7 @@ public class LockStepTest {
 
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+				story.j.waitForMessage("Lock released on resource [resource1]", b1);
 
 				// #2 gets the lock before #3 (in the order as they requested the lock)
 				story.j.waitForMessage("Lock acquired on [resource1]", b2);
@@ -114,7 +114,7 @@ public class LockStepTest {
 
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+				story.j.waitForMessage("Lock released on resource [resource1]", b1);
 
 				// #3 gets the lock before #2 because of inversePrecedence
 				story.j.waitForMessage("Lock acquired on [resource1]", b3);
@@ -194,7 +194,7 @@ public class LockStepTest {
 
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+				story.j.waitForMessage("Lock released on resource [resource1]", b1);
 
 				story.j.waitForMessage("Lock acquired on [resource1]", b2);
 				story.j.assertLogContains("[resource1] is locked, waiting...", b3);
@@ -241,7 +241,7 @@ public class LockStepTest {
 				semaphore.release();
 
 				// Wait for lock after the freestyle finishes
-				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+				story.j.waitForMessage("Lock released on resource [resource1]", b1);
 			}
 		});
 	}
@@ -284,7 +284,7 @@ public class LockStepTest {
 
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [resource1]", b1);
+				story.j.waitForMessage("Lock released on resource [resource1]", b1);
 				FreeStyleBuild fb1 = null;
 				while((fb1 = f.getBuildByNumber(1)) == null) {
 					System.out.println("Waiting for freestyle #1 to start building...");
