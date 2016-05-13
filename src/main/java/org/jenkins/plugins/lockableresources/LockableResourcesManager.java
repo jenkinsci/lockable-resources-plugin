@@ -258,7 +258,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (String unlockResourceName : unlockResourceNames) {
 			for (LockableResource resource : this.resources) {
 				if (resource.getName().equals(unlockResourceName)) {
-					if (resource == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
+					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
 						// No more contexts, unlock resource
 						resource.unqueue();
 						resource.setBuild(null);
@@ -277,7 +277,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		List<String> resourceNamesToUnLock = new ArrayList<String>();
 		if (resourcesToUnLock != null) {
-			for (LockableResource r : resources) {
+			for (LockableResource r : resourcesToUnLock) {
 				resourceNamesToUnLock.add(r.getName());
 			}
 		}
