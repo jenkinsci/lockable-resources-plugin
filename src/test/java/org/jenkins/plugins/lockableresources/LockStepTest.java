@@ -66,7 +66,7 @@ public class LockStepTest {
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				story.j.waitForCompletion(b1);
 				story.j.assertBuildStatus(Result.SUCCESS, b1);
-				story.j.assertLogContains("Lock released on resouce [Label: label1]", b1);
+				story.j.assertLogContains("Lock released on resource [Label: label1]", b1);
 			}
 		});
 	}
@@ -100,7 +100,7 @@ public class LockStepTest {
 
 				// Unlock Label: label1, Quantity: 2
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [Label: label1, Quantity: 2]", b1);
+				story.j.waitForMessage("Lock released on resource [Label: label1, Quantity: 2]", b1);
 
 				// #2 gets the lock before #3 (in the order as they requested the lock)
 				story.j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
@@ -152,7 +152,7 @@ public class LockStepTest {
 
 				// Unlock Label: label1, Quantity: 2
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resouce [Label: label1, Quantity: 2]", b1);
+				story.j.waitForMessage("Lock released on resource [Label: label1, Quantity: 2]", b1);
 
 				// #2 gets the lock before #3 (in the order as they requested the lock)
 				story.j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
