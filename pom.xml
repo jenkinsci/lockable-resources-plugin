@@ -13,7 +13,8 @@
 	<parent>
 		<groupId>org.jenkins-ci.plugins</groupId>
 		<artifactId>plugin</artifactId>
-		<version>1.609.1</version>
+		<version>2.5</version>
+		<relativePath />
 	</parent>
 
 	<groupId>org.6wind.jenkins</groupId>
@@ -32,6 +33,7 @@
 		<!-- First version including TailCall is 1.9, and the same baseline is maintained
 		until 1.14, so let's pick up the greatest -->
 		<workflow.version>1.14</workflow.version>
+		<jenkins.version>1.609.1</jenkins.version>
 	</properties>
 
 	<licenses>
@@ -81,11 +83,6 @@
 			<version>1.4</version>
 		</dependency>
 		<dependency>
-			<groupId>com.google.code.findbugs</groupId>
-			<artifactId>annotations</artifactId>
-			<version>3.0.0</version>
-		</dependency>
-		<dependency>
 			<groupId>com.infradna.tool</groupId>
 			<artifactId>bridge-method-annotation</artifactId>
 			<version>1.14</version>
@@ -110,6 +107,12 @@
 			<groupId>org.jenkins-ci.modules</groupId>
 			<artifactId>sshd</artifactId>
 			<version>1.6</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency><!-- Required when testing against core > 1.575 -->
+			<groupId>org.jenkins-ci.plugins</groupId>
+			<artifactId>junit</artifactId>
+			<version>1.13</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
