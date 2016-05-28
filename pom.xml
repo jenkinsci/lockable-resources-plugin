@@ -70,6 +70,11 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-multibranch</artifactId>
+			<version>${workflow.version}</version>
+		</dependency>
+		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>mailer</artifactId>
 			<version>1.5</version>
