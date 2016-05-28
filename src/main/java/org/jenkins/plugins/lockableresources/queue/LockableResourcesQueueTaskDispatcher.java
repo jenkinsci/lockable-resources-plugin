@@ -11,7 +11,7 @@ package org.jenkins.plugins.lockableresources.queue;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
-import hudson.model.AbstractProject;
+import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
@@ -37,7 +37,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		if (item.task instanceof MatrixProject)
 			return null;
 
-		AbstractProject<?, ?> project = Utils.getProject(item);
+		Job<?, ?> project = Utils.getProject(item);
 		if (project == null)
 			return null;
 
