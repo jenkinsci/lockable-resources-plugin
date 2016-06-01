@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
+import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 
 @Extension
 public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
@@ -59,11 +60,9 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 					LOGGER.fine(build.getFullDisplayName()
 							+ " acquired lock on " + required);
 					if (resources.requiredVar != null) {
-						List<ParameterValue> params = new ArrayList<ParameterValue>();
-						params.add(new StringParameterValue(
-							resources.requiredVar,
-							required.toString().replaceAll("[\\]\\[]", "")));
-						build.addAction(new ParametersAction(params));
+						build.addAction(new ResourceVariableNameAction(new StringParameterValue(
+								resources.requiredVar,
+								required.toString().replaceAll("[\\]\\[]", ""))));
 					}
 				} else {
 					listener.getLogger().printf("%s failed to lock %s\n",
