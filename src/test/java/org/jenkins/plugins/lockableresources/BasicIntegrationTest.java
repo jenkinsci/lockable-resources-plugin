@@ -12,8 +12,10 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Item;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.Result;
+import hudson.model.StringParameterDefinition;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.security.ACL;
@@ -54,6 +56,19 @@ public class BasicIntegrationTest {
 
     FreeStyleBuild b1 = p.scheduleBuild2(0).get();
     j.assertLogContains("resourceNameVar: resource1", b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+  }
+
+  @Test
+  @Issue("JENKINS-30308")
+  public void testResourceNameFromParameter() throws Exception {
+    LockableResourcesManager.get().createResource("resource1");
+    FreeStyleProject p = j.createFreeStyleProject("p");
+    p.addProperty(new RequiredResourcesProperty("$resource", null, null, null));
+    p.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("resource", "resource1")));
+
+    FreeStyleBuild b1 = p.scheduleBuild2(0).get();
+    j.assertLogContains("acquired lock on [resource1]", b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
   }
 
