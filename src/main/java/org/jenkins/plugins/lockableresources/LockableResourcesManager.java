@@ -222,7 +222,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (LockableResource r : resourcesToLock) {
 			Run lockingRun = r.getBuild();
 			// Check if the resource is locked by a null or not-building build. Unlock it if that's the case.
-			if (r.isLocked() && (lockingRun == null || !lockingRun.isBuilding())) {
+			if (r.isLocked()
+					&& (lockingRun == null
+					    || !lockingRun.isBuilding()
+					    || lockingRun.getParent().getBuild(lockingRun.getId()) == null)) {
 				performUnlocking(r, lockingRun, inversePrecedence);
 			}
 

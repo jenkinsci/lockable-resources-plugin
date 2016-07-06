@@ -3,7 +3,6 @@ package org.jenkins.plugins.lockableresources;
 import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
-import hudson.model.Executor;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -23,9 +22,6 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Result;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 
 public class LockStepTest {
 
@@ -302,35 +298,105 @@ public class LockStepTest {
 	}
 
 	@Issue("JENKINS-36479")
-	@Test public void hardKillNewBuildClearsLock() throws Exception {
+	@Test(timeout=10000) public void hardKillNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {
 			@Override public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResource("resource1");
 
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
-				WorkflowRun b = p.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("locked!", b);
-				SemaphoreStep.waitForStart("wait-inside/1", b);
-				Executor ex = b.getExecutor();
-				assertNotNull(ex);
-				ex.interrupt();
-				b.doTerm();
-				ex.interrupt();
-				b.doKill();
-				story.j.waitForMessage("Hard kill!", b);
-				story.j.waitForCompletion(b);
-				story.j.assertBuildStatus(Result.ABORTED, b);
+				WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p1.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
+				WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("locked!", b1);
+				SemaphoreStep.waitForStart("wait-inside/1", b1);
 
 				// TODO: Actually make this fail instead of waiting forever if it can't get the lock.
 				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
-				p2.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'got lock' }"));
+				p2.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n"
+						+ "  semaphore 'wait-inside'\n"
+						+ "}"));
 				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+
+				// Make sure that b2 is blocked on b1's lock.
+				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
+
+				// Kill b1 hard.
+				b1.doKill();
+				story.j.waitForMessage("Hard kill!", b1);
+				story.j.waitForCompletion(b1);
+				story.j.assertBuildStatus(Result.ABORTED, b1);
+
+				// Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the lock.
+				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
+				p3.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n"
+								+ "  semaphore 'wait-inside'\n"
+								+ "}"));
+				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
+
+				// Verify that b2 gets the lock.
+				story.j.waitForMessage("Lock acquired on [resource1]", b2);
+				SemaphoreStep.success("wait-inside/2", b2);
+				// Verify that b2 releases the lock and finishes successfully.
 				story.j.waitForMessage("Lock released on resource [resource1]", b2);
-				story.j.waitForMessage("got lock", b2);
 				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b2));
+
+				// Now b3 should get the lock and do its thing.
+				story.j.waitForMessage("Lock acquired on [resource1]", b3);
+				SemaphoreStep.success("wait-inside/3", b3);
+				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b3));
 			}
 		});
 	}
 
+	// TODO: Get this to not hang forever in failure case, figure out what to do about the IOException thrown during
+	// clean up, since we don't care about it.
+	@Issue("JENKINS-36479")
+	@Test(timeout=10000) public void deleteRunningBuildNewBuildClearsLock() throws Exception {
+		story.addStep(new Statement() {
+			@Override public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1");
+
+				WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p1.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
+				WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("locked!", b1);
+				SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+				// TODO: Actually make this fail instead of waiting forever if it can't get the lock.
+				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
+				p2.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n"
+								+ "  semaphore 'wait-inside'\n"
+								+ "}"));
+				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+
+				// Make sure that b2 is blocked on b1's lock.
+				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
+
+				Thread.sleep(2000);
+				b1.delete();
+
+				// Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the lock.
+				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
+				p3.setDefinition(new CpsFlowDefinition(
+						"lock('resource1') {\n"
+								+ "  semaphore 'wait-inside'\n"
+								+ "}"));
+				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
+
+				// Verify that b2 gets the lock.
+				story.j.waitForMessage("Lock acquired on [resource1]", b2);
+				SemaphoreStep.success("wait-inside/2", b2);
+				// Verify that b2 releases the lock and finishes successfully.
+				story.j.waitForMessage("Lock released on resource [resource1]", b2);
+				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b2));
+
+				// Now b3 should get the lock and do its thing.
+				story.j.waitForMessage("Lock acquired on [resource1]", b3);
+				SemaphoreStep.success("wait-inside/3", b3);
+				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b3));
+			}
+		});
+	}
 }
