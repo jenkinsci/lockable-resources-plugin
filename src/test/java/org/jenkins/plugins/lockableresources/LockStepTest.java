@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
+import hudson.model.Executor;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -12,6 +13,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.BuildWatcher;
+import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 import org.jvnet.hudson.test.TestBuilder;
 
@@ -21,6 +23,9 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Result;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 public class LockStepTest {
 
@@ -295,4 +300,37 @@ public class LockStepTest {
 			}
 		});
 	}
+
+	@Issue("JENKINS-36479")
+	@Test public void hardKillNewBuildClearsLock() throws Exception {
+		story.addStep(new Statement() {
+			@Override public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1");
+
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
+				WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("locked!", b);
+				SemaphoreStep.waitForStart("wait-inside/1", b);
+				Executor ex = b.getExecutor();
+				assertNotNull(ex);
+				ex.interrupt();
+				b.doTerm();
+				ex.interrupt();
+				b.doKill();
+				story.j.waitForMessage("Hard kill!", b);
+				story.j.waitForCompletion(b);
+				story.j.assertBuildStatus(Result.ABORTED, b);
+
+				// TODO: Actually make this fail instead of waiting forever if it can't get the lock.
+				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
+				p2.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'got lock' }"));
+				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("Lock released on resource [resource1]", b2);
+				story.j.waitForMessage("got lock", b2);
+				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b2));
+			}
+		});
+	}
+
 }
