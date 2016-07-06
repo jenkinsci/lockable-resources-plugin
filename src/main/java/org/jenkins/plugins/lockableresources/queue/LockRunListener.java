@@ -10,12 +10,10 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
 import hudson.matrix.MatrixBuild;
+import hudson.model.Job;
+import hudson.model.Run;
 import hudson.model.TaskListener;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
 import hudson.model.listeners.RunListener;
-import hudson.model.ParametersAction;
-import hudson.model.ParameterValue;
 import hudson.model.StringParameterValue;
 
 import java.util.ArrayList;
@@ -28,20 +26,20 @@ import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 
 @Extension
-public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
+public class LockRunListener extends RunListener<Run<?, ?>> {
 
 	static final String LOG_PREFIX = "[lockable-resources]";
 	static final Logger LOGGER = Logger.getLogger(LockRunListener.class
 			.getName());
 
 	@Override
-	public void onStarted(AbstractBuild<?, ?> build, TaskListener listener) {
+	public void onStarted(Run<?, ?> build, TaskListener listener) {
 		// Skip locking for multiple configuration projects,
 		// only the child jobs will actually lock resources.
 		if (build instanceof MatrixBuild)
 			return;
 
-		AbstractProject<?, ?> proj = Utils.getProject(build);
+		Job<?, ?> proj = Utils.getProject(build);
 		List<LockableResource> required = new ArrayList<LockableResource>();
 		if (proj != null) {
 			LockableResourcesStruct resources = Utils.requiredResources(proj);
@@ -75,7 +73,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	}
 
 	@Override
-	public void onCompleted(AbstractBuild<?, ?> build, TaskListener listener) {
+	public void onCompleted(Run<?, ?> build, TaskListener listener) {
 		// Skip unlocking for multiple configuration projects,
 		// only the child jobs will actually unlock resources.
 		if (build instanceof MatrixBuild)
@@ -95,7 +93,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 	}
 
 	@Override
-	public void onDeleted(AbstractBuild<?, ?> build) {
+	public void onDeleted(Run<?, ?> build) {
 		// Skip unlocking for multiple configuration projects,
 		// only the child jobs will actually unlock resources.
 		if (build instanceof MatrixBuild)

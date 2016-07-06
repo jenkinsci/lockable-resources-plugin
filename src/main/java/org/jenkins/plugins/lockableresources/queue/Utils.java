@@ -10,35 +10,33 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
+import hudson.model.Job;
 import hudson.model.Queue;
 
+import hudson.model.Run;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class Utils {
 
-	public static AbstractProject<?, ?> getProject(Queue.Item item) {
-		if (item.task instanceof AbstractProject)
-			return (AbstractProject<?, ?>) item.task;
+	public static Job<?, ?> getProject(Queue.Item item) {
+		if (item.task instanceof Job)
+			return (Job<?, ?>) item.task;
 		return null;
 	}
 
-	public static AbstractProject<?, ?> getProject(AbstractBuild<?, ?> build) {
+	public static Job<?, ?> getProject(Run<?, ?> build) {
 		Object p = build.getParent();
-		if (p instanceof AbstractProject)
-			return (AbstractProject<?, ?>) p;
-		return null;
+		return (Job<?, ?>) p;
 	}
 
 	public static LockableResourcesStruct requiredResources(
-			AbstractProject<?, ?> project) {
+			Job<?, ?> project) {
 		RequiredResourcesProperty property = null;
 		EnvVars env = new EnvVars();
 
 		if (project instanceof MatrixConfiguration) {
 			env.putAll(((MatrixConfiguration) project).getCombination());
-			project = (AbstractProject<?, ?>) project.getParent();
+			project = (Job<?, ?>) project.getParent();
 		}
 
 		property = project.getProperty(RequiredResourcesProperty.class);
