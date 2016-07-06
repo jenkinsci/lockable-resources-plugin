@@ -298,7 +298,7 @@ public class LockStepTest {
 	}
 
 	@Issue("JENKINS-36479")
-	@Test(timeout=10000) public void hardKillNewBuildClearsLock() throws Exception {
+	@Test public void hardKillNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {
 			@Override public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResource("resource1");
@@ -309,7 +309,6 @@ public class LockStepTest {
 				story.j.waitForMessage("locked!", b1);
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
 
-				// TODO: Actually make this fail instead of waiting forever if it can't get the lock.
 				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
 				p2.setDefinition(new CpsFlowDefinition(
 						"lock('resource1') {\n"
@@ -349,10 +348,10 @@ public class LockStepTest {
 		});
 	}
 
-	// TODO: Get this to not hang forever in failure case, figure out what to do about the IOException thrown during
-	// clean up, since we don't care about it.
+	// TODO: Figure out what to do about the IOException thrown during clean up, since we don't care about it. It's just
+	// a result of the first build being deleted and is nothing but noise here.
 	@Issue("JENKINS-36479")
-	@Test(timeout=10000) public void deleteRunningBuildNewBuildClearsLock() throws Exception {
+	@Test public void deleteRunningBuildNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {
 			@Override public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResource("resource1");
@@ -363,7 +362,6 @@ public class LockStepTest {
 				story.j.waitForMessage("locked!", b1);
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
 
-				// TODO: Actually make this fail instead of waiting forever if it can't get the lock.
 				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
 				p2.setDefinition(new CpsFlowDefinition(
 						"lock('resource1') {\n"
