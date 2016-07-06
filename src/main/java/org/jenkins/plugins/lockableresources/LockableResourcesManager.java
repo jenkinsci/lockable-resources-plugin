@@ -216,14 +216,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
-	public synchronized boolean lock(List<LockableResource> resources,
+	public synchronized boolean lock(List<LockableResource> resourcesToLock,
 			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		boolean needToWait = false;
-		for (LockableResource r : resources) {
+		for (LockableResource r : resourcesToLock) {
 			Run lockingRun = r.getBuild();
 			// Check if the resource is locked by a null or not-building build. Unlock it if that's the case.
 			if (r.isLocked() && (lockingRun == null || !lockingRun.isBuilding())) {
-				unlock(resources, null, context, false);
+				performUnlocking(r, lockingRun, inversePrecedence);
 			}
 
 			if (r.isReserved() || r.isLocked()) {
@@ -235,7 +235,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 		if (!needToWait) {
-			for (LockableResource r : resources) {
+			for (LockableResource r : resourcesToLock) {
 				r.unqueue();
 				r.setBuild(build);
 				if (context != null) {
@@ -256,30 +256,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
 			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		for (LockableResource r : resourcesToUnLock) {
-			// Search the resource in the internal list to unlock it
-			for (LockableResource internal : resources) {
-				if (internal.getName().equals(r.getName())) {
-					if (build == null ||
-							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
-						// this will remove the context from the queue and setBuild(null) if there are no more contexts
-						StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
-						if (nextContext != null) {
-							try {
-								internal.setBuild(nextContext.get(Run.class));
-							} catch (Exception e) {
-								throw new IllegalStateException("Can not access the context of a running build", e);
-							}
-							LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
-						} else {
-							// No more contexts, unlock resource
-							internal.unqueue();
-							internal.setBuild(null);
+			performUnlocking(r, build, inversePrecedence);
+		}
+		save();
+	}
+
+	/**
+	 * Performs the actual unlocking of a resource. Separated out from {@code unlock} as a non-synchronized private
+	 * method to allow smoother reuse in both {@code lock} and {@code unlock}
+	 *
+	 * @param resourceToUnlock The {@link LockableResource} we are going to unlock.
+	 * @param build The {@link Run} we're unlocking for.
+	 * @param inversePrecedence The ordering for deciding the next context.
+     */
+	private void performUnlocking(LockableResource resourceToUnlock, Run<?, ?> build, boolean inversePrecedence) {
+		// Search the resource in the internal list to unlock it
+		for (LockableResource internal : resources) {
+			if (internal.getName().equals(resourceToUnlock.getName())) {
+				if (build == null ||
+						(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
+					// this will remove the context from the queue and setBuild(null) if there are no more contexts
+					StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
+					if (nextContext != null) {
+						try {
+							internal.setBuild(nextContext.get(Run.class));
+						} catch (Exception e) {
+							throw new IllegalStateException("Can not access the context of a running build", e);
 						}
+						LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
+					} else {
+						// No more contexts, unlock resource
+						internal.unqueue();
+						internal.setBuild(null);
 					}
 				}
 			}
 		}
-		save();
 	}
 
 	public synchronized String getLockCause(String r) {
