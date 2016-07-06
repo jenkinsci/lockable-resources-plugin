@@ -220,6 +220,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		boolean needToWait = false;
 		for (LockableResource r : resources) {
+			Run lockingRun = r.getBuild();
+			// Check if the resource is locked by a null or not-building build. Unlock it if that's the case.
+			if (r.isLocked() && (lockingRun == null || !lockingRun.isBuilding())) {
+				unlock(resources, null, context, false);
+			}
+
 			if (r.isReserved() || r.isLocked()) {
 				needToWait = true;
 				if (context != null) {
