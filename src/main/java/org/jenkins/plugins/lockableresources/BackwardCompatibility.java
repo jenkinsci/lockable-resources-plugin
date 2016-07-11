@@ -29,7 +29,7 @@ public final class BackwardCompatibility {
 
     @Initializer(after = InitMilestone.JOB_LOADED)
     public static void beforeInitMilestonePluginsStarted() {
-        LOG.info("\n\n LOCKABLE RESOURCES COMPATABILITY INIT \n\n");
+        LOG.fine("\n\n LOCKABLE RESOURCES COMPATABILITY INIT \n\n");
 		List<LockableResource> resources = LockableResourcesManager.get().getResources();
 		for (LockableResource resource : resources) {
 			List<StepContext> queuedContexts = resource.getQueuedContexts();
@@ -40,6 +40,7 @@ public final class BackwardCompatibility {
 					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
 					LockableResourcesManager.get().queueContext(queuedContext, resourceHolder, resource.getName());
 				}
+				queuedContexts.clear();
 			}
 		}
     }
