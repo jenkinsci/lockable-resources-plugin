@@ -33,6 +33,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	@Override
 	public boolean start() throws Exception {
+		if (step.label != null && !step.label.isEmpty() && step.resource !=  null && !step.resource.isEmpty()) {
+			throw new Exception("Label and resource name cannot be specified simultaneously");
+		}
+		
 		// create resoure only when specified explicitly
 		if (step.label == null && LockableResourcesManager.get().createResource(step.resource)) {
 			listener.getLogger().println("Resource [" + step + "] did not exist. Created.");
