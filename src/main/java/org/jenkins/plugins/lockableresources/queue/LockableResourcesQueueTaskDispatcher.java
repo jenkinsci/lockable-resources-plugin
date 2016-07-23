@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
@@ -42,7 +43,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		if (project == null)
 			return null;
 
-		LockableResourcesStruct resources = Utils.requiredResources(project);
+		EnvVars env = Utils.getEnvVars(item);
+		LockableResourcesStruct resources = Utils.requiredResources(project, env);
 		if (resources == null ||
 			(resources.required.isEmpty() && resources.label.isEmpty())) {
 			return null;

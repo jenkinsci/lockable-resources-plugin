@@ -75,6 +75,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public Boolean isValidLabel(String label)
 	{
 		return label.startsWith(LockableResource.GROOVY_LABEL_MARKER)
+				|| (label.startsWith("${") && label.endsWith("}"))
 				|| this.getAllLabels().contains(label);
 	}
 

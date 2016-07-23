@@ -6,6 +6,10 @@ resources sharing the given label.
 Either Label or Resources field must be empty.
 </p>
 <p>
+You can also use parameters expansion.
+For ex. if parameter 'MY_RESOURCE' is defined, use '${MY_RESOURCE}'.
+</p>
+<p>
 If label starts with <code>groovy:</code> then it is treated as a groovy expression
 to be evaluated each time a resource is checked to be appropriate for a build. The
 expression must result into a boolean value. The following variables are available:
