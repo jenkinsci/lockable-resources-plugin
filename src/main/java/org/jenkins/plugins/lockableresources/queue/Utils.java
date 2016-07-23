@@ -14,10 +14,12 @@ import hudson.model.Job;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.model.Queue;
-
 import hudson.model.Run;
+
 import java.util.HashMap;
 import java.util.List;
+
+import org.jenkins.plugins.lockableresources.LockableResourcesParameterValue;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class Utils {
@@ -33,27 +35,33 @@ public class Utils {
 		return (Job<?, ?>) p;
 	}
 
-        /**
-         * Create environment based on item parameters
-         * 
-         * @param item
-         * @return 
-         */
+	/**
+	 * Create environment based on item parameters
+	 * 
+	 * @param item
+	 * @return 
+	 */
 	public static EnvVars getEnvVars(Queue.Item item) {
-            HashMap<String, String> params = new HashMap<>();
-            List<ParametersAction> paramsActions = item.getActions(ParametersAction.class);
-            for(ParametersAction pa: paramsActions) {
-                if(pa != null) {
-                    List<ParameterValue> paramsValues = pa.getParameters();
-                    for(ParameterValue pv: paramsValues) {
-                        if(pv != null) {
-                            params.put(pv.getName(), pv.getValue().toString());
-                        }
-                    }
-                }
-            }
-            return new EnvVars(params);
-        }
+		HashMap<String, String> params = new HashMap<>();
+		List<ParametersAction> paramsActions = item.getActions(ParametersAction.class);
+		for(ParametersAction pa: paramsActions) {
+			if(pa != null) {
+				List<ParameterValue> paramsValues = pa.getParameters();
+				for(ParameterValue pv: paramsValues) {
+					if(pv != null) {
+						Object value = pv.getValue();
+						if(value instanceof LockableResourcesParameterValue) {
+							LockableResourcesParameterValue v = (LockableResourcesParameterValue) value;
+							params.put(pv.getName(), v.getEnvString());
+						} else {
+							params.put(pv.getName(), pv.getValue().toString());
+						}
+					}
+				}
+			}
+		}
+		return new EnvVars(params);
+	}
         
 	public static LockableResourcesStruct requiredResources(
 			Job<?, ?> project, EnvVars env) {

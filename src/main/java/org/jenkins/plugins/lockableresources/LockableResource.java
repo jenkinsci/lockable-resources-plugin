@@ -22,7 +22,6 @@ import hudson.model.Queue.Task;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,11 +30,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Collection;
+import java.util.Set;
+import java.util.TreeSet;
 
 import jenkins.model.Jenkins;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
@@ -116,19 +117,41 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public String getLabels() {
 		return labels;
 	}
+        
+	public Set<ResourceCapability> getCapabilities() {
+		if(labels.startsWith(GROOVY_LABEL_MARKER)) {
+			// Special case: the whole label is a groovy script
+			return new TreeSet<>();
+		}
+		return ResourceCapability.splitCapabilities(labels);
+	}
 
+	public ResourceCapability getMyselfAsCapability() {
+		return new ResourceCapability(name);
+	}
+
+	public boolean hasCapabilities(Collection<ResourceCapability> neededCapabilities, 
+		Collection<ResourceCapability> prohibitedCapabilities) {
+		return hasCapabilities(neededCapabilities, prohibitedCapabilities, null);
+	}
+
+	public boolean hasCapabilities(Collection<ResourceCapability> neededCapabilities, 
+		Collection<ResourceCapability> prohibitedCapabilities,
+		Map<String, Object> params) {
+		if(labels.startsWith(GROOVY_LABEL_MARKER)) {
+			// Special case: the whole label is a groovy script
+			if(params == null) {
+				return true;
+			}
+			return expressionMatches(labels, params);
+		}
+		Set<ResourceCapability> capabilities = getCapabilities();
+		capabilities.add(getMyselfAsCapability());
+		return ResourceCapability.hasAllCapabilities(capabilities, neededCapabilities) && ResourceCapability.hasNoneOfCapabilities(capabilities, prohibitedCapabilities);
+	}
 
 	public Integer getContextsInQueue() {
 		return queuedContexts.size();
-	}
-
-	public boolean isValidLabel(String candidate, Map<String, Object> params) {
-		return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(
-				candidate, params) : labelsContain(candidate);
-	}
-
-	private boolean labelsContain(String candidate) {
-		return makeLabelsList().contains(candidate);
 	}
 
 	private List<String> makeLabelsList() {

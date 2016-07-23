@@ -1,0 +1,26 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+    <style>
+        .lockableResource div.repeated-container, .lockableResource div.repeated-container div.repeated-chunk {
+            display:inline-block;
+            width:auto;
+        }
+    </style>
+    
+    <j:set var="instance" value="${it}" />
+    <j:set var="descriptor" value="${it.descriptor}" />
+    
+    <f:entry title="${it.name}" description="${it.description}">
+        <div class="lockableResource">
+            <input type="hidden" name="name" value="${it.name}" />
+            <f:repeatable field="selectedCapabilities" var="v" noAddButton="true" minimum="0">
+                <f:readOnlyTextbox field="name" />
+            </f:repeatable>
+            <f:repeatable field="neededCapabilities" var="v" noAddButton="true" minimum="0">
+                <f:readOnlyTextbox field="name" />
+            </f:repeatable>
+        </div>
+    </f:entry>
+</j:jelly>

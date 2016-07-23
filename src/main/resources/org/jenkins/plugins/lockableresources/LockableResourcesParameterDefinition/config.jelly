@@ -1,0 +1,47 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+    <style>
+        .lockableResource div.repeated-container div, .lockableResource div.repeated-container div.repeated-chunk {
+            display:inline-block;
+            width:auto;
+        }
+    </style>
+
+    <f:entry title="${%Variable name}" field="name">
+        <f:textbox field="name" />
+    </f:entry>
+
+    <f:entry title="${%Default selection}" field="selectedCapabilities" >
+        <div class="lockableResource">
+            <f:repeatable field="selectedCapabilities" var="v" minimum="1">
+                <f:select field="name" />
+                <f:repeatableDeleteButton />
+            </f:repeatable>
+        </div>
+        <f:checkbox title="${%Select only resources names}" field="onlyResourceNames" />
+    </f:entry>
+
+    <f:entry title="${%Forced capabilities}" field="neededCapabilities" >
+        <div class="lockableResource">
+            <f:repeatable field="neededCapabilities" var="v" minimum="0">
+                <f:select field="name" />
+                <f:repeatableDeleteButton />
+            </f:repeatable>
+        </div>
+    </f:entry>
+
+    <f:entry title="${%Prohibited capabilities}" field="prohibitedCapabilities" >
+        <div class="lockableResource">
+            <f:repeatable field="prohibitedCapabilities" var="v" minimum="0">
+                <f:select field="name" />
+                <f:repeatableDeleteButton />
+            </f:repeatable>
+        </div>
+    </f:entry>
+
+    <f:entry title="${%Description}" field="description">
+        <f:textarea field="description" codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription" />
+    </f:entry>
+</j:jelly>

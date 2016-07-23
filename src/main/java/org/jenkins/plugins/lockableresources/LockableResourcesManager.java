@@ -9,7 +9,6 @@
 package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
-import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
 import java.util.HashSet;
@@ -20,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Collection;
 
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
@@ -90,6 +90,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 		return labels;
 	}
+        
+	public Set<ResourceCapability> getAllCapabilities() {
+		Set<ResourceCapability> capabilities = new HashSet<>();
+		for (LockableResource r : this.resources) {
+			capabilities.addAll(r.getCapabilities());
+			capabilities.add(r.getMyselfAsCapability());
+		}
+		return capabilities;
+	}
+
+	public Set<ResourceCapability> getCapabilities(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities) {
+		Set<ResourceCapability> capabilities = new HashSet<>();
+		for (LockableResource r : this.resources) {
+			if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities)) {
+				capabilities.addAll(r.getCapabilities());
+				capabilities.add(r.getMyselfAsCapability());
+			}
+		}
+		return capabilities;
+	}
 
 	public int getFreeResourceAmount(String label)
 	{
@@ -103,12 +123,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return free;
 	}
 
-	public List<LockableResource> getResourcesWithLabel(String label,
+	public List<LockableResource> getResourcesWithCapabilities(Collection<ResourceCapability> capabilities,
 			Map<String, Object> params) {
-		List<LockableResource> found = new ArrayList<LockableResource>();
+		List<LockableResource> found = new ArrayList<>();
 		for (LockableResource r : this.resources) {
-			if (r.isValidLabel(label, params))
+			if (r.hasCapabilities(capabilities, null, params)) {
 				found.add(r);
+			}
 		}
 		return found;
 	}
@@ -139,6 +160,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	                                                 int number,  // 0 means all
 	                                                 Map<String, Object> params,
 	                                                 Logger log) {
+		log.fine("Add job in queue, with these data: " + requiredResources.toString());
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
@@ -151,9 +173,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		List<LockableResource> candidates = new ArrayList<LockableResource>();
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+			log.fine("Add resources by name: " + requiredResources.required);
 			candidates = requiredResources.required;
 		} else {
-			candidates = getResourcesWithLabel(requiredResources.label, params);
+			log.fine("Add resources by labels/capabilities: " + requiredResources.label);
+			Collection<ResourceCapability> capabilities = ResourceCapability.splitCapabilities(requiredResources.label);
+			candidates = getResourcesWithCapabilities(capabilities, params);
+			log.fine("Possible resources:");
+			for(LockableResource r: candidates) {
+				log.fine("   - " + r.getName());
+			}
 		}
 
 		for (LockableResource rs : candidates) {
