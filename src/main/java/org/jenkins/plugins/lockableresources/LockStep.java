@@ -10,6 +10,8 @@ import org.kohsuke.stapler.QueryParameter;
 
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
+import hudson.util.FormValidation;
+import hudson.Util;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
@@ -77,6 +79,22 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
 			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
 		}
+		
+		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
+            String resourceLabel = Util.fixEmpty(value);
+			String resourceName = Util.fixEmpty(resource);
+			if ((resourceLabel != null) && (resourceName != null)) {
+				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
+			}
+			if ((resourceLabel == null) && (resourceName == null)) {
+				return FormValidation.error("Either label or resource name must be specified.");
+			}
+            return FormValidation.ok();
+        }
+		
+		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
+            return doCheckLabel(label, value);
+        }
 	}
 
 	public String toString() {
