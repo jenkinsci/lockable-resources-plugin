@@ -8,16 +8,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
-import hudson.Extension;
-import hudson.matrix.MatrixConfiguration;
-import hudson.matrix.MatrixProject;
-import hudson.model.AbstractProject;
-import hudson.model.Job;
-import hudson.model.Queue;
-import hudson.model.queue.QueueTaskDispatcher;
-import hudson.model.queue.CauseOfBlockage;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -25,11 +15,25 @@ import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
+import com.google.common.base.Function;
+import com.google.common.base.Predicates;
+
+import hudson.Extension;
+import hudson.matrix.MatrixProject;
+import hudson.model.Job;
+import hudson.model.Queue;
+import hudson.model.queue.CauseOfBlockage;
+import hudson.model.queue.QueueTaskDispatcher;
+
+import javax.annotation.Nullable;
+
+import static com.google.common.collect.FluentIterable.from;
+import static org.jenkins.plugins.lockableresources.queue.LockableResourcesStructFactory.requiredResources;
+
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
-	static final Logger LOGGER = Logger
-			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	@Override
 	public CauseOfBlockage canRun(Queue.Item item) {
@@ -39,12 +43,32 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			return null;
 
 		Job<?, ?> project = Utils.getProject(item);
-		if (project == null)
+		if (project == null) {
 			return null;
+		}
 
-		LockableResourcesStruct resources = Utils.requiredResources(project);
-		if (resources == null ||
-			(resources.required.isEmpty() && resources.label.isEmpty())) {
+		return from(requiredResources(project))
+						.transform(toCauseOfBlockage(item, project))
+						.filter(Predicates.<CauseOfBlockage>notNull())
+						.first()
+						.orNull();
+	}
+
+	private static Function<LockableResourcesStruct, CauseOfBlockage> toCauseOfBlockage(final Queue.Item item, final Job<?, ?> project) {
+		return new Function<LockableResourcesStruct, CauseOfBlockage>() {
+
+			@Nullable
+			@Override
+			public CauseOfBlockage apply(@Nullable LockableResourcesStruct resources) {
+				return getCauseOfBlockage(item, project, resources);
+			}
+
+		};
+	}
+
+	@Nullable
+	static CauseOfBlockage getCauseOfBlockage(Queue.Item item, Job<?, ?> project, LockableResourcesStruct resources) {
+		if (resources == null || (resources.resourceNames.isEmpty() && resources.label.isEmpty())) {
 			return null;
 		}
 
@@ -55,59 +79,48 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			resourceNumber = 0;
 		}
 
-		LOGGER.finest(project.getName() +
-			" trying to get resources with these details: " + resources);
+		LOGGER.finest(project.getName() + " trying to get resources with these details: " + resources);
+
+		Map<String, Object> params = Utils.getParams(item);
+
+		List<LockableResource> reservedResources;
 
 		if (resourceNumber > 0 || !resources.label.isEmpty()) {
-			Map<String, Object> params = new HashMap<String, Object>();
-			if (item.task instanceof MatrixConfiguration) {
-			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
-			    params.putAll(matrix.getCombination());
-			}
-
-			List<LockableResource> selected = LockableResourcesManager.get().queue(
-					resources,
-					item.getId(),
-					project.getFullName(),
-					resourceNumber,
-					params,
-					LOGGER);
-
-			if (selected != null) {
-				LOGGER.finest(project.getName() + " reserved resources " + selected);
-				return null;
-			} else {
-				LOGGER.finest(project.getName() + " waiting for resources");
-				return new BecauseResourcesLocked(resources);
-			}
-
+			reservedResources = LockableResourcesManager.get().queue(resources, item.getId(),
+							project.getFullName(), resourceNumber, params);
 		} else {
-			if (LockableResourcesManager.get().queue(resources.required, item.getId())) {
-				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
-				return null;
-			} else {
-				LOGGER.finest(project.getName() + " waiting for resources "
-					+ resources.required);
-				return new BecauseResourcesLocked(resources);
-			}
+			reservedResources = LockableResourcesManager.get().queue(resources, item.getId(),
+							project.getFullName(), params);
+		}
+
+		if (reservedResources != null) {
+			LOGGER.finest(project.getName() + " reserved resources " + reservedResources);
+
+			return null;
+		} else {
+			LOGGER.finest(project.getName() + " waiting for resources");
+
+			return new BecauseResourcesLocked(resources);
 		}
 	}
 
-	public static class BecauseResourcesLocked extends CauseOfBlockage {
+	private static class BecauseResourcesLocked extends CauseOfBlockage {
 
-		private final LockableResourcesStruct rscStruct;
+		private final LockableResourcesStruct resources;
 
-		public BecauseResourcesLocked(LockableResourcesStruct r) {
-			this.rscStruct = r;
+		BecauseResourcesLocked(LockableResourcesStruct resources) {
+			this.resources = resources;
 		}
 
 		@Override
 		public String getShortDescription() {
-			if (this.rscStruct.label.isEmpty())
-				return "Waiting for resources " + rscStruct.required.toString();
-			else
-				return "Waiting for resources with label " + rscStruct.label;
+			if (resources.label.isEmpty()) {
+				return "Waiting for resources " + resources.resourceNames;
+			} else {
+				return "Waiting for resources with label " + resources.label;
+			}
 		}
+
 	}
 
 }

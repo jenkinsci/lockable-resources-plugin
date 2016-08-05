@@ -8,12 +8,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.actions;
 
-import hudson.model.Action;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
+
+import hudson.model.Action;
 
 public class LockedResourcesBuildAction implements Action {
 
@@ -40,11 +40,14 @@ public class LockedResourcesBuildAction implements Action {
 	}
 
 	public static LockedResourcesBuildAction fromResources(
-			List<LockableResource> resources) {
-		List<ResourcePOJO> resPojos = new ArrayList<ResourcePOJO>();
-		for (LockableResource r : resources)
-			resPojos.add(new ResourcePOJO(r));
-		return new LockedResourcesBuildAction(resPojos);
+					List<LockableResource> resources) {
+		List<ResourcePOJO> lockedResources = new ArrayList<>();
+
+		for (LockableResource resource : resources) {
+			lockedResources.add(new ResourcePOJO(resource));
+		}
+
+		return new LockedResourcesBuildAction(lockedResources);
 	}
 
 	public static class ResourcePOJO {
@@ -57,9 +60,9 @@ public class LockedResourcesBuildAction implements Action {
 			this.description = description;
 		}
 
-		public ResourcePOJO(LockableResource r) {
-			this.name = r.getName();
-			this.description = r.getDescription();
+		public ResourcePOJO(LockableResource resource) {
+			this.name = resource.getName();
+			this.description = resource.getDescription();
 		}
 
 	}

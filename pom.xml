@@ -34,8 +34,15 @@
 		until 1.14, so let's pick up the greatest -->
 		<workflow.version>1.14</workflow.version>
 		<jenkins.version>1.609.1</jenkins.version>
+
 		<!-- TODO activate this and fix findbugs errors -->
 		<findbugs.failOnError>false</findbugs.failOnError>
+
+		<hamcrest-core.version>1.3</hamcrest-core.version>
+		<mockito.version>1.10.19</mockito.version>
+		<powermock.version>1.6.5</powermock.version>
+		<assertj.version>2.5.0</assertj.version>
+		<spring-test.version>2.5</spring-test.version>
 	</properties>
 
 	<licenses>
@@ -68,6 +75,16 @@
 		</developer>
 	</developers>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.hamcrest</groupId>
+				<artifactId>hamcrest-core</artifactId>
+				<version>${hamcrest-core.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
@@ -89,6 +106,11 @@
 			<artifactId>bridge-method-annotation</artifactId>
 			<version>1.14</version>
 			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>19.0</version>
 		</dependency>
 
 		<!-- Testing scope -->
@@ -117,7 +139,37 @@
 			<version>1.13</version>
 			<scope>test</scope>
 		</dependency>
-	</dependencies>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>${mockito.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-junit4</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.assertj</groupId>
+			<artifactId>assertj-core</artifactId>
+			<version>${assertj.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-test</artifactId>
+			<version>${spring-test.version}</version>
+			<scope>test</scope>
+		</dependency>
+    </dependencies>
 
 	<build>
 		<plugins>

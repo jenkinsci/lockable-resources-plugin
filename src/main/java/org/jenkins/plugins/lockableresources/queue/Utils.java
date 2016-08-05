@@ -8,41 +8,50 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
-import hudson.EnvVars;
+import java.util.HashMap;
+import java.util.Map;
+
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
 import hudson.model.Queue;
-
 import hudson.model.Run;
-import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class Utils {
 
 	public static Job<?, ?> getProject(Queue.Item item) {
-		if (item.task instanceof Job)
+		if (item.task instanceof Job) {
 			return (Job<?, ?>) item.task;
+		}
+
 		return null;
 	}
 
 	public static Job<?, ?> getProject(Run<?, ?> build) {
-		Object p = build.getParent();
-		return (Job<?, ?>) p;
+		return build.getParent();
 	}
 
-	public static LockableResourcesStruct requiredResources(
-			Job<?, ?> project) {
-		RequiredResourcesProperty property = null;
-		EnvVars env = new EnvVars();
+	public static Map<String, Object> getParams(Queue.Item item) {
+		Map<String, Object> params = new HashMap<>();
 
-		if (project instanceof MatrixConfiguration) {
-			env.putAll(((MatrixConfiguration) project).getCombination());
-			project = (Job<?, ?>) project.getParent();
+		if (item.task instanceof MatrixConfiguration) {
+			MatrixConfiguration matrix = (MatrixConfiguration) item.task;
+
+			params.putAll(matrix.getCombination());
 		}
 
-		property = project.getProperty(RequiredResourcesProperty.class);
-		if (property != null)
-			return new LockableResourcesStruct(property, env);
-
-		return null;
+		return params;
 	}
+
+	public static Map<String, Object> getParams(Job<?, ?> project) {
+		Map<String, Object> params = new HashMap<>();
+
+		if (project instanceof MatrixConfiguration) {
+			MatrixConfiguration matrix = (MatrixConfiguration) project;
+
+			params.putAll(matrix.getCombination());
+		}
+
+		return params;
+	}
+
 }

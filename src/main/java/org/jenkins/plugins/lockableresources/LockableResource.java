@@ -8,21 +8,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
-import groovy.lang.Binding;
-import groovy.lang.GroovyShell;
-import hudson.Extension;
-import hudson.Util;
-import hudson.model.AbstractDescribableImpl;
-import hudson.model.AbstractBuild;
-import hudson.model.Descriptor;
-import hudson.model.Queue;
-import hudson.model.Run;
-import hudson.model.Queue.Item;
-import hudson.model.Queue.Task;
-import hudson.model.User;
-import hudson.tasks.Mailer.UserProperty;
-
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,26 +17,43 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 import jenkins.model.Jenkins;
-
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
-import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 
-import edu.umd.cs.findbugs.annotations.CheckForNull;
+import hudson.Extension;
+import hudson.Util;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractDescribableImpl;
+import hudson.model.Descriptor;
+import hudson.model.Queue;
+import hudson.model.Queue.Item;
+import hudson.model.Queue.Task;
+import hudson.model.Run;
+import hudson.model.User;
+import hudson.tasks.Mailer.UserProperty;
+
+import javax.annotation.CheckForNull;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+
 	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
+
 	public static final int NOT_QUEUED = 0;
-	private static final int QUEUE_TIMEOUT = 60;
+
 	public static final String GROOVY_LABEL_MARKER = "groovy:";
+
+	private static final int QUEUE_TIMEOUT = 60;
 
 	private final String name;
 	private String description = "";
@@ -60,7 +62,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private long queueItemId = NOT_QUEUED;
 	private String queueItemProject = null;
-	private transient  Run<?, ?> build = null;
+	private transient Run<?, ?> build = null;
 	// Needed to make the state non-transient
 	private String buildExternalizableId = null;
 	private long queuingStarted = 0;
@@ -69,16 +71,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
 	 * otherwise (freestyle builds) regular Jenkins queue is used.
 	 */
-	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
-
-	@Deprecated
-	public LockableResource(
-			String name, String description, String labels, String reservedBy) {
-		this.name = name;
-		this.description = description;
-		this.labels = labels;
-		this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
-	}
+	private List<StepContext> queuedContexts = new ArrayList<>();
 
 	@DataBoundConstructor
 	public LockableResource(String name) {
@@ -87,8 +80,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private Object readResolve() {
 		if (queuedContexts == null) { // this field was added after the initial version if this class
-			queuedContexts = new ArrayList<StepContext>();
+			queuedContexts = new ArrayList<>();
 		}
+
 		return this;
 	}
 
@@ -123,8 +117,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
-		return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(
-				candidate, params) : labelsContain(candidate);
+		return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(candidate, params) : labelsContain(candidate);
 	}
 
 	private boolean labelsContain(String candidate) {
@@ -135,27 +128,29 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return Arrays.asList(labels.split("\\s+"));
 	}
 
-	private boolean expressionMatches(String expression,
-			Map<String, Object> params) {
+	private boolean expressionMatches(String expression, Map<String, Object> params) {
 		Binding binding = new Binding(params);
+
 		binding.setVariable("resourceName", name);
 		binding.setVariable("resourceDescription", description);
 		binding.setVariable("resourceLabels", makeLabelsList());
+
 		String expressionToEvaluate = expression.replace(GROOVY_LABEL_MARKER, "");
+
 		GroovyShell shell = new GroovyShell(binding);
+
 		try {
 			Object result = shell.evaluate(expressionToEvaluate);
+
 			if (LOGGER.isLoggable(Level.FINE)) {
-				LOGGER.fine("Checked resource " + name + " for " + expression
-						+ " with " + binding + " -> " + result);
+				LOGGER.fine("Checked resource " + name + " for " + expression + " with " + binding + " -> " + result);
 			}
+
 			return (Boolean) result;
 		} catch (Exception e) {
-			LOGGER.log(
-					Level.SEVERE,
-					"Cannot get boolean result out of groovy expression '"
-							+ expressionToEvaluate + "' on (" + binding + ")",
-					e);
+			LOGGER.log(Level.SEVERE, "Cannot get boolean result out of groovy expression '"
+							+ expressionToEvaluate + "' on (" + binding + ")", e);
+
 			return false;
 		}
 	}
@@ -173,13 +168,23 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getReservedByEmail() {
 		if (reservedBy != null) {
-			UserProperty email = null;
-			User user = Jenkins.getInstance().getUser(reservedBy);
-			if (user != null)
-				email = user.getProperty(UserProperty.class);
-			if (email != null)
-				return email.getAddress();
+			Jenkins jenkins = Jenkins.getInstance();
+
+			if (jenkins == null) {
+				throw new IllegalStateException("Jenkins instance has not been started or was already shut down.");
+			}
+
+			User user = jenkins.getUser(reservedBy);
+
+			if (user != null) {
+				UserProperty email = user.getProperty(UserProperty.class);
+
+				if (email != null) {
+					return email.getAddress();
+				}
+			}
 		}
+
 		return null;
 	}
 
@@ -226,7 +231,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return null;
 	}
 
-	@WithBridgeMethods(value=AbstractBuild.class, adapterMethod="getAbstractBuild")
+	@WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuild")
 	public Run<?, ?> getBuild() {
 		if (build == null && buildExternalizableId != null) {
 			build = Run.fromExternalizableId(buildExternalizableId);
@@ -235,7 +240,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * @see {@link WithBridgeMethods}
+	 * @see WithBridgeMethods
 	 */
 	@Deprecated
 	private Object getAbstractBuild(final Run owner, final Class targetClass) {
@@ -291,8 +296,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private void validateQueuingTimeout() {
 		if (queuingStarted > 0) {
 			long now = System.currentTimeMillis() / 1000;
-			if (now - queuingStarted > QUEUE_TIMEOUT)
+			if (now - queuingStarted > QUEUE_TIMEOUT) {
 				unqueue();
+			}
 		}
 	}
 
@@ -301,7 +307,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * Returns the next context (if exists) waiting to get thye lock.
+	 * Returns the next context (if exists) waiting to get the lock.
 	 * It removes the returned context from the queue.
 	 */
 	@CheckForNull
@@ -313,7 +319,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 				long newest = 0;
 				int index = 0;
 				int newestIndex = 0;
-				for(Iterator<StepContext> iterator = queuedContexts.iterator(); iterator.hasNext();) {
+				for (Iterator<StepContext> iterator = queuedContexts.iterator(); iterator.hasNext(); ) {
 					StepContext c = iterator.next();
 					try {
 						Run<?, ?> run = c.get(Run.class);
@@ -328,7 +334,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 					}
 					index++;
 				}
-				
+
 				return queuedContexts.remove(newestIndex);
 			}
 		}
@@ -394,5 +400,4 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	}
 
-	private static final long serialVersionUID = 1L;
 }

@@ -1,8 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
+import java.util.Collections;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -21,19 +20,22 @@ import hudson.model.Result;
 public class BasicIntegrationTest {
 
 	@Rule
-	public JenkinsRule j = new JenkinsRule();
+	public JenkinsRule jenkinsRule = new JenkinsRule();
 
 	@Test
 	@Issue("JENKINS-34853")
 	public void security170fix() throws Exception {
 		LockableResourcesManager.get().createResource("resource1");
-		FreeStyleProject p = j.createFreeStyleProject("p");
-		p.addProperty(new RequiredResourcesProperty("resource1", "resourceNameVar", null, null));
-		p.getBuildersList().add(new PrinterBuilder());
 
-		FreeStyleBuild b1 = p.scheduleBuild2(0).get();
-		j.assertLogContains("resourceNameVar: resource1", b1);
-		j.assertBuildStatus(Result.SUCCESS, b1);
+		FreeStyleProject project = jenkinsRule.createFreeStyleProject("project");
+
+		project.addProperty(new RequiredResourcesProperty(Collections.singletonList(new RequiredResources("resource1", "resourceNameVar", null, null))));
+		project.getBuildersList().add(new PrinterBuilder());
+
+		FreeStyleBuild build = project.scheduleBuild2(0).get();
+
+		jenkinsRule.assertLogContains("resourceNameVar: resource1", build);
+		jenkinsRule.assertBuildStatus(Result.SUCCESS, build);
 	}
 
 	@TestExtension
@@ -46,9 +48,10 @@ public class BasicIntegrationTest {
 		@Override
 		public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
 			listener.getLogger().println("resourceNameVar: " + build.getEnvironment(listener).get("resourceNameVar"));
+
 			return true;
 		}
-		
+
 	}
 
 }

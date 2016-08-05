@@ -2,16 +2,19 @@ package org.jenkins.plugins.lockableresources;
 
 import java.io.Serializable;
 
-import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
-import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+
+import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
+import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 
 public class LockStep extends AbstractStepImpl implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	public final String resource;
 
@@ -22,6 +25,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		if (resource == null || resource.isEmpty()) {
 			throw new IllegalArgumentException("must specify resource");
 		}
+
 		this.resource = resource;
 	}
 
@@ -53,10 +57,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		}
 
 		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
-			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
+			return RequiredResources.DescriptorImpl.doAutoCompleteResourceNames(value);
 		}
-	}
 
-	private static final long serialVersionUID = 1L;
+	}
 
 }

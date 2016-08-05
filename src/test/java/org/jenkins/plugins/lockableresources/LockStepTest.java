@@ -1,12 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.Semaphore;
 
-import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -15,6 +12,11 @@ import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 import org.jvnet.hudson.test.TestBuilder;
+
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
@@ -38,10 +40,10 @@ public class LockStepTest {
 			public void evaluate() throws Throwable {
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	echo 'Resource locked'\n" +
-						"}\n" +
-						"echo 'Finish'"
+								"lock('resource1') {\n" +
+												"	echo 'Resource locked'\n" +
+												"}\n" +
+												"echo 'Finish'"
 				));
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				story.j.waitForCompletion(b1);
@@ -59,10 +61,10 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
+								"lock('resource1') {\n" +
+												"	semaphore 'wait-inside'\n" +
+												"}\n" +
+												"echo 'Finish'"
 				));
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -97,10 +99,10 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1', inversePrecedence: true) {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
+								"lock(resource: 'resource1', inversePrecedence: true) {\n" +
+												"	semaphore 'wait-inside'\n" +
+												"}\n" +
+												"echo 'Finish'"
 				));
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -135,16 +137,16 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"parallel a: {\n" +
-						"	sleep 5\n" +
-						"	lock('resource1') {\n" +
-						"		sleep 5\n" +
-						"	}\n" +
-						"}, b: {\n" +
-						"	lock('resource1') {\n" +
-						"		semaphore 'wait-b'\n" +
-						"	}\n" +
-						"}\n"
+								"parallel a: {\n" +
+												"	sleep 5\n" +
+												"	lock('resource1') {\n" +
+												"		sleep 5\n" +
+												"	}\n" +
+												"}, b: {\n" +
+												"	lock('resource1') {\n" +
+												"		semaphore 'wait-b'\n" +
+												"	}\n" +
+												"}\n"
 				));
 
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
@@ -168,10 +170,10 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
+								"lock('resource1') {\n" +
+												"	semaphore 'wait-inside'\n" +
+												"}\n" +
+												"echo 'Finish'"
 				));
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -217,14 +219,14 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	echo 'Locked'\n" +
-						"}\n" +
-						"echo 'Finish'"
+								"lock('resource1') {\n" +
+												"	echo 'Locked'\n" +
+												"}\n" +
+												"echo 'Finish'"
 				));
 
 				FreeStyleProject f = story.j.createFreeStyleProject("f");
-				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
+				f.addProperty(new RequiredResourcesProperty(Collections.singletonList(new RequiredResources("resource1", null, null, null))));
 				f.getBuildersList().add(new TestBuilder() {
 
 					@Override
@@ -255,20 +257,20 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
+								"lock('resource1') {\n" +
+												"	semaphore 'wait-inside'\n" +
+												"}\n" +
+												"echo 'Finish'"
 				));
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
 
 				FreeStyleProject f = story.j.createFreeStyleProject("f");
-				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
+				f.addProperty(new RequiredResourcesProperty(Collections.singletonList(new RequiredResources("resource1", null, null, null))));
 
 				f.scheduleBuild2(0);
 
-				while(story.j.jenkins.getQueue().getItems().length != 1) {
+				while (story.j.jenkins.getQueue().getItems().length != 1) {
 					System.out.println("Waiting for freestyle to be queued...");
 					Thread.sleep(1000);
 				}
@@ -282,12 +284,12 @@ public class LockStepTest {
 				FreeStyleProject f = story.j.jenkins.getItemByFullName("f", FreeStyleProject.class);
 				WorkflowRun b1 = p.getBuildByNumber(1);
 
-
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
 				story.j.waitForMessage("Lock released on resource [resource1]", b1);
-				FreeStyleBuild fb1 = null;
-				while((fb1 = f.getBuildByNumber(1)) == null) {
+
+				FreeStyleBuild fb1;
+				while ((fb1 = f.getBuildByNumber(1)) == null) {
 					System.out.println("Waiting for freestyle #1 to start building...");
 					Thread.sleep(1000);
 				}
@@ -298,9 +300,11 @@ public class LockStepTest {
 	}
 
 	@Issue("JENKINS-36479")
-	@Test public void hardKillNewBuildClearsLock() throws Exception {
+	@Test
+	public void hardKillNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {
-			@Override public void evaluate() throws Throwable {
+			@Override
+			public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResource("resource1");
 
 				WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
@@ -311,9 +315,9 @@ public class LockStepTest {
 
 				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
 				p2.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-						+ "  semaphore 'wait-inside'\n"
-						+ "}"));
+								"lock('resource1') {\n"
+												+ "  semaphore 'wait-inside'\n"
+												+ "}"));
 				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
 				// Make sure that b2 is blocked on b1's lock.
@@ -322,9 +326,9 @@ public class LockStepTest {
 				// Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the lock.
 				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
 				p3.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-								+ "  semaphore 'wait-inside'\n"
-								+ "}"));
+								"lock('resource1') {\n"
+												+ "  semaphore 'wait-inside'\n"
+												+ "}"));
 				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
 
@@ -333,7 +337,6 @@ public class LockStepTest {
 				story.j.waitForMessage("Hard kill!", b1);
 				story.j.waitForCompletion(b1);
 				story.j.assertBuildStatus(Result.ABORTED, b1);
-
 
 				// Verify that b2 gets the lock.
 				story.j.waitForMessage("Lock acquired on [resource1]", b2);
@@ -353,9 +356,11 @@ public class LockStepTest {
 	// TODO: Figure out what to do about the IOException thrown during clean up, since we don't care about it. It's just
 	// a result of the first build being deleted and is nothing but noise here.
 	@Issue("JENKINS-36479")
-	@Test public void deleteRunningBuildNewBuildClearsLock() throws Exception {
+	@Test
+	public void deleteRunningBuildNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {
-			@Override public void evaluate() throws Throwable {
+			@Override
+			public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResource("resource1");
 
 				WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
@@ -366,17 +371,17 @@ public class LockStepTest {
 
 				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
 				p2.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-								+ "  semaphore 'wait-inside'\n"
-								+ "}"));
+								"lock('resource1') {\n"
+												+ "  semaphore 'wait-inside'\n"
+												+ "}"));
 				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
 				// Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the lock.
 				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
 				p3.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-								+ "  semaphore 'wait-inside'\n"
-								+ "}"));
+								"lock('resource1') {\n"
+												+ "  semaphore 'wait-inside'\n"
+												+ "}"));
 				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
 
@@ -401,4 +406,5 @@ public class LockStepTest {
 			}
 		});
 	}
+
 }
