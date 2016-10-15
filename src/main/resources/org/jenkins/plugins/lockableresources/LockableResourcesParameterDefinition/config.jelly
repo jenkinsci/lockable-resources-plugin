@@ -15,7 +15,7 @@
 
     <f:entry title="${%Default selection}" field="selectedCapabilities" >
         <div class="lockableResource">
-            <f:repeatable field="selectedCapabilities" var="v" minimum="1">
+            <f:repeatable field="selectedCapabilities" var="v" minimum="0">
                 <f:select field="name" />
                 <f:repeatableDeleteButton />
             </f:repeatable>

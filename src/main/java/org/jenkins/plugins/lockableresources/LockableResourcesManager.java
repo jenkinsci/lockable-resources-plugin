@@ -11,7 +11,6 @@ package org.jenkins.plugins.lockableresources;
 import hudson.Extension;
 import hudson.model.Run;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.ArrayList;
@@ -20,6 +19,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Collection;
+import java.util.TreeSet;
 
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
@@ -31,9 +31,13 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import groovy.lang.Tuple2;
+import java.util.Collections;
+import org.codehaus.groovy.runtime.AbstractComparator;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
+	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 
 	@Deprecated
 	private transient int defaultPriority;
@@ -79,9 +83,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				|| this.getAllLabels().contains(label);
 	}
 
-	public Set<String> getAllLabels()
+	public TreeSet<String> getAllLabels()
 	{
-		Set<String> labels = new HashSet<String>();
+		TreeSet<String> labels = new TreeSet<>();
 		for (LockableResource r : this.resources) {
 			String rl = r.getLabels();
 			if (rl == null || "".equals(rl))
@@ -91,8 +95,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return labels;
 	}
         
-	public Set<ResourceCapability> getAllCapabilities() {
-		Set<ResourceCapability> capabilities = new HashSet<>();
+	public TreeSet<ResourceCapability> getAllCapabilities() {
+		TreeSet<ResourceCapability> capabilities = new TreeSet<>();
 		for (LockableResource r : this.resources) {
 			capabilities.addAll(r.getCapabilities());
 			capabilities.add(r.getMyselfAsCapability());
@@ -100,8 +104,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return capabilities;
 	}
 
-	public Set<ResourceCapability> getCapabilities(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities) {
-		Set<ResourceCapability> capabilities = new HashSet<>();
+	public TreeSet<ResourceCapability> getCapabilities(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities) {
+		TreeSet<ResourceCapability> capabilities = new TreeSet();
 		for (LockableResource r : this.resources) {
 			if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities)) {
 				capabilities.addAll(r.getCapabilities());
@@ -111,14 +115,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return capabilities;
 	}
 
-	public int getFreeResourceAmount(String label)
+	public int getFreeResourceAmount(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities)
 	{
 		int free = 0;
 		for (LockableResource r : this.resources) {
-			if (r.isLocked() || r.isQueued() || r.isReserved())
-				continue;
-			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
+			if (r.isLocked() || r.isQueued() || r.isReserved()) {
+			} else if (r.hasCapabilities(neededCapabilities, prohibitedCapabilities)) {
 				free += 1;
+			}
+		}
+		return free;
+	}
+	
+	public int getFreeResourceAmount(String labels)
+	{
+		int free = 0;
+		Set<ResourceCapability> capabilities = ResourceCapability.splitCapabilities(labels);
+		for (LockableResource r : this.resources) {
+			if (r.isLocked() || r.isQueued() || r.isReserved()) {
+			} else if (r.hasCapabilities(capabilities)) {
+				free += 1;
+			}
 		}
 		return free;
 	}
@@ -161,9 +178,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	                                                 Map<String, Object> params,
 	                                                 Logger log) {
 		log.fine("Add job in queue, with these data: " + requiredResources.toString());
-		List<LockableResource> selected = new ArrayList<LockableResource>();
-
-		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
+		
+		List<LockableResource> finalSelected = new ArrayList<>();
+		if (!checkCurrentResourcesStatus(finalSelected, queueItemProject, queueItemId, log)) {
 			// The project has another buildable item waiting -> bail out
 			log.log(Level.FINEST, "{0} has another build waiting resources." +
 			        " Waiting for it to proceed first.",
@@ -171,7 +188,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
-		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		// Get all possible resources that are matching requirements (locked/unlocked)
+		List<LockableResource> candidates = new ArrayList<>();
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 			log.fine("Add resources by name: " + requiredResources.required);
 			candidates = requiredResources.required;
@@ -185,20 +203,48 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 
-		for (LockableResource rs : candidates) {
-			if (number != 0 && (selected.size() >= number))
-				break;
-			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
-				selected.add(rs);
+		// Extract resources that are free
+		// Extract the best resources based on their capabilities
+		List<Tuple2<LockableResource, Double>> unlocked = new ArrayList<>();
+		for (LockableResource r : candidates) {
+			if (!r.isReserved() && !r.isLocked() && !r.isQueued()) {
+				double cost = 0;
+				Set<ResourceCapability> capabilities = r.getCapabilities();
+				int nFree = getFreeResourceAmount(capabilities, null);
+				int nMax = getResourcesWithCapabilities(capabilities, null).size();
+				cost = (nMax - nFree) * (resources.size() / nMax) + capabilities.size();
+				unlocked.add(new Tuple2<>(r, cost));
+			}
 		}
+		Collections.sort(unlocked, new AbstractComparator<Tuple2<LockableResource, Double>>() {
+			@Override
+			public int compare(Tuple2<LockableResource, Double> o1, Tuple2<LockableResource, Double> o2) {
+				return o1.getSecond().compareTo(o2.getSecond());
+			}
+		});
 
 		// if did not get wanted amount or did not get all
-		int required_amount = number == 0 ? candidates.size() : number;
+		int required_amount = (number == 0) ? candidates.size() : number;
+		
+		LOGGER.finer("Costs for using resources:");
+		for (Tuple2<LockableResource, Double> t : unlocked) {
+			LockableResource r = t.getFirst();
+			String logSuffix = "";
+			if(finalSelected.size() < required_amount) {
+				if(finalSelected.contains(r)) {
+					logSuffix = " (already selected)";
+				} else {
+					logSuffix = " (selected)";
+					finalSelected.add(r);
+				}
+			}
+			LOGGER.info(" - " + r.getName() + ": " + t.getSecond() + logSuffix);
+		}
 
-		if (selected.size() != required_amount) {
+		if (finalSelected.size() < required_amount) {
 			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
 			        "Waiting for correct amount: {2}.",
-			        new Object[]{queueItemProject, selected.size(), required_amount});
+			        new Object[]{queueItemProject, finalSelected.size(), required_amount});
 			// just to be sure, clean up
 			for (LockableResource x : resources) {
 				if (x.getQueueItemProject() != null &&
@@ -207,11 +253,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 			return null;
 		}
-
-		for (LockableResource rsc : selected) {
+		
+		for (LockableResource rsc : finalSelected) {
 			rsc.setQueued(queueItemId, queueItemProject);
 		}
-		return selected;
+		return finalSelected;
 	}
 
 	// Adds already selected (in previous queue round) resources to 'selected'

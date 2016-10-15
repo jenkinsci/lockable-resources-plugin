@@ -15,12 +15,18 @@
     <f:entry title="${it.name}" description="${it.description}">
         <div class="lockableResource">
             <input type="hidden" name="name" value="${it.name}" />
+            <input type="hidden" name="onlyResourceNames" value="${it.onlyResourceNames}" />
             <f:repeatable field="selectedCapabilities" var="v" noAddButton="true" minimum="0">
                 <f:readOnlyTextbox field="name" />
             </f:repeatable>
-            <f:repeatable field="neededCapabilities" var="v" noAddButton="true" minimum="0">
-                <f:readOnlyTextbox field="name" />
-            </f:repeatable>
+			<f:repeatable field="neededCapabilities" var="v" noAddButton="true" minimum="0">
+				<j:if test="${it.onlyResourceNames}">
+					<input type="hidden" name="name" value="${it.name}" />
+				</j:if>
+				<j:if test="${!it.onlyResourceNames}">
+					<f:readOnlyTextbox field="name" />
+				</j:if>
+			</f:repeatable>
         </div>
     </f:entry>
 </j:jelly>

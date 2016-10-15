@@ -13,7 +13,7 @@
 	<parent>
 		<groupId>org.jenkins-ci.plugins</groupId>
 		<artifactId>plugin</artifactId>
-		<version>2.5</version>
+		<version>2.15</version>
 		<relativePath />
 	</parent>
 
@@ -32,8 +32,8 @@
 	<properties>
 		<!-- First version including TailCall is 1.9, and the same baseline is maintained
 		until 1.14, so let's pick up the greatest -->
-		<workflow.version>1.14</workflow.version>
-		<jenkins.version>1.609.1</jenkins.version>
+		<workflow.version>2.4</workflow.version>
+		<jenkins.version>2.19.1</jenkins.version>
 		<!-- TODO activate this and fix findbugs errors -->
 		<findbugs.failOnError>false</findbugs.failOnError>
 	</properties>
@@ -58,7 +58,7 @@
 		</developer>
 		<developer>
 			<id>amuniz</id>
-			<name>Antonio Muñiz</name>
+			<name>Antonio Mu�iz</name>
 			<email>amuniz@cloudbees.com</email>
 			<roles>
 				<role>developer</role>
@@ -72,7 +72,7 @@
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>mailer</artifactId>
-			<version>1.5</version>
+			<version>1.18</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
@@ -82,7 +82,7 @@
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>matrix-project</artifactId>
-			<version>1.4</version>
+			<version>1.7.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.infradna.tool</groupId>
@@ -90,7 +90,7 @@
 			<version>1.14</version>
 			<optional>true</optional>
 		</dependency>
-
+		
 		<!-- Testing scope -->
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>

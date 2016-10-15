@@ -17,10 +17,12 @@ import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
+import java.io.IOException;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -76,6 +78,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 					LOGGER);
 
 			if (selected != null) {
+				String lbl = "";
+				for(LockableResource r: selected) {
+					if(!lbl.isEmpty()) {
+						lbl += " / ";
+					}
+					lbl += r.getName();
+				}
 				LOGGER.finest(project.getName() + " reserved resources " + selected);
 				return null;
 			} else {

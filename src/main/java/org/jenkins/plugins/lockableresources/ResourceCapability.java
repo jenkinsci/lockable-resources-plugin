@@ -63,6 +63,9 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
     }
     
     public static String createLabel(Collection<ResourceCapability> capabilities) {
+		if(capabilities == null) {
+			return "";
+		}
         StringBuilder sb = new StringBuilder();
         for (ResourceCapability s : capabilities) {
             sb.append(s.getName()).append(' ');
@@ -72,12 +75,15 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
     
     public static Set<ResourceCapability> splitCapabilities(String labels) {
         Set<ResourceCapability> res = new HashSet<>();
-        // Special case: the whole label may be a groovy script
-        if((labels != null) && (! labels.startsWith(GROOVY_LABEL_MARKER))) {
-            for(String label: labels.split("\\s+")) {
-                res.add(new ResourceCapability(label));
-            }
-        }
+		if(labels != null) {
+			labels = labels.trim();
+			// Special case: the whole label may be a groovy script
+			if((! labels.isEmpty()) && (! labels.startsWith(GROOVY_LABEL_MARKER))) {
+				for(String label: labels.split("\\s+")) {
+					res.add(new ResourceCapability(label));
+				}
+			}
+		}
         return res;
     }
     
@@ -85,8 +91,12 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
         if(neededCapabilities == null) {
             return true;
         }
+        if(capabilities == null) {
+            return (neededCapabilities.size() <= 0);
+        }
         for(ResourceCapability capability: neededCapabilities) {
             if(! capabilities.contains(capability)) {
+				LOGGER.finer("No resource with capability: " + capability.name);
                 return false;
             }
         }
@@ -94,7 +104,7 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
     }
     
     public static boolean hasNoneOfCapabilities(Collection<ResourceCapability> capabilities, Collection<ResourceCapability> forbiddenCapabilities) {
-        if(forbiddenCapabilities == null) {
+        if((forbiddenCapabilities == null) || (capabilities == null)) {
             return true;
         }
         for(ResourceCapability capability: capabilities) {
@@ -121,17 +131,30 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
             Set<ResourceCapability> neededCapabilities = ResourceCapability.splitCapabilities(neededLabels);
             Set<ResourceCapability> prohibitedCapabilities = ResourceCapability.splitCapabilities(prohibitedLabels);
             if(onlyResourceNames) {
-                for(LockableResource r: manager.getResources()) {
+				// Sorted resources
+				TreeSet<LockableResource> resources = new TreeSet<>(manager.getResources());
+                for(LockableResource r: resources) {
                     if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities)) {
                         res.add(r.getName());
                     }
                 }
             } else {
-                for(ResourceCapability capability: manager.getCapabilities(neededCapabilities, prohibitedCapabilities)) {
+				// Sorted capabilities
+				TreeSet<ResourceCapability> capabilities = manager.getCapabilities(neededCapabilities, prohibitedCapabilities);
+                for(ResourceCapability capability: capabilities) {
                     res.add(capability.name);
                 }
             }
             return res;
         }
+	
+		public String getColor(@QueryParameter String name, @QueryParameter String neededLabels, @QueryParameter String prohibitedLabels) {
+            LockableResourcesManager manager = LockableResourcesManager.get();
+			if (manager.getFreeResourceAmount(name) > 0) {
+				return "#0B610B";
+			} else {
+				return "#DF0101";
+			}
+		}
     }
 }

@@ -11,6 +11,7 @@ import hudson.cli.CLICommand;
 import hudson.model.ParameterDefinition;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -24,22 +25,22 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     private Collection<ResourceCapability> selectedCapabilities;
     private Collection<ResourceCapability> neededCapabilities;
     private Collection<ResourceCapability> prohibitedCapabilities;
-    private boolean onlyResourceNames;
+    private Boolean onlyResourceNames;
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesParameterDefinition.class.getName());
 
     @DataBoundConstructor
-    public LockableResourcesParameterDefinition(String name, boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, String description) {
+    public LockableResourcesParameterDefinition(String name, Boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, String description) {
         super(name, description);
         this.onlyResourceNames = onlyResourceNames;
-        this.selectedCapabilities = selectedCapabilities;
-        this.neededCapabilities = neededCapabilities;
-        this.prohibitedCapabilities = prohibitedCapabilities;
+		this.selectedCapabilities = (selectedCapabilities == null) ? new ArrayList<ResourceCapability>() : selectedCapabilities;
+		this.neededCapabilities = (neededCapabilities == null) ? new ArrayList<ResourceCapability>() : neededCapabilities;
+		this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new ArrayList<ResourceCapability>() : prohibitedCapabilities;
     }
     
-    public boolean getOnlyResourceNames() {
+    public Boolean getOnlyResourceNames() {
         return onlyResourceNames;
     }
-    public void getOnlyResourceNames(boolean onlyResourceNames) {
+    public void setOnlyResourceNames(Boolean onlyResourceNames) {
         this.onlyResourceNames = onlyResourceNames;
     }
     public Collection<ResourceCapability> getSelectedCapabilities() {
@@ -70,7 +71,7 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     
     @Override
     public LockableResourcesParameterValue getDefaultParameterValue() {
-        return new LockableResourcesParameterValue(getName(), selectedCapabilities, neededCapabilities, getDescription());
+        return new LockableResourcesParameterValue(getName(), onlyResourceNames, selectedCapabilities, neededCapabilities, getDescription());
     }
 
     @Override

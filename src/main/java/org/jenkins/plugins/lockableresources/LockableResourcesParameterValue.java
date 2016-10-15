@@ -13,22 +13,25 @@ import hudson.model.Run;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import hudson.util.VariableResolver;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.TreeSet;
 
 public class LockableResourcesParameterValue extends ParameterValue implements Comparable<LockableResourcesParameterValue> {
     private Collection<ResourceCapability> selectedCapabilities;
     private Collection<ResourceCapability> neededCapabilities;
+    private Boolean onlyResourceNames;
 
     @DataBoundConstructor
-    public LockableResourcesParameterValue(String name, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities) {
-        this(name, selectedCapabilities, neededCapabilities, null);
+    public LockableResourcesParameterValue(String name, Boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities) {
+        this(name, onlyResourceNames, selectedCapabilities, neededCapabilities, null);
     }
     
-    public LockableResourcesParameterValue(String name, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities, String description) {
+    public LockableResourcesParameterValue(String name, Boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities, String description) {
         super(name, description);
-        this.selectedCapabilities = selectedCapabilities;
-        this.neededCapabilities = neededCapabilities;
+		this.selectedCapabilities = (selectedCapabilities == null) ? new ArrayList<ResourceCapability>() : selectedCapabilities;
+		this.neededCapabilities = (neededCapabilities == null) ? new ArrayList<ResourceCapability>() : neededCapabilities;
+        this.onlyResourceNames = onlyResourceNames;
     }
 
     @Override
@@ -54,15 +57,24 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
     public void setNeededCapabilities(Collection<ResourceCapability> neededCapabilities) {
         this.neededCapabilities = neededCapabilities;
     }
+	
+    public Boolean getOnlyResourceNames() {
+        return onlyResourceNames;
+    }
+    public void setNeededCapabilities(Boolean onlyResourceNames) {
+        this.onlyResourceNames = onlyResourceNames;
+    }
 
     public String getEnvString() {
         TreeSet<ResourceCapability> capabilities = new TreeSet<>();
         if(selectedCapabilities != null) {
             capabilities.addAll(selectedCapabilities);
         }
-        if(neededCapabilities != null) {
-            capabilities.addAll(neededCapabilities);
-        }
+		if(!onlyResourceNames) {
+			if(neededCapabilities != null) {
+				capabilities.addAll(neededCapabilities);
+			}
+		}
         return ResourceCapability.createLabel(capabilities);
     }
 

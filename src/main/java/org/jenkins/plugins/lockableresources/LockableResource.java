@@ -47,7 +47,7 @@ import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 @ExportedBean(defaultVisibility = 999)
-public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
+public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable, Comparable<LockableResource> {
 
 	private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
 	public static final int NOT_QUEUED = 0;
@@ -130,6 +130,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return new ResourceCapability(name);
 	}
 
+	public boolean hasCapabilities(Collection<ResourceCapability> capabilities) {
+		return hasCapabilities(capabilities, null, null);
+	}
+	
 	public boolean hasCapabilities(Collection<ResourceCapability> neededCapabilities, 
 		Collection<ResourceCapability> prohibitedCapabilities) {
 		return hasCapabilities(neededCapabilities, prohibitedCapabilities, null);
@@ -405,6 +409,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		} else if (!name.equals(other.name))
 			return false;
 		return true;
+	}
+
+	@Override
+	public int compareTo(LockableResource o) {
+		if(name == null) {
+			if(o.name == null) {
+				return 0;
+			} else {
+				return -1;
+			}
+		}
+		return name.compareTo(o.name);
 	}
 
 	@Extension
