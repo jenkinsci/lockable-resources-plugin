@@ -86,13 +86,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.name = name;
 	}
 
-	private Object readResolve() {
-		if (queuedContexts == null) { // this field was added after the initial version if this class
-			queuedContexts = new ArrayList<StepContext>();
-		}
-		return this;
-	}
-
 	@DataBoundSetter
 	public void setDescription(String description) {
 		this.description = description;
@@ -116,6 +109,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getLabels() {
 		return labels;
+	}
+
+	public boolean isValidLabel(String candidate, Map<String, Object> params) {
+		return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(
+				candidate, params) : labelsContain(candidate);
+	}
+
+	private boolean labelsContain(String candidate) {
+		return makeLabelsList().contains(candidate);
 	}
         
 	public Set<ResourceCapability> getCapabilities() {
@@ -321,49 +323,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			if (now - queuingStarted > QUEUE_TIMEOUT)
 				unqueue();
 		}
-	}
-
-	public void queueAdd(StepContext context) {
-		queuedContexts.add(context);
-	}
-
-	/**
-	 * Returns the next context (if exists) waiting to get thye lock.
-	 * It removes the returned context from the queue.
-	 */
-	@CheckForNull
-	/* package */ StepContext getNextQueuedContext(boolean inversePrecedence) {
-		if (queuedContexts.size() > 0) {
-			if (!inversePrecedence) {
-				return queuedContexts.remove(0);
-			} else {
-				long newest = 0;
-				int index = 0;
-				int newestIndex = 0;
-				for(Iterator<StepContext> iterator = queuedContexts.iterator(); iterator.hasNext();) {
-					StepContext c = iterator.next();
-					try {
-						Run<?, ?> run = c.get(Run.class);
-						if (run.getStartTimeInMillis() > newest) {
-							newest = run.getStartTimeInMillis();
-							newestIndex = index;
-						}
-					} catch (Exception e) {
-						// skip this one and remove from queue
-						iterator.remove();
-						LOGGER.log(Level.FINE, "Skipping queued context as it does not hold a Run object", e);
-					}
-					index++;
-				}
-				
-				return queuedContexts.remove(newestIndex);
-			}
-		}
-		return null;
-	}
-
-	/* package */ boolean remove(StepContext context) {
-		return queuedContexts.remove(context);
 	}
 
 	@DataBoundSetter
