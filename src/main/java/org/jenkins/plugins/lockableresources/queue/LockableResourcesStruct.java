@@ -13,12 +13,11 @@ import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.Nullable;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 
 public class LockableResourcesStruct implements Serializable {
 
@@ -29,7 +28,7 @@ public class LockableResourcesStruct implements Serializable {
 
 	public LockableResourcesStruct(RequiredResourcesProperty property,
 			EnvVars env) {
-		required = new ArrayList<LockableResource>();
+		required = new ArrayList<>();
 		for (String name : property.getResources()) {
 			LockableResource r = LockableResourcesManager.get().fromName(
 				env.expand(name));
@@ -54,7 +53,7 @@ public class LockableResourcesStruct implements Serializable {
 	}
 
 	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
-		required = new ArrayList<LockableResource>();
+		required = new ArrayList<>();
 		if (resources != null) {
 			for (String resource : resources) {
 				LockableResource r = LockableResourcesManager.get().fromName(resource);
@@ -75,6 +74,7 @@ public class LockableResourcesStruct implements Serializable {
 		}
 	}
 
+	@Override
 	public String toString() {
 		return "Required resources: " + this.required +
 			", Required label: " + this.label +

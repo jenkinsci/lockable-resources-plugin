@@ -16,12 +16,10 @@ import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
-import java.io.IOException;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -62,7 +60,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			" trying to get resources with these details: " + resources);
 
 		if (resourceNumber > 0 || !resources.label.isEmpty()) {
-			Map<String, Object> params = new HashMap<String, Object>();
+			Map<String, Object> params = new HashMap<>();
 			if (item.task instanceof MatrixConfiguration) {
 			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
 			    params.putAll(matrix.getCombination());

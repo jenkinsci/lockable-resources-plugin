@@ -1,8 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -17,6 +15,7 @@ import com.google.inject.Inject;
 
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import java.io.IOException;
 
 public class LockStepExecution extends AbstractStepExecutionImpl {
 
@@ -38,7 +37,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			listener.getLogger().println("Resource [" + step + "] did not exist. Created.");
 		}
 		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
-		List<String> resources = new ArrayList<String>();
+		List<String> resources = new ArrayList<>();
 		resources.add(step.resource);
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
 		// determine if there are enough resources available to proceed
@@ -51,11 +50,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	}
 
 	public static void proceed(List<String> resourcenames, StepContext context, String resourceDescription, boolean inversePrecedence) {
-		Run<?, ?> r = null;
+		Run<?, ?> r;
 		try {
 			r = context.get(Run.class);
 			context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
-		} catch (Exception e) {
+		} catch (IOException | InterruptedException e) {
 			context.onFailure(e);
 			return;
 		}
@@ -79,6 +78,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			this.inversePrecedence = inversePrecedence;
 		}
 
+		@Override
 		protected void finished(StepContext context) throws Exception {
 			LockableResourcesManager.get().unlock(null, context.get(Run.class), context, this.resourcenames, this.inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resouce [" + resourceDescription + "]");

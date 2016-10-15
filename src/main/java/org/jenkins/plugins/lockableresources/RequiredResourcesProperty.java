@@ -10,7 +10,6 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
 import hudson.Util;
-import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
@@ -117,7 +116,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			if (names == null) {
 				return FormValidation.ok();
 			} else {
-				List<String> wrongNames = new ArrayList<String>();
+				List<String> wrongNames = new ArrayList<>();
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
 					for (LockableResource r : LockableResourcesManager.get()

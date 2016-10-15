@@ -12,7 +12,6 @@ import hudson.Extension;
 import hudson.model.Run;
 
 import java.io.PrintStream;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -34,9 +33,10 @@ import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import groovy.lang.Tuple2;
+import java.io.IOException;
 import java.util.Collections;
+import javax.annotation.Nullable;
 import org.codehaus.groovy.runtime.AbstractComparator;
 
 @Extension
@@ -54,10 +54,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
 	 * otherwise (freestyle builds) regular Jenkins queue is used.
 	 */
-	private List<QueuedContextStruct> queuedContexts = new ArrayList<QueuedContextStruct>();
+	private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
 	public LockableResourcesManager() {
-		resources = new ArrayList<LockableResource>();
+		resources = new ArrayList<>();
 		load();
 	}
 
@@ -66,7 +66,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public List<LockableResource> getResourcesFromProject(String fullName) {
-		List<LockableResource> matching = new ArrayList<LockableResource>();
+		List<LockableResource> matching = new ArrayList<>();
 		for (LockableResource r : resources) {
 			String rName = r.getQueueItemProject();
 			if (rName != null && rName.equals(fullName)) {
@@ -77,7 +77,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
-		List<LockableResource> matching = new ArrayList<LockableResource>();
+		List<LockableResource> matching = new ArrayList<>();
 		for (LockableResource r : resources) {
 			Run<?, ?> rBuild = r.getBuild();
 			if (rBuild != null && rBuild == build) {
@@ -200,7 +200,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// Get all possible resources that are matching requirements (locked/unlocked)
-		List<LockableResource> candidates = new ArrayList<>();
+		List<LockableResource> candidates;
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 			log.fine("Add resources by name: " + requiredResources.required);
 			candidates = requiredResources.required;
@@ -219,11 +219,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		List<Tuple2<LockableResource, Double>> unlocked = new ArrayList<>();
 		for (LockableResource r : candidates) {
 			if (!r.isReserved() && !r.isLocked() && !r.isQueued()) {
-				double cost = 0;
 				Set<ResourceCapability> capabilities = r.getCapabilities();
 				int nFree = getFreeResourceAmount(capabilities, null);
 				int nMax = getResourcesWithCapabilities(capabilities, null).size();
-				cost = (nMax - nFree) * (resources.size() / nMax) + capabilities.size();
+				double cost = (nMax - nFree) * (resources.size() / nMax) + capabilities.size();
 				unlocked.add(new Tuple2<>(r, cost));
 			}
 		}
@@ -302,6 +301,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	/**
 	 * Try to lock the resource and return true if locked.
+	 * @param resources
+	 * @param build
+	 * @param context
+	 * @param logmessage
+	 * @param inversePrecedence
+	 * @return 
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
 			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
@@ -320,7 +325,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (context != null) {
 				// since LockableResource contains transient variables, they cannot be correctly serialized
 				// hence we use their unique resource names
-				List<String> resourceNames = new ArrayList<String>();
+				List<String> resourceNames = new ArrayList<>();
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
@@ -355,7 +360,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			@Nullable List<String> resourceNamesToUnLock, boolean inversePrecedence) {
 		// create list of names on the fly if necessary
 		if (resourceNamesToUnLock == null) {
-			resourceNamesToUnLock = new ArrayList<String>();
+			resourceNamesToUnLock = new ArrayList<>();
 		}
 
 		// add names from legacy list to new list of names
@@ -366,7 +371,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// check if there are resources which can be unlocked (and shall not be unlocked)
-		List<LockableResource> requiredResourceForNextContext = null;
 		QueuedContextStruct nextContext = this.getNextQueuedContext(resourceNamesToUnLock, inversePrecedence);
 
 		// no context is queued which can be started once these resources are free'd.
@@ -377,7 +381,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 			
 		// remove context from queue and process it
-		requiredResourceForNextContext = getAvailableResources(nextContext.getResources(), null, resourceNamesToUnLock);
+		List<LockableResource> requiredResourceForNextContext = getAvailableResources(nextContext.getResources(), null, resourceNamesToUnLock);
 		this.queuedContexts.remove(nextContext);
 			
 		// resourceNamesToUnlock contains the names of the previous resources.
@@ -402,17 +406,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			for (LockableResource requiredResource : requiredResourceForNextContext) {
 				try {
 					requiredResource.setBuild(nextContext.getContext().get(Run.class));
-				} catch (Exception e) {
+				} catch (IOException | InterruptedException e) {
 					throw new IllegalStateException("Can not access the context of a running build", e);
 				}
 			}
 
 			// determine old resources no longer needed
-			List<String> freeResources = new ArrayList<String>();
+			List<String> freeResources = new ArrayList<>();
 			for (String resourceNameToUnlock : resourceNamesToUnLock) {
 				boolean resourceStillNeeded = false;
 				for (LockableResource requiredResource : requiredResourceForNextContext) {
-					if (resourceNameToUnlock == requiredResource.getName()) {
+					if (resourceNameToUnlock.equals(requiredResource.getName())) {
 						resourceStillNeeded = true;
 						break;
 					}
@@ -427,7 +431,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			this.freeResources(freeResources, build);
 
 			// continue with next context
-			List<String> resourceNames = new ArrayList<String>();
+			List<String> resourceNames = new ArrayList<>();
 			for (LockableResource resource : this.resources) {
 				resourceNames.add(resource.getName());
 			}
@@ -442,7 +446,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		QueuedContextStruct newestEntry = null;
-		List<LockableResource> requiredResourceForNextContext = null;
 		if (!inversePrecedence) {
 			for (QueuedContextStruct entry : this.queuedContexts) {
 				if (getAvailableResources(entry.getResources(), null, resourceNamesToUnLock) != null) {
@@ -459,7 +462,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 							newest = run.getStartTimeInMillis();
 							newestEntry = entry;
 						}
-					} catch (Exception e) {
+					} catch (IOException | InterruptedException e) {
 						// skip this one
 					}
 				}
@@ -471,6 +474,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	/**
 	 * Creates the resource if it does not exist.
+	 * @param name
+	 * @return 
 	 */
 	public synchronized boolean createResource(String name) {
 		LockableResource existent = fromName(name);
@@ -555,7 +560,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			@Nullable PrintStream logger, @Nullable List<String> alreadyLockedResources) {
 		// get possible resources
 		int required_amount = 0; // 0 means all
-		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		List<LockableResource> candidates;
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 			candidates = requiredResources.required;
 		} else {
@@ -575,7 +580,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// start with an empty set of selected resources
-		List<LockableResource> selected = new ArrayList<LockableResource>();
+		List<LockableResource> selected = new ArrayList<>();
 
 		// some resources might be already locked, but will be freeed.
 		// Determine if these resources can be reused
@@ -587,7 +592,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 			// if none of the currently locked resources can be reussed,
 			// this context is not suitable to be continued with
-			if (selected.size() == 0) {
+			if (selected.isEmpty()) {
 				return null;
 			}
 		}

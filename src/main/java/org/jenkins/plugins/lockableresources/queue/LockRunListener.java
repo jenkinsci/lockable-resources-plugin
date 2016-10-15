@@ -43,7 +43,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
 		if (build instanceof AbstractBuild) {
 			Job<?, ?> proj = Utils.getProject(build);
-			List<LockableResource> required = new ArrayList<LockableResource>();
+			List<LockableResource> required = new ArrayList<>();
 			if (proj != null) {
 				LockableResourcesStruct resources = Utils.requiredResources(proj, new EnvVars());
 				if (resources != null) {
@@ -74,8 +74,6 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 				}
 			}
 		}
-
-		return;
 	}
 
 	@Override

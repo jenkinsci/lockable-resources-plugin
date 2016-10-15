@@ -77,6 +77,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		}
 	}
 
+	@Override
 	public String toString() {
 		// a label takes always priority
 		if (this.label != null)

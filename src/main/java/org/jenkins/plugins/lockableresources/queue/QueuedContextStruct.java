@@ -11,9 +11,6 @@ package org.jenkins.plugins.lockableresources.queue;
 import java.io.Serializable;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 
 /* 
  * This class is used to queue pipeline contexts 
@@ -25,17 +22,17 @@ public class QueuedContextStruct implements Serializable {
 	/*
 	 * Reference to the pipeline step context.
 	 */
-	private StepContext context;
+	private final StepContext context;
 	
 	/*
 	 * Reference to the resources required by the step context.
 	 */
-	private LockableResourcesStruct lockableResourcesStruct;
+	private final LockableResourcesStruct lockableResourcesStruct;
 	
 	/*
 	 * Description of the required resources used within logging messages.
 	 */
-	private String resourceDescription;
+	private final String resourceDescription;
 
 	/*
 	 * Constructor for the QueuedContextStruct class.

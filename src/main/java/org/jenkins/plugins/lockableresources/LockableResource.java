@@ -23,9 +23,7 @@ import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -36,7 +34,6 @@ import java.util.TreeSet;
 
 import jenkins.model.Jenkins;
 
-import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
@@ -45,6 +42,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import org.codehaus.groovy.control.CompilationFailedException;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable, Comparable<LockableResource> {
@@ -65,13 +63,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	// Needed to make the state non-transient
 	private String buildExternalizableId = null;
 	private long queuingStarted = 0;
-
-	/**
-	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
-	 * otherwise (freestyle builds) regular Jenkins queue is used.
-	 */
-	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
-
+	
 	@Deprecated
 	public LockableResource(
 			String name, String description, String labels, String reservedBy) {
@@ -156,10 +148,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return ResourceCapability.hasAllCapabilities(capabilities, neededCapabilities) && ResourceCapability.hasNoneOfCapabilities(capabilities, prohibitedCapabilities);
 	}
 
-	public Integer getContextsInQueue() {
-		return queuedContexts.size();
-	}
-
 	private List<String> makeLabelsList() {
 		return Arrays.asList(labels.split("\\s+"));
 	}
@@ -179,7 +167,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 						+ " with " + binding + " -> " + result);
 			}
 			return (Boolean) result;
-		} catch (Exception e) {
+		} catch (CompilationFailedException e) {
 			LOGGER.log(
 					Level.SEVERE,
 					"Cannot get boolean result out of groovy expression '"

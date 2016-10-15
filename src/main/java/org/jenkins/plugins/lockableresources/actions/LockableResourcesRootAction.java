@@ -47,6 +47,7 @@ public class LockableResourcesRootAction implements RootAction {
 
 	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
+	@Override
 	public String getIconFileName() {
 		if (User.current() != null) {
 			// only show if logged in
@@ -63,10 +64,12 @@ public class LockableResourcesRootAction implements RootAction {
 			return null;
 	}
 
+	@Override
 	public String getDisplayName() {
 		return "Lockable Resources";
 	}
 
+	@Override
 	public String getUrlName() {
 		return "lockable-resources";
 	}
@@ -98,7 +101,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		LockableResourcesManager.get().unlock(resources, null, null);
 
@@ -116,7 +119,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		String userName = getUserName();
 		if (userName != null)
@@ -142,7 +145,7 @@ public class LockableResourcesRootAction implements RootAction {
 			throw new AccessDeniedException2(Jenkins.getAuthentication(),
 					RESERVE);
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		LockableResourcesManager.get().unreserve(resources);
 
@@ -160,7 +163,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		LockableResourcesManager.get().reset(resources);
 
