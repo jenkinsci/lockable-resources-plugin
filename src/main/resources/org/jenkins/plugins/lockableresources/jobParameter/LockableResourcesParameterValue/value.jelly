@@ -1,0 +1,32 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+    <style>
+        .lockableResource div.repeated-container, .lockableResource div.repeated-container div.repeated-chunk {
+            display:inline-block;
+            width:auto;
+        }
+    </style>
+    
+    <j:set var="instance" value="${it}" />
+    <j:set var="descriptor" value="${it.descriptor}" />
+    
+    <f:entry title="${it.name}" description="${it.description}">
+        <div class="lockableResource">
+            <input type="hidden" name="name" value="${it.name}" />
+            <input type="hidden" name="onlyResourceNames" value="${it.onlyResourceNames}" />
+            <f:repeatable field="selectedCapabilities" noAddButton="true" minimum="0">
+                <st:include page="value.jelly" class="org.jenkins.plugins.lockableresources.resources.ResourceCapability"/>
+            </f:repeatable>
+			<f:repeatable field="neededCapabilities" noAddButton="true" minimum="0">
+				<j:if test="${it.onlyResourceNames}">
+					<input type="hidden" name="name" value="${it.name}" />
+				</j:if>
+				<j:if test="${!it.onlyResourceNames}">
+                    <st:include page="value.jelly" class="org.jenkins.plugins.lockableresources.resources.ResourceCapability"/>
+				</j:if>
+			</f:repeatable>
+        </div>
+    </f:entry>
+</j:jelly>

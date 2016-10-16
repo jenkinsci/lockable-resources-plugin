@@ -25,6 +25,7 @@
 package org.jenkins.plugins.lockableresources;
 
 
+import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
@@ -56,7 +57,9 @@ public class LockableResourceTest {
 
 	@Before
 	public void setUp() {
-		this.instance = new LockableResource("r1", "d1", "l1 l2", "");
+		this.instance = new LockableResource("r1", "l1 l2");
+        this.instance.setDescription("d1");
+        this.instance.setReservedBy("");
 	}
 
 	@After

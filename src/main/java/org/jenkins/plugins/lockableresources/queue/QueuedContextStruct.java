@@ -9,7 +9,8 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import java.io.Serializable;
-
+import java.util.Collection;
+import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 /* 
@@ -19,50 +20,47 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
  */
 public class QueuedContextStruct implements Serializable {
 
-	/*
+    /*
 	 * Reference to the pipeline step context.
-	 */
-	private final StepContext context;
-	
-	/*
+     */
+    private final StepContext context;
+    /*
 	 * Reference to the resources required by the step context.
-	 */
-	private final LockableResourcesStruct lockableResourcesStruct;
-	
-	/*
+     */
+    private final Collection<RequiredResources> requiredResourcesList;
+    /*
 	 * Description of the required resources used within logging messages.
-	 */
-	private final String resourceDescription;
+     */
+    private final String resourceDescription;
 
-	/*
+    /*
 	 * Constructor for the QueuedContextStruct class.
-	 */
-	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription) {
-		this.context = context;
-		this.lockableResourcesStruct = lockableResourcesStruct;
-		this.resourceDescription = resourceDescription;
-	}
-	
-	/*
-	 * Gets the pipeline step context.
-	 */
-	public StepContext getContext() {
-		return this.context;
-	}
-	
-	/*
-	 * Gets the required resources.
-	 */
-	public LockableResourcesStruct getResources() {
-		return this.lockableResourcesStruct;
-	}
+     */
+    public QueuedContextStruct(StepContext context, Collection<RequiredResources> requiredResourcesList, String resourceDescription) {
+        this.context = context;
+        this.requiredResourcesList = requiredResourcesList;
+        this.resourceDescription = resourceDescription;
+    }
 
-	/*
+    /*
+	 * Gets the pipeline step context.
+     */
+    public StepContext getContext() {
+        return this.context;
+    }
+
+    /*
+	 * Gets the required resources.
+     */
+    public Collection<RequiredResources> getRequiredResourcesList() {
+        return this.requiredResourcesList;
+    }
+
+    /*
 	 * Gets the resource description for logging messages.
-	 */
-	public String getResourceDescription() {
-		return this.resourceDescription;
-	}
-	
-	private static final long serialVersionUID = 1L;
+     */
+    public String getResourceDescription() {
+        return this.resourceDescription;
+    }
+    private static final long serialVersionUID = 1L;
 }
