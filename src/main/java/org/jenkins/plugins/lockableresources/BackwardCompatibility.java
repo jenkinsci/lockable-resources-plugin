@@ -6,42 +6,33 @@
  *                                                                     *
  * See the "LICENSE.txt" file for more information.                    *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
 package org.jenkins.plugins.lockableresources;
 
-import hudson.init.InitMilestone;
-import hudson.init.Initializer;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
-import org.jenkins.plugins.lockableresources.LockableResource;
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
-
-import java.util.logging.Logger;
+import com.google.common.collect.Lists;
+import hudson.model.Items;
+import hudson.model.Run;
+import hudson.model.UpdateCenter;
+import hudson.model.User;
+import hudson.util.XStream2;
+import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.jobParameter.LockableResourcesParameterDefinition;
+import org.jenkins.plugins.lockableresources.jobParameter.LockableResourcesParameterValue;
+import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
+import org.jenkins.plugins.lockableresources.resources.ResourceCapability;
+import org.jenkins.plugins.lockableresources.step.LockStep;
+import org.jenkins.plugins.lockableresources.step.LockStepExecution;
 
 public final class BackwardCompatibility {
-    private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class
-                                            .getName());
-
-    @Initializer(after = InitMilestone.JOB_LOADED)
-    public static void beforeInitMilestonePluginsStarted() {
-        LOG.fine("\n\n LOCKABLE RESOURCES COMPATABILITY INIT \n\n");
-		List<LockableResource> resources = LockableResourcesManager.get().getResources();
-		for (LockableResource resource : resources) {
-			List<StepContext> queuedContexts = resource.getQueuedContexts();
-			if (queuedContexts.size() > 0) {
-				for (StepContext queuedContext : queuedContexts) {
-					List<String> resourcesNames = new ArrayList<String>();
-					resourcesNames.add(resource.getName());
-					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-					LockableResourcesManager.get().queueContext(queuedContext, resourceHolder, resource.getName());
-				}
-				queuedContexts.clear();
-			}
-		}
+    public static void init() {
+        for(XStream2 xstream2 : Lists.newArrayList(Jenkins.XSTREAM2, Run.XSTREAM2, UpdateCenter.XSTREAM, User.XSTREAM, Items.XSTREAM2)) {
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.RequiredResourcesProperty", RequiredResourcesProperty.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResource", org.jenkins.plugins.lockableresources.resources.LockableResource.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesManager", org.jenkins.plugins.lockableresources.resources.LockableResourcesManager.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockStep", LockStep.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockStepExecution", LockStepExecution.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.ResourceCapability", ResourceCapability.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesParameterDefinition", LockableResourcesParameterDefinition.class);
+            xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesParameterValue", LockableResourcesParameterValue.class);
+        }
     }
 }

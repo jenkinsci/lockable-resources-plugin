@@ -24,14 +24,23 @@
 package org.jenkins.plugins.lockableresources.dynamicres.actions;
 
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.RootAction;
 import java.util.Map;
 import java.util.Set;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
 
 @Extension
 public class DynamicResourcesRootAction implements RootAction {
-
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
     /* use the same icon as lockable resources */
     public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 

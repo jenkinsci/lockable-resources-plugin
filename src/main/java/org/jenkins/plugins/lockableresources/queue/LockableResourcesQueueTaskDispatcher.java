@@ -10,6 +10,8 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.EnvVars;
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.matrix.MatrixProject;
 import hudson.model.Job;
 import hudson.model.Queue;
@@ -18,6 +20,7 @@ import hudson.model.queue.QueueTaskDispatcher;
 import java.util.Collection;
 import java.util.Set;
 import javax.annotation.Nullable;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
@@ -25,6 +28,14 @@ import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
+
     @Override
     public CauseOfBlockage canRun(Queue.Item item) {
         // Skip locking for multiple configuration projects,
@@ -70,10 +81,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             String lbl = "Waiting for resources";
             if(requiredResourcesList != null) {
                 for(RequiredResources rr : requiredResourcesList) {
-                    if(rr.getResources(env).isEmpty()) {
-                        lbl += (" " + rr.getLabels(env));
+                    if(rr.getExpandedResources(env).isEmpty()) {
+                        lbl += (" " + rr.getExpandedLabels(env));
                     } else {
-                        lbl += (" " + rr.getResources(env));
+                        lbl += (" " + rr.getExpandedResources(env));
                     }
                 }
             }

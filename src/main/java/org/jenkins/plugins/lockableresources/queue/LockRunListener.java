@@ -9,6 +9,8 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.Job;
@@ -20,6 +22,7 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
@@ -31,6 +34,14 @@ import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 public class LockRunListener extends RunListener<Run<?, ?>> {
     private static final String LOG_PREFIX = "[lockable-resources]";
     private static final Logger LOGGER = Logger.getLogger(LockRunListener.class.getName());
+
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
 
     @Override
     public void onStarted(Run<?, ?> build, TaskListener listener) {

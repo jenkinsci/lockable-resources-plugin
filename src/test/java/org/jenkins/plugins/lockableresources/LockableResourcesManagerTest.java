@@ -45,7 +45,7 @@ public class LockableResourcesManagerTest {
         setField(lockableResourcesManager, "resources", resources, Set.class);
 
         String queueItemProject = "other-project";
-        
+
         when(resource1.getQueueItemProject()).thenReturn(queueItemProject);
         when(resource2.getQueueItemProject()).thenReturn(fullName);
         when(resource3.getQueueItemProject()).thenReturn(fullName);
@@ -56,7 +56,7 @@ public class LockableResourcesManagerTest {
         // Then
         verify(resource1).getQueueItemProject();
         verify(resource2).getQueueItemProject();
-        
+
         assertThat(matching).containsExactlyInAnyOrder(resource2, resource3);
     }
 
@@ -87,9 +87,9 @@ public class LockableResourcesManagerTest {
 
     private LockableResource mockLockableResource(String name, String labels) throws Exception {
         LockableResource resource = mock(LockableResource.class);
-        
-		setField(resource, "name", name, String.class);
-		setField(resource, "labels", labels, String.class);
+
+        setField(resource, "name", name, String.class);
+        setField(resource, "labels", labels, String.class);
 
         return resource;
     }

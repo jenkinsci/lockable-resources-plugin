@@ -8,12 +8,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
-import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
-import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import hudson.Plugin;
 import hudson.model.Api;
 import java.util.Collections;
 import java.util.Set;
+import org.jenkins.plugins.lockableresources.resources.LockableResource;
+import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 

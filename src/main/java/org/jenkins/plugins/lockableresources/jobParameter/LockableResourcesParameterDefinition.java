@@ -7,13 +7,16 @@
 package org.jenkins.plugins.lockableresources.jobParameter;
 
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.ParameterDefinition;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.resources.ResourceCapability;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -23,21 +26,29 @@ import org.kohsuke.stapler.export.Exported;
 public class LockableResourcesParameterDefinition extends ParameterDefinition {
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesParameterDefinition.class.getName());
     @Exported
-    protected Collection<ResourceCapability> selectedCapabilities;
+    protected Set<ResourceCapability> selectedCapabilities;
     @Exported
-    protected Collection<ResourceCapability> neededCapabilities;
+    protected Set<ResourceCapability> neededCapabilities;
     @Exported
-    protected Collection<ResourceCapability> prohibitedCapabilities;
+    protected Set<ResourceCapability> prohibitedCapabilities;
     @Exported
     protected Boolean onlyResourceNames;
 
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
+
     @DataBoundConstructor
-    public LockableResourcesParameterDefinition(String name, boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, String description) {
+    public LockableResourcesParameterDefinition(String name, String description, boolean onlyResourceNames, Set<ResourceCapability> selectedCapabilities, Set<ResourceCapability> neededCapabilities, Set<ResourceCapability> prohibitedCapabilities) {
         super(name, description);
         this.onlyResourceNames = onlyResourceNames;
-        this.selectedCapabilities = (selectedCapabilities == null) ? new ArrayList<ResourceCapability>() : selectedCapabilities;
-        this.neededCapabilities = (neededCapabilities == null) ? new ArrayList<ResourceCapability>() : neededCapabilities;
-        this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new ArrayList<ResourceCapability>() : prohibitedCapabilities;
+        this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
+        this.neededCapabilities = (neededCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : neededCapabilities;
+        this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : prohibitedCapabilities;
     }
 
     @Exported
@@ -51,32 +62,32 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     }
 
     @Exported
-    public Collection<ResourceCapability> getSelectedCapabilities() {
+    public Set<ResourceCapability> getSelectedCapabilities() {
         return selectedCapabilities;
     }
 
     @DataBoundSetter
-    public void setSelectedCapabilities(Collection<ResourceCapability> selectedCapabilities) {
+    public void setSelectedCapabilities(Set<ResourceCapability> selectedCapabilities) {
         this.selectedCapabilities = selectedCapabilities;
     }
 
     @Exported
-    public Collection<ResourceCapability> getNeededCapabilities() {
+    public Set<ResourceCapability> getNeededCapabilities() {
         return neededCapabilities;
     }
 
     @DataBoundSetter
-    public void setNeededCapabilities(Collection<ResourceCapability> neededCapabilities) {
+    public void setNeededCapabilities(Set<ResourceCapability> neededCapabilities) {
         this.neededCapabilities = neededCapabilities;
     }
 
     @Exported
-    public Collection<ResourceCapability> getProhibitedCapabilities() {
+    public Set<ResourceCapability> getProhibitedCapabilities() {
         return prohibitedCapabilities;
     }
 
     @DataBoundSetter
-    public void setProhibitedCapabilities(Collection<ResourceCapability> prohibitedCapabilities) {
+    public void setProhibitedCapabilities(Set<ResourceCapability> prohibitedCapabilities) {
         this.prohibitedCapabilities = prohibitedCapabilities;
     }
 

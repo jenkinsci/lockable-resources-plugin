@@ -2,10 +2,8 @@ package org.jenkins.plugins.lockableresources.step;
 
 import com.google.common.collect.Lists;
 import hudson.Extension;
-import hudson.init.InitMilestone;
-import hudson.init.Initializer;
-import hudson.util.XStream2;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
@@ -23,21 +21,21 @@ import org.kohsuke.stapler.export.Exported;
 public class LockStep extends AbstractStepImpl implements Serializable {
     private static final long serialVersionUID = 1L;
     @Exported
-    protected Collection<RequiredResources> requiredResourcesList;
+    protected Collection<RequiredResources> requiredResourcesList = new ArrayList<>();
     @Exported
     protected Boolean inversePrecedence = false; // Queue management: false = FIFO / true = LIFO
     /** For backward compatibility. Please use {@link #requiredResourcesList} */
     @Deprecated
-    public transient String resource = null;
-    
+    private transient final String resource = null;
+
     public LockStep() {
     }
-    
- 	@DataBoundConstructor
+
+    @DataBoundConstructor
     public LockStep(String resource) {
         setResource(resource);
     }
-    
+
     @DataBoundSetter
     public void setInversePrecedence(Boolean inversePrecedence) {
         this.inversePrecedence = inversePrecedence;
@@ -55,7 +53,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
                 requiredResourcesList = Lists.newArrayList(new RequiredResources(resource, null, 0, null));
             } else {
                 RequiredResources rr = requiredResourcesList.iterator().next();
-                rr.setResources(resource);   
+                rr.setResources(resource);
             }
         }
     }
@@ -67,11 +65,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
                 requiredResourcesList = Lists.newArrayList(new RequiredResources(null, label, 0, null));
             } else {
                 RequiredResources rr = requiredResourcesList.iterator().next();
-                rr.setLabels(label);   
+                rr.setLabels(label);
             }
         }
     }
-    
+
     @DataBoundSetter
     public void setQuantity(Integer quantity) {
         if(quantity != null) {
@@ -83,7 +81,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
             }
         }
     }
-    
+
     @DataBoundSetter
     public void setRequiredResources(Collection<RequiredResources> requiredResourcesList) {
         this.requiredResourcesList = requiredResourcesList;
@@ -107,31 +105,23 @@ public class LockStep extends AbstractStepImpl implements Serializable {
             return requiredResourcesList.toString();
         }
     }
-    
+
     /**
      * Magically called when imported from XML file
      * Manage backward compatibility
-     * @return 
+     *
+     * @return
      */
     public Object readResolve() {
         if(resource != null) {
+            requiredResourcesList = new ArrayList<>();
             requiredResourcesList.add(new RequiredResources(resource, "", 1, ""));
         }
         return this;
     }
-    
+
     @Extension
     public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
-        private static final XStream2 XSTREAM2 = new XStream2();
-
-        /**
-         * Add backward compatibility
-         */
-        @Initializer(before = InitMilestone.PLUGINS_STARTED)
-        public static void addAliases() {
-            XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockStep", LockStep.class);
-        }
-
         public DescriptorImpl() {
             super(LockStepExecution.class);
         }

@@ -7,6 +7,8 @@
 package org.jenkins.plugins.lockableresources.jobParameter;
 
 import hudson.EnvVars;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.AbstractBuild;
 import hudson.model.ParameterValue;
 import hudson.model.Run;
@@ -14,6 +16,7 @@ import hudson.util.VariableResolver;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.TreeSet;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.resources.ResourceCapability;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -26,6 +29,14 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
     protected Collection<ResourceCapability> neededCapabilities;
     @Exported
     protected Boolean onlyResourceNames;
+
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
 
     @DataBoundConstructor
     public LockableResourcesParameterValue(String name, Boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities) {

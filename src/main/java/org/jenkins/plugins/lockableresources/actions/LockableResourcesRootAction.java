@@ -9,6 +9,8 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.RootAction;
 import hudson.model.User;
 import hudson.security.AccessDeniedException2;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
@@ -40,6 +43,14 @@ public class LockableResourcesRootAction implements RootAction {
             Messages._ReservePermission_Description(), Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
+
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
 
     @Override
     public String getIconFileName() {

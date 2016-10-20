@@ -29,34 +29,38 @@ public class LockableResourcesQueueTaskDispatcherTest {
     private static final String DEFAULT_PROJECT_NAME = "name";
     private static final String DEFAULT_PROJECT_FULLNAME = "full-name";
     private static final long DEFAULT_ITEM_ID = 1;
-    
+
     @Before
     public void setup() {
         PowerMockito.mockStatic(Utils.class);
         PowerMockito.mockStatic(LockableResourcesManager.class);
     }
-    
+
     private Job<?, ?> createProjectMock(String name, String fullName) {
         Job<?, ?> project = PowerMockito.mock(Job.class);
         when(project.getName()).thenReturn(name);
         when(project.getFullName()).thenReturn(fullName);
         return project;
     }
+
     private Queue.Item createItemMock(final Job<?, ?> project, long id) {
         Queue.Item item = PowerMockito.mock(Queue.Item.class);
         when(item.getId()).thenReturn(id);
         when(Utils.getProject(item)).thenReturn(project);
         return item;
     }
+
     private LockableResourcesManager createLockableResourcesManagerMock() {
         LockableResourcesManager manager = PowerMockito.mock(LockableResourcesManager.class);
         when(LockableResourcesManager.get()).thenReturn(manager);
         return manager;
     }
+
     private void addManagerBuildData(LockableResourcesManager manager, Job<?, ?> project, Queue.Item item, Set<LockableResource> reservedResources, Collection<RequiredResources> requiredResources) {
         when(manager.getProjectRequiredResources(project)).thenReturn(requiredResources);
         when(manager.queue(project, item)).thenReturn(reservedResources);
     }
+
     private EnvVars createEnvVarsMock(Queue.Item item) {
         EnvVars env = new EnvVars();
         when(Utils.getEnvVars(item)).thenReturn(env);
@@ -88,7 +92,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         EnvVars env = createEnvVarsMock(item);
         env.put("key", "value");
-        
+
         List<RequiredResources> resources = new ArrayList();
         String label = "";
         String resourceName = "";
@@ -98,8 +102,8 @@ public class LockableResourcesQueueTaskDispatcherTest {
         resource.setLabels(label);
         resource.setQuantity(resourceNumber);
         resources.add(resource);
-        when(resource.getResources(env)).thenReturn(resourceName);
-        when(resource.getLabels(env)).thenReturn(label);
+        when(resource.getExpandedResources(env)).thenReturn(resourceName);
+        when(resource.getExpandedLabels(env)).thenReturn(label);
         when(resource.getQuantity()).thenReturn(resourceNumber);
 
         LockableResourcesManager manager = createLockableResourcesManagerMock();
@@ -121,7 +125,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         EnvVars env = createEnvVarsMock(item);
         env.put("key", "value");
-        
+
         RequiredResources resource = mock(RequiredResources.class);
         String label = "label";
         String resourceName = "resource-name";
@@ -131,15 +135,15 @@ public class LockableResourcesQueueTaskDispatcherTest {
         resource.setQuantity(null); //"NOT_A_NUMBER";
         List<RequiredResources> resources = new ArrayList<>();
         resources.add(resource);
-        when(resource.getResources(env)).thenReturn(resourceName);
-        when(resource.getLabels(env)).thenReturn(label);
+        when(resource.getExpandedResources(env)).thenReturn(resourceName);
+        when(resource.getExpandedLabels(env)).thenReturn(label);
         when(resource.getQuantity()).thenReturn(resourceNumber);
 
         HashSet<LockableResource> reservedResources = Sets.newHashSet();
-        
+
         LockableResourcesManager manager = createLockableResourcesManagerMock();
         addManagerBuildData(manager, project, item, reservedResources, resources);
-        
+
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
@@ -157,7 +161,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         EnvVars env = createEnvVarsMock(item);
         env.put("key", "value");
-        
+
         RequiredResources resource = mock(RequiredResources.class);
         String label = "";
         String resourceName = "resource-name";
@@ -167,8 +171,8 @@ public class LockableResourcesQueueTaskDispatcherTest {
         resource.setQuantity(resourceNumber);
         List<RequiredResources> resources = new ArrayList<>();
         resources.add(resource);
-        when(resource.getResources(env)).thenReturn(resourceName);
-        when(resource.getLabels(env)).thenReturn(label);
+        when(resource.getExpandedResources(env)).thenReturn(resourceName);
+        when(resource.getExpandedLabels(env)).thenReturn(label);
         when(resource.getQuantity()).thenReturn(resourceNumber);
 
         HashSet<LockableResource> reservedResources = Sets.newHashSet(new LockableResource("resource"));
@@ -201,8 +205,8 @@ public class LockableResourcesQueueTaskDispatcherTest {
         resource.setResources(resourceName);
         resource.setLabels(label);
         resource.setQuantity(resourceNumber);
-        when(resource.getResources(env)).thenReturn(resourceName);
-        when(resource.getLabels(env)).thenReturn(label);
+        when(resource.getExpandedResources(env)).thenReturn(resourceName);
+        when(resource.getExpandedLabels(env)).thenReturn(label);
         when(resource.getQuantity()).thenReturn(resourceNumber);
 
         List<RequiredResources> resources = new ArrayList<>();
@@ -228,7 +232,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         EnvVars env = createEnvVarsMock(item);
         env.put("key", "value");
-        
+
         RequiredResources resource = mock(RequiredResources.class);
         String label = "";
         String resourceName = "resource-name";
@@ -236,10 +240,10 @@ public class LockableResourcesQueueTaskDispatcherTest {
         resource.setResources(resourceName);
         resource.setLabels(label);
         resource.setQuantity(resourceNumber);
-        when(resource.getResources(env)).thenReturn(resourceName);
-        when(resource.getLabels(env)).thenReturn(label);
+        when(resource.getExpandedResources(env)).thenReturn(resourceName);
+        when(resource.getExpandedLabels(env)).thenReturn(label);
         when(resource.getQuantity()).thenReturn(resourceNumber);
-        
+
         List<RequiredResources> resources = new ArrayList<>();
         resources.add(resource);
 

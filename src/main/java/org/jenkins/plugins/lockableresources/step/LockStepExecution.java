@@ -3,9 +3,6 @@ package org.jenkins.plugins.lockableresources.step;
 import com.google.inject.Inject;
 import hudson.EnvVars;
 import hudson.Util;
-import hudson.init.InitMilestone;
-import hudson.init.Initializer;
-import hudson.model.Items;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
@@ -28,13 +25,6 @@ import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
  * @author
  */
 public class LockStepExecution extends AbstractStepExecutionImpl {
-    /**
-     * Add backward compatibility
-     */
-    @Initializer(before = InitMilestone.PLUGINS_STARTED)
-    public static void addAliases() {
-        Items.XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockStepExecution", LockStepExecution.class);
-    }
     private static final long serialVersionUID = 1L;
     @Inject(optional = true)
     private LockStep step;
@@ -48,10 +38,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     public boolean start() throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         EnvVars env = Utils.getEnvVars(run, listener);
-        
+
         for(RequiredResources rr : step.requiredResourcesList) {
             // create missing resources only when specified explicitly
-            String rsrcs = rr.getResources(env);
+            String rsrcs = rr.getExpandedResources(env);
             if(Util.fixEmpty(rsrcs) != null) {
                 for(String resource : Utils.splitLabels(rsrcs)) {
                     if(manager.createResource(resource)) {
@@ -60,7 +50,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
                 }
             }
         }
-        
+
         listener.getLogger().println("Trying to acquire lock on [" + step.requiredResourcesList + "]");
         // Determine if there are enough resources available to proceed
         // Function 'proceed' is called inside lock if execution is possible
@@ -68,7 +58,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         Set<LockableResource> selected = manager.selectFreeResources(step.requiredResourcesList, null, env);
         if(selected == null || !LockableResourcesManager.get().lock(selected, step.requiredResourcesList, run, getContext(), step.inversePrecedence)) {
             listener.getLogger().println("[" + step + "] is locked, waiting...");
-            LockableResourcesManager.get().queueContext(getContext(), step.requiredResourcesList, step.toString());
+            LockableResourcesManager.get().queueContext(getContext(), step.requiredResourcesList);
         }
         return false; //asynchronous step execution
     }

@@ -71,7 +71,9 @@ public abstract class Utils {
                 for(ParameterValue pv : paramsValues) {
                     if(pv != null) {
                         Object value = pv.getValue();
-                        if(value instanceof LockableResourcesParameterValue) {
+                        if(value == null) {
+                            params.put(pv.getName(), "");
+                        } else if(value instanceof LockableResourcesParameterValue) {
                             LockableResourcesParameterValue v = (LockableResourcesParameterValue) value;
                             params.put(pv.getName(), v.getEnvString());
                         } else {

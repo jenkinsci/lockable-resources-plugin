@@ -25,10 +25,9 @@ import hudson.model.Queue.Task;
 import hudson.model.Run;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
-import hudson.util.XStream2;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -39,12 +38,14 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
 import org.codehaus.groovy.control.CompilationFailedException;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
-import org.jenkins.plugins.lockableresources.step.LockStep;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
@@ -74,10 +75,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private String buildExternalizableId = null;
     private long queuingStarted = 0;
     /**
-     * Only used when this lockable resource is tried to be locked by {@link LockStep},
-     * otherwise (freestyle builds) regular Jenkins queue is used.
+     * Not used anymore
      */
-    private List<StepContext> queuedContexts = new ArrayList<>();
+    @Deprecated
+    private transient final List<StepContext> queuedContexts = Collections.emptyList();
+
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
 
     @DataBoundConstructor
     public LockableResource(String name) {
@@ -343,10 +352,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         }
     }
 
-    public void queueAdd(StepContext context) {
-        queuedContexts.add(context);
-    }
-
+    /* public void queueAdd(StepContext context) {
+     * queuedContexts.add(context);
+     * } */
     public void reset() {
         this.unReserve();
         this.unqueue();
@@ -403,30 +411,31 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     /**
      * Magically called when imported from XML file
      * Manage backward compatibility
-     * @return 
+     *
+     * @return
      */
-    private Object readResolve() {
-        if(queuedContexts == null) { // this field was added after the initial version if this class
-            queuedContexts = new ArrayList<>();
-        }
+    protected Object readResolve() {
+        /* if(queuedContexts == null) {
+         * queuedContexts = new ArrayList<>();
+         * } */
         return this;
     }
-    
+
     @Extension
     public static class DescriptorImpl extends Descriptor<LockableResource> {
-        private static final XStream2 XSTREAM2 = new XStream2();
-
-        /**
-         * Add backward compatibility
-         */
-        @Initializer(before = InitMilestone.PLUGINS_STARTED)
-        public static void addAliases() {
-            XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResource", LockableResource.class);
-        }
-
         @Override
         public String getDisplayName() {
             return "Resource";
+        }
+
+        @Override
+        public boolean configure(StaplerRequest req) throws FormException {
+            return super.configure(req); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+            return super.configure(req, json); //To change body of generated methods, choose Tools | Templates.
         }
     }
 }

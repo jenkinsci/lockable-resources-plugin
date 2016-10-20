@@ -13,30 +13,39 @@ import hudson.Util;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.Job;
-import hudson.util.XStream2;
+import java.util.ArrayList;
 import java.util.Collection;
-import jenkins.model.Jenkins;
 import jenkins.model.OptionalJobProperty;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
 
+@Extension
 public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
     /** For backward compatibility. Please use {@link #requiredResourcesList} */
     @Deprecated
-    private transient String resourceNames;
+    private transient final String resourceNames = null;
     /** For backward compatibility. Please use {@link #requiredResourcesList} */
     @Deprecated
-    private transient String resourceNamesVar;
+    private transient final String resourceNamesVar = null;
     /** For backward compatibility. Please use {@link #requiredResourcesList} */
     @Deprecated
-    private transient String resourceNumber;
+    private transient final String resourceNumber = null;
     /** For backward compatibility. Please use {@link #requiredResourcesList} */
     @Deprecated
-    private transient String labelName;
+    private transient final String labelName = null;
     @Exported
-    protected Collection<RequiredResources> requiredResourcesList;
+    protected Collection<RequiredResources> requiredResourcesList = new ArrayList<>();
+
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
 
     @DataBoundConstructor
     public RequiredResourcesProperty() {
@@ -59,7 +68,8 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
     }
 
     /**
-     * Magicaly called after restoring persistance
+     * Magically called when imported from XML file
+     * Manage backward compatibility
      *
      * @return myself
      */
@@ -72,6 +82,7 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
                 } catch(NumberFormatException e) {
                 }
             }
+            requiredResourcesList = new ArrayList<>();
             requiredResourcesList.add(new RequiredResources(Util.fixNull(resourceNames), Util.fixNull(labelName), n, Util.fixNull(resourceNamesVar)));
         }
         return this;
@@ -79,16 +90,6 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
 
     @Extension
     public static class DescriptorImpl extends OptionalJobPropertyDescriptor {
-        private static final XStream2 XSTREAM2 = new XStream2();
-
-        /**
-         * Add backward compatibility
-         */
-        @Initializer(before = InitMilestone.PLUGINS_STARTED)
-        public static void addAliases() {
-            Jenkins.XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.RequiredResourcesProperty", RequiredResourcesProperty.class);
-        }
-
         @Override
         public String getDisplayName() {
             return "Required Lockable Resources List";

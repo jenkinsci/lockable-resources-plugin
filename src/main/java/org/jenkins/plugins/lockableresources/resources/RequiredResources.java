@@ -59,11 +59,11 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
      */
     @Exported
     @Deprecated
-    protected String getResources() {
+    public String getResources() {
         return resources;
     }
 
-    public String getResources(@Nullable EnvVars env) {
+    public String getExpandedResources(@Nullable EnvVars env) {
         if(env == null) {
             return resources;
         }
@@ -85,11 +85,11 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
      */
     @Exported
     @Deprecated
-    protected String getLabels() {
+    public String getLabels() {
         return labels;
     }
 
-    public String getLabels(@Nullable EnvVars env) {
+    public String getExpandedLabels(@Nullable EnvVars env) {
         if(env == null) {
             return labels;
         }
@@ -126,11 +126,11 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
     }
 
     public Set<String> getResourceNamesList(@Nullable EnvVars env) {
-        return Utils.splitLabels(getResources(env));
+        return Utils.splitLabels(getExpandedResources(env));
     }
 
     public Set<ResourceCapability> getCapabilitiesList(@Nullable EnvVars env) {
-        return ResourceCapability.splitCapabilities(getLabels(env));
+        return ResourceCapability.splitCapabilities(getExpandedLabels(env));
     }
 
     @Override
@@ -142,7 +142,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
         if((Util.fixEmpty(resources) == null) && (Util.fixEmpty(labels) != null) && (quantity == 0)) {
             return labels;
         }
-        
+
         String lbl = "";
         if(Util.fixEmpty(resources) != null) {
             lbl += "Resource: " + resources;

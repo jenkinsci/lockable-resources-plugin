@@ -12,14 +12,14 @@ import groovy.lang.Tuple2;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Util;
+import hudson.XmlFile;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.matrix.MatrixConfiguration;
-import hudson.model.Items;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.Run;
-import hudson.model.User;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,9 +39,11 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.codehaus.groovy.runtime.AbstractComparator;
+import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.step.LockStep;
 import org.jenkins.plugins.lockableresources.step.LockStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -51,19 +53,17 @@ import org.kohsuke.stapler.export.Exported;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
-    /**
-     * Add backward compatibility
-     */
-    @Initializer(before = InitMilestone.PLUGINS_PREPARED)
-    public static void addAliases() {
-        Items.XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesManager", LockableResourcesManager.class);
-        Run.XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesManager", LockableResourcesManager.class);
-        User.XSTREAM.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesManager", LockableResourcesManager.class);
-        Jenkins.XSTREAM2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesManager", LockableResourcesManager.class);
-    }
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
     @Exported
     protected Set<LockableResource> resources = new LinkedHashSet<>();
+    /** If this option is selected, the plugin will use an internal algorithm to select
+     * the free resources based on their capabilities.<br/>
+     * The resource that has a unique capability among all other resources has less chance
+     * to be selected.<br />
+     * On the contrary, if a free resource has very common capabilities it will probably be selected
+     * <p />
+     * This option is highly experimental.
+     */
     @Exported
     protected Boolean useFairSelection = false;
     /**
@@ -75,6 +75,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @DataBoundConstructor
     public LockableResourcesManager() {
         load();
+    }
+
+    /**
+     * Backward compatibility
+     */
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void initBackwardCompatibility() {
+        BackwardCompatibility.init();
+    }
+
+    /**
+     * For backward compatibility
+     *
+     * @return
+     */
+    @Override
+    protected XmlFile getConfigFile() {
+        File oldFile = new File(Jenkins.getInstance().getRootDir(), "org.jenkins.plugins.lockableresources.LockableResourcesManager.xml");
+        if(oldFile.exists()) {
+            return new XmlFile(Jenkins.XSTREAM2, oldFile);
+        }
+        return new XmlFile(Jenkins.XSTREAM2, oldFile);
+    }
+
+    @Override
+    public synchronized void save() {
+        super.save(); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Exported
@@ -292,7 +319,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         Set<LockableResource> res = new HashSet<>();
         for(RequiredResources rr : requiredResourcesList) {
             Set<LockableResource> candidates;
-            if(Util.fixEmpty(rr.getResources(env)) == null) {
+            if(Util.fixEmpty(rr.getExpandedResources(env)) == null) {
                 // Use labels => convert them to capabilities
                 Set<ResourceCapability> capabilities = rr.getCapabilitiesList(env);
                 candidates = getResourcesFromCapabilities(capabilities, null, env);
@@ -327,39 +354,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return res;
     }
 
-    /*
-     * public Set<LockableResource> selectFreeResources(RequiredResources requiredResources, Collection<LockableResource> alreadySelected, boolean useFairSelection) {
-     * Set<LockableResource> finalSelected = new HashSet<>(alreadySelected);
-     * Set<ResourceCapability> capabilities = requiredResources.getCapabilitiesList();
-     * LOGGER.fine("Selecting resources by labels/capabilities: " + capabilities);
-     * Set<LockableResource> candidates = getResourcesFromCapabilities(capabilities, null);
-     * LOGGER.finer("Possible resources:");
-     * for(LockableResource r : candidates) {
-     * LOGGER.finer(" - " + r.getName());
-     * }
-     * // Extract resources that are free
-     * // Must be ordered for sort purpose (useFairSelection flag)
-     * Set<LockableResource> freeCandidates = filterFreeResources(candidates);
-     * // Extract the best resources based on their capabilities
-     * if(useFairSelection) {
-     * freeCandidates = sortResources(freeCandidates);
-     * }
-     * // if did not get wanted amount or did not get all
-     * int required_amount = (requiredResources.quantity == 0) ? candidates.size() : requiredResources.quantity;
-     * for(LockableResource r : freeCandidates) {
-     * if(finalSelected.size() < required_amount) {
-     * finalSelected.add(r);
-     * } else {
-     * break;
-     * }
-     * }
-     * if(finalSelected.size() < required_amount) {
-     * LOGGER.finest("Only " + finalSelected.size() + " resource(s) to queue (" + required_amount + " needed)");
-     * return null;
-     * }
-     * return finalSelected;
-     * }
-     */
     public LinkedHashSet<LockableResource> sortResources(Collection<LockableResource> resources, EnvVars env) {
         // Extract the best resources based on their capabilities
         List<Tuple2<LockableResource, Double>> sortedFree = new ArrayList<>(); // (resource, cost)
@@ -398,39 +392,34 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @return
      */
     public synchronized boolean lock(Collection<LockableResource> resources,
-            Collection<RequiredResources> requiredresources, 
-            Run<?, ?> build, @Nullable StepContext context, 
+            Collection<RequiredResources> requiredresources,
+            Run<?, ?> build, @Nullable StepContext context,
             boolean inversePrecedence) {
-        boolean needToWait = false;
         if(resources == null) {
             return false;
         }
         for(LockableResource r : resources) {
             if(!r.canLock()) {
-                needToWait = true;
-                if(context != null) {
-                    r.queueAdd(context);
-                    break;
-                }
+                // At least one resource is not available: abort lock process
+                save();
+                return false;
             }
         }
-        if(!needToWait) {
-            for(LockableResource r : resources) {
-                r.unqueue();
-                r.setBuild(build);
+        for(LockableResource r : resources) {
+            r.unqueue();
+            r.setBuild(build);
+        }
+        if(context != null) {
+            // since LockableResource contains transient variables, they cannot be correctly serialized
+            // hence we use their unique resource names
+            List<String> resourceNames = new ArrayList<>();
+            for(LockableResource resource : resources) {
+                resourceNames.add(resource.getName());
             }
-            if(context != null) {
-                // since LockableResource contains transient variables, they cannot be correctly serialized
-                // hence we use their unique resource names
-                List<String> resourceNames = new ArrayList<>();
-                for(LockableResource resource : resources) {
-                    resourceNames.add(resource.getName());
-                }
-                LockStepExecution.proceed(resourceNames, requiredresources, context, inversePrecedence);
-            }
+            LockStepExecution.proceed(resourceNames, requiredresources, context, inversePrecedence);
         }
         save();
-        return !needToWait;
+        return true;
     }
 
     private synchronized void unlockResources(Collection<LockableResource> unlockResources, Run<?, ?> build) {
@@ -603,16 +592,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return false;
         }
     }
-        
+
     /**
      * Queue lockable resources for later lock
      * Get already queued item from the same project and build and try to complete the selection
      * If all required resources are not available, then previously queued item are released
-     * 
+     * <p>
      * Requires a queue item (for example with a build of a standard freestyle project)
-     * 
+     *
      * @param project
      * @param item
+     *
      * @return Return the list of queued resources, or null if no enough resources
      */
     public synchronized Set<LockableResource> queue(Job<?, ?> project, Queue.Item item) {
@@ -631,11 +621,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return null;
         }
         Set<LockableResource> alreadyQueued = getQueuedResources(projectFullName, taskId);
-        
+
         LOGGER.finest(projectFullName + ": trying to get resources with these details: " + requiredResourcesList);
         Set<LockableResource> selected = new HashSet<>(alreadyQueued);
         selected = selectFreeResources(requiredResourcesList, selected, env);
-        
+
         if(selected == null) {
             // No enough resources for this build: unqueue all associated resources
             for(LockableResource r : alreadyQueued) {
@@ -672,13 +662,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Adds the given context and the required resources to the queue if
      * this context is not yet queued.
      */
-    public void queueContext(StepContext context, Collection<RequiredResources> requiredResources, String resourceDescription) {
+    public void queueContext(StepContext context, Collection<RequiredResources> requiredResources) {
         for(QueuedContextStruct entry : this.queuedContexts) {
             if(entry.getContext() == context) {
                 return;
             }
         }
-        this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+        this.queuedContexts.add(new QueuedContextStruct(context, requiredResources));
         save();
     }
 
