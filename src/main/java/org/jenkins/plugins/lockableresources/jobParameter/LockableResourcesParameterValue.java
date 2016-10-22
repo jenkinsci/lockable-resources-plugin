@@ -13,8 +13,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.ParameterValue;
 import hudson.model.Run;
 import hudson.util.VariableResolver;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.TreeSet;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.resources.ResourceCapability;
@@ -24,9 +23,9 @@ import org.kohsuke.stapler.export.Exported;
 
 public class LockableResourcesParameterValue extends ParameterValue implements Comparable<LockableResourcesParameterValue> {
     @Exported
-    protected Collection<ResourceCapability> selectedCapabilities;
+    protected LinkedHashSet<ResourceCapability> selectedCapabilities;
     @Exported
-    protected Collection<ResourceCapability> neededCapabilities;
+    protected LinkedHashSet<ResourceCapability> neededCapabilities;
     @Exported
     protected Boolean onlyResourceNames;
 
@@ -39,34 +38,34 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
     }
 
     @DataBoundConstructor
-    public LockableResourcesParameterValue(String name, Boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities) {
-        this(name, onlyResourceNames, selectedCapabilities, neededCapabilities, null);
+    public LockableResourcesParameterValue(String name, String description) {
+        this(name, description, null, null, null);
     }
 
-    public LockableResourcesParameterValue(String name, Boolean onlyResourceNames, Collection<ResourceCapability> selectedCapabilities, Collection<ResourceCapability> neededCapabilities, String description) {
+    public LockableResourcesParameterValue(String name, String description, Boolean onlyResourceNames, LinkedHashSet<ResourceCapability> selectedCapabilities, LinkedHashSet<ResourceCapability> neededCapabilities) {
         super(name, description);
-        this.selectedCapabilities = (selectedCapabilities == null) ? new ArrayList<ResourceCapability>() : selectedCapabilities;
-        this.neededCapabilities = (neededCapabilities == null) ? new ArrayList<ResourceCapability>() : neededCapabilities;
+        this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
+        this.neededCapabilities = (neededCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : neededCapabilities;
         this.onlyResourceNames = onlyResourceNames;
     }
 
     @Exported
-    public Collection<ResourceCapability> getSelectedCapabilities() {
+    public LinkedHashSet<ResourceCapability> getSelectedCapabilities() {
         return selectedCapabilities;
     }
 
     @DataBoundSetter
-    public void setSelectedCapabilities(Collection<ResourceCapability> selectedCapabilities) {
+    public void setSelectedCapabilities(LinkedHashSet<ResourceCapability> selectedCapabilities) {
         this.selectedCapabilities = selectedCapabilities;
     }
 
     @Exported
-    public Collection<ResourceCapability> getNeededCapabilities() {
+    public LinkedHashSet<ResourceCapability> getNeededCapabilities() {
         return neededCapabilities;
     }
 
     @DataBoundSetter
-    public void setNeededCapabilities(Collection<ResourceCapability> neededCapabilities) {
+    public void setNeededCapabilities(LinkedHashSet<ResourceCapability> neededCapabilities) {
         this.neededCapabilities = neededCapabilities;
     }
 

@@ -12,7 +12,6 @@ import hudson.init.Initializer;
 import hudson.model.ParameterDefinition;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import net.sf.json.JSONObject;
@@ -26,11 +25,11 @@ import org.kohsuke.stapler.export.Exported;
 public class LockableResourcesParameterDefinition extends ParameterDefinition {
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesParameterDefinition.class.getName());
     @Exported
-    protected Set<ResourceCapability> selectedCapabilities;
+    protected LinkedHashSet<ResourceCapability> selectedCapabilities;
     @Exported
-    protected Set<ResourceCapability> neededCapabilities;
+    protected LinkedHashSet<ResourceCapability> neededCapabilities;
     @Exported
-    protected Set<ResourceCapability> prohibitedCapabilities;
+    protected LinkedHashSet<ResourceCapability> prohibitedCapabilities;
     @Exported
     protected Boolean onlyResourceNames;
 
@@ -44,10 +43,10 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
 
     @DataBoundConstructor
     public LockableResourcesParameterDefinition(String name, String description) {
-        super(name, description);
+        this(name, description, false, null, null, null);
     }
     
-    public LockableResourcesParameterDefinition(String name, String description, boolean onlyResourceNames, Set<ResourceCapability> selectedCapabilities, Set<ResourceCapability> neededCapabilities, Set<ResourceCapability> prohibitedCapabilities) {
+    public LockableResourcesParameterDefinition(String name, String description, Boolean onlyResourceNames, LinkedHashSet<ResourceCapability> selectedCapabilities, LinkedHashSet<ResourceCapability> neededCapabilities, LinkedHashSet<ResourceCapability> prohibitedCapabilities) {
         super(name, description);
         this.onlyResourceNames = onlyResourceNames;
         this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
@@ -66,32 +65,32 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     }
 
     @Exported
-    public Set<ResourceCapability> getSelectedCapabilities() {
+    public LinkedHashSet<ResourceCapability> getSelectedCapabilities() {
         return selectedCapabilities;
     }
 
     @DataBoundSetter
-    public void setSelectedCapabilities(Set<ResourceCapability> selectedCapabilities) {
+    public void setSelectedCapabilities(LinkedHashSet<ResourceCapability> selectedCapabilities) {
         this.selectedCapabilities = selectedCapabilities;
     }
 
     @Exported
-    public Set<ResourceCapability> getNeededCapabilities() {
+    public LinkedHashSet<ResourceCapability> getNeededCapabilities() {
         return neededCapabilities;
     }
 
     @DataBoundSetter
-    public void setNeededCapabilities(Set<ResourceCapability> neededCapabilities) {
+    public void setNeededCapabilities(LinkedHashSet<ResourceCapability> neededCapabilities) {
         this.neededCapabilities = neededCapabilities;
     }
 
     @Exported
-    public Set<ResourceCapability> getProhibitedCapabilities() {
+    public LinkedHashSet<ResourceCapability> getProhibitedCapabilities() {
         return prohibitedCapabilities;
     }
 
     @DataBoundSetter
-    public void setProhibitedCapabilities(Set<ResourceCapability> prohibitedCapabilities) {
+    public void setProhibitedCapabilities(LinkedHashSet<ResourceCapability> prohibitedCapabilities) {
         this.prohibitedCapabilities = prohibitedCapabilities;
     }
 
@@ -105,7 +104,7 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
 
     @Override
     public LockableResourcesParameterValue getDefaultParameterValue() {
-        return new LockableResourcesParameterValue(getName(), onlyResourceNames, selectedCapabilities, neededCapabilities, getDescription());
+        return new LockableResourcesParameterValue(getName(), getDescription(), onlyResourceNames, selectedCapabilities, neededCapabilities);
     }
 
     @Override

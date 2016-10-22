@@ -38,14 +38,12 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import jenkins.model.Jenkins;
-import net.sf.json.JSONObject;
 import org.codehaus.groovy.control.CompilationFailedException;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
@@ -263,6 +261,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     public boolean isLocked() {
         return getBuild() != null;
     }
+    public boolean isLockedByBuild(@Nonnull Run<?, ?> build) {
+        return (this.buildExternalizableId != null) && (this.buildExternalizableId.equals(build.getExternalizableId()));
+    }
 
     public boolean isFree() {
         return (!isLocked() && !isReserved() && !isQueued());
@@ -426,16 +427,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         @Override
         public String getDisplayName() {
             return "Resource";
-        }
-
-        @Override
-        public boolean configure(StaplerRequest req) throws FormException {
-            return super.configure(req); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-            return super.configure(req, json); //To change body of generated methods, choose Tools | Templates.
         }
     }
 }

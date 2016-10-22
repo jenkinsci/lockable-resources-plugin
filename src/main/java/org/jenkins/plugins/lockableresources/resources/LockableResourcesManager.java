@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -38,7 +39,6 @@ import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
-import org.codehaus.groovy.runtime.AbstractComparator;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
@@ -365,7 +365,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             double cost = (nMax - nFree) * (resources.size() / nMax) + rc.size();
             sortedFree.add(new Tuple2<>(r, cost));
         }
-        Collections.sort(sortedFree, new AbstractComparator<Tuple2<LockableResource, Double>>() {
+        Collections.sort(sortedFree, new Comparator<Tuple2<LockableResource, Double>>() {
             @Override
             public int compare(Tuple2<LockableResource, Double> o1, Tuple2<LockableResource, Double> o2) {
                 return o1.getSecond().compareTo(o2.getSecond());
@@ -422,9 +422,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return true;
     }
 
-    private synchronized void unlockResources(Collection<LockableResource> unlockResources, Run<?, ?> build) {
+    private synchronized void unlockResources(@Nonnull Collection<LockableResource> unlockResources, @Nonnull Run<?, ?> build) {
         for(LockableResource resource : unlockResources) {
-            if(resource == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
+            if((resource != null) && resource.isLockedByBuild(build)) {
                 // No more contexts, unlock resource
                 resource.unqueue();
                 resource.setBuild(null);
@@ -432,13 +432,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
     }
 
-    public synchronized void unlock(Collection<LockableResource> resourcesToUnLock,
-            Run<?, ?> build, @Nullable StepContext context) {
+    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock,
+            @Nonnull Run<?, ?> build, @Nullable StepContext context) {
         unlock(resourcesToUnLock, build, context, false);
     }
 
-    public synchronized void unlock(@Nullable Collection<LockableResource> resourcesToUnLock,
-            Run<?, ?> build, @Nullable StepContext context,
+    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock,
+            @Nonnull Run<?, ?> build, @Nullable StepContext context,
             boolean inversePrecedence) {
         // check if there are resources which can be unlocked (and shall not be unlocked)
         QueuedContextStruct nextContext = getNextQueuedContext(resourcesToUnLock, inversePrecedence);

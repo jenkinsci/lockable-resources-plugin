@@ -248,8 +248,11 @@ public class LockStepTest {
                 LockableResourcesManager.get().createResource("resource1");
                 WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
                 p.setDefinition(new CpsFlowDefinition(
-                        "parallel a: {\n"
+                        "parallel (\n"
+                        + "a: {\n"
+                        + "	echo 'before sleep'\n"
                         + "	sleep 5\n"
+                        + "	echo 'after sleep'\n"
                         + "	lock(resource: 'resource1') {\n"
                         + "		sleep 5\n"
                         + "	}\n"
@@ -257,7 +260,7 @@ public class LockStepTest {
                         + "	lock(resource: 'resource1') {\n"
                         + "		semaphore 'wait-b'\n"
                         + "	}\n"
-                        + "}\n"
+                        + "})\n"
                 ));
 
                 WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
@@ -497,7 +500,11 @@ public class LockStepTest {
                 story.j.waitForMessage("[resource1] is locked, waiting...", b2);
                 story.j.waitForMessage("[resource1] is locked, waiting...", b3);
 
-                b1.delete();
+                try {
+                    b1.delete();
+                } catch(IOException e) {
+                    
+                }
 
                 // Verify that b2 gets the lock.
                 story.j.waitForMessage("Lock acquired on [resource1]", b2);

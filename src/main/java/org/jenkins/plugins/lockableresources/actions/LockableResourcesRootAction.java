@@ -33,14 +33,14 @@ import org.kohsuke.stapler.StaplerResponse;
 @Extension
 public class LockableResourcesRootAction implements RootAction {
     private static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
-            LockableResourcesManager.class, Messages._PermissionGroup());
+            LockableResourcesManager.class, Messages._permissionGroup());
     private static final Permission UNLOCK = new Permission(PERMISSIONS_GROUP,
-            Messages.UnlockPermission(),
-            Messages._UnlockPermission_Description(), Jenkins.ADMINISTER,
+            Messages.unlockPermission(),
+            Messages._unlockPermission_Description(), Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     private static final Permission RESERVE = new Permission(PERMISSIONS_GROUP,
-            Messages.ReservePermission(),
-            Messages._ReservePermission_Description(), Jenkins.ADMINISTER,
+            Messages.reservePermission(),
+            Messages._reservePermission_Description(), Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 

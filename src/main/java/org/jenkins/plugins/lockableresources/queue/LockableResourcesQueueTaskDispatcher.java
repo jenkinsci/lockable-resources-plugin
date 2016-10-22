@@ -78,17 +78,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
         @Override
         public String getShortDescription() {
-            String lbl = "Waiting for resources";
+            StringBuilder lbl = new StringBuilder("Waiting for resources");
             if(requiredResourcesList != null) {
                 for(RequiredResources rr : requiredResourcesList) {
                     if(rr.getExpandedResources(env).isEmpty()) {
-                        lbl += (" " + rr.getExpandedLabels(env));
+                        lbl.append(" ").append(rr.getExpandedLabels(env));
                     } else {
-                        lbl += (" " + rr.getExpandedResources(env));
+                        lbl.append(" ").append(rr.getExpandedResources(env));
                     }
                 }
             }
-            return lbl;
+            return lbl.toString();
         }
     }
 }

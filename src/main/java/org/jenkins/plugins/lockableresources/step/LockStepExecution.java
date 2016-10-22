@@ -93,7 +93,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         LOGGER.finest("Lock acquired on " + resourceNames + " by " + r.getExternalizableId());
         context.newBodyInvoker().
                 withCallback(new Callback(resourceNames, requiredresources, inversePrecedence)).
-                withDisplayName(null).
+                withDisplayName("Locking " + resourceNames).
                 start();
     }
 
@@ -113,7 +113,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         protected void finished(StepContext context) throws Exception {
             LockableResourcesManager manager = LockableResourcesManager.get();
             Set<LockableResource> resources = manager.getResourcesFromNames(resourceNames);
-            manager.unlock(resources, context.get(Run.class), context, inversePrecedence);
+            Run<?, ?> build = context.get(Run.class);
+            if(build == null) {
+                LOGGER.warning("No valid build during resources unlocking: may lead to blocked resources");
+            } else {
+                manager.unlock(resources, build, context, inversePrecedence);
+            }
             context.get(TaskListener.class).getLogger().println("Lock released on resource " + requiredresources);
             for(LockableResource resource : resources) {
                 LOGGER.finest("Lock released on [" + resource + "]");
