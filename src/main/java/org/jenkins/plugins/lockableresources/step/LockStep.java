@@ -57,6 +57,20 @@ public class LockStep extends AbstractStepImpl implements Serializable {
             }
         }
     }
+    
+    @DataBoundSetter
+    public void setResources(Collection<String> resources) {
+        if(resources != null) {
+            for(String myResource: resources) {
+                RequiredResources rr = new RequiredResources(myResource, null, 0, null);
+                if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
+                    requiredResourcesList = Lists.newArrayList(rr);
+                } else {
+                    requiredResourcesList.add(rr);
+                }
+            }
+        }
+    }
 
     @DataBoundSetter
     public void setLabel(String label) {
@@ -66,6 +80,30 @@ public class LockStep extends AbstractStepImpl implements Serializable {
             } else {
                 RequiredResources rr = requiredResourcesList.iterator().next();
                 rr.setLabels(label);
+            }
+        }
+    }
+    
+    @DataBoundSetter
+    public void setCapability(String capability) {
+        setLabel(capability);
+    }
+    
+    @DataBoundSetter
+    public void setCapabilities(Collection<String> capabilities) {
+        setLabels(capabilities);
+    }
+    
+    @DataBoundSetter
+    public void setLabels(Collection<String> labels) {
+        if(labels != null) {
+            for(String label: labels) {
+                RequiredResources rr = new RequiredResources(null, label, 0, null);
+                if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
+                    requiredResourcesList = Lists.newArrayList(rr);
+                } else {
+                    requiredResourcesList.add(rr);
+                }
             }
         }
     }
@@ -98,12 +136,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
         if(requiredResourcesList == null) {
             return "";
         }
-        if(requiredResourcesList.size() == 1) {
-            RequiredResources rr = requiredResourcesList.iterator().next();
-            return rr.toString();
-        } else {
-            return requiredResourcesList.toString();
-        }
+        return requiredResourcesList.toString();
     }
 
     /**

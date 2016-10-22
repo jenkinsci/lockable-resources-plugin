@@ -31,7 +31,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     @StepContextParameter
     private transient Run<?, ?> run;
     @StepContextParameter
-    private transient TaskListener listener = null;
+    protected transient TaskListener listener = null;
     private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
     @Override
@@ -57,7 +57,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         // Else, the task is queued for later retry
         Set<LockableResource> selected = manager.selectFreeResources(step.requiredResourcesList, null, env);
         if(selected == null || !LockableResourcesManager.get().lock(selected, step.requiredResourcesList, run, getContext(), step.inversePrecedence)) {
-            listener.getLogger().println("[" + step + "] is locked, waiting...");
+            listener.getLogger().println(step + " is locked, waiting...");
             LockableResourcesManager.get().queueContext(getContext(), step.requiredResourcesList);
         }
         return false; //asynchronous step execution
@@ -86,6 +86,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         try {
             r = context.get(Run.class);
             context.get(TaskListener.class).getLogger().println("Lock acquired on " + requiredresources);
+            context.get(TaskListener.class).getLogger().println("Lock resources " + resourceNames);
         } catch(IOException | InterruptedException e) {
             context.onFailure(e);
             return;
@@ -119,10 +120,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
             } else {
                 manager.unlock(resources, build, context, inversePrecedence);
             }
-            context.get(TaskListener.class).getLogger().println("Lock released on resource " + requiredresources);
-            for(LockableResource resource : resources) {
-                LOGGER.finest("Lock released on [" + resource + "]");
-            }
+            context.get(TaskListener.class).getLogger().println("Lock released on " + requiredresources);
+            context.get(TaskListener.class).getLogger().println("Unlock resources " + resourceNames);
+            LOGGER.finest("Lock released on " + resources);
         }
     }
 }

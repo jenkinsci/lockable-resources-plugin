@@ -143,29 +143,30 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
             return labels;
         }
 
-        String lbl = "";
+        StringBuilder lbl = new StringBuilder("(");
         if(Util.fixEmpty(resources) != null) {
-            lbl += "Resource: " + resources;
+            lbl.append("Resource: ").append(resources);
         }
         if(Util.fixEmpty(labels) != null) {
-            if(!lbl.isEmpty()) {
-                lbl += ", ";
+            if(lbl.length() > 1) {
+                lbl.append(", ");
             }
-            lbl += "Label: " + labels;
+            lbl.append("Label: ").append(labels);
         }
         if((quantity != null) && (quantity > 0)) {
-            if(!lbl.isEmpty()) {
-                lbl += ", ";
+            if(lbl.length() > 1) {
+                lbl.append(", ");
             }
-            lbl += "Quantity: " + quantity;
+            lbl.append("Quantity: ").append(quantity);
         }
         if(Util.fixEmpty(variableName) != null) {
-            if(!lbl.isEmpty()) {
-                lbl += ", ";
+            if(lbl.length() > 1) {
+                lbl.append(", ");
             }
-            lbl += "Variable: " + variableName;
+            lbl.append("Variable: ").append(variableName);
         }
-        return lbl;
+        lbl.append(")");
+        return lbl.toString();
     }
 
     @Extension

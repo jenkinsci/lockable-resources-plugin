@@ -330,6 +330,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Set<LockableResource> freeCandidates = filterFreeResources(candidates);
             if(forcedCandidates != null) {
                 freeCandidates.addAll(forcedCandidates);
+                freeCandidates.retainAll(candidates);
             }
             if(rr.quantity <= 0) {
                 if(freeCandidates.size() == candidates.size()) {
@@ -416,10 +417,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if(context != null) {
             // since LockableResource contains transient variables, they cannot be correctly serialized
             // hence we use their unique resource names
-            List<String> resourceNames = new ArrayList<>();
+            ArrayList<String> resourceNames = new ArrayList<>();
             for(LockableResource resource : resources) {
                 resourceNames.add(resource.getName());
             }
+            // Sort names for predictable logs (for tests)
+            Collections.sort(resourceNames);
             LockStepExecution.proceed(resourceNames, requiredresources, context, inversePrecedence);
         }
         save();
@@ -491,10 +494,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // free old resources no longer needed
             unlockResources(freeResources, build);
             // continue with next context
-            List<String> resourceNames = new ArrayList<>();
+            ArrayList<String> resourceNames = new ArrayList<>();
             for(LockableResource resource : requiredResourceForNextContext) {
                 resourceNames.add(resource.getName());
             }
+            // Sort names for predictable logs (for tests)
+            Collections.sort(resourceNames);
             LockStepExecution.proceed(resourceNames, nextContext.getRequiredResourcesList(), nextContext.getContext(), inversePrecedence);
         }
         save();
