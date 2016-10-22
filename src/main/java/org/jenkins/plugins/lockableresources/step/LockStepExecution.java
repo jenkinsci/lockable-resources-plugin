@@ -31,7 +31,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     @StepContextParameter
     private transient Run<?, ?> run;
     @StepContextParameter
-    private transient TaskListener listener;
+    private transient TaskListener listener = null;
     private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
     @Override

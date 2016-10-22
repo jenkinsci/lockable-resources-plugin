@@ -50,23 +50,21 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         }
         if(build instanceof AbstractBuild) {
             Job<?, ?> project = Utils.getProject(build);
-            if(project != null) {
-                LockableResourcesManager manager = LockableResourcesManager.get();
-                Collection<RequiredResources> requiredResourcesList = manager.getProjectRequiredResources(project);
-                Set<LockableResource> selected = manager.getQueuedResourcesFromProject(project.getFullName());
-                boolean locked = manager.lock(selected, requiredResourcesList, build, null, false);
-                if(locked) {
-                    listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, selected);
-                    for(RequiredResources requiredResources : requiredResourcesList) {
-                        if(requiredResources.getVariableName() != null) {
-                            build.addAction(new ResourceVariableNameAction(new StringParameterValue(
-                                    requiredResources.getVariableName(),
-                                    selected.toString().replaceAll("[\\]\\[]", ""))));
-                        }
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            Collection<RequiredResources> requiredResourcesList = manager.getProjectRequiredResources(project);
+            Set<LockableResource> selected = manager.getQueuedResourcesFromProject(project.getFullName());
+            boolean locked = manager.lock(selected, requiredResourcesList, build, null, false);
+            if(locked) {
+                listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, selected);
+                for(RequiredResources requiredResources : requiredResourcesList) {
+                    if(requiredResources.getVariableName() != null) {
+                        build.addAction(new ResourceVariableNameAction(new StringParameterValue(
+                                requiredResources.getVariableName(),
+                                selected.toString().replaceAll("[\\]\\[]", ""))));
                     }
                 }
-                build.addAction(LockedResourcesBuildAction.fromResources(selected));
             }
+            build.addAction(LockedResourcesBuildAction.fromResources(selected));
         }
     }
 
@@ -77,7 +75,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         }
         Set<LockableResource> requiredResources = LockableResourcesManager.get().getLockedResourcesFromBuild(build);
         if(requiredResources.size() > 0) {
-            LockableResourcesManager.get().unlock(requiredResources, build, null);
+            LockableResourcesManager.get().unlock(requiredResources, build);
             listener.getLogger().printf("%s released lock on %s%n", LOG_PREFIX, requiredResources);
             LOGGER.fine(build.getFullDisplayName() + " released lock on " + requiredResources);
         }
@@ -90,7 +88,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         }
         Set<LockableResource> requiredResources = LockableResourcesManager.get().getLockedResourcesFromBuild(build);
         if(requiredResources.size() > 0) {
-            LockableResourcesManager.get().unlock(requiredResources, build, null);
+            LockableResourcesManager.get().unlock(requiredResources, build);
             LOGGER.fine(build.getFullDisplayName() + " released lock on " + requiredResources);
         }
     }

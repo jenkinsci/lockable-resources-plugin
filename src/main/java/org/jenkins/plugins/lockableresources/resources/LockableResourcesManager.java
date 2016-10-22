@@ -21,6 +21,7 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -353,7 +354,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         res.addAll(selected);
         return res;
     }
-
+    
+    private static class SortComparator implements Comparator<Tuple2<LockableResource, Double>>, Serializable {
+        private static final long serialVersionUID = 1L;
+        @Override
+        public int compare(Tuple2<LockableResource, Double> o1, Tuple2<LockableResource, Double> o2) {
+            return o1.getSecond().compareTo(o2.getSecond());
+        }
+    }
+    
     public LinkedHashSet<LockableResource> sortResources(Collection<LockableResource> resources, EnvVars env) {
         // Extract the best resources based on their capabilities
         List<Tuple2<LockableResource, Double>> sortedFree = new ArrayList<>(); // (resource, cost)
@@ -365,12 +374,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             double cost = (nMax - nFree) * (resources.size() / nMax) + rc.size();
             sortedFree.add(new Tuple2<>(r, cost));
         }
-        Collections.sort(sortedFree, new Comparator<Tuple2<LockableResource, Double>>() {
-            @Override
-            public int compare(Tuple2<LockableResource, Double> o1, Tuple2<LockableResource, Double> o2) {
-                return o1.getSecond().compareTo(o2.getSecond());
-            }
-        });
+        Collections.sort(sortedFree, new SortComparator());
         LOGGER.finer("Costs for using resources:");
         LinkedHashSet<LockableResource> res = new LinkedHashSet();
         for(Tuple2<LockableResource, Double> t : sortedFree) {
@@ -422,23 +426,36 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return true;
     }
 
-    private synchronized void unlockResources(@Nonnull Collection<LockableResource> unlockResources, @Nonnull Run<?, ?> build) {
-        for(LockableResource resource : unlockResources) {
-            if((resource != null) && resource.isLockedByBuild(build)) {
-                // No more contexts, unlock resource
-                resource.unqueue();
-                resource.setBuild(null);
+    private synchronized void unlockResources(@Nonnull Collection<LockableResource> unlockResources, @Nullable Run<?, ?> build) {
+        if(build == null) {
+            for(LockableResource resource : unlockResources) {
+                if((resource != null) && resource.isLocked()) {
+                    // No more contexts, unlock resource
+                    resource.unqueue();
+                    resource.setBuild(null);
+                }
+            }
+        }else {
+            for(LockableResource resource : unlockResources) {
+                if((resource != null) && resource.isLockedByBuild(build)) {
+                    // No more contexts, unlock resource
+                    resource.unqueue();
+                    resource.setBuild(null);
+                }
             }
         }
     }
 
-    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock,
-            @Nonnull Run<?, ?> build, @Nullable StepContext context) {
-        unlock(resourcesToUnLock, build, context, false);
+    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock) {
+        unlock(resourcesToUnLock, null, null, false);
+    }
+    
+    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
+        unlock(resourcesToUnLock, build, null, false);
     }
 
     public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock,
-            @Nonnull Run<?, ?> build, @Nullable StepContext context,
+            @Nullable Run<?, ?> build, @Nullable StepContext context,
             boolean inversePrecedence) {
         // check if there are resources which can be unlocked (and shall not be unlocked)
         QueuedContextStruct nextContext = getNextQueuedContext(resourcesToUnLock, inversePrecedence);

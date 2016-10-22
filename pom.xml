@@ -33,6 +33,7 @@
         <!-- Globals -->
         <jenkins.version>2.19.1</jenkins.version>
         <findbugs.failOnError>true</findbugs.failOnError>
+        <jenkins.test.timeout>30</jenkins.test.timeout>
         
         <!-- Manager version -->
         <hamcrest-core.version>1.3</hamcrest-core.version>

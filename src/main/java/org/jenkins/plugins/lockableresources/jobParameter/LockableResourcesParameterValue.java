@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.jobParameter;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -22,9 +23,12 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
 
 public class LockableResourcesParameterValue extends ParameterValue implements Comparable<LockableResourcesParameterValue> {
+    private static final long serialVersionUID = 1L;
     @Exported
+    @SuppressFBWarnings(value = "SE_BAD_FIELD", justification = "Jenkins can serialize LinkedHashSet")
     protected LinkedHashSet<ResourceCapability> selectedCapabilities;
     @Exported
+    @SuppressFBWarnings(value = "SE_BAD_FIELD", justification = "Jenkins can serialize LinkedHashSet")
     protected LinkedHashSet<ResourceCapability> neededCapabilities;
     @Exported
     protected Boolean onlyResourceNames;

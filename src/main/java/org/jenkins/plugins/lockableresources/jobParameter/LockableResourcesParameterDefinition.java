@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.jobParameter;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -23,12 +24,16 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 
 public class LockableResourcesParameterDefinition extends ParameterDefinition {
+    private static final long serialVersionUID = 1L;
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesParameterDefinition.class.getName());
     @Exported
+    @SuppressFBWarnings(value = "SE_BAD_FIELD", justification = "Jenkins can serialize LinkedHashSet")
     protected LinkedHashSet<ResourceCapability> selectedCapabilities;
     @Exported
+    @SuppressFBWarnings(value = "SE_BAD_FIELD", justification = "Jenkins can serialize LinkedHashSet")
     protected LinkedHashSet<ResourceCapability> neededCapabilities;
     @Exported
+    @SuppressFBWarnings(value = "SE_BAD_FIELD", justification = "Jenkins can serialize LinkedHashSet")
     protected LinkedHashSet<ResourceCapability> prohibitedCapabilities;
     @Exported
     protected Boolean onlyResourceNames;
@@ -45,13 +50,13 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     public LockableResourcesParameterDefinition(String name, String description) {
         this(name, description, false, null, null, null);
     }
-    
+
     public LockableResourcesParameterDefinition(String name, String description, Boolean onlyResourceNames, LinkedHashSet<ResourceCapability> selectedCapabilities, LinkedHashSet<ResourceCapability> neededCapabilities, LinkedHashSet<ResourceCapability> prohibitedCapabilities) {
         super(name, description);
         this.onlyResourceNames = onlyResourceNames;
-        this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
-        this.neededCapabilities = (neededCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : neededCapabilities;
-        this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : prohibitedCapabilities;
+         this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
+         this.neededCapabilities = (neededCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : neededCapabilities;
+         this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : prohibitedCapabilities; 
     }
 
     @Exported
