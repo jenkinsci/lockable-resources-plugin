@@ -43,6 +43,10 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     }
 
     @DataBoundConstructor
+    public LockableResourcesParameterDefinition(String name, String description) {
+        super(name, description);
+    }
+    
     public LockableResourcesParameterDefinition(String name, String description, boolean onlyResourceNames, Set<ResourceCapability> selectedCapabilities, Set<ResourceCapability> neededCapabilities, Set<ResourceCapability> prohibitedCapabilities) {
         super(name, description);
         this.onlyResourceNames = onlyResourceNames;

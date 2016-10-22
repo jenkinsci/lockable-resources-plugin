@@ -57,11 +57,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Exported
     protected Set<LockableResource> resources = new LinkedHashSet<>();
     /** If this option is selected, the plugin will use an internal algorithm to select
-     * the free resources based on their capabilities.<br/>
+     * the free resources based on their capabilities.<br>
      * The resource that has a unique capability among all other resources has less chance
-     * to be selected.<br />
+     * to be selected.<br>
      * On the contrary, if a free resource has very common capabilities it will probably be selected
-     * <p />
+     * <p>
      * This option is highly experimental.
      */
     @Exported

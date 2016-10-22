@@ -51,7 +51,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
 
     /**
      * Only for jelly file compatibility
-     * Please use {@link #getResources(EnvVars)}
+     * Please use {@link #getExpandedResources(EnvVars)}
      *
      * @return
      *
@@ -77,7 +77,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
 
     /**
      * Only for jelly file compatibility
-     * Please use {@link #getLabels(EnvVars)}
+     * Please use {@link #getExpandedLabels(EnvVars)}
      *
      * @return
      *
