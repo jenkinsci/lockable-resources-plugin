@@ -79,7 +79,7 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
     }
 
     @DataBoundSetter
-    public void setNeededCapabilities(Boolean onlyResourceNames) {
+    public void setOnlyResourceNames(Boolean onlyResourceNames) {
         this.onlyResourceNames = onlyResourceNames;
     }
 
@@ -98,7 +98,7 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
         if(selectedCapabilities != null) {
             capabilities.addAll(selectedCapabilities);
         }
-        if(!onlyResourceNames) {
+        if((onlyResourceNames == null) || (!onlyResourceNames)) {
             if(neededCapabilities != null) {
                 capabilities.addAll(neededCapabilities);
             }
