@@ -26,6 +26,7 @@ import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
+import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
@@ -51,17 +52,19 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         if(build instanceof AbstractBuild) {
             Job<?, ?> project = Utils.getProject(build);
             LockableResourcesManager manager = LockableResourcesManager.get();
-            Collection<RequiredResources> requiredResourcesList = manager.getProjectRequiredResources(project);
+            RequiredResourcesProperty property = manager.getProjectRequiredResourcesProperty(project);
+            if(property == null) {
+                return;
+            }
+            Collection<RequiredResources> requiredResourcesList = property.getRequiredResourcesList();
             Set<LockableResource> selected = manager.getQueuedResourcesFromProject(project.getFullName());
             boolean locked = manager.lock(selected, requiredResourcesList, build, null, false);
             if(locked) {
                 listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, selected);
-                for(RequiredResources requiredResources : requiredResourcesList) {
-                    if(requiredResources.getVariableName() != null) {
-                        build.addAction(new ResourceVariableNameAction(new StringParameterValue(
-                                requiredResources.getVariableName(),
-                                selected.toString().replaceAll("[\\]\\[]", ""))));
-                    }
+                if(property.getVariableName() != null) {
+                    build.addAction(new ResourceVariableNameAction(new StringParameterValue(
+                            property.getVariableName(),
+                            selected.toString().replaceAll("[\\]\\[]", ""))));
                 }
             }
             build.addAction(LockedResourcesBuildAction.fromResources(selected));

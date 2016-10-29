@@ -20,5 +20,8 @@
 					</f:entry>
 				</table>
 			</f:repeatable>
+            <f:entry title="${%Variable name}" field="variableName">
+                <f:textbox/>
+            </f:entry>
 		</f:entry>
 </j:jelly>

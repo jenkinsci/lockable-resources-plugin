@@ -22,6 +22,7 @@ import java.util.Set;
 import javax.annotation.Nullable;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
+import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
@@ -48,8 +49,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             return null;
         }
         LockableResourcesManager manager = LockableResourcesManager.get();
-        Collection<RequiredResources> requiredResourcesList = manager.getProjectRequiredResources(project);
-        if(requiredResourcesList == null) {
+        RequiredResourcesProperty property = manager.getProjectRequiredResourcesProperty(project);
+        if(property == null) {
             return null;
         }
         return getCauseOfBlockage(project, item);
@@ -72,7 +73,12 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
         BecauseResourcesLocked(Job<?, ?> project, EnvVars env) {
             LockableResourcesManager manager = LockableResourcesManager.get();
-            this.requiredResourcesList = manager.getProjectRequiredResources(project);
+            RequiredResourcesProperty property = manager.getProjectRequiredResourcesProperty(project);
+            if(property == null) {
+                this.requiredResourcesList = null;
+            } else {
+                this.requiredResourcesList = property.getRequiredResourcesList();
+            }
             this.env = env;
         }
 

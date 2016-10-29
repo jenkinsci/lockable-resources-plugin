@@ -304,15 +304,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return found;
     }
 
-    public Collection<RequiredResources> getProjectRequiredResources(Job<?, ?> project) {
+    @Nullable
+    public RequiredResourcesProperty getProjectRequiredResourcesProperty(Job<?, ?> project) {
         if(project instanceof MatrixConfiguration) {
             project = (Job<?, ?>) project.getParent();
         }
-        RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);
-        if(property == null) {
-            return Collections.emptyList();
-        }
-        return property.getRequiredResourcesList();
+        return project.getProperty(RequiredResourcesProperty.class);
     }
 
     public Set<LockableResource> selectFreeResources(Collection<RequiredResources> requiredResourcesList, Collection<LockableResource> forcedCandidates, EnvVars env) {
@@ -618,7 +615,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /**
      * Queue lockable resources for later lock
      * Get already queued item from the same project and build and try to complete the selection
-     * If all required resources are not available, then previously queued item are released
+     * If all required resources are not available, then previously queued items are released
      * <p>
      * Requires a queue item (for example with a build of a standard freestyle project)
      *
@@ -632,10 +629,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
         final String projectFullName = project.getFullName();
         final EnvVars env = Utils.getEnvVars(item);
 
-        Collection<RequiredResources> requiredResourcesList = getProjectRequiredResources(project);
+        RequiredResourcesProperty property = getProjectRequiredResourcesProperty(project);
+        if(property == null) {
+            return Collections.emptySet();
+        }
+        Collection<RequiredResources> requiredResourcesList = property.getRequiredResourcesList();
         LOGGER.finest(projectFullName + " trying to get resources with these details: " + requiredResourcesList);
 
-        if(!isAnotherBuildWaitingResources(projectFullName, taskId)) {
+        if(isAnotherBuildWaitingResources(projectFullName, taskId)) {
             // The project has another buildable item waiting -> bail out
             LOGGER.log(Level.FINEST, "{0} has another build waiting resources."
                     + " Waiting for it to proceed first.",
@@ -673,11 +674,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     LOGGER.log(Level.FINEST, "{0} has another build "
                             + "that already queued resource {1}. Continue queueing.",
                             new Object[] {projectFullName, resource});
-                    return false;
+                    return true;
                 }
             }
         }
-        return true;
+        return false;
     }
 
     /*

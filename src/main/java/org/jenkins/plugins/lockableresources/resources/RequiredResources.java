@@ -38,15 +38,12 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
     protected String labels; // Single label or list of capabilities (space or comma separated) ('resources' must be null/empty)
     @Exported
     protected Integer quantity; // Nb of resources required (only with 'resources' == null/empty)
-    @Exported
-    protected String variableName; // Name of variable that will store locked resources after selection
 
     @DataBoundConstructor
-    public RequiredResources(String resources, String labels, int quantity, String variableName) {
+    public RequiredResources(String resources, String labels, int quantity) {
         this.resources = Util.fixNull(resources);
         this.labels = Util.fixNull(labels);
         this.quantity = quantity;
-        this.variableName = Util.fixNull(variableName);
     }
 
     /**
@@ -102,16 +99,6 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
     }
 
     @Exported
-    public String getVariableName() {
-        return variableName;
-    }
-
-    @DataBoundSetter
-    public void setVariableName(String variableName) {
-        this.variableName = variableName;
-    }
-
-    @Exported
     public Integer getQuantity() {
         return quantity;
     }
@@ -158,12 +145,6 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
                 lbl.append(", ");
             }
             lbl.append("Quantity: ").append(quantity);
-        }
-        if(Util.fixEmpty(variableName) != null) {
-            if(lbl.length() > 1) {
-                lbl.append(", ");
-            }
-            lbl.append("Variable: ").append(variableName);
         }
         lbl.append(")");
         return lbl.toString();

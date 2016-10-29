@@ -50,7 +50,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     public final void setResource(String resource) {
         if(resource != null) {
             if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
-                requiredResourcesList = Lists.newArrayList(new RequiredResources(resource, null, 0, null));
+                requiredResourcesList = Lists.newArrayList(new RequiredResources(resource, null, 0));
             } else {
                 RequiredResources rr = requiredResourcesList.iterator().next();
                 rr.setResources(resource);
@@ -62,7 +62,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     public void setResources(Collection<String> resources) {
         if(resources != null) {
             for(String myResource: resources) {
-                RequiredResources rr = new RequiredResources(myResource, null, 0, null);
+                RequiredResources rr = new RequiredResources(myResource, null, 0);
                 if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
                     requiredResourcesList = Lists.newArrayList(rr);
                 } else {
@@ -76,7 +76,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     public void setLabel(String label) {
         if(label != null) {
             if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
-                requiredResourcesList = Lists.newArrayList(new RequiredResources(null, label, 0, null));
+                requiredResourcesList = Lists.newArrayList(new RequiredResources(null, label, 0));
             } else {
                 RequiredResources rr = requiredResourcesList.iterator().next();
                 rr.setLabels(label);
@@ -98,7 +98,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     public void setLabels(Collection<String> labels) {
         if(labels != null) {
             for(String label: labels) {
-                RequiredResources rr = new RequiredResources(null, label, 0, null);
+                RequiredResources rr = new RequiredResources(null, label, 0);
                 if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
                     requiredResourcesList = Lists.newArrayList(rr);
                 } else {
@@ -148,7 +148,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     public Object readResolve() {
         if(resource != null) {
             requiredResourcesList = new ArrayList<>();
-            requiredResourcesList.add(new RequiredResources(resource, "", 1, ""));
+            requiredResourcesList.add(new RequiredResources(resource, "", 1));
         }
         return this;
     }

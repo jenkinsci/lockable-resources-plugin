@@ -32,13 +32,13 @@ import org.kohsuke.stapler.StaplerResponse;
 
 @Extension
 public class LockableResourcesRootAction implements RootAction {
-    private static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
+    public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
             LockableResourcesManager.class, Messages._permissionGroup());
-    private static final Permission UNLOCK = new Permission(PERMISSIONS_GROUP,
+    public static final Permission UNLOCK = new Permission(PERMISSIONS_GROUP,
             Messages.unlockPermission(),
             Messages._unlockPermission_Description(), Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
-    private static final Permission RESERVE = new Permission(PERMISSIONS_GROUP,
+    public static final Permission RESERVE = new Permission(PERMISSIONS_GROUP,
             Messages.reservePermission(),
             Messages._reservePermission_Description(), Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
@@ -100,7 +100,9 @@ public class LockableResourcesRootAction implements RootAction {
 
     public void doUnlock(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        Jenkins.getInstance().checkPermission(UNLOCK);
+        if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
+            throw new AccessDeniedException2(Jenkins.getAuthentication(), UNLOCK);
+        }
 
         String name = req.getParameter("resource");
         LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
@@ -118,7 +120,9 @@ public class LockableResourcesRootAction implements RootAction {
 
     public void doReserve(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        Jenkins.getInstance().checkPermission(RESERVE);
+        if(!Jenkins.getInstance().hasPermission(RESERVE)) {
+            throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+        }
 
         String name = req.getParameter("resource");
         LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
@@ -139,7 +143,9 @@ public class LockableResourcesRootAction implements RootAction {
 
     public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        Jenkins.getInstance().checkPermission(RESERVE);
+        if(!(Jenkins.getInstance().hasPermission(UNLOCK) || Jenkins.getInstance().hasPermission(RESERVE))) {
+            throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+        }
 
         String name = req.getParameter("resource");
         LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
@@ -149,10 +155,10 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         String userName = getUserName();
-        if((userName == null || !userName.equals(r.getReservedBy()))
-                && !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER)) {
-            throw new AccessDeniedException2(Jenkins.getAuthentication(),
-                    RESERVE);
+        if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
+            if((userName == null) || !userName.equals(r.getReservedBy())) {
+                throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+            }
         }
 
         List<LockableResource> resources = new ArrayList<>();
@@ -164,7 +170,9 @@ public class LockableResourcesRootAction implements RootAction {
 
     public void doReset(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        Jenkins.getInstance().checkPermission(UNLOCK);
+        if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
+            throw new AccessDeniedException2(Jenkins.getAuthentication(), UNLOCK);
+        }
 
         String name = req.getParameter("resource");
         LockableResource r = LockableResourcesManager.get().getResourceFromName(name);

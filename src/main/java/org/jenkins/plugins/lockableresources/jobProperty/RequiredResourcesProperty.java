@@ -38,6 +38,8 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
     private transient final String labelName = null;
     @Exported
     protected Collection<RequiredResources> requiredResourcesList = new ArrayList<>();
+    @Exported
+    protected String variableName = null;
 
     /**
      * Backward compatibility
@@ -67,6 +69,16 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
         this.requiredResourcesList = requiredResourcesList;
     }
 
+    @Exported
+    public String getVariableName() {
+        return variableName;
+    }
+
+    @DataBoundSetter
+    public void setVariableName(String variableName) {
+        this.variableName = variableName;
+    }
+
     /**
      * Magically called when imported from XML file
      * Manage backward compatibility
@@ -83,7 +95,10 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
                 }
             }
             requiredResourcesList = new ArrayList<>();
-            requiredResourcesList.add(new RequiredResources(Util.fixNull(resourceNames), Util.fixNull(labelName), n, Util.fixNull(resourceNamesVar)));
+            requiredResourcesList.add(new RequiredResources(Util.fixNull(resourceNames), Util.fixNull(labelName), n));
+        }
+        if(resourceNamesVar != null) {
+            variableName = resourceNamesVar;
         }
         return this;
     }

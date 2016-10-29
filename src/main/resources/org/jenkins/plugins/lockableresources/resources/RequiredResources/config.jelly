@@ -11,16 +11,13 @@
  -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
 	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-    <f:entry title="${%Resources}" field="resources">
+    <f:entry title="${%Resources names}" field="resources">
         <f:textbox autoCompleteDelimChar=" "/>
     </f:entry>
     <f:entry title="${%Capabilities}" field="labels">
         <f:textbox autoCompleteDelimChar=" "/>
     </f:entry>
-    <f:entry title="${%Reserved resources variable name}" field="variableName">
-        <f:textbox/>
-    </f:entry>
-    <f:entry title="${%Number of resources to request}" field="quantity">
+    <f:entry title="${%Number of resources with selected capabilities}" field="quantity">
         <f:textbox/>
     </f:entry>
 </j:jelly>
