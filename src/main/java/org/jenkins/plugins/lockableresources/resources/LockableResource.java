@@ -87,11 +87,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundConstructor
-    public LockableResource(String name) {
+    public LockableResource(@Nullable String name) {
         this.name = name;
     }
 
-    public LockableResource(String name, String labels) {
+    public LockableResource(@Nullable String name, @Nonnull String labels) {
         this.name = name;
         this.labels = labels;
     }
@@ -113,12 +113,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     @DataBoundSetter
     public void setLabels(String labels) {
-        this.labels = labels;
+        this.labels = Util.fixNull(labels);
     }
 
     @Exported
     public String getLabels() {
-        if(labels.startsWith(GROOVY_LABEL_MARKER)) {
+        if((labels != null) && labels.startsWith(GROOVY_LABEL_MARKER)) {
             return "";
         }
         return labels;
@@ -139,7 +139,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public Set<ResourceCapability> getCapabilities() {
-        if(labels.startsWith(GROOVY_LABEL_MARKER)) {
+        if((labels != null) && labels.startsWith(GROOVY_LABEL_MARKER)) {
             // Special case: the whole label is a groovy script
             return new TreeSet<>();
         }
@@ -193,9 +193,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     private boolean expressionMatches(String expression, @Nonnull EnvVars env) {
         Binding binding = new Binding(env);
-        binding.setVariable("resourceName", name);
-        binding.setVariable("resourceDescription", description);
-        binding.setVariable("resourceLabels", labels);
+        binding.setVariable("resourceName", Util.fixNull(name));
+        binding.setVariable("resourceDescription", Util.fixNull(description));
+        binding.setVariable("resourceLabels", Util.fixNull(labels));
         String expressionToEvaluate = expression.replace(GROOVY_LABEL_MARKER, "");
         GroovyShell shell = new GroovyShell(binding);
         try {
@@ -261,6 +261,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     public boolean isLocked() {
         return getBuild() != null;
     }
+
     public boolean isLockedByBuild(@Nonnull Run<?, ?> build) {
         return (this.buildExternalizableId != null) && (this.buildExternalizableId.equals(build.getExternalizableId()));
     }

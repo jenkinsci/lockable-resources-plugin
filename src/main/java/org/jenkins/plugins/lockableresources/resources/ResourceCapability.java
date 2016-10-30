@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.jobParameter.LockableResourcesParameterDefinition;
@@ -74,11 +75,15 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
         }
         StringBuilder sb = new StringBuilder();
         for(ResourceCapability s : capabilities) {
-            sb.append(s.getName()).append(' ');
+            if(sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(s.getName());
         }
         return sb.toString().trim();
     }
 
+    @Nonnull
     public static Set<ResourceCapability> splitCapabilities(@Nullable String label) {
         Set<String> labels = Utils.splitLabels(label);
         Set<ResourceCapability> res = new HashSet<>();

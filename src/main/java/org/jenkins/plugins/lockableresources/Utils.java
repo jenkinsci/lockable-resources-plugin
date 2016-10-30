@@ -17,7 +17,10 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +41,7 @@ public abstract class Utils {
             if(label.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
                 res.add(label);
             } else if(!label.isEmpty()) {
-                res.addAll(Arrays.asList(label.split("[\\s,]\\s*")));
+                res.addAll(Arrays.asList(label.split("[\\s,]+\\s*")));
             }
         }
         return res;
@@ -51,7 +54,7 @@ public abstract class Utils {
         }
         return null;
     }
-    
+
     @Nonnull
     public static Job<?, ?> getProject(@Nonnull Run<?, ?> build) {
         return build.getParent();
@@ -144,5 +147,22 @@ public abstract class Utils {
     public static EnvVars getEnvVars(@Nonnull Queue.Item item) {
         Map<String, String> params = getParameters(item);
         return new EnvVars(params);
+    }
+
+    @Nonnull
+    public static String getParameterValue(@Nonnull Collection<LockableResource> resources) {
+        ArrayList<String> resourcesNames = new ArrayList<>(resources.size());
+        for(LockableResource r : resources) {
+            resourcesNames.add(r.getName());
+        }
+        Collections.sort(resourcesNames);
+        StringBuilder lbl = new StringBuilder();
+        for(String name : resourcesNames) {
+            if(lbl.length() > 0) {
+                lbl.append(", ");
+            }
+            lbl.append(name);
+        }
+        return lbl.toString();
     }
 }

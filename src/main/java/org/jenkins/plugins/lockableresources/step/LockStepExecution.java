@@ -55,11 +55,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         // Determine if there are enough resources available to proceed
         // Function 'proceed' is called inside lock if execution is possible
         // Else, the task is queued for later retry
-        Set<LockableResource> selected = manager.selectFreeResources(step.requiredResourcesList, null, env);
-        if(selected == null || !LockableResourcesManager.get().lock(selected, step.requiredResourcesList, run, getContext(), step.inversePrecedence)) {
-            listener.getLogger().println(step + " is locked, waiting...");
-            LockableResourcesManager.get().queueContext(getContext(), step.requiredResourcesList);
-        }
+        LockableResourcesManager.get().lockOrQueueForLater(step, getContext());
         return false; //asynchronous step execution
     }
 

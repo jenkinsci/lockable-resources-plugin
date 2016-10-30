@@ -54,9 +54,9 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
     public LockableResourcesParameterDefinition(String name, String description, Boolean onlyResourceNames, LinkedHashSet<ResourceCapability> selectedCapabilities, LinkedHashSet<ResourceCapability> neededCapabilities, LinkedHashSet<ResourceCapability> prohibitedCapabilities) {
         super(name, description);
         this.onlyResourceNames = onlyResourceNames;
-         this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
-         this.neededCapabilities = (neededCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : neededCapabilities;
-         this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : prohibitedCapabilities; 
+        this.selectedCapabilities = (selectedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : selectedCapabilities;
+        this.neededCapabilities = (neededCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : neededCapabilities;
+        this.prohibitedCapabilities = (prohibitedCapabilities == null) ? new LinkedHashSet<ResourceCapability>() : prohibitedCapabilities;
     }
 
     @Exported

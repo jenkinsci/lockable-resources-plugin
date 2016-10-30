@@ -21,6 +21,8 @@ import org.kohsuke.stapler.export.Exported;
 public class LockStep extends AbstractStepImpl implements Serializable {
     private static final long serialVersionUID = 1L;
     @Exported
+    protected String variable = null;
+    @Exported
     protected Collection<RequiredResources> requiredResourcesList = new ArrayList<>();
     @Exported
     protected Boolean inversePrecedence = false; // Queue management: false = FIFO / true = LIFO
@@ -57,11 +59,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
             }
         }
     }
-    
+
     @DataBoundSetter
     public void setResources(Collection<String> resources) {
         if(resources != null) {
-            for(String myResource: resources) {
+            for(String myResource : resources) {
                 RequiredResources rr = new RequiredResources(myResource, null, 0);
                 if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
                     requiredResourcesList = Lists.newArrayList(rr);
@@ -83,21 +85,21 @@ public class LockStep extends AbstractStepImpl implements Serializable {
             }
         }
     }
-    
+
     @DataBoundSetter
     public void setCapability(String capability) {
         setLabel(capability);
     }
-    
+
     @DataBoundSetter
     public void setCapabilities(Collection<String> capabilities) {
         setLabels(capabilities);
     }
-    
+
     @DataBoundSetter
     public void setLabels(Collection<String> labels) {
         if(labels != null) {
-            for(String label: labels) {
+            for(String label : labels) {
                 RequiredResources rr = new RequiredResources(null, label, 0);
                 if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
                     requiredResourcesList = Lists.newArrayList(rr);
@@ -128,6 +130,16 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     @Exported
     public Collection<RequiredResources> getRequiredResources() {
         return this.requiredResourcesList;
+    }
+
+    @DataBoundSetter
+    public void setVariable(String variable) {
+        this.variable = variable;
+    }
+
+    @Exported
+    public String getVariable() {
+        return this.variable;
     }
 
     @Override

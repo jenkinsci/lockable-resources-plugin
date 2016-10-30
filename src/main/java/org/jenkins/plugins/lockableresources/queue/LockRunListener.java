@@ -15,7 +15,6 @@ import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.Job;
 import hudson.model.Run;
-import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import java.util.Collection;
@@ -25,7 +24,6 @@ import javax.annotation.Nonnull;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
-import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
@@ -58,14 +56,9 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             }
             Collection<RequiredResources> requiredResourcesList = property.getRequiredResourcesList();
             Set<LockableResource> selected = manager.getQueuedResourcesFromProject(project.getFullName());
-            boolean locked = manager.lock(selected, requiredResourcesList, build, null, false);
+            boolean locked = manager.lock(selected, requiredResourcesList, build, null, false, property.getVariableName());
             if(locked) {
                 listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, selected);
-                if(property.getVariableName() != null) {
-                    build.addAction(new ResourceVariableNameAction(new StringParameterValue(
-                            property.getVariableName(),
-                            selected.toString().replaceAll("[\\]\\[]", ""))));
-                }
             }
             build.addAction(LockedResourcesBuildAction.fromResources(selected));
         }

@@ -62,11 +62,11 @@ public class LockedResourcesBuildAction implements Action {
             this.name = resource.getName();
             this.description = resource.getDescription();
         }
-        
+
         public String getName() {
             return name;
         }
-        
+
         public String getDescription() {
             return description;
         }

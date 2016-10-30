@@ -1,96 +1,87 @@
 package org.jenkins.plugins.lockableresources;
 
 import com.google.common.collect.Sets;
-import hudson.EnvVars;
+import hudson.model.Job;
+import hudson.model.Queue;
 import hudson.model.Run;
 import java.util.Set;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.assertj.core.api.Assertions;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.util.ReflectionTestUtils.setField;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({Utils.class, Job.class, Queue.Item.class, LockableResourcesManager.class})
 public class LockableResourcesManagerTest {
-    private LockableResourcesManager lockableResourcesManager;
-
     @Before
-    public void setUp() {
-        lockableResourcesManager = new LockableResourcesManager() {
-            @Override
-            public synchronized void load() {
-                // Nothing to do
-            }
-        };
+    public void setup() {
+        PowerMockito.mockStatic(Utils.class);
+        PowerMockito.mockStatic(LockableResourcesManager.class);
     }
 
     @Test
     public void should_get_resources_from_project() throws Exception {
         // Given
         String fullName = "my-project";
-        String label = "r1";
-        EnvVars env = new EnvVars();
+        String queueItemProject = "other-project";
+        Job<?, ?> project1 = mockups.createProjectMock("Project2", queueItemProject);
+        Job<?, ?> project2 = mockups.createProjectMock("Project1", fullName);
+        Queue.Item item1_1 = mockups.createQueuedItemMock(project1, 1);
+        Queue.Item item2_1 = mockups.createQueuedItemMock(project2, 1);
+        Queue.Item item2_2 = mockups.createQueuedItemMock(project2, 2);
 
-        LockableResource resource1 = mockLockableResource("resource1", "r1");
-        LockableResource resource2 = mockLockableResource("resource2", "r2");
-        LockableResource resource3 = mockLockableResource("resource3", "r3");
+        LockableResource resource1 = mockups.createQueuedLockableResourceMock("resource1", "desc", "r1", project1, item1_1);
+        LockableResource resource2 = mockups.createQueuedLockableResourceMock("resource2", "desc", "r2", project2, item2_1);
+        LockableResource resource3 = mockups.createQueuedLockableResourceMock("resource3", "desc", "r3", project2, item2_2);
 
         Set<LockableResource> resources = Sets.newHashSet();
-
         resources.add(resource1);
         resources.add(resource2);
         resources.add(resource3);
 
-        setField(lockableResourcesManager, "resources", resources, Set.class);
-
-        String queueItemProject = "other-project";
-
-        when(resource1.getQueueItemProject()).thenReturn(queueItemProject);
-        when(resource2.getQueueItemProject()).thenReturn(fullName);
-        when(resource3.getQueueItemProject()).thenReturn(fullName);
-
         // When
+        LockableResourcesManager lockableResourcesManager = mockups.createLockableResourcesManagerMock(resources, false);
+        Mockito.when(lockableResourcesManager.getQueuedResourcesFromProject(fullName)).thenCallRealMethod();
         Set<LockableResource> matching = lockableResourcesManager.getQueuedResourcesFromProject(fullName);
 
         // Then
-        verify(resource1).getQueueItemProject();
-        verify(resource2).getQueueItemProject();
+        Mockito.verify(resource1).getQueueItemProject();
+        Mockito.verify(resource2).getQueueItemProject();
+        Mockito.verify(resource3).getQueueItemProject();
 
-        assertThat(matching).containsExactlyInAnyOrder(resource2, resource3);
+        Assertions.assertThat(matching).containsExactlyInAnyOrder(resource2, resource3);
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void should_get_resources_from_build() throws Exception {
         // Given
-        Run build = mock(Run.class);
+        Job<?, ?> project = mockups.createProjectMock("Project", "MyProject");
+        Queue.Item item = mockups.createQueuedItemMock(project, 1);
+        Run build = mockups.createBuildMock(item, null);
 
-        LockableResource resource1 = mock(LockableResource.class);
-        LockableResource resource2 = mock(LockableResource.class);
+        LockableResource resource1 = mockups.createLockedLockableResourceMock("resource1", "desc", "r1", project, item, build);
+        LockableResource resource2 = mockups.createQueuedLockableResourceMock("resource2", "desc", "r2", project, item);
+        LockableResource resource3 = mockups.createFreeLockableResourceMock("resource3", "desc", "r3");
+        LockableResource resource4 = mockups.createReservedLockableResourceMock("resource4", "desc", "r4", "ReservedBySomeone");
 
         Set<LockableResource> resources = Sets.newHashSet();
-
         resources.add(resource1);
         resources.add(resource2);
-
-        setField(lockableResourcesManager, "resources", resources, Set.class);
-
-        when(resource1.getBuild()).thenReturn(build);
+        resources.add(resource3);
+        resources.add(resource4);
 
         // When
-        Set<LockableResource> matching = lockableResourcesManager.getLockedResourcesFromBuild(build);
+        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(resources, false);
+        Mockito.when(manager.getLockedResourcesFromBuild(build)).thenCallRealMethod();
+        Set<LockableResource> matching = manager.getLockedResourcesFromBuild(build);
 
         // Then
-        assertThat(matching).containsExactly(resource1);
-    }
-
-    private LockableResource mockLockableResource(String name, String labels) throws Exception {
-        LockableResource resource = mock(LockableResource.class);
-
-        setField(resource, "name", name, String.class);
-        setField(resource, "labels", labels, String.class);
-
-        return resource;
+        Assertions.assertThat(matching).containsExactly(resource1);
     }
 }

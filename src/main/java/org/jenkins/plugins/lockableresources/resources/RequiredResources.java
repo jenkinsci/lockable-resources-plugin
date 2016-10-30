@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
@@ -108,14 +109,17 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
         this.quantity = quantity;
     }
 
+    @Nullable
     public Set<LockableResource> getResourcesList(@Nullable EnvVars env) {
         return LockableResourcesManager.get().getResourcesFromNames(getResourceNamesList(env));
     }
 
+    @Nonnull
     public Set<String> getResourceNamesList(@Nullable EnvVars env) {
         return Utils.splitLabels(getExpandedResources(env));
     }
 
+    @Nonnull
     public Set<ResourceCapability> getCapabilitiesList(@Nullable EnvVars env) {
         return ResourceCapability.splitCapabilities(getExpandedLabels(env));
     }
@@ -158,46 +162,54 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
         }
 
         public static FormValidation doCheckResources(@QueryParameter String value) {
-            String names = Util.fixEmptyAndTrim(value);
-            if(names == null) {
+            String v = Util.fixNull(value).trim();
+            if(v.startsWith("$")) {
+                return FormValidation.ok();
+            }
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            Set<String> wrongNames = manager.getInvalidResourceNames(Utils.splitLabels(value));
+            if(wrongNames.isEmpty()) {
                 return FormValidation.ok();
             } else {
-                LockableResourcesManager manager = LockableResourcesManager.get();
-                Set<String> wrongNames = manager.getInvalidResourceNames(Utils.splitLabels(value));
-                if(wrongNames.isEmpty()) {
-                    return FormValidation.ok();
-                } else {
-                    return FormValidation.error("The following resources do not exist: " + wrongNames);
-                }
+                return FormValidation.warning("The following resources do not exist: " + wrongNames);
             }
         }
 
-        public static FormValidation doCheckLabels(
-                @QueryParameter String value,
-                @QueryParameter String resources) {
-            String label = Util.fixEmptyAndTrim(value);
-            String names = Util.fixEmptyAndTrim(resources);
-            if(label == null) {
-                return FormValidation.ok();
-            } else if(names != null) {
-                return FormValidation.error("Only label or resources can be defined, not both.");
-            } else {
-                Set<String> labels = Utils.splitLabels(label);
-                for(String l : labels) {
-                    if(!LockableResourcesManager.get().isValidLabel(l, true)) {
-                        return FormValidation.error("The label does not exist: " + l);
-                    }
-                }
+        public static FormValidation doCheckLabels(@QueryParameter String value) {
+            String v = Util.fixNull(value).trim();
+            if(v.startsWith("$")) {
                 return FormValidation.ok();
             }
+            if(v.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+                return FormValidation.ok();
+            }
+            Set<String> labels = Utils.splitLabels(value);
+            for(String l : labels) {
+                if(!LockableResourcesManager.get().isValidLabel(l, true)) {
+                    return FormValidation.warning("The label does not exist: " + l);
+                }
+            }
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            Set<ResourceCapability> capabilities = ResourceCapability.splitCapabilities(value);
+            int numResources = manager.getResourcesFromCapabilities(capabilities, null, null).size();
+            if(numResources <= 0) {
+                return FormValidation.warning("No resource with these capabilities");
+            }
+            return FormValidation.ok();
         }
 
         public static FormValidation doCheckQuantity(
                 @QueryParameter String value,
-                @QueryParameter String resources) {
+                @QueryParameter String labels) {
             String number = Util.fixEmptyAndTrim(value);
-            String names = Util.fixEmptyAndTrim(resources);
             if(number == null || number.equals("0")) {
+                return FormValidation.ok();
+            }
+            String v = Util.fixNull(labels).trim();
+            if(v.isEmpty()) {
+                return FormValidation.error("At least one requested capability is mandatory");
+            }
+            if(v.startsWith("$")) {
                 return FormValidation.ok();
             }
             int numAsInt;
@@ -206,11 +218,11 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
             } catch(NumberFormatException e) {
                 return FormValidation.error("Invalid integer value.");
             }
-            if(names != null) {
-                int numResources = Utils.splitLabels(names).size();
-                if(numResources < numAsInt) {
-                    return FormValidation.error("Given amount " + numAsInt + " is greater than amount of resources: " + numResources + ".");
-                }
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            Set<ResourceCapability> capabilities = ResourceCapability.splitCapabilities(labels);
+            int numResources = manager.getResourcesFromCapabilities(capabilities, null, null).size();
+            if(numResources < numAsInt) {
+                return FormValidation.warning("Given amount " + numAsInt + " is greater than amount of resources: " + numResources + ".");
             }
             return FormValidation.ok();
         }

@@ -1,21 +1,21 @@
 <?jelly escape-by-default='true'?>
 <!--
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- -->
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+*                                                                     *
+* This file is part of the Jenkins Lockable Resources Plugin and is   *
+* published under the MIT license.                                    *
+*                                                                     *
+* See the "LICENSE.txt" file for more information.                    *
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+-->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
-	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
     <f:entry title="${%Resources names}" field="resources">
-        <f:textbox autoCompleteDelimChar=" "/>
+        <f:textbox autoCompleteDelimChar=","/>
     </f:entry>
     <f:entry title="${%Capabilities}" field="labels">
-        <f:textbox autoCompleteDelimChar=" "/>
+        <f:textbox autoCompleteDelimChar=","/>
     </f:entry>
     <f:entry title="${%Number of resources with selected capabilities}" field="quantity">
         <f:textbox/>

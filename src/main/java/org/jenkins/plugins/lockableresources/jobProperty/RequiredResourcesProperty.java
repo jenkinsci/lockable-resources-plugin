@@ -54,9 +54,10 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
         super();
     }
 
-    public RequiredResourcesProperty(Collection<RequiredResources> requiredResourcesList) {
+    public RequiredResourcesProperty(Collection<RequiredResources> requiredResourcesList, String variableName) {
         super();
         this.requiredResourcesList = requiredResourcesList;
+        this.variableName = variableName;
     }
 
     @Exported
