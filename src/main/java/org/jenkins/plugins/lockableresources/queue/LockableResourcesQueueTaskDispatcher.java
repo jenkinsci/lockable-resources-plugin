@@ -19,7 +19,7 @@ import hudson.model.queue.CauseOfBlockage;
 import hudson.model.queue.QueueTaskDispatcher;
 import java.util.Collection;
 import java.util.Set;
-import javax.annotation.Nullable;
+import javax.annotation.CheckForNull;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
@@ -56,7 +56,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         return getCauseOfBlockage(project, item);
     }
 
-    @Nullable
+    @CheckForNull
     private static CauseOfBlockage getCauseOfBlockage(Job<?, ?> project, Queue.Item item) {
         Set<LockableResource> selected = LockableResourcesManager.get().queue(project, item);
         if(selected == null) {

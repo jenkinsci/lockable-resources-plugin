@@ -9,13 +9,17 @@
 package org.jenkins.plugins.lockableresources;
 
 import hudson.EnvVars;
+import hudson.Util;
 import hudson.matrix.MatrixConfiguration;
+import hudson.model.Cause;
 import hudson.model.Job;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.model.User;
+import hudson.triggers.SCMTrigger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,8 +30,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.jobParameter.LockableResourcesParameterValue;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -47,7 +53,7 @@ public abstract class Utils {
         return res;
     }
 
-    @Nullable
+    @CheckForNull
     public static Job getProject(@Nonnull Queue.Item item) {
         if(item.task instanceof Job) {
             return (Job) item.task;
@@ -73,7 +79,7 @@ public abstract class Utils {
     }
 
     @Nonnull
-    private static Map<String, String> getParameters(@Nonnull List<ParametersAction> paramsActions, @Nullable Job<?, ?> job) {
+    private static Map<String, String> getParameters(@Nonnull List<ParametersAction> paramsActions, @CheckForNull Job<?, ?> job) {
         HashMap<String, String> params = new HashMap<>();
         for(ParametersAction pa : paramsActions) {
             if(pa != null) {
@@ -164,5 +170,87 @@ public abstract class Utils {
             lbl.append(name);
         }
         return lbl.toString();
+    }
+
+    @CheckForNull
+    public static String getUserId() {
+        User user = User.current();
+
+        if(user != null) {
+            return user.getId();
+        } else {
+            return null;
+        }
+    }
+
+    @CheckForNull
+    public static String getUserId(@Nullable String userName) {
+        String myName = Util.fixEmptyAndTrim(userName);
+        if(myName == null) {
+            return null;
+        }
+        User user = User.get(myName, false, new HashMap());
+
+        if(user != null) {
+            return user.getId();
+        } else {
+            return myName;
+        }
+    }
+
+    @CheckForNull
+    public static String getUserName(@Nullable String userId) {
+        String myId = Util.fixEmptyAndTrim(userId);
+        if(myId == null) {
+            return null;
+        }
+        User user = User.getById(myId, false);
+
+        if(user != null) {
+            return user.getFullName();
+        } else {
+            return myId;
+        }
+    }
+
+    @CheckForNull
+    public static String getUserId(@Nullable Run<?, ?> build) {
+        if(build == null) {
+            return null;
+        }
+        return getUserId(build.getCauses());
+    }
+
+    @CheckForNull
+    public static String getUserId(@Nullable Queue.Item item) {
+        if(item == null) {
+            return null;
+        }
+        return getUserId(item.getCauses());
+    }
+    
+    @CheckForNull
+    private static String getUserId(@Nonnull Collection<Cause> causes) {
+        String defaultResult = null;
+        for(Cause cause : causes) {
+            if(cause instanceof Cause.UpstreamCause) {
+                Cause.UpstreamCause upstreamCause = (Cause.UpstreamCause) cause;
+                Job job = Jenkins.getInstance().getItemByFullName(upstreamCause.getUpstreamProject(), Job.class);
+                if(job != null) {
+                    Run upstream = job.getBuildByNumber(upstreamCause.getUpstreamBuild());
+                    if(upstream != null) {
+                        defaultResult = getUserId(upstream);
+                    }
+                }
+            }
+            if((defaultResult == null) && (cause instanceof SCMTrigger.SCMTriggerCause)) {
+                defaultResult = "SCM";
+            }
+            if(cause instanceof Cause.UserIdCause) {
+                Cause.UserIdCause userIdCause = (Cause.UserIdCause) cause;
+                return userIdCause.getUserId();
+            }
+        }
+        return defaultResult;
     }
 }

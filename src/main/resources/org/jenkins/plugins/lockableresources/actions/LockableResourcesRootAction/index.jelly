@@ -27,16 +27,26 @@
                     <j:forEach var="resource" items="${it.resources}" indexVar="i">
                         <script>
                             function unlock_resource_${i}() {
+                            if(!confirm("Are you sure ? A conflict with another job may occures.")) {return}
                             window.location.assign("unlock?resource=${resource.name}");
                             }
                             function reserve_resource_${i}() {
                             window.location.assign("reserve?resource=${resource.name}");
                             }
                             function unreserve_resource_${i}() {
+                            if(!confirm("Are you sure ? You will lost reservation of this resource.")) {return}
                             window.location.assign("unreserve?resource=${resource.name}");
                             }
                             function reset_resource_${i}() {
+                            if(!confirm("Are you sure ? A conflict with another job may occures.")) {return}
                             window.location.assign("reset?resource=${resource.name}");
+                            }
+                            function reserveFor_resource_${i}() {
+                            var forUser = prompt("Id/full name of the user:", "${it.UserId}");
+                            if(forUser == null) {return}
+                            var hours = prompt("Duration of the reservation (&lt;= ${it.maxReservationHours} hours):", "${it.defaultReservationHours}");
+                            if(hours == null) {return}
+                            window.location.assign("reserveFor?resource=${resource.name}&amp;forUser=" + forUser + "&amp;hours=" + hours);
                             }
                         </script>
                         <tr>
@@ -60,41 +70,56 @@
                                 </td>
                             </j:if>
                             <j:if test="${!resource.locked}">
-                                <j:if test="${resource.reservedBy != null}">
-                                    <td class="pane" style="color: red;">
-                                        <strong>RESERVED</strong> by <strong>${resource.reservedBy}</strong>
+                                <j:if test="${resource.queued}">
+                                    <td class="pane" style="color: yellow;">
+                                        QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
                                     </td>
                                     <td class="pane">${resource.labels}</td>
                                     <td class="pane">
-                                        <j:if test="${app.hasPermission(it.RESERVE) or app.hasPermission(it.UNLOCK)}">
-                                            <j:if test="${it.UserName == resource.reservedBy or app.hasPermission(it.UNLOCK)}">
-                                                <button onClick="unreserve_resource_${i}();">UnReserve</button>
-                                            </j:if>
+                                        <j:if test="${app.hasPermission(it.UNLOCK)}">
+                                            <button onClick="reset_resource_${i}();">ResetResource</button>
                                         </j:if>
                                     </td>
                                 </j:if>
-                                <j:if test="${resource.reservedBy == null}">
-                                    <j:if test="${resource.queued}">
-                                        <td class="pane" style="color: yellow;">
-                                            QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
+                                <j:if test="${!resource.queued}">
+                                    <j:if test="${resource.reservedFor != null}">
+                                        <td class="pane" style="color: #800080;">
+                                            <strong>RESERVED</strong> by ${resource.reservedByName} for <strong>${resource.reservedForName}</strong> until <strong>${resource.reservedUntilString}</strong>
                                         </td>
                                         <td class="pane">${resource.labels}</td>
                                         <td class="pane">
-                                            <j:if test="${app.hasPermission(it.UNLOCK)}">
-                                                <button onClick="reset_resource_${i}();">ResetResource</button>
+                                            <j:if test="${it.UserId == resource.reservedBy or it.UserId == resource.reservedFor or app.hasPermission(it.UNLOCK)}">
+                                                <button onClick="unreserve_resource_${i}();">UnReserve</button>
+                                            </j:if>
+                                            <j:if test="${app.hasPermission(it.RESERVE) and it.UserId != null}">
+                                                <button onClick="reserveFor_resource_${i}();">Change reservation</button>
                                             </j:if>
                                         </td>
                                     </j:if>
-                                    <j:if test="${!resource.queued}">
-                                        <td class="pane" style="color: green;">
-                                            <strong>FREE</strong>
-                                        </td>
-                                        <td class="pane">${resource.labels}</td>
-                                        <td class="pane">
-                                            <j:if test="${app.hasPermission(it.RESERVE) and it.UserName != null}">
-                                                <button onClick="reserve_resource_${i}();">Reserve</button>
-                                            </j:if>
-                                        </td>
+                                    <j:if test="${resource.reservedFor == null}">
+                                        <j:if test="${resource.reservedBy != null}">
+                                            <td class="pane" style="color: grey;">
+                                                <strong>OFFLINE</strong> by <strong>${resource.reservedByName}</strong>
+                                            </td>
+                                            <td class="pane">${resource.labels}</td>
+                                            <td class="pane">
+                                                <j:if test="${it.UserId == resource.reservedBy or app.hasPermission(it.UNLOCK)}">
+                                                    <button onClick="unreserve_resource_${i}();">Set online</button>
+                                                </j:if>
+                                            </td>
+                                        </j:if>
+                                        <j:if test="${resource.reservedBy == null}">
+                                            <td class="pane" style="color: green;">
+                                                <strong>FREE</strong>
+                                            </td>
+                                            <td class="pane">${resource.labels}</td>
+                                            <td class="pane">
+                                                <j:if test="${app.hasPermission(it.RESERVE) and it.UserId != null}">
+                                                    <button onClick="reserveFor_resource_${i}();">Reserve</button>
+                                                    <button onClick="reserve_resource_${i}();">Set offline</button>
+                                                </j:if>
+                                            </td>
+                                        </j:if>
                                     </j:if>
                                 </j:if>
                             </j:if>

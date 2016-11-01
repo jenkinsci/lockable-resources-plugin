@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import jenkins.model.GlobalConfiguration;
@@ -74,6 +75,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * otherwise (freestyle builds) regular Jenkins queue is used.
      */
     private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+    @Exported
+    protected Double defaultReservationHours = 12.0; //hours
+    @Exported
+    protected Double maxReservationHours = 72.0; //hours
 
     @DataBoundConstructor
     public LockableResourcesManager() {
@@ -127,6 +132,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
         this.useFairSelection = useFairSelection;
     }
 
+    @Exported
+    public Double getDefaultReservationHours() {
+        return defaultReservationHours;
+    }
+
+    @DataBoundSetter
+    public void setDefaultReservationHours(Double defaultReservationHours) {
+        this.defaultReservationHours = defaultReservationHours;
+    }
+
+    @Exported
+    public Double getMaxReservationHours() {
+        return maxReservationHours;
+    }
+
+    @DataBoundSetter
+    public void setMaxReservationHours(Double maxReservationHours) {
+        this.maxReservationHours = maxReservationHours;
+    }
+
     public Set<LockableResource> getAllResources() {
         return resources;
     }
@@ -136,23 +161,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return "External Resources";
     }
 
-    public Set<LockableResource> filterFreeResources(Collection<LockableResource> resources) {
+    public Set<LockableResource> filterFreeResources(Collection<LockableResource> resources, @Nullable String userId) {
         HashSet<LockableResource> free = new HashSet<>();
         for(LockableResource r : resources) {
-            if(r.isFree()) {
+            if(r.isFree(userId)) {
                 free.add(r);
             }
         }
         return free;
     }
 
-    public int getFreeAmount(Collection<LockableResource> resources) {
-        return filterFreeResources(resources).size();
+    public int getFreeAmount(Collection<LockableResource> resources, @Nullable String userId) {
+        return filterFreeResources(resources, userId).size();
     }
 
-    public int getFreeAmount(String labels, @Nullable EnvVars env) {
+    public int getFreeAmount(String labels, @Nullable EnvVars env, @Nullable String userId) {
         Set<LockableResource> res = getResourcesFromCapabilities(ResourceCapability.splitCapabilities(labels), null, env);
-        return filterFreeResources(res).size();
+        return filterFreeResources(res, userId).size();
     }
 
     public Set<String> getAllResourceNames() {
@@ -163,7 +188,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return res;
     }
 
-    @Nullable
+    @CheckForNull
     public Set<LockableResource> getResourcesFromNames(@Nonnull Collection<String> resourceNames) {
         LinkedHashSet<LockableResource> res = new LinkedHashSet<>(); // keep same ordering as input
         if(resourceNames.isEmpty()) {
@@ -307,7 +332,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return found;
     }
 
-    @Nullable
+    @CheckForNull
     public RequiredResourcesProperty getProjectRequiredResourcesProperty(Job<?, ?> project) {
         if(project instanceof MatrixConfiguration) {
             project = (Job<?, ?>) project.getParent();
@@ -315,13 +340,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return project.getProperty(RequiredResourcesProperty.class);
     }
 
-    @Nullable
-    public Set<LockableResource> selectFreeResources(Collection<RequiredResources> requiredResourcesList, Collection<LockableResource> forcedFreeResources, EnvVars env) {
-        return selectResources(requiredResourcesList, true, forcedFreeResources, env);
+    @CheckForNull
+    public Set<LockableResource> selectFreeResources(Collection<RequiredResources> requiredResourcesList, Collection<LockableResource> forcedFreeResources, EnvVars env, @Nullable String userId) {
+        return selectResources(requiredResourcesList, true, forcedFreeResources, env, userId);
     }
 
-    @Nullable
-    public Set<LockableResource> selectResources(Collection<RequiredResources> requiredResourcesList, boolean onlyFreeResources, @Nullable Collection<LockableResource> forcedFreeResources, EnvVars env) {
+    @CheckForNull
+    public Set<LockableResource> selectResources(Collection<RequiredResources> requiredResourcesList, boolean onlyFreeResources, @Nullable Collection<LockableResource> forcedFreeResources, EnvVars env, @Nullable String userId) {
         Set<LockableResource> res = new HashSet<>();
         //--------------
         // Add resources by names
@@ -334,7 +359,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             if(onlyFreeResources) {
                 for(LockableResource r : myResources) {
-                    if(r.isFree() || ((forcedFreeResources != null) && forcedFreeResources.contains(r))) {
+                    if(r.isFree(userId) || ((forcedFreeResources != null) && forcedFreeResources.contains(r))) {
                         // Resource can be used (free or allowed)
                         res.add(r);
                     } else {
@@ -357,7 +382,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 candidates.removeAll(res); // Already selected by names: can be re-use for capabilities selection
                 Set<LockableResource> freeCandidates;
                 if(onlyFreeResources) {
-                    freeCandidates = filterFreeResources(candidates);
+                    freeCandidates = filterFreeResources(candidates, userId);
                     if(forcedFreeResources != null) {
                         freeCandidates.addAll(forcedFreeResources);
                         freeCandidates.retainAll(candidates);
@@ -408,8 +433,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for(LockableResource r : resources) {
             Set<ResourceCapability> rc = r.getCapabilities();
             Set<LockableResource> compatibles = getResourcesFromCapabilities(rc, null, env);
-            int nFree = getFreeAmount(compatibles);
-            int nMax = compatibles.size();
+            int nFree = getFreeAmount(compatibles, null);
+            int nMax = compatibles.size(); // >=1
             double cost = (nMax - nFree) * (resources.size() / nMax) + rc.size();
             sortedFree.add(new Tuple2<>(r, cost));
         }
@@ -447,7 +472,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         EnvVars env = Utils.getEnvVars(run, listener);
         Collection<RequiredResources> required = step.getRequiredResources();
-        Set<LockableResource> selected = selectFreeResources(required, null, env);
+        String userId = Utils.getUserId(run);
+        Set<LockableResource> selected = selectFreeResources(required, null, env, userId);
         if(lock(selected, required, run, context, step.getInversePrecedence(), step.getVariable())) {
             return true;
         } else {
@@ -478,10 +504,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if(resources == null) {
             return false;
         }
+        String userId = Utils.getUserId(build);
         for(LockableResource r : resources) {
-            if(!r.canLock()) {
+            if(!r.canLock(userId)) {
                 // At least one resource is not available: abort lock process
-                save();
+                unqueue(resources);
                 return false;
             }
         }
@@ -563,7 +590,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         EnvVars env = Utils.getEnvVars(context);
         LockStep step = nextContext.getStep();
         Collection<RequiredResources> requiredResourcesForNextContext = step.getRequiredResources();
-        Set<LockableResource> resourcesForNextContext = selectFreeResources(requiredResourcesForNextContext, resourcesToUnLock, env);
+        String userId = Utils.getUserId(build);
+        Set<LockableResource> resourcesForNextContext = selectFreeResources(requiredResourcesForNextContext, resourcesToUnLock, env, userId);
         if(resourcesForNextContext != null) {
             //--------------------------
             // Remove context from queue and process it
@@ -591,7 +619,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             for(QueuedContextStruct context : this.queuedContexts) {
                 EnvVars env = Utils.getEnvVars(context.getContext());
                 LockStep step = context.getStep();
-                if(selectFreeResources(step.getRequiredResources(), resourceToUnLock, env) != null) {
+                String userId = Utils.getUserId(context.getBuild());
+                if(selectFreeResources(step.getRequiredResources(), resourceToUnLock, env, userId) != null) {
                     return context;
                 }
             }
@@ -600,7 +629,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             for(QueuedContextStruct context : this.queuedContexts) {
                 EnvVars env = Utils.getEnvVars(context.getContext());
                 LockStep step = context.getStep();
-                if(selectFreeResources(step.getRequiredResources(), resourceToUnLock, env) != null) {
+                String userId = Utils.getUserId(context.getBuild());
+                if(selectFreeResources(step.getRequiredResources(), resourceToUnLock, env, userId) != null) {
                     Run<?, ?> run = context.getBuild();
                     if((run != null) && (run.getStartTimeInMillis() > newest)) {
                         newest = run.getStartTimeInMillis();
@@ -634,27 +664,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return false;
     }
 
-    public synchronized boolean reserve(List<LockableResource> resources, String userName) {
+    public synchronized boolean reserve(List<LockableResource> resources) {
+        return reserve(resources, null, 0);
+    }
+    
+    public synchronized boolean reserve(List<LockableResource> resources, @Nullable String forUser, double hours) {
         for(LockableResource resource : resources) {
-            if(!resource.isFree()) {
-                return false;
-            }
-        }
-        for(LockableResource resource : resources) {
-            resource.setReservedBy(userName);
+            resource.reserveFor(forUser, hours);
         }
         save();
         return true;
     }
 
-    public synchronized void unreserve(List<LockableResource> resources) {
+    public synchronized void unqueue(Collection<LockableResource> resources) {
+        for(LockableResource resource : resources) {
+            resource.unqueue();
+        }
+        save();
+    }
+
+    public synchronized void unreserve(Collection<LockableResource> resources) {
         for(LockableResource resource : resources) {
             resource.unReserve();
         }
         save();
     }
 
-    public synchronized void reset(List<LockableResource> resources) {
+    public synchronized void reset(Collection<LockableResource> resources) {
         for(LockableResource resource : resources) {
             resource.reset();
         }
@@ -675,13 +711,30 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             this.resources.clear();
             this.resources.addAll(newResources);
-            this.useFairSelection = json.getBoolean("useFairSelection");
-            save();
-            return true;
         } catch(JSONException e) {
             LOGGER.log(Level.SEVERE, "manager.configure()", e);
             return false;
         }
+        try {
+            this.useFairSelection = json.getBoolean("useFairSelection");
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            this.useFairSelection = false; //backward compatibility
+        }
+        try {
+            this.defaultReservationHours = json.getDouble("defaultReservationHours");
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            this.defaultReservationHours = 12.0; //backward compatibility
+        }
+        try {
+            this.maxReservationHours = json.getDouble("maxReservationHours");
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            this.maxReservationHours = 72.0; //backward compatibility
+        }
+        save();
+        return true;
     }
 
     /**
@@ -719,7 +772,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         LOGGER.finest(projectFullName + ": trying to get resources with these details: " + requiredResourcesList);
         Set<LockableResource> selected = new HashSet<>(alreadyQueued);
-        selected = selectFreeResources(requiredResourcesList, selected, env);
+        String userId = Utils.getUserId(item);
+        selected = selectFreeResources(requiredResourcesList, selected, env, userId);
 
         if(selected == null) {
             // No enough resources for this build: unqueue all associated resources

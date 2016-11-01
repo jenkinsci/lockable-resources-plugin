@@ -11,7 +11,7 @@ package org.jenkins.plugins.lockableresources.queue;
 import hudson.model.Run;
 import java.io.IOException;
 import java.io.Serializable;
-import javax.annotation.Nullable;
+import javax.annotation.CheckForNull;
 import org.jenkins.plugins.lockableresources.step.LockStep;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
@@ -57,7 +57,7 @@ public class QueuedContextStruct implements Serializable {
         return this.step;
     }
 
-    @Nullable
+    @CheckForNull
     public Run<?, ?> getBuild() {
         try {
             return context.get(Run.class);

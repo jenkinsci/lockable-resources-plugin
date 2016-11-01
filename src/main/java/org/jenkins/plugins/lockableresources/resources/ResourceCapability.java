@@ -155,7 +155,8 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
         public static String getColor(@QueryParameter String name) {
             LockableResourcesManager manager = LockableResourcesManager.get();
             LockableResource r = manager.getResourceFromName(name);
-            if((r != null) && r.isFree()) {
+            String userId = Utils.getUserId();
+            if((r != null) && r.isFree(userId)) {
                 return "#0B610B";
             } else {
                 return "#DF0101";

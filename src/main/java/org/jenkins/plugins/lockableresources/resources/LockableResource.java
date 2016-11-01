@@ -26,8 +26,11 @@ import hudson.model.Run;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -66,6 +69,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     protected String labels = "";
     @Exported
     protected String reservedBy = null;
+    @Exported
+    protected String reservedFor = null;
+    @Exported
+    protected long reservedUntil = 0;
     private long queueItemId = NOT_QUEUED;
     private String queueItemProject = null;
     private transient Run<?, ?> build = null;
@@ -125,17 +132,66 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundSetter
-    public void setReservedBy(String userName) {
-        this.reservedBy = Util.fixEmptyAndTrim(userName);
+    public void setReservedBy(String userId) {
+        this.reservedBy = Util.fixEmptyAndTrim(userId);
     }
-
+    
     @Exported
     public String getReservedBy() {
         return reservedBy;
     }
+    
+    @Exported
+    public String getReservedByName() {
+        return Utils.getUserName(reservedBy);
+    }
+
+    @DataBoundSetter
+    public void setReservedFor(String userId) {
+        this.reservedFor = Util.fixEmptyAndTrim(userId);
+    }
+    
+    @Exported
+    public String getReservedFor() {
+        return reservedFor;
+    }
+    
+    @Exported
+    public String getReservedForName() {
+        return Utils.getUserName(reservedFor);
+    }
+
+    @DataBoundSetter
+    public void setReservedUntil(long reservedUntil) {
+        this.reservedUntil = reservedUntil;
+    }
+    
+    @Exported
+    public long getReservedUntil() {
+        return reservedUntil;
+    }
+    
+    @Exported
+    public String getReservedUntilString() {
+        SimpleDateFormat formater = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        Date d = new Date(reservedUntil);
+        return formater.format(d);
+    }
+    
+    public void reserveFor(String forUser, double hours) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        this.reservedBy = Utils.getUserId();
+        this.reservedFor = Utils.getUserId(forUser);
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.SECOND, (int) Math.round(Math.min(hours, manager.getMaxReservationHours()) * 3600));
+        this.reservedUntil = cal.getTimeInMillis();
+        validateDataTimeout();
+    }
 
     public void unReserve() {
         this.reservedBy = null;
+        this.reservedFor = null;
+        this.reservedUntil = 0;
     }
 
     public Set<ResourceCapability> getCapabilities() {
@@ -215,16 +271,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return Utils.splitLabels(labels).contains(candidate);
     }
 
-    public boolean isReserved() {
+    public boolean isReserved(@Nullable String userId) {
+        validateDataTimeout();
+        if(reservedFor != null) {
+            return (!reservedFor.equals(userId));
+        }
         return reservedBy != null;
     }
 
     public String getReservedByEmail() {
         if(reservedBy != null) {
             Jenkins jenkins = Jenkins.getInstance();
-            if(jenkins == null) {
-                throw new IllegalStateException("Jenkins instance has not been started or was already shut down.");
-            }
             User user = jenkins.getUser(reservedBy);
             if(user != null) {
                 UserProperty email = user.getProperty(UserProperty.class);
@@ -237,18 +294,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public boolean isQueued() {
-        this.validateQueuingTimeout();
+        this.validateDataTimeout();
         return queueItemId != NOT_QUEUED;
     }
 
-    // returns True if queued by any other task than the given one
-    public boolean isQueued(long taskId) {
-        this.validateQueuingTimeout();
-        return queueItemId != NOT_QUEUED && queueItemId != taskId;
-    }
-
     public boolean isQueuedByTask(long taskId) {
-        this.validateQueuingTimeout();
+        this.validateDataTimeout();
         return queueItemId == taskId;
     }
 
@@ -259,6 +310,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public boolean isLocked() {
+        this.validateDataTimeout();
         return getBuild() != null;
     }
 
@@ -266,12 +318,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return (this.buildExternalizableId != null) && (this.buildExternalizableId.equals(build.getExternalizableId()));
     }
 
-    public boolean isFree() {
-        return (!isLocked() && !isReserved() && !isQueued());
+    public boolean isFree(@Nullable String userId) {
+        return (!isLocked() && !isReserved(userId) && !isQueued());
     }
 
-    public boolean canLock() {
-        return (!isLocked() && !isReserved());
+    public boolean canLock(@Nullable String userId) {
+        return (!isLocked() && !isReserved(userId));
     }
 
     /**
@@ -281,11 +333,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     @CheckForNull
     public String getLockCause() {
-        if(isReserved()) {
-            return String.format("[%s] is reserved by %s", name, reservedBy);
-        }
         if(isLocked()) {
-            return String.format("[%s] is locked by %s", name, buildExternalizableId);
+            return String.format("[%s] is locked by '%s'", name, buildExternalizableId);
+        }
+        validateDataTimeout();
+        if(reservedFor != null) {
+            return String.format("[%s] is reserved by '%s' for '%s' until %s", name, reservedBy, reservedFor, getReservedUntilString());
+        } else if(reservedBy != null) {
+            return String.format("[%s] is reserved by '%s'", name, reservedBy);
         }
         return null;
     }
@@ -326,12 +381,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public long getQueueItemId() {
-        this.validateQueuingTimeout();
+        this.validateDataTimeout();
         return queueItemId;
     }
 
     public String getQueueItemProject() {
-        this.validateQueuingTimeout();
+        this.validateDataTimeout();
         return this.queueItemProject;
     }
 
@@ -345,12 +400,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         this.queueItemProject = queueProjectName;
     }
 
-    private void validateQueuingTimeout() {
+    private void validateDataTimeout() {
         if(queuingStarted > 0) {
             long now = System.currentTimeMillis() / 1000;
             if(now - queuingStarted > QUEUE_TIMEOUT) {
                 unqueue();
             }
+        }
+        if((reservedFor != null) && (Calendar.getInstance().getTimeInMillis() > reservedUntil)) {
+            reservedFor = null;
+            reservedBy = null;
+            reservedUntil = 0;
         }
     }
 

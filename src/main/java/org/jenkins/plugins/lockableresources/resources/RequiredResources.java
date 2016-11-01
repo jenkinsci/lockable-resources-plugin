@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.jenkins.plugins.lockableresources.Utils;
@@ -109,7 +110,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
         this.quantity = quantity;
     }
 
-    @Nullable
+    @CheckForNull
     public Set<LockableResource> getResourcesList(@Nullable EnvVars env) {
         return LockableResourcesManager.get().getResourcesFromNames(getResourceNamesList(env));
     }

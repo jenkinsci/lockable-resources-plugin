@@ -59,8 +59,8 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             boolean locked = manager.lock(selected, requiredResourcesList, build, null, false, property.getVariableName());
             if(locked) {
                 listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, selected);
+                build.addAction(LockedResourcesBuildAction.fromResources(selected));
             }
-            build.addAction(LockedResourcesBuildAction.fromResources(selected));
         }
     }
 

@@ -113,7 +113,7 @@ public class LockableResourceTest {
     public void testIsReserved() {
         System.out.println("isReserved");
         boolean expResult = false;
-        boolean result = instance.isReserved();
+        boolean result = instance.isReserved(null);
         assertEquals(expResult, result);
     }
 
@@ -125,18 +125,6 @@ public class LockableResourceTest {
         System.out.println("isQueued");
         boolean expResult = false;
         boolean result = instance.isQueued();
-        assertEquals(expResult, result);
-    }
-
-    /**
-     * Test of isQueued method, of class LockableResource.
-     */
-    @Test
-    public void testIsQueued_int() {
-        System.out.println("isQueued");
-        int taskId = 0;
-        boolean expResult = false;
-        boolean result = instance.isQueued(taskId);
         assertEquals(expResult, result);
     }
 
@@ -221,8 +209,8 @@ public class LockableResourceTest {
     @Test
     public void testSetReservedBy() {
         System.out.println("setReservedBy");
-        String userName = "";
-        instance.setReservedBy(userName);
+        String userId = "";
+        instance.setReservedBy(userId);
     }
 
     /**

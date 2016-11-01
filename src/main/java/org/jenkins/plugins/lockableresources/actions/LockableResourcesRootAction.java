@@ -21,14 +21,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.CheckForNull;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.export.Exported;
 
 @Extension
 public class LockableResourcesRootAction implements RootAction {
@@ -62,16 +65,6 @@ public class LockableResourcesRootAction implements RootAction {
         }
     }
 
-    public String getUserName() {
-        User user = User.current();
-
-        if(user != null) {
-            return user.getFullName();
-        } else {
-            return null;
-        }
-    }
-
     @Override
     public String getDisplayName() {
         return "Lockable Resources";
@@ -82,22 +75,27 @@ public class LockableResourcesRootAction implements RootAction {
         return "lockable-resources";
     }
 
+    @Exported
     public Set<LockableResource> getResources() {
         return LockableResourcesManager.get().getResources();
     }
 
+    @Exported
     public int getFreeResourceAmount(String labels) {
-        return LockableResourcesManager.get().getFreeAmount(labels, null);
+        return LockableResourcesManager.get().getFreeAmount(labels, null, null);
     }
 
+    @Exported
     public Set<String> getAllLabels() {
         return LockableResourcesManager.get().getAllLabels(false);
     }
 
+    @Exported
     public int getNumberOfAllLabels() {
         return LockableResourcesManager.get().getAllLabels(false).size();
     }
 
+    @Exported
     public void doUnlock(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
         if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
@@ -105,7 +103,8 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         String name = req.getParameter("resource");
-        LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource r = manager.getResourceFromName(name);
         if(r == null) {
             rsp.sendError(404, "Resource not found " + name);
             return;
@@ -113,11 +112,12 @@ public class LockableResourcesRootAction implements RootAction {
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
-        LockableResourcesManager.get().unlock(resources);
+        manager.unlock(resources);
 
         rsp.forwardToPreviousPage(req);
     }
 
+    @Exported
     public void doReserve(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
         if(!Jenkins.getInstance().hasPermission(RESERVE)) {
@@ -125,7 +125,8 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         String name = req.getParameter("resource");
-        LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource r = manager.getResourceFromName(name);
         if(r == null) {
             rsp.sendError(404, "Resource not found " + name);
             return;
@@ -133,41 +134,66 @@ public class LockableResourcesRootAction implements RootAction {
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
-        String userName = getUserName();
-        if(userName != null) {
-            LockableResourcesManager.get().reserve(resources, userName);
-        }
+        manager.reserve(resources);
 
         rsp.forwardToPreviousPage(req);
     }
 
-    public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
+    @Exported
+    public void doReserveFor(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        if(!(Jenkins.getInstance().hasPermission(UNLOCK) || Jenkins.getInstance().hasPermission(RESERVE))) {
+        if(!Jenkins.getInstance().hasPermission(RESERVE)) {
             throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
         }
 
         String name = req.getParameter("resource");
-        LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource r = manager.getResourceFromName(name);
+        if(r == null) {
+            rsp.sendError(404, "Resource not found " + name);
+            return;
+        }
+        String forUser = req.getParameter("forUser");
+        Double hours;
+        try {
+            hours = Double.parseDouble(req.getParameter("hours"));
+        } catch(NumberFormatException ex) {
+            hours = 12.0; //default value = 12hours
+        }
+
+        List<LockableResource> resources = new ArrayList<>();
+        resources.add(r);
+        manager.reserve(resources, forUser, hours);
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    @Exported
+    public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException {
+        String name = req.getParameter("resource");
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource r = manager.getResourceFromName(name);
         if(r == null) {
             rsp.sendError(404, "Resource not found " + name);
             return;
         }
 
-        String userName = getUserName();
+        String userId = Utils.getUserId();
         if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
-            if((userName == null) || !userName.equals(r.getReservedBy())) {
-                throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+            if((userId == null) || !(userId.equals(r.getReservedBy()) || userId.equals(r.getReservedFor()))) {
+                throw new AccessDeniedException2(Jenkins.getAuthentication(), UNLOCK);
             }
         }
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
-        LockableResourcesManager.get().unreserve(resources);
+        manager.unreserve(resources);
 
         rsp.forwardToPreviousPage(req);
     }
 
+    @Exported
     public void doReset(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
         if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
@@ -175,7 +201,8 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         String name = req.getParameter("resource");
-        LockableResource r = LockableResourcesManager.get().getResourceFromName(name);
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource r = manager.getResourceFromName(name);
         if(r == null) {
             rsp.sendError(404, "Resource not found " + name);
             return;
@@ -183,8 +210,28 @@ public class LockableResourcesRootAction implements RootAction {
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
-        LockableResourcesManager.get().reset(resources);
-
+        manager.reset(resources);
+        
         rsp.forwardToPreviousPage(req);
+    }
+    
+    @Exported
+    @CheckForNull
+    public String getUserId() {
+        return Utils.getUserId();
+    }
+    
+    @Exported
+    @CheckForNull
+    public Double getDefaultReservationHours() {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        return manager.getDefaultReservationHours();
+    }
+    
+    @Exported
+    @CheckForNull
+    public Double getMaxReservationHours() {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        return manager.getMaxReservationHours();
     }
 }
