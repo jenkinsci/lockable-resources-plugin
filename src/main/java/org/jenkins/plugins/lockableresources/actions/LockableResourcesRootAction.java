@@ -45,6 +45,10 @@ public class LockableResourcesRootAction implements RootAction {
             Messages.reservePermission(),
             Messages._reservePermission_Description(), Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
+    public static final Permission OFFLINE = new Permission(PERMISSIONS_GROUP,
+            Messages.offlinePermission(),
+            Messages._offlinePermission_Description(), Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
     static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
     /**
@@ -120,8 +124,8 @@ public class LockableResourcesRootAction implements RootAction {
     @Exported
     public void doReserve(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        if(!Jenkins.getInstance().hasPermission(RESERVE)) {
-            throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+        if(!Jenkins.getInstance().hasPermission(OFFLINE)) {
+            throw new AccessDeniedException2(Jenkins.getAuthentication(), OFFLINE);
         }
 
         String name = req.getParameter("resource");
@@ -171,6 +175,9 @@ public class LockableResourcesRootAction implements RootAction {
     @Exported
     public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
+        if(!(Jenkins.getInstance().hasPermission(UNLOCK) || Jenkins.getInstance().hasPermission(OFFLINE))) {
+            throw new AccessDeniedException2(Jenkins.getAuthentication(), OFFLINE);
+        }
         String name = req.getParameter("resource");
         LockableResourcesManager manager = LockableResourcesManager.get();
         LockableResource r = manager.getResourceFromName(name);
@@ -179,9 +186,31 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
+        List<LockableResource> resources = new ArrayList<>();
+        resources.add(r);
+        manager.unreserve(resources);
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    @Exported
+    public void doUnreserveFor(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException {
+        String name = req.getParameter("resource");
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource r = manager.getResourceFromName(name);
+        if(r == null) {
+            rsp.sendError(404, "Resource not found " + name);
+            return;
+        }
+        /*
+         * Can unreserve if UNLOCK/OFFLINE or RESERVE+reservedBy=me or reservedFor=me
+         */
         String userId = Utils.getUserId();
-        if(!Jenkins.getInstance().hasPermission(UNLOCK)) {
-            if((userId == null) || !(userId.equals(r.getReservedBy()) || userId.equals(r.getReservedFor()))) {
+        if(!(Jenkins.getInstance().hasPermission(UNLOCK))) {
+            if((userId == null) || !(
+                    (Jenkins.getInstance().hasPermission(RESERVE) && userId.equals(r.getReservedBy()))
+                    || userId.equals(r.getReservedFor()))) {
                 throw new AccessDeniedException2(Jenkins.getAuthentication(), UNLOCK);
             }
         }

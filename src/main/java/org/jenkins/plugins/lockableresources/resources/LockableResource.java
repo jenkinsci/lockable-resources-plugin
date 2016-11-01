@@ -133,7 +133,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     @DataBoundSetter
     public void setReservedBy(String userId) {
-        this.reservedBy = Util.fixEmptyAndTrim(userId);
+        this.reservedBy = Utils.getUserId(userId);
     }
     
     @Exported
@@ -148,7 +148,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     @DataBoundSetter
     public void setReservedFor(String userId) {
-        this.reservedFor = Util.fixEmptyAndTrim(userId);
+        this.reservedFor = Utils.getUserId(userId);
     }
     
     @Exported
