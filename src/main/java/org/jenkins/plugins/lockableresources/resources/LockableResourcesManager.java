@@ -38,6 +38,7 @@ import java.util.logging.Logger;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
@@ -55,6 +56,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 
+@ThreadSafe
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
@@ -113,46 +115,46 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     @Exported
-    public Set<LockableResource> getResources() {
+    public synchronized Set<LockableResource> getResources() {
         return resources;
     }
 
     @DataBoundSetter
-    public void setResources(Set<LockableResource> resources) {
+    public synchronized void setResources(Set<LockableResource> resources) {
         this.resources = resources;
     }
 
     @Exported
-    public Boolean getUseFairSelection() {
+    public synchronized Boolean getUseFairSelection() {
         return useFairSelection;
     }
 
     @DataBoundSetter
-    public void setUseFairSelection(Boolean useFairSelection) {
+    public synchronized void setUseFairSelection(Boolean useFairSelection) {
         this.useFairSelection = useFairSelection;
     }
 
     @Exported
-    public Double getDefaultReservationHours() {
+    public synchronized Double getDefaultReservationHours() {
         return defaultReservationHours;
     }
 
     @DataBoundSetter
-    public void setDefaultReservationHours(Double defaultReservationHours) {
+    public synchronized void setDefaultReservationHours(Double defaultReservationHours) {
         this.defaultReservationHours = defaultReservationHours;
     }
 
     @Exported
-    public Double getMaxReservationHours() {
+    public synchronized Double getMaxReservationHours() {
         return maxReservationHours;
     }
 
     @DataBoundSetter
-    public void setMaxReservationHours(Double maxReservationHours) {
+    public synchronized void setMaxReservationHours(Double maxReservationHours) {
         this.maxReservationHours = maxReservationHours;
     }
 
-    public Set<LockableResource> getAllResources() {
+    public synchronized Set<LockableResource> getAllResources() {
         return resources;
     }
 
@@ -161,7 +163,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return "External Resources";
     }
 
-    public Set<LockableResource> filterFreeResources(Collection<LockableResource> resources, @Nullable String userId) {
+    public static Set<LockableResource> filterFreeResources(Collection<LockableResource> resources, @Nullable String userId) {
         HashSet<LockableResource> free = new HashSet<>();
         for(LockableResource r : resources) {
             if(r.isFree(userId)) {
@@ -171,16 +173,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return free;
     }
 
-    public int getFreeAmount(Collection<LockableResource> resources, @Nullable String userId) {
+    public synchronized int getFreeAmount(Collection<LockableResource> resources, @Nullable String userId) {
         return filterFreeResources(resources, userId).size();
     }
 
-    public int getFreeAmount(String labels, @Nullable EnvVars env, @Nullable String userId) {
+    public synchronized int getFreeAmount(String labels, @Nullable EnvVars env, @Nullable String userId) {
         Set<LockableResource> res = getResourcesFromCapabilities(ResourceCapability.splitCapabilities(labels), null, env);
         return filterFreeResources(res, userId).size();
     }
 
-    public Set<String> getAllResourceNames() {
+    public synchronized Set<String> getAllResourceNames() {
         HashSet<String> res = new HashSet<>(resources.size());
         for(LockableResource r : resources) {
             res.add(r.getName());
@@ -189,7 +191,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     @CheckForNull
-    public Set<LockableResource> getResourcesFromNames(@Nonnull Collection<String> resourceNames) {
+    public synchronized Set<LockableResource> getResourcesFromNames(@Nonnull Collection<String> resourceNames) {
         LinkedHashSet<LockableResource> res = new LinkedHashSet<>(); // keep same ordering as input
         if(resourceNames.isEmpty()) {
             return res;
@@ -209,7 +211,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null; // At least one resource name is unknown
     }
 
-    public LockableResource getResourceFromName(String resourceName) {
+    public synchronized LockableResource getResourceFromName(String resourceName) {
         if(resourceName != null) {
             for(LockableResource resource : resources) {
                 if(resourceName.equals(resource.getName())) {
@@ -220,7 +222,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null;
     }
 
-    public Set<String> getInvalidResourceNames(@Nonnull Collection<String> resourceNames) {
+    public synchronized Set<String> getInvalidResourceNames(@Nonnull Collection<String> resourceNames) {
         LinkedHashSet<String> buffer = new LinkedHashSet<>(resourceNames);
         for(LockableResource r : resources) {
             String name = r.getName();
@@ -234,7 +236,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return buffer; // At least one resource name is unknown
     }
 
-    public Set<LockableResource> getQueuedResourcesFromProject(String projectFullName) {
+    public synchronized Set<LockableResource> getQueuedResourcesFromProject(String projectFullName) {
         Set<LockableResource> matching = new HashSet<>();
         for(LockableResource r : resources) {
             String queueItemProject = r.getQueueItemProject();
@@ -246,7 +248,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Adds already selected (in previous queue round) resources to 'selected'
-    private Set<LockableResource> getQueuedResources(String projectFullName, long taskId) {
+    private synchronized Set<LockableResource> getQueuedResources(String projectFullName, long taskId) {
         Set<LockableResource> res = new HashSet<>();
         for(LockableResource resource : resources) {
             // This project might already have something in queue
@@ -259,7 +261,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return res;
     }
 
-    public Set<LockableResource> getLockedResourcesFromBuild(Run<?, ?> build) {
+    public synchronized Set<LockableResource> getLockedResourcesFromBuild(Run<?, ?> build) {
         Set<LockableResource> matching = new HashSet<>();
         for(LockableResource r : resources) {
             Run<?, ?> rBuild = r.getBuild();
@@ -270,11 +272,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return matching;
     }
 
-    public Boolean isValidLabel(String singleLabel, boolean acceptResourceName) {
+    public synchronized Boolean isValidLabel(String singleLabel, boolean acceptResourceName) {
         return singleLabel.startsWith("$") || this.getAllLabels(acceptResourceName).contains(singleLabel);
     }
 
-    public Set<String> getAllLabels(boolean withResourceNames) {
+    public synchronized Set<String> getAllLabels(boolean withResourceNames) {
         TreeSet<String> labels = new TreeSet<>();
         for(LockableResource r : this.resources) {
             Set<String> r_labels = Utils.splitLabels(r.getLabels());
@@ -286,7 +288,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return labels;
     }
 
-    public Set<ResourceCapability> getAllCapabilities() {
+    public synchronized Set<ResourceCapability> getAllCapabilities() {
         HashSet<ResourceCapability> capabilities = new HashSet<>();
         for(LockableResource r : this.resources) {
             capabilities.addAll(r.getCapabilities());
@@ -303,7 +305,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      *
      * @return
      */
-    public Set<ResourceCapability> getCompatibleCapabilities(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
+    public synchronized Set<ResourceCapability> getCompatibleCapabilities(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
         TreeSet<ResourceCapability> capabilities = new TreeSet();
         for(LockableResource r : this.resources) {
             if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
@@ -322,7 +324,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      *
      * @return
      */
-    public Set<LockableResource> getResourcesFromCapabilities(@Nullable Collection<ResourceCapability> neededCapabilities, @Nullable Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
+    public synchronized Set<LockableResource> getResourcesFromCapabilities(@Nullable Collection<ResourceCapability> neededCapabilities, @Nullable Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
         HashSet<LockableResource> found = new HashSet<>();
         for(LockableResource r : this.resources) {
             if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
@@ -333,7 +335,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     @CheckForNull
-    public RequiredResourcesProperty getProjectRequiredResourcesProperty(Job<?, ?> project) {
+    public static RequiredResourcesProperty getProjectRequiredResourcesProperty(Job<?, ?> project) {
         if(project instanceof MatrixConfiguration) {
             project = (Job<?, ?>) project.getParent();
         }
@@ -341,12 +343,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     @CheckForNull
-    public Set<LockableResource> selectFreeResources(Collection<RequiredResources> requiredResourcesList, Collection<LockableResource> forcedFreeResources, EnvVars env, @Nullable String userId) {
+    public synchronized Set<LockableResource> selectFreeResources(Collection<RequiredResources> requiredResourcesList, Collection<LockableResource> forcedFreeResources, EnvVars env, @Nullable String userId) {
         return selectResources(requiredResourcesList, true, forcedFreeResources, env, userId);
     }
 
     @CheckForNull
-    public Set<LockableResource> selectResources(Collection<RequiredResources> requiredResourcesList, boolean onlyFreeResources, @Nullable Collection<LockableResource> forcedFreeResources, EnvVars env, @Nullable String userId) {
+    public synchronized Set<LockableResource> selectResources(Collection<RequiredResources> requiredResourcesList, boolean onlyFreeResources, @Nullable Collection<LockableResource> forcedFreeResources, EnvVars env, @Nullable String userId) {
         Set<LockableResource> res = new HashSet<>();
         //--------------
         // Add resources by names
@@ -427,7 +429,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
     }
 
-    public LinkedHashSet<LockableResource> sortResources(Collection<LockableResource> resources, EnvVars env) {
+    public synchronized LinkedHashSet<LockableResource> sortResources(Collection<LockableResource> resources, EnvVars env) {
         // Extract the best resources based on their capabilities
         List<Tuple2<LockableResource, Double>> sortedFree = new ArrayList<>(); // (resource, cost)
         for(LockableResource r : resources) {
@@ -664,13 +666,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return false;
     }
 
-    public synchronized boolean reserve(List<LockableResource> resources) {
-        return reserve(resources, null, 0);
+    public synchronized boolean reserve(List<LockableResource> resources, @Nullable String byUser) {
+        return reserve(resources, byUser, null, 0);
     }
     
-    public synchronized boolean reserve(List<LockableResource> resources, @Nullable String forUser, double hours) {
+    public synchronized boolean reserve(List<LockableResource> resources, @Nullable String byUser, @Nullable String forUser, double hours) {
         for(LockableResource resource : resources) {
-            resource.reserveFor(forUser, hours);
+            resource.reserveFor(byUser, forUser, hours);
         }
         save();
         return true;
@@ -698,7 +700,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     @Override
-    public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+    public synchronized boolean configure(StaplerRequest req, JSONObject json) throws FormException {
         try {
             LOGGER.fine("Entering manager.configure()");
             List<LockableResource> newResources = req.bindJSONToList(LockableResource.class, json.get("resources"));
@@ -706,7 +708,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 LockableResource oldResource = getResourceFromName(resource.getName());
                 if(oldResource != null) {
                     resource.setBuild(oldResource.getBuild());
-                    resource.setQueued(resource.getQueueItemId(), resource.getQueueItemProject());
+                    resource.setQueued(oldResource.getQueueItemId(), oldResource.getQueueItemProject());
+                    resource.reserveFor(oldResource.getReservedBy(), oldResource.getReservedFor(), oldResource.getReservedUntil());
                 }
             }
             this.resources.clear();
@@ -790,7 +793,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Return false if another item queued for this project -> bail out
-    private boolean isAnotherBuildWaitingResources(String projectFullName, long taskId) {
+    private synchronized boolean isAnotherBuildWaitingResources(String projectFullName, long taskId) {
         for(LockableResource resource : resources) {
             // This project might already have something in queue
             String rProject = resource.getQueueItemProject();

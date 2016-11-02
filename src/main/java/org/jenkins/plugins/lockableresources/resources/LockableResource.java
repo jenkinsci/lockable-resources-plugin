@@ -178,9 +178,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return formater.format(d);
     }
     
-    public void reserveFor(String forUser, double hours) {
+    public void reserveFor(String byUser, String forUser, double hours) {
         LockableResourcesManager manager = LockableResourcesManager.get();
-        this.reservedBy = Utils.getUserId();
+        this.reservedBy = Utils.getUserId(byUser);
         this.reservedFor = Utils.getUserId(forUser);
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.SECOND, (int) Math.round(Math.min(hours, manager.getMaxReservationHours()) * 3600));

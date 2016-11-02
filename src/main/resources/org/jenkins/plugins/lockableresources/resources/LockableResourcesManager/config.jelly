@@ -25,7 +25,11 @@
             <f:repeatable field="resources" header="${%Resource}" minimum="0" add="${%Add lockable resource}">
                 <table width="100%">
                     <st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.resources.LockableResource"/>
-                    <f:repeatableDeleteButton/>
+                    <f:entry title="">
+                        <div align="right">
+                            <f:repeatableDeleteButton/>
+                        </div>
+                    </f:entry>
                 </table>
             </f:repeatable>
         </f:entry>

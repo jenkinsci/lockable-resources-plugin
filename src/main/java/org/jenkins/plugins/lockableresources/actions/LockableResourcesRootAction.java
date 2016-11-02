@@ -138,7 +138,8 @@ public class LockableResourcesRootAction implements RootAction {
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
-        manager.reserve(resources);
+        String byId = Utils.getUserId();
+        manager.reserve(resources, byId);
 
         rsp.forwardToPreviousPage(req);
     }
@@ -167,7 +168,8 @@ public class LockableResourcesRootAction implements RootAction {
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
-        manager.reserve(resources, forUser, hours);
+        String byId = Utils.getUserId();
+        manager.reserve(resources, byId, forUser, hours);
 
         rsp.forwardToPreviousPage(req);
     }
