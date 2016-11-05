@@ -248,7 +248,7 @@ public class LockableResourcesRootAction implements RootAction {
     
     @Exported
     @CheckForNull
-    public String getUserId() {
+    public static String getUserId() {
         return Utils.getUserId();
     }
     

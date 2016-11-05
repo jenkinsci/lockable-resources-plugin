@@ -20,6 +20,7 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
+import hudson.widgets.Widget;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -44,6 +45,7 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
+import org.jenkins.plugins.lockableresources.LockableResourcesWidget;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
@@ -81,10 +83,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
     protected Double defaultReservationHours = 12.0; //hours
     @Exported
     protected Double maxReservationHours = 72.0; //hours
+    /** Show widget with resources status in Jenkins main view (below executors list) */
+    @Exported
+    protected Boolean showWidget = true;
 
     @DataBoundConstructor
     public LockableResourcesManager() {
         load();
+    }
+
+    @Override
+    public synchronized void load() {
+        super.load();
+        setShowWidget(showWidget);
     }
 
     /**
@@ -107,11 +118,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return new XmlFile(Jenkins.XSTREAM2, oldFile);
         }
         return new XmlFile(Jenkins.XSTREAM2, oldFile);
-    }
-
-    @Override
-    public synchronized void save() {
-        super.save(); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Exported
@@ -152,6 +158,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @DataBoundSetter
     public synchronized void setMaxReservationHours(Double maxReservationHours) {
         this.maxReservationHours = maxReservationHours;
+    }
+
+    @Exported
+    public synchronized Boolean getShowWidget() {
+        return showWidget;
+    }
+
+    @DataBoundSetter
+    public synchronized void setShowWidget(Boolean showWidget) {
+        this.showWidget = showWidget;
+        updateWidgetVisibility();
+    }
+
+    private void updateWidgetVisibility() {
+        List<Widget> widgets = Jenkins.getInstance().getWidgets();
+        LockableResourcesWidget alreadyVisible = null;
+        for(Widget widget : widgets) {
+            if(widget instanceof LockableResourcesWidget) {
+                alreadyVisible = (LockableResourcesWidget) widget;
+                break;
+            }
+        }
+        if(showWidget) {
+            if(alreadyVisible == null) {
+                widgets.add(new LockableResourcesWidget());
+            }
+        } else if(alreadyVisible != null) {
+            widgets.remove(alreadyVisible);
+        }
     }
 
     public synchronized Set<LockableResource> getAllResources() {
@@ -577,7 +612,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         //--------------------------
         resumeQueuedContext(inversePrecedence);
     }
-    
+
     public synchronized void resumeQueuedContext(boolean inversePrecedence) {
         QueuedContextStruct nextContext = getNextQueuedContext(inversePrecedence);
         if(nextContext == null) {
@@ -670,7 +705,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public synchronized void reserve(List<LockableResource> resources, @Nullable String byUser) {
         reserve(resources, byUser, null, 0);
     }
-    
+
     public synchronized void reserve(List<LockableResource> resources, @Nullable String byUser, @Nullable String forUser, double hours) {
         for(LockableResource resource : resources) {
             resource.reserveFor(byUser, forUser, hours);
@@ -750,6 +785,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         } catch(JSONException e) {
             LOGGER.log(Level.SEVERE, "manager.configure()", e);
             this.maxReservationHours = 72.0; //backward compatibility
+        }
+        try {
+            setShowWidget(json.getBoolean("showWidget"));
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            setShowWidget(true); //backward compatibility
         }
         save();
         return true;

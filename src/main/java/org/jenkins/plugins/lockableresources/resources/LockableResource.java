@@ -209,7 +209,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     public boolean hasCapabilities(Collection<ResourceCapability> capabilities, @Nullable EnvVars env) {
         return hasCapabilities(capabilities, null, env);
     }
-
+    
     public boolean hasCapabilities(@Nullable Collection<ResourceCapability> neededCapabilities,
             @Nullable Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
         if(neededCapabilities != null) {
@@ -278,7 +278,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         }
         return reservedBy != null;
     }
-
+    
+    public boolean hasExclusiveUse(@Nullable String userId) {
+        validateDataTimeout();
+        return (reservedFor != null) && reservedFor.equals(userId);
+    }
+    
     public String getReservedByEmail() {
         if(reservedBy != null) {
             Jenkins jenkins = Jenkins.getInstance();
