@@ -21,260 +21,246 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package org.jenkins.plugins.lockableresources;
-
 
 import hudson.model.AbstractBuild;
 import hudson.model.Run;
-
+import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.junit.After;
 import org.junit.AfterClass;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
  * @author aki
  */
 public class LockableResourceTest {
+    LockableResource instance;
 
-	LockableResource instance;
+    public LockableResourceTest() {
+    }
 
-	public LockableResourceTest() {
-	}
+    @BeforeClass
+    public static void setUpClass() {
+    }
 
-	@BeforeClass
-	public static void setUpClass() {
-	}
+    @AfterClass
+    public static void tearDownClass() {
+    }
 
-	@AfterClass
-	public static void tearDownClass() {
-	}
+    @Before
+    public void setUp() {
+        this.instance = new LockableResource("r1", "l1 l2");
+        this.instance.setDescription("d1");
+        this.instance.setReservedBy("");
+    }
 
-	@Before
-	public void setUp() {
-		this.instance = new LockableResource("r1", "d1", "l1 l2", "");
-	}
+    @After
+    public void tearDown() {
+    }
 
-	@After
-	public void tearDown() {
-	}
+    /**
+     * Test of getName method, of class LockableResource.
+     */
+    @Test
+    public void testGetName() {
+        System.out.println("getName");
+        String expResult = "r1";
+        String result = instance.getName();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of getName method, of class LockableResource.
-	 */
-	@Test
-	public void testGetName() {
-		System.out.println("getName");
-		String expResult = "r1";
-		String result = instance.getName();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of getDescription method, of class LockableResource.
+     */
+    @Test
+    public void testGetDescription() {
+        System.out.println("getDescription");
+        String expResult = "d1";
+        String result = instance.getDescription();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of getDescription method, of class LockableResource.
-	 */
-	@Test
-	public void testGetDescription() {
-		System.out.println("getDescription");
-		String expResult = "d1";
-		String result = instance.getDescription();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of getLabels method, of class LockableResource.
+     */
+    @Test
+    public void testGetLabels() {
+        System.out.println("getLabels");
+        String expResult = "l1 l2";
+        String result = instance.getLabels();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of getLabels method, of class LockableResource.
-	 */
-	@Test
-	public void testGetLabels() {
-		System.out.println("getLabels");
-		String expResult = "l1 l2";
-		String result = instance.getLabels();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of getReservedBy method, of class LockableResource.
+     */
+    @Test
+    public void testGetReservedBy() {
+        System.out.println("getReservedBy");
+        String expResult = null;
+        String result = instance.getReservedBy();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of getReservedBy method, of class LockableResource.
-	 */
-	@Test
-	public void testGetReservedBy() {
-		System.out.println("getReservedBy");
-		String expResult = null;
-		String result = instance.getReservedBy();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of isReserved method, of class LockableResource.
+     */
+    @Test
+    public void testIsReserved() {
+        System.out.println("isReserved");
+        boolean expResult = false;
+        boolean result = instance.isReserved(null);
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of isReserved method, of class LockableResource.
-	 */
-	@Test
-	public void testIsReserved() {
-		System.out.println("isReserved");
-		boolean expResult = false;
-		boolean result = instance.isReserved();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of isQueued method, of class LockableResource.
+     */
+    @Test
+    public void testIsQueued_0args() {
+        System.out.println("isQueued");
+        boolean expResult = false;
+        boolean result = instance.isQueued();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of isQueued method, of class LockableResource.
-	 */
-	@Test
-	public void testIsQueued_0args() {
-		System.out.println("isQueued");
-		boolean expResult = false;
-		boolean result = instance.isQueued();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of isQueuedByTask method, of class LockableResource.
+     */
+    @Test
+    public void testIsQueuedByTask() {
+        System.out.println("isQueuedByTask");
+        int taskId = 1;
+        boolean expResult = false;
+        boolean result = instance.isQueuedByTask(taskId);
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of isQueued method, of class LockableResource.
-	 */
-	@Test
-	public void testIsQueued_int() {
-		System.out.println("isQueued");
-		int taskId = 0;
-		boolean expResult = false;
-		boolean result = instance.isQueued(taskId);
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of unqueue method, of class LockableResource.
+     */
+    @Test
+    public void testUnqueue() {
+        System.out.println("unqueue");
+        instance.unqueue();
+    }
 
-	/**
-	 * Test of isQueuedByTask method, of class LockableResource.
-	 */
-	@Test
-	public void testIsQueuedByTask() {
-		System.out.println("isQueuedByTask");
-		int taskId = 1;
-		boolean expResult = false;
-		boolean result = instance.isQueuedByTask(taskId);
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of isLocked method, of class LockableResource.
+     */
+    @Test
+    public void testIsLocked() {
+        System.out.println("isLocked");
+        boolean expResult = false;
+        boolean result = instance.isLocked();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of unqueue method, of class LockableResource.
-	 */
-	@Test
-	public void testUnqueue() {
-		System.out.println("unqueue");
-		instance.unqueue();
-	}
+    /**
+     * Test of getBuild method, of class LockableResource.
+     */
+    @Test
+    public void testGetBuild() {
+        System.out.println("getBuild");
+        Run<?, ?> expResult = null;
+        Run<?, ?> result = instance.getBuild();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of isLocked method, of class LockableResource.
-	 */
-	@Test
-	public void testIsLocked() {
-		System.out.println("isLocked");
-		boolean expResult = false;
-		boolean result = instance.isLocked();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of setBuild method, of class LockableResource.
+     */
+    @Test
+    public void testSetBuild() {
+        System.out.println("setBuild");
+        AbstractBuild lockedBy = null;
+        instance.setBuild(lockedBy);
+    }
 
-	/**
-	 * Test of getBuild method, of class LockableResource.
-	 */
-	@Test
-	public void testGetBuild() {
-		System.out.println("getBuild");
-		Run<?, ?> expResult = null;
-		Run<?, ?> result = instance.getBuild();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of getQueueItemId method, of class LockableResource.
+     */
+    @Test
+    public void testGetQueueItemId() {
+        System.out.println("getQueueItemId");
+        long expResult = 0;
+        long result = instance.getQueueItemId();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of setBuild method, of class LockableResource.
-	 */
-	@Test
-	public void testSetBuild() {
-		System.out.println("setBuild");
-		AbstractBuild lockedBy = null;
-		instance.setBuild(lockedBy)	;
-	}
+    /**
+     * Test of getQueueItemProject method, of class LockableResource.
+     */
+    @Test
+    public void testGetQueueItemProject() {
+        System.out.println("getQueueItemProject");
+        String expResult = null;
+        String result = instance.getQueueItemProject();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of getQueueItemId method, of class LockableResource.
-	 */
-	@Test
-	public void testGetQueueItemId() {
-		System.out.println("getQueueItemId");
-		long expResult = 0;
-		long result = instance.getQueueItemId();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of setReservedBy method, of class LockableResource.
+     */
+    @Test
+    public void testSetReservedBy() {
+        System.out.println("setReservedBy");
+        String userId = "";
+        instance.setReservedBy(userId);
+    }
 
-	/**
-	 * Test of getQueueItemProject method, of class LockableResource.
-	 */
-	@Test
-	public void testGetQueueItemProject() {
-		System.out.println("getQueueItemProject");
-		String expResult = null;
-		String result = instance.getQueueItemProject();
-		assertEquals(expResult, result);
-	}
+    /**
+     * Test of unReserve method, of class LockableResource.
+     */
+    @Test
+    public void testUnReserve() {
+        System.out.println("unReserve");
+        instance.unReserve();
+    }
 
-	/**
-	 * Test of setReservedBy method, of class LockableResource.
-	 */
-	@Test
-	public void testSetReservedBy() {
-		System.out.println("setReservedBy");
-		String userName = "";
-		instance.setReservedBy(userName);
-	}
+    /**
+     * Test of reset method, of class LockableResource.
+     */
+    @Test
+    public void testReset() {
+        System.out.println("reset");
+        instance.reset();
+    }
 
-	/**
-	 * Test of unReserve method, of class LockableResource.
-	 */
-	@Test
-	public void testUnReserve() {
-		System.out.println("unReserve");
-		instance.unReserve();
-	}
+    /**
+     * Test of toString method, of class LockableResource.
+     */
+    @Test
+    public void testToString() {
+        System.out.println("toString");
+        String expResult = "r1";
+        String result = instance.toString();
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of reset method, of class LockableResource.
-	 */
-	@Test
-	public void testReset() {
-		System.out.println("reset");
-		instance.reset();
-	}
+    /**
+     * Test of equals method, of class LockableResource.
+     */
+    @Test
+    public void testEquals() {
+        System.out.println("equals");
+        Object obj = null;
+        boolean expResult = false;
+        boolean result = instance.equals(obj);
+        assertEquals(expResult, result);
+    }
 
-	/**
-	 * Test of toString method, of class LockableResource.
-	 */
-	@Test
-	public void testToString() {
-		System.out.println("toString");
-		String expResult = "r1";
-		String result = instance.toString();
-		assertEquals(expResult, result);
-	}
-
-
-	/**
-	 * Test of equals method, of class LockableResource.
-	 */
-	@Test
-	public void testEquals() {
-		System.out.println("equals");
-		Object obj = null;
-		boolean expResult = false;
-		boolean result = instance.equals(obj);
-		assertEquals(expResult, result);
-	}
-
-	/**
-	 * Test of hashCode method, of class LockableResource.
-	 */
-	@Test
-	public void testHashCode() {
-		System.out.println("hashCode");
-		int expResult = 0;
-		int result = instance.hashCode();
-	}
+    /**
+     * Test of hashCode method, of class LockableResource.
+     */
+    @Test
+    public void testHashCode() {
+        System.out.println("hashCode");
+        int expResult = 0;
+        int result = instance.hashCode();
+    }
 }

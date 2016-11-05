@@ -1,0 +1,12 @@
+<div>
+    <p>
+        A list of job names separated by whitespace. The names in the list will be used when
+        requesting resources (if the 'Consume dynamic resources from other builds' option is checked).
+    <p>
+        One resource will be consumed for each name in the list, based on the matrix configuration
+        currently running (ignoring axis marked as such), the injected parameter, and the name
+        of a job (in the list).
+    <p style="color:red">
+        Names that contain whitespace will be considered two or more separate names. Please do not
+        use whitespace when defining job names.
+</div>

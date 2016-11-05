@@ -1,0 +1,48 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+         xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+    <style>
+        .lockableResource div.repeated-container div, .lockableResource div.repeated-container div.repeated-chunk {
+        display:inline-block;
+        width:auto;
+        }
+    </style>
+    
+    <j:set var="instance" value="${it}" />
+    <j:set var="descriptor" value="${it.descriptor}" />
+
+    <j:set var="lr_mini_nb" value="0"/>
+    <j:set var="lr_noAddButton" value="false"/>
+    <j:set var="lr_select_title" value="Select resource capabilities"/>
+    <j:if test="${it.onlyResourceNames}" >
+        <j:set var="lr_mini_nb" value="1"/>
+        <j:set var="lr_noAddButton" value="true"/>
+        <j:set var="lr_select_title" value="Select resource"/>
+    </j:if>
+	
+    <f:entry title="${lr_select_title}&lt;br /&gt;(${it.name})" description="${it.formattedDescription}">
+        <div name="parameter" class="lockableResource">
+            <input type="hidden" name="name" value="${it.name}" />
+            <input type="hidden" name="onlyResourceNames" value="${it.onlyResourceNames}" />
+            <f:repeatable field="selectedCapabilities" var="v" minimum="${lr_mini_nb}" noAddButton="${lr_noAddButton}">
+                <input type="hidden" name="neededLabels" value="${it.neededLabels}" />
+                <input type="hidden" name="prohibitedLabels" value="${it.prohibitedLabels}" />
+                <input type="hidden" name="onlyResourceNames" value="${it.onlyResourceNames}" />
+                <f:select field="name" />
+                <j:if test="${!it.onlyResourceNames}" >
+                    <f:repeatableDeleteButton />
+                </j:if>
+            </f:repeatable>
+            <br />
+            <div class="">Forced capabilities:</div>
+            <f:repeatable field="neededCapabilities" var="v" noAddButton="true" minimum="0">
+                <f:readOnlyTextbox field="name" />
+            </f:repeatable>
+            <div class="">Prohibited capabilities:</div>
+            <f:repeatable field="prohibitedCapabilities" var="v" noAddButton="true" minimum="0">
+                <f:readOnlyTextbox field="name" />
+            </f:repeatable>
+        </div>
+    </f:entry>
+</j:jelly>

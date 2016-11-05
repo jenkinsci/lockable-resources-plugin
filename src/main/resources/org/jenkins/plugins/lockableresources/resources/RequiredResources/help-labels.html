@@ -1,0 +1,37 @@
+<div>
+    <p>
+        If you have created a pool of resources with capabilities, you can take it into use
+        here. The build will select the resource(s) from the pool that includes all
+        resources sharing the given capabilities.
+    </p>
+    <p>
+        If both Capabilities and Resources fields are filled, resources by names are selected
+        first, then an additional amount of resources with the requested capabilities are added.
+        A resource selected by name can not be selected with matching capabilities.
+    </p>
+    <p>
+        You can also use parameters expansion.
+        For ex. if parameter 'MY_RESOURCE' is defined, use '${MY_RESOURCE}'.
+    </p>
+    <p>
+        If this field starts with <code>groovy:</code> then it is treated as a groovy expression
+        to be evaluated each time a resource is checked to be appropriate for a build. The
+        expression must result into a boolean value. The following variables are available:
+    </p>
+    <dl>
+        <dt>resourceName</dt>
+        <dd>as per resource configuration</dd>
+        <dt>resourceDescription</dt>
+        <dd>as per resource configuration</dd>
+        <dt>resourceLabels</dt>
+        <dd><code>java.util.List&lt;String&gt;</code> of capabilities as per resource configuration</dd>
+    </dl>
+    <p>
+        For matrix jobs, axis names and axis values are referencable as well. Examples:
+    </p>
+    <ul>
+        <li><code>groovy:resourceLabels.contains("hardcoded")</code></li>
+        <li><code>groovy:resourceLabels.contains(axisName)</code></li>
+        <li><code>groovy:resourceName == axisName</code></li>
+    </ul>
+</div>

@@ -1,164 +1,272 @@
 <!--
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- -->
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
+*                                                                     *
+* This file is part of the Jenkins Lockable Resources Plugin and is   *
+* published under the MIT license.                                    *
+*                                                                     *
+* See the "LICENSE.txt" file for more information.                    *
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.jenkins-ci.plugins</groupId>
-		<artifactId>plugin</artifactId>
-		<version>2.5</version>
-		<relativePath />
-	</parent>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>plugin</artifactId>
+        <version>2.17</version>
+        <relativePath />
+    </parent>
 
-	<groupId>org.6wind.jenkins</groupId>
-	<artifactId>lockable-resources</artifactId>
-	<version>1.11-SNAPSHOT</version>
-	<packaging>hpi</packaging>
-	<name>Lockable Resources plugin</name>
-	<description>
-		This plugin allows to define lockable resources (such as printers, phones,
-		computers) that can be used by builds. If a build requires an external
-		resource which is already locked, it will wait for the resource to be free.
-	</description>
-	<url>https://wiki.jenkins-ci.org/display/JENKINS/Lockable+Resources+Plugin</url>
+    <groupId>org.6wind.jenkins</groupId>
+    <artifactId>lockable-resources</artifactId>
+    <version>1.11-SNAPSHOT</version>
+    <packaging>hpi</packaging>
+    <name>Lockable Resources plugin</name>
+    <description>
+        This plugin allows to define lockable resources (such as printers, phones,
+        computers) that can be used by builds. If a build requires an external
+        resource which is already locked, it will wait for the resource to be free.
+    </description>
+    <url>https://wiki.jenkins-ci.org/display/JENKINS/Lockable+Resources+Plugin</url>
 
-	<properties>
-		<!-- First version including TailCall is 1.9, and the same baseline is maintained
-		until 1.14, so let's pick up the greatest -->
-		<workflow.version>1.14</workflow.version>
-		<jenkins.version>1.609.1</jenkins.version>
-		<!-- TODO activate this and fix findbugs errors -->
-		<findbugs.failOnError>false</findbugs.failOnError>
-	</properties>
+    <properties>
+        <!-- Globals -->
+        <jenkins.version>2.19.1</jenkins.version>
+        <findbugs.failOnError>true</findbugs.failOnError>
+        <jenkins.test.timeout>30</jenkins.test.timeout>
+        
+        <!-- Manager version -->
+        <hamcrest-core.version>1.3</hamcrest-core.version>
 
-	<licenses>
-		<license>
-			<name>MIT</name>
-			<url>http://www.opensource.org/licenses/mit-license.php</url>
-		</license>
-	</licenses>
+        <!-- Source plugin versions -->
+        <!-- First version including TailCall is 1.9, and the same baseline is maintained
+        until 1.14, so let's pick up the greatest -->
+        <workflow-step-api.version>2.3</workflow-step-api.version>
+        <mailer.version>1.13</mailer.version>
+        <matrix-project.version>1.4</matrix-project.version>
+        
+        <!-- Optional versions -->
+        <bridge-method-annotation.version>1.14</bridge-method-annotation.version>
+        
+        <!-- Tests plugin versions -->
+        <struct.version>1.5</struct.version>
+        <workflow-aggregator.version>2.4</workflow-aggregator.version> <!-- For pipeline tests -->
+        <workflow-support.version>2.5</workflow-support.version> <!-- For echo/sleep dsl commands -->
+        <cloudbees-folder.version>5.13</cloudbees-folder.version>
+        <credentials.version>2.1.7</credentials.version> <!-- For cloudbees-folder plugin -->
+        <junit-jenkins.version>1.19</junit-jenkins.version>
+        <scm-api.version>1.3</scm-api.version>
+        
+        <!-- Tests frameworks versions -->
+        <mockito.version>1.10.19</mockito.version>
+        <powermock.version>1.6.5</powermock.version>
+        <assertj.version>2.5.0</assertj.version> <!-- 3.X.X: java 8 mandatory -->
+        <spring-test.version>2.5</spring-test.version>
+    </properties>
 
-	<developers>
-		<developer>
-			<id>robin-jarry</id>
-			<name>Robin Jarry</name>
-			<email>robin.jarry@6wind.com</email>
-			<roles>
-				<role>developer</role>
-				<role>maintainer</role>
-			</roles>
-			<timezone>CET</timezone>
-		</developer>
-		<developer>
-			<id>amuniz</id>
-			<name>Antonio Muñiz</name>
-			<email>amuniz@cloudbees.com</email>
-			<roles>
-				<role>developer</role>
-				<role>maintainer</role>
-			</roles>
-			<timezone>CET</timezone>
-		</developer>
-	</developers>
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
+        </license>
+    </licenses>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>mailer</artifactId>
-			<version>1.5</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-step-api</artifactId>
-			<version>${workflow.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>matrix-project</artifactId>
-			<version>1.4</version>
-		</dependency>
-		<dependency>
-			<groupId>com.infradna.tool</groupId>
-			<artifactId>bridge-method-annotation</artifactId>
-			<version>1.14</version>
-			<optional>true</optional>
-		</dependency>
+    <developers>
+        <developer>
+            <id>robin-jarry</id>
+            <name>Robin Jarry</name>
+            <email>robin.jarry@6wind.com</email>
+            <roles>
+                <role>developer</role>
+                <role>maintainer</role>
+            </roles>
+            <timezone>CET</timezone>
+        </developer>
+        <developer>
+            <id>amuniz</id>
+            <name>Antonio Muñiz</name>
+            <email>amuniz@cloudbees.com</email>
+            <roles>
+                <role>developer</role>
+                <role>maintainer</role>
+            </roles>
+            <timezone>CET</timezone>
+        </developer>
+    </developers>
 
-		<!-- Testing scope -->
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-aggregator</artifactId>
-			<version>${workflow.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-support</artifactId>
-			<version>${workflow.version}</version>
-			<classifier>tests</classifier>
-			<scope>test</scope>
-		</dependency>
-		<dependency> <!-- Required by workflow-cps-global-lib (transitive of git-server) -->
-			<groupId>org.jenkins-ci.modules</groupId>
-			<artifactId>sshd</artifactId>
-			<version>1.6</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency><!-- Required when testing against core > 1.575 -->
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>junit</artifactId>
-			<version>1.13</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.hamcrest</groupId>
+                <artifactId>hamcrest-core</artifactId>
+                <version>${hamcrest-core.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.jenkins-ci.tools</groupId>
-				<artifactId>maven-hpi-plugin</artifactId>
-				<configuration>
-					<loggers>
-						<org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
-					</loggers>
-				</configuration>
-			</plugin>
-			<plugin>
-				<artifactId>maven-release-plugin</artifactId>
-				<version>2.5.2</version>
-				<configuration>
-					<updateDependencies>false</updateDependencies>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
+    <dependencies>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>mailer</artifactId>
+            <version>${mailer.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-step-api</artifactId>
+            <version>${workflow-step-api.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>matrix-project</artifactId>
+            <version>${matrix-project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.infradna.tool</groupId>
+            <artifactId>bridge-method-annotation</artifactId>
+            <version>${bridge-method-annotation.version}</version>
+            <optional>true</optional>
+        </dependency>
 
-	<repositories>
-		<repository>
-			<id>repo.jenkins-ci.org</id>
-			<url>http://repo.jenkins-ci.org/public/</url>
-		</repository>
-	</repositories>
+        <!-- Testing scope -->
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>structs</artifactId>
+            <version>${struct.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency> <!-- Required for sleep/echo functions -->
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-aggregator</artifactId>
+            <version>${workflow-aggregator.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-support</artifactId>
+            <version>${workflow-support.version}</version>
+            <classifier>tests</classifier> <!-- Required for SemaphoreStep -->
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>${powermock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito</artifactId>
+            <version>${powermock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spring-test.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>cloudbees-folder</artifactId>
+            <version>${cloudbees-folder.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>  <!-- Required for cloudbees-folder plugin -->
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>credentials</artifactId>
+            <version>${credentials.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency> <!-- Required by workflow-cps-global-lib (transitive of git-server) -->
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>scm-api</artifactId>
+            <version>${scm-api.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency><!-- Required when testing against core > 1.575 -->
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit-jenkins.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
-	<pluginRepositories>
-		<pluginRepository>
-			<id>repo.jenkins-ci.org</id>
-			<url>http://repo.jenkins-ci.org/public/</url>
-		</pluginRepository>
-	</pluginRepositories>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jenkins-ci.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <configuration>
+                    <loggers>
+                        <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
+                    </loggers>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <updateDependencies>false</updateDependencies>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                    <showDeprecation>true</showDeprecation>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.19.1</version>
+                <configuration>
+                    <forkCount>2</forkCount> <!-- Prevent OutOfMemoryError -->
+                    <reuseForks>false</reuseForks> <!-- Prevent OutOfMemoryError due to PermSize -->
+                    <argLine>-XX:MaxPermSize=256m</argLine> <!-- Prevent OutOfMemoryError due to PermSize  -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
-	<scm>
-		<connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
-		<developerConnection>scm:git:git@github.com:jenkinsci/lockable-resources-plugin.git</developerConnection>
-		<url>https://github.com/jenkinsci/lockable-resources-plugin</url>
-	  <tag>HEAD</tag>
-  </scm>
+    <repositories>
+        <repository>
+            <id>repo.jenkins-ci.org</id>
+            <url>http://repo.jenkins-ci.org/public/</url>
+        </repository>
+    </repositories>
 
+    <pluginRepositories>
+        <pluginRepository>
+            <id>repo.jenkins-ci.org</id>
+            <url>http://repo.jenkins-ci.org/public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <scm>
+        <connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:jenkinsci/lockable-resources-plugin.git</developerConnection>
+        <url>https://github.com/jenkinsci/lockable-resources-plugin</url>
+        <tag>HEAD</tag>
+    </scm>
 </project>
