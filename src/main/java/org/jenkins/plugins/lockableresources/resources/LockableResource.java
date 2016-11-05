@@ -411,6 +411,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             reservedFor = null;
             reservedBy = null;
             reservedUntil = 0;
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            manager.resumeQueuedContext(false);
         }
     }
 
