@@ -22,7 +22,7 @@ import org.jenkins.plugins.lockableresources.resources.ResourceCapability;
 import org.jenkins.plugins.lockableresources.step.LockStep;
 import org.jenkins.plugins.lockableresources.step.LockStepExecution;
 
-public final class BackwardCompatibility {
+public class BackwardCompatibility {
     public static void init() {
         for(XStream2 xstream2 : Lists.newArrayList(Jenkins.XSTREAM2, Run.XSTREAM2, UpdateCenter.XSTREAM, User.XSTREAM, Items.XSTREAM2)) {
             xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.RequiredResourcesProperty", RequiredResourcesProperty.class);
@@ -34,5 +34,8 @@ public final class BackwardCompatibility {
             xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesParameterDefinition", LockableResourcesParameterDefinition.class);
             xstream2.addCompatibilityAlias("org.jenkins.plugins.lockableresources.LockableResourcesParameterValue", LockableResourcesParameterValue.class);
         }
+    }
+
+    private BackwardCompatibility() {
     }
 }

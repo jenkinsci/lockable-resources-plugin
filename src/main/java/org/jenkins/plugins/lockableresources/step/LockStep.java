@@ -5,6 +5,7 @@ import hudson.Extension;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
@@ -24,8 +25,6 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     protected String variable = null;
     @Exported
     protected Collection<RequiredResources> requiredResourcesList = new ArrayList<>();
-    @Exported
-    protected Boolean inversePrecedence = false; // Queue management: false = FIFO / true = LIFO
     /** For backward compatibility. Please use {@link #requiredResourcesList} */
     @Deprecated
     private transient final String resource = null;
@@ -39,16 +38,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     }
 
     @DataBoundSetter
-    public void setInversePrecedence(Boolean inversePrecedence) {
-        this.inversePrecedence = inversePrecedence;
-    }
-
-    @Exported
-    public Boolean getInversePrecedence() {
-        return this.inversePrecedence;
-    }
-
-    @DataBoundSetter
+    @SuppressWarnings("FinalMethod")
     public final void setResource(String resource) {
         if(resource != null) {
             if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
@@ -124,12 +114,13 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
     @DataBoundSetter
     public void setRequiredResources(Collection<RequiredResources> requiredResourcesList) {
-        this.requiredResourcesList = requiredResourcesList;
+        this.requiredResourcesList.clear();
+        this.requiredResourcesList.addAll(requiredResourcesList);
     }
 
     @Exported
     public Collection<RequiredResources> getRequiredResources() {
-        return this.requiredResourcesList;
+        return Collections.unmodifiableCollection(requiredResourcesList);
     }
 
     @DataBoundSetter
@@ -166,7 +157,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     }
 
     @Extension
-    public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
+    public static class DescriptorImpl extends AbstractStepDescriptorImpl {
         public DescriptorImpl() {
             super(LockStepExecution.class);
         }

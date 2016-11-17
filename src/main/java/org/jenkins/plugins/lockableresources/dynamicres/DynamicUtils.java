@@ -46,6 +46,9 @@ public class DynamicUtils {
      */
     private final static transient Map<String, String> tokens = new HashMap<String, String>();
 
+    private DynamicUtils() {
+    }
+
     /**
      * @param project The project whose DynamicResourcesProperty is required
      *
@@ -53,9 +56,8 @@ public class DynamicUtils {
      */
     public static DynamicResourcesProperty getDynamicProperty(AbstractProject<?, ?> project) {
         if(project instanceof MatrixConfiguration) {
-            project = (AbstractProject<?, ?>) project.getParent();
+            return getDynamicProperty((AbstractProject<?, ?>) project.getParent());
         }
-
         return project.getProperty(DynamicResourcesProperty.class);
     }
 
@@ -195,11 +197,11 @@ public class DynamicUtils {
      */
     private static synchronized Map<?, ?> getDynamicResConfig(DynamicResourcesProperty property,
             DynamicInfoData data) {
-        Map<String, String> configuration = new HashMap<String, String>();
+        Map<String, String> configuration = new HashMap<>();
 
         configuration.put(DYNAMICRES_TOKENID, data.tokenValue);
 
-        Set<String> ignoredAxis = new HashSet<String>();
+        Set<String> ignoredAxis = new HashSet<>();
         if(property.getIgnoredAxis() != null) {
             ignoredAxis.addAll(Arrays.asList(property.getIgnoredAxis().split("\\s+")));
         }
@@ -230,8 +232,8 @@ public class DynamicUtils {
 
         Map<?, ?> configWithoutJobReservation = getDynamicResConfig(property, data);
 
-        Set<Map<?, ?>> createResources = new HashSet<Map<?, ?>>();
-        Set<Map<?, ?>> consumeResources = new HashSet<Map<?, ?>>();
+        Set<Map<?, ?>> createResources = new HashSet<>();
+        Set<Map<?, ?>> consumeResources = new HashSet<>();
 
         if(property.getGeneratedForJobs() != null) {
             for(String job : property.getGeneratedForJobs().split("\\s+")) {

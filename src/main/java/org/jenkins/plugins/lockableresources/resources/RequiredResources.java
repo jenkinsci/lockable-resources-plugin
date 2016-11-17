@@ -42,7 +42,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
     protected Integer quantity; // Nb of resources required (only with 'resources' == null/empty)
 
     @DataBoundConstructor
-    public RequiredResources(String resources, String labels, int quantity) {
+    public RequiredResources(String resources, String labels, Integer quantity) {
         this.resources = Util.fixNull(resources);
         this.labels = Util.fixNull(labels);
         this.quantity = quantity;
@@ -127,32 +127,50 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
 
     @Override
     public String toString() {
+        return toString(null);
+    }
+    
+    public String toString(EnvVars env) {
         // An exact format is currently needed for tests
-        if((Util.fixEmpty(resources) != null) && (Util.fixEmpty(labels) == null) && (quantity == 0)) {
-            return resources;
+        String expResources = getExpandedResources(env);
+        String expLabels = getExpandedLabels(env);
+        if((Util.fixEmpty(expResources) != null) && (Util.fixEmpty(expLabels) == null)) {
+            return expResources;
         }
-        if((Util.fixEmpty(resources) == null) && (Util.fixEmpty(labels) != null) && (quantity == 0)) {
-            return labels;
+        if((Util.fixEmpty(expResources) == null) && (Util.fixEmpty(expLabels) != null) && (quantity == 0)) {
+            return expLabels;
         }
 
         StringBuilder lbl = new StringBuilder("(");
-        if(Util.fixEmpty(resources) != null) {
-            lbl.append("Resource: ").append(resources);
+        if(Util.fixEmpty(expResources) != null) {
+            lbl.append("resources: '").append(expResources).append("'");
         }
-        if(Util.fixEmpty(labels) != null) {
+        if(Util.fixEmpty(expLabels) != null) {
             if(lbl.length() > 1) {
                 lbl.append(", ");
             }
-            lbl.append("Label: ").append(labels);
+            lbl.append("labels: '").append(expLabels).append("'");
         }
         if((quantity != null) && (quantity > 0)) {
             if(lbl.length() > 1) {
                 lbl.append(", ");
             }
-            lbl.append("Quantity: ").append(quantity);
+            lbl.append("quantity: ").append(quantity);
         }
         lbl.append(")");
         return lbl.toString();
+    }
+    
+    @Nonnull
+    public static String toString(@Nonnull Collection<RequiredResources> requiredResourcesList, @Nullable EnvVars env) {
+        StringBuilder sb = new StringBuilder();
+        for(RequiredResources rr: requiredResourcesList) {
+            if(sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(rr.toString(env));
+        }
+        return sb.toString();
     }
 
     @Extension
@@ -181,7 +199,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
             if(v.startsWith("$")) {
                 return FormValidation.ok();
             }
-            if(v.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+            if(v.startsWith(Utils.GROOVY_LABEL_MARKER)) {
                 return FormValidation.ok();
             }
             Set<String> labels = Utils.splitLabels(value);
@@ -192,7 +210,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
             }
             LockableResourcesManager manager = LockableResourcesManager.get();
             Set<ResourceCapability> capabilities = ResourceCapability.splitCapabilities(value);
-            int numResources = manager.getResourcesFromCapabilities(capabilities, null, null).size();
+            int numResources = ResourceCapability.getResourcesFromCapabilities(manager.getAllResources(), capabilities, null, null).size();
             if(numResources <= 0) {
                 return FormValidation.warning("No resource with these capabilities");
             }
@@ -221,15 +239,14 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
             }
             LockableResourcesManager manager = LockableResourcesManager.get();
             Set<ResourceCapability> capabilities = ResourceCapability.splitCapabilities(labels);
-            int numResources = manager.getResourcesFromCapabilities(capabilities, null, null).size();
+            int numResources = ResourceCapability.getResourcesFromCapabilities(manager.getAllResources(), capabilities, null, null).size();
             if(numResources < numAsInt) {
                 return FormValidation.warning("Given amount " + numAsInt + " is greater than amount of resources: " + numResources + ".");
             }
             return FormValidation.ok();
         }
 
-        public static AutoCompletionCandidates doAutoCompleteLabels(
-                @QueryParameter String value) {
+        public static AutoCompletionCandidates doAutoCompleteLabels(@QueryParameter String value) {
             AutoCompletionCandidates c = new AutoCompletionCandidates();
             value = Util.fixEmptyAndTrim(value);
             if(value != null) {
@@ -243,8 +260,7 @@ public class RequiredResources extends AbstractDescribableImpl<RequiredResources
             return c;
         }
 
-        public static AutoCompletionCandidates doAutoCompleteResources(
-                @QueryParameter String value) {
+        public static AutoCompletionCandidates doAutoCompleteResources(@QueryParameter String value) {
             AutoCompletionCandidates c = new AutoCompletionCandidates();
             value = Util.fixEmptyAndTrim(value);
             if(value != null) {

@@ -40,14 +40,17 @@ public class DynamicResourcesBuildAction implements Action {
         info = DynamicResourcesManager.getJobDynamicInfo(uniqueJobName);
     }
 
+    @Override
     public String getIconFileName() {
         return DynamicResourcesRootAction.ICON;
     }
 
+    @Override
     public String getDisplayName() {
         return "Dynamic Resources Status";
     }
 
+    @Override
     public String getUrlName() {
         return "dynamic-resources-status";
     }

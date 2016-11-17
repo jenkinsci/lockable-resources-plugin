@@ -25,6 +25,7 @@
 package org.jenkins.plugins.lockableresources.dynamicres;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -43,11 +44,14 @@ public class DynamicResourcesManager {
      */
     private static final transient Map<String, DynamicInfo> dynamicResourcesInfo = new HashMap<String, DynamicInfo>();
 
+    private DynamicResourcesManager() {
+    }
+
     /**
      * @return The set of available dynamicResources
      */
     public static Set<Map<?, ?>> getDynamicResources() {
-        return dynamicResources;
+        return Collections.unmodifiableSet(dynamicResources);
     }
 
     /**
@@ -149,7 +153,7 @@ public class DynamicResourcesManager {
      * @return All available information about dynamic resource creation and consumption
      */
     public static Map<String, DynamicInfo> getDynamicResourcesInfo() {
-        return dynamicResourcesInfo;
+        return Collections.unmodifiableMap(dynamicResourcesInfo);
     }
 
     /**

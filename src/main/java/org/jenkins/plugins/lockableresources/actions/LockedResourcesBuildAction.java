@@ -9,20 +9,23 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.Action;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
+import java.util.Set;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.export.Exported;
 
 public class LockedResourcesBuildAction implements Action {
-    private final List<ResourcePOJO> lockedResources;
+    private final Set<LockableResource> lockedResources;
 
-    public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
+    @DataBoundConstructor
+    public LockedResourcesBuildAction(Set<LockableResource> lockedResources) {
         this.lockedResources = lockedResources;
     }
 
-    public List<ResourcePOJO> getLockedResources() {
-        return lockedResources;
+    @Exported
+    public Set<LockableResource> getLockedResources() {
+        return Collections.unmodifiableSet(lockedResources);
     }
 
     @Override
@@ -38,37 +41,5 @@ public class LockedResourcesBuildAction implements Action {
     @Override
     public String getUrlName() {
         return "locked-resources";
-    }
-
-    public static LockedResourcesBuildAction fromResources(
-            Collection<LockableResource> resources) {
-        List<ResourcePOJO> resPojos = new ArrayList<>();
-        for(LockableResource r : resources) {
-            resPojos.add(new ResourcePOJO(r));
-        }
-        return new LockedResourcesBuildAction(resPojos);
-    }
-
-    public static class ResourcePOJO {
-        private String name;
-        private String description;
-
-        public ResourcePOJO(String name, String description) {
-            this.name = name;
-            this.description = description;
-        }
-
-        public ResourcePOJO(LockableResource resource) {
-            this.name = resource.getName();
-            this.description = resource.getDescription();
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getDescription() {
-            return description;
-        }
     }
 }

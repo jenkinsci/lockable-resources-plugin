@@ -8,13 +8,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.resources;
 
-import groovy.lang.Tuple2;
-import hudson.EnvVars;
 import hudson.Extension;
 import hudson.XmlFile;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
-import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.Run;
@@ -23,17 +20,16 @@ import hudson.model.TaskListener;
 import hudson.widgets.Widget;
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.CheckForNull;
@@ -42,14 +38,22 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
+import jenkins.util.Timer;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.LockableResourcesWidget;
+import org.jenkins.plugins.lockableresources.SmartSerializableSet;
 import org.jenkins.plugins.lockableresources.Utils;
+import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
-import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
-import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.queue.LockQueueWidget;
+import org.jenkins.plugins.lockableresources.queue.context.QueueContext;
+import org.jenkins.plugins.lockableresources.queue.context.QueueStepContext;
+import org.jenkins.plugins.lockableresources.queue.policy.QueueFifoPolicy;
+import org.jenkins.plugins.lockableresources.queue.policy.QueuePolicy;
+import org.jenkins.plugins.lockableresources.resources.selector.ResourcesDefaultSelector;
+import org.jenkins.plugins.lockableresources.resources.selector.ResourcesSelector;
 import org.jenkins.plugins.lockableresources.step.LockStep;
 import org.jenkins.plugins.lockableresources.step.LockStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -64,21 +68,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
     @Exported
     protected Set<LockableResource> resources = new LinkedHashSet<>();
-    /** If this option is selected, the plugin will use an internal algorithm to select
-     * the free resources based on their capabilities.<br>
-     * The resource that has a unique capability among all other resources has less chance
-     * to be selected.<br>
-     * On the contrary, if a free resource has very common capabilities it will probably be selected
-     * <p>
-     * This option is highly experimental.
-     */
     @Exported
-    protected Boolean useFairSelection = false;
+    protected ResourcesSelector resourcesSelector = new ResourcesDefaultSelector();
+    @Exported
+    protected QueuePolicy queuePolicy = new QueueFifoPolicy();
     /**
      * Only used when this lockable resource is tried to be locked by {@link LockStep},
      * otherwise (freestyle builds) regular Jenkins queue is used.
      */
-    private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+    @Exported
+    private final SmartSerializableSet<QueueContext> queuedContexts = new SmartSerializableSet<>();
     @Exported
     protected Double defaultReservationHours = 12.0; //hours
     @Exported
@@ -86,16 +85,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Show widget with resources status in Jenkins main view (below executors list) */
     @Exported
     protected Boolean showWidget = true;
+    @Exported
+    protected Boolean showQueue = true;
 
     @DataBoundConstructor
+    @SuppressWarnings("OverridableMethodCallInConstructor")
     public LockableResourcesManager() {
         load();
+        Timer.get().schedule(new Runnable() {
+            @Override
+            public void run() {
+                // initiate lock management
+                retryLock();
+            }
+        }, 5, TimeUnit.SECONDS);
     }
 
     @Override
     public synchronized void load() {
+        LOGGER.fine("Loading from file " + getConfigFile());
         super.load();
         setShowWidget(showWidget);
+        setShowQueue(showQueue);
     }
 
     /**
@@ -122,22 +133,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     @Exported
     public synchronized Set<LockableResource> getResources() {
-        return resources;
+        return Collections.unmodifiableSet(resources);
     }
 
     @DataBoundSetter
     public synchronized void setResources(Set<LockableResource> resources) {
-        this.resources = resources;
+        this.resources.clear();
+        this.resources.addAll(resources);
     }
 
     @Exported
-    public synchronized Boolean getUseFairSelection() {
-        return useFairSelection;
+    public synchronized ResourcesSelector getResourcesSelector() {
+        return resourcesSelector;
     }
 
     @DataBoundSetter
-    public synchronized void setUseFairSelection(Boolean useFairSelection) {
-        this.useFairSelection = useFairSelection;
+    public synchronized void setResourcesSelector(ResourcesSelector resourcesSelector) {
+        this.resourcesSelector = resourcesSelector;
+    }
+
+    @Exported
+    public synchronized QueuePolicy getQueuePolicy() {
+        return queuePolicy;
+    }
+
+    @DataBoundSetter
+    public synchronized void setQueuePolicy(QueuePolicy queuePolicy) {
+        this.queuePolicy = queuePolicy;
     }
 
     @Exported
@@ -171,26 +193,47 @@ public class LockableResourcesManager extends GlobalConfiguration {
         updateWidgetVisibility();
     }
 
+    @Exported
+    public synchronized Boolean getShowQueue() {
+        return showQueue;
+    }
+
+    @DataBoundSetter
+    public synchronized void setShowQueue(Boolean showQueue) {
+        this.showQueue = showQueue;
+        updateWidgetVisibility();
+    }
+
     private void updateWidgetVisibility() {
         List<Widget> widgets = Jenkins.getInstance().getWidgets();
-        LockableResourcesWidget alreadyVisible = null;
+        LockableResourcesWidget listAlreadyVisible = null;
+        LockQueueWidget queueAlreadyVisible = null;
         for(Widget widget : widgets) {
             if(widget instanceof LockableResourcesWidget) {
-                alreadyVisible = (LockableResourcesWidget) widget;
-                break;
+                listAlreadyVisible = (LockableResourcesWidget) widget;
+            }
+            if(widget instanceof LockQueueWidget) {
+                queueAlreadyVisible = (LockQueueWidget) widget;
             }
         }
         if(showWidget) {
-            if(alreadyVisible == null) {
+            if(listAlreadyVisible == null) {
                 widgets.add(new LockableResourcesWidget());
             }
-        } else if(alreadyVisible != null) {
-            widgets.remove(alreadyVisible);
+        } else if(listAlreadyVisible != null) {
+            widgets.remove(listAlreadyVisible);
+        }
+        if(showQueue) {
+            if(queueAlreadyVisible == null) {
+                widgets.add(new LockQueueWidget());
+            }
+        } else if(queueAlreadyVisible != null) {
+            widgets.remove(queueAlreadyVisible);
         }
     }
 
     public synchronized Set<LockableResource> getAllResources() {
-        return resources;
+        return Collections.unmodifiableSet(resources);
     }
 
     @Override
@@ -198,23 +241,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return "External Resources";
     }
 
-    public static Set<LockableResource> filterFreeResources(Collection<LockableResource> resources, @Nullable String userId) {
-        HashSet<LockableResource> free = new HashSet<>();
-        for(LockableResource r : resources) {
-            if(r.isFree(userId)) {
-                free.add(r);
+    public synchronized int getFreeAmount(String labels) {
+        Set<LockableResource> res = ResourceCapability.getResourcesFromCapabilities(resources, ResourceCapability.splitCapabilities(labels), null, null);
+        int nb = 0;
+        for(LockableResource r : res) {
+            if(r.canLock(null, 0)) {
+                nb++;
             }
         }
-        return free;
-    }
-
-    public synchronized int getFreeAmount(Collection<LockableResource> resources, @Nullable String userId) {
-        return filterFreeResources(resources, userId).size();
-    }
-
-    public synchronized int getFreeAmount(String labels, @Nullable EnvVars env, @Nullable String userId) {
-        Set<LockableResource> res = getResourcesFromCapabilities(ResourceCapability.splitCapabilities(labels), null, env);
-        return filterFreeResources(res, userId).size();
+        return nb;
     }
 
     public synchronized Set<String> getAllResourceNames() {
@@ -257,6 +292,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null;
     }
 
+    public static List<String> getResourcesNames(Collection<LockableResource> resources) {
+        // since LockableResource contains transient variables, they cannot be correctly serialized
+        // hence we use their unique resource names
+        ArrayList<String> resourceNames = new ArrayList<>();
+        for(LockableResource resource : resources) {
+            resourceNames.add(resource.getName());
+        }
+        // Sort names for predictable logs (for tests)
+        Collections.sort(resourceNames);
+        return resourceNames;
+    }
+
     public synchronized Set<String> getInvalidResourceNames(@Nonnull Collection<String> resourceNames) {
         LinkedHashSet<String> buffer = new LinkedHashSet<>(resourceNames);
         for(LockableResource r : resources) {
@@ -283,12 +330,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Adds already selected (in previous queue round) resources to 'selected'
-    private synchronized Set<LockableResource> getQueuedResources(String projectFullName, long taskId) {
+    private synchronized Set<LockableResource> getQueuedResources(long queueId) {
         Set<LockableResource> res = new HashSet<>();
         for(LockableResource resource : resources) {
             // This project might already have something in queue
             String rProject = resource.getQueueItemProject();
-            if((rProject != null) && rProject.equals(projectFullName) && resource.isQueuedByTask(taskId)) {
+            if((rProject != null) && resource.isQueuedByTask(queueId)) {
                 // this item has queued the resource earlier
                 res.add(resource);
             }
@@ -323,203 +370,53 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return labels;
     }
 
-    public synchronized Set<ResourceCapability> getAllCapabilities() {
-        HashSet<ResourceCapability> capabilities = new HashSet<>();
-        for(LockableResource r : this.resources) {
-            capabilities.addAll(r.getCapabilities());
-            capabilities.add(r.getMyselfAsCapability());
-        }
-        return capabilities;
-    }
-
     /**
+     * Queue lockable resources for later lock
+     * Get already queued item from the same project and build and try to complete the selection
+     * If all required resources are not available, then previously queued items are released
+     * <p>
+     * Requires a queue item (for example with a build of a standard freestyle project)
      *
-     * @param neededCapabilities
-     * @param prohibitedCapabilities
-     * @param env                    Used only for Groovy script execution
+     * @param project
+     * @param queueContext
      *
-     * @return
+     * @return Return the list of queued resources, or null if no enough resources
      */
-    public synchronized Set<ResourceCapability> getCompatibleCapabilities(Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
-        TreeSet<ResourceCapability> capabilities = new TreeSet();
-        for(LockableResource r : this.resources) {
-            if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
-                capabilities.addAll(r.getCapabilities());
-                capabilities.add(r.getMyselfAsCapability());
+    public synchronized boolean tryQueue(@Nonnull Job<?, ?> project, @Nonnull QueueContext queueContext) {
+        queuedContexts.add(queueContext);
+        save();
+
+        final String projectFullName = project.getFullName();
+
+        Collection<RequiredResources> requiredResourcesList = queueContext.getRequiredResources();
+        LOGGER.finest(projectFullName + " trying to get resources with these details: " + requiredResourcesList);
+        Set<LockableResource> selected = resourcesSelector.selectFreeResources(resources, queueContext);
+
+        if(selected != null) {
+            // Resources for this build have been selected: queue all associated resources
+            final long queueId = queueContext.getQueueId();
+            for(LockableResource r : selected) {
+                r.setQueued(queueId, projectFullName);
             }
+            queuedContexts.remove(queueContext);
+            save();
+            return true;
         }
-        return capabilities;
-    }
-
-    /**
-     *
-     * @param neededCapabilities
-     * @param prohibitedCapabilities
-     * @param env                    Used only for Groovy script execution
-     *
-     * @return
-     */
-    public synchronized Set<LockableResource> getResourcesFromCapabilities(@Nullable Collection<ResourceCapability> neededCapabilities, @Nullable Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
-        HashSet<LockableResource> found = new HashSet<>();
-        for(LockableResource r : this.resources) {
-            if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
-                found.add(r);
-            }
-        }
-        return found;
-    }
-
-    @CheckForNull
-    public static RequiredResourcesProperty getProjectRequiredResourcesProperty(Job<?, ?> project) {
-        if(project instanceof MatrixConfiguration) {
-            project = (Job<?, ?>) project.getParent();
-        }
-        return project.getProperty(RequiredResourcesProperty.class);
-    }
-
-    @CheckForNull
-    public synchronized Set<LockableResource> selectFreeResources(@Nonnull Collection<RequiredResources> requiredResourcesList, @Nullable Collection<LockableResource> forcedFreeResources, @Nullable EnvVars env, @Nullable String userId) {
-        return selectResources(requiredResourcesList, true, forcedFreeResources, env, userId);
-    }
-
-    @CheckForNull
-    public synchronized Set<LockableResource> selectResources(@Nonnull Collection<RequiredResources> requiredResourcesList, boolean onlyFreeResources, @Nullable Collection<LockableResource> forcedFreeResources, @Nullable EnvVars env, @Nullable String userId) {
-        Set<LockableResource> res = new HashSet<>();
-        //--------------
-        // Add resources by names
-        //--------------
-        for(RequiredResources rr : requiredResourcesList) {
-            Set<LockableResource> myResources = rr.getResourcesList(env);
-            if(myResources == null) {
-                // At least one invalid resource name
-                return null;
-            }
-            if(onlyFreeResources) {
-                for(LockableResource r : myResources) {
-                    if(r.isFree(userId) || ((forcedFreeResources != null) && forcedFreeResources.contains(r))) {
-                        // Resource can be used (free or allowed)
-                        res.add(r);
-                    } else {
-                        // At least one resource not free
-                        return null;
-                    }
-                }
-            } else {
-                res.addAll(myResources);
-            }
-        }
-        //--------------
-        // Add resources by capabilities + quantity
-        //--------------
-        List<Tuple2<Set<LockableResource>, Integer>> request = new ArrayList<>(requiredResourcesList.size());
-        for(RequiredResources rr : requiredResourcesList) {
-            Set<ResourceCapability> capabilities = rr.getCapabilitiesList(env);
-            if(capabilities.size() > 0) {
-                Set<LockableResource> candidates = getResourcesFromCapabilities(capabilities, null, env);
-                candidates.removeAll(res); // Already selected by names: can be re-use for capabilities selection
-                Set<LockableResource> freeCandidates;
-                if(onlyFreeResources) {
-                    freeCandidates = filterFreeResources(candidates, userId);
-                    if(forcedFreeResources != null) {
-                        freeCandidates.addAll(forcedFreeResources);
-                        freeCandidates.retainAll(candidates);
-                    }
-                } else {
-                    freeCandidates = candidates;
-                }
-                if(rr.quantity <= 0) {
-                    // Note: freeCandidates.size() <= candidates.size()
-                    if(freeCandidates.size() == candidates.size()) {
-                        // Use all resources of this type
-                        res.addAll(freeCandidates);
-                    } else {
-                        // At least one resource is locked/queued: exit
-                        return null;
-                    }
-                } else {
-                    if(useFairSelection) {
-                        // Sort resources
-                        freeCandidates = sortResources(freeCandidates, env);
-                    }
-                    request.add(new Tuple2<>(freeCandidates, rr.quantity));
-                }
-            }
-        }
-        Set<LockableResource> selected = selectAmongPossibilities(request);
-        if(selected == null) {
-            // No enough free resources with given capabilities
-            return null;
-        }
-        // Merge resources by names and by capabilities
-        res.addAll(selected);
-        return res;
-    }
-
-    private static class SortComparator implements Comparator<Tuple2<LockableResource, Double>>, Serializable {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public int compare(Tuple2<LockableResource, Double> o1, Tuple2<LockableResource, Double> o2) {
-            return o1.getSecond().compareTo(o2.getSecond());
-        }
-    }
-
-    public synchronized LinkedHashSet<LockableResource> sortResources(Collection<LockableResource> resources, EnvVars env) {
-        // Extract the best resources based on their capabilities
-        List<Tuple2<LockableResource, Double>> sortedFree = new ArrayList<>(); // (resource, cost)
-        for(LockableResource r : resources) {
-            Set<ResourceCapability> rc = r.getCapabilities();
-            Set<LockableResource> compatibles = getResourcesFromCapabilities(rc, null, env);
-            int nFree = getFreeAmount(compatibles, null);
-            int nMax = compatibles.size(); // >=1
-            double cost = (nMax - nFree) * (resources.size() / nMax) + rc.size();
-            sortedFree.add(new Tuple2<>(r, cost));
-        }
-        Collections.sort(sortedFree, new SortComparator());
-        LOGGER.finer("Costs for using resources:");
-        LinkedHashSet<LockableResource> res = new LinkedHashSet();
-        for(Tuple2<LockableResource, Double> t : sortedFree) {
-            res.add(t.getFirst());
-            LOGGER.info(" - " + t.getFirst().getName() + ": " + t.getSecond());
-        }
-        return res;
+        return false;
     }
 
     /**
      * Try to lock required resources.<br>
      * If not possible, put context in queue for next try
      *
-     * @param step
-     * @param context
+     * @param queueContext
      *
-     * @return True if locked, False if queued for later
+     * @return Return the list of locked resources, or null if no enough resources
      */
-    public synchronized boolean lockOrQueueForLater(LockStep step, StepContext context) {
-        Run<?, ?> run;
-        try {
-            run = context.get(Run.class);
-        } catch(IOException | InterruptedException ex) {
-            return false;
-        }
-        TaskListener listener;
-        try {
-            listener = context.get(TaskListener.class);
-        } catch(IOException | InterruptedException ex) {
-            listener = null;
-        }
-        EnvVars env = Utils.getEnvVars(run, listener);
-        Collection<RequiredResources> required = step.getRequiredResources();
-        String userId = Utils.getUserId(run);
-        Set<LockableResource> selected = selectFreeResources(required, null, env, userId);
-        if(lock(selected, required, run, context, step.getInversePrecedence(), step.getVariable())) {
-            return true;
-        } else {
-            if(listener != null) {
-                listener.getLogger().println(step + " is locked, waiting...");
-            }
-            queueContext(context, step);
-            return false;
-        }
+    public synchronized boolean tryLock(@Nonnull QueueContext queueContext) {
+        queuedContexts.add(queueContext);
+        save();
+        return (queueContext.equals(retryLock()));
     }
 
     /**
@@ -529,66 +426,84 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @param build
      * @param context
      * @param requiredresources
-     * @param inversePrecedence
      * @param variableName
      *
      * @return
      */
-    public synchronized boolean lock(Collection<LockableResource> resources,
-            Collection<RequiredResources> requiredresources,
-            @Nonnull Run<?, ?> build, @Nullable StepContext context,
-            boolean inversePrecedence, @Nullable String variableName) {
+    private synchronized boolean lock(@Nullable Set<LockableResource> resources, QueueContext queueContext) {
         if(resources == null) {
             return false;
         }
-        String userId = Utils.getUserId(build);
+        Run<?, ?> build = queueContext.getBuild();
+        if(build == null) {
+            return false;
+        }
+        String userId = queueContext.getUserId();
         for(LockableResource r : resources) {
-            if(!r.canLock(userId)) {
+            if(!r.canLock(userId, queueContext.getQueueId())) {
                 // At least one resource is not available: abort lock process
-                unqueue(resources);
                 return false;
             }
         }
-        LOGGER.info("Locking resources " + resources);
+        
+        LOGGER.info("Lock resources " + resources + " by " + build.getExternalizableId());
+        queuedContexts.remove(queueContext);
         for(LockableResource r : resources) {
             r.unqueue();
             r.setBuild(build);
         }
+        save();
+        
+        TaskListener listener = queueContext.getListener();
+        if(listener != null) {
+            listener.getLogger().println("Lock resources " + getResourcesNames(resources));
+            listener.getLogger().println("Lock acquired on " + queueContext.getRequiredResources());
+        }
+        String variableName = queueContext.getVariableName();
         if(variableName != null) {
-            String lbl = Utils.getParameterValue(resources);
+            String lbl = getParameterValue(resources);
             build.addAction(new ResourceVariableNameAction(new StringParameterValue(variableName, lbl)));
         }
-        if(context != null) {
-            // since LockableResource contains transient variables, they cannot be correctly serialized
-            // hence we use their unique resource names
-            ArrayList<String> resourceNames = new ArrayList<>();
-            for(LockableResource resource : resources) {
-                resourceNames.add(resource.getName());
+        build.addAction(new LockedResourcesBuildAction(resources));
+        if(queueContext instanceof QueueStepContext) {
+            StepContext context = ((QueueStepContext) queueContext).getContext();
+            if(context != null) {
+                LockStepExecution.proceed(getResourcesNames(resources), queueContext.getRequiredResources(), context);
             }
-            // Sort names for predictable logs (for tests)
-            Collections.sort(resourceNames);
-            LockStepExecution.proceed(resourceNames, requiredresources, context, inversePrecedence);
         }
-        save();
         return true;
     }
 
+    @Nonnull
+    private static String getParameterValue(@Nonnull Collection<LockableResource> resources) {
+        ArrayList<String> resourcesNames = new ArrayList<>(resources.size());
+        for(LockableResource r : resources) {
+            resourcesNames.add(r.getName());
+        }
+        Collections.sort(resourcesNames);
+        StringBuilder lbl = new StringBuilder();
+        for(String name : resourcesNames) {
+            if(lbl.length() > 0) {
+                lbl.append(", ");
+            }
+            lbl.append(name);
+        }
+        return lbl.toString();
+    }
+
     public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock) {
-        unlock(resourcesToUnLock, null, null, false);
+        unlock(resourcesToUnLock, null, null);
     }
 
-    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-        unlock(resourcesToUnLock, build, null, false);
-    }
-
-    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock,
-            @Nullable Run<?, ?> build, @Nullable StepContext context,
-            boolean inversePrecedence) {
+    public synchronized void unlock(@Nonnull Collection<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build, @Nullable TaskListener listener) {
         //--------------------------
         // Free old resources no longer needed
         //--------------------------
-        LOGGER.info("Unlocking resources " + resourcesToUnLock);
+        if(listener != null) {
+            listener.getLogger().printf("Unlock resources " + resourcesToUnLock);
+        }
         if(build == null) {
+            LOGGER.info("Unlock resources " + resourcesToUnLock);
             for(LockableResource resource : resourcesToUnLock) {
                 if((resource != null) && resource.isLocked()) {
                     // No more contexts, unlock resource
@@ -597,6 +512,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
             }
         } else {
+            LOGGER.info("Unlock resources " + resourcesToUnLock + " by " + build.getExternalizableId());
             for(LockableResource resource : resourcesToUnLock) {
                 if((resource != null) && resource.isLockedByBuild(build)) {
                     // No more contexts, unlock resource
@@ -610,74 +526,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
         //--------------------------
         // Check if there are works waiting for resources
         //--------------------------
-        resumeQueuedContext(inversePrecedence);
+        retryLock();
     }
 
-    public synchronized void resumeQueuedContext(boolean inversePrecedence) {
-        QueuedContextStruct nextContext = getNextQueuedContext(inversePrecedence);
-        if(nextContext == null) {
+    @CheckForNull
+    public synchronized QueueContext retryLock() {
+        queueCleanup();
+        QueueContext nextStruct = queuePolicy.select(queuedContexts, resources, resourcesSelector);
+        if(nextStruct == null) {
             // no context is queued which can be started once these resources are free'd.
-            save();
-            return;
-        }
-
-        //--------------------------
-        // resourcesToUnLock: contains the previous resources (still locked).
-        // requiredResourceForNextContext: contains the resource objects which are required for the next context.
-        //--------------------------
-        EnvVars env = Utils.getEnvVars(nextContext.getContext());
-        LockStep step = nextContext.getStep();
-        Collection<RequiredResources> requiredResourcesForNextContext = step.getRequiredResources();
-        String userId = Utils.getUserId(nextContext.getBuild());
-        Set<LockableResource> resourcesForNextContext = selectFreeResources(requiredResourcesForNextContext, null, env, userId);
-        if(resourcesForNextContext != null) {
-            //--------------------------
-            // Remove context from queue and process it
-            //--------------------------
-            this.queuedContexts.remove(nextContext);
-
-            //--------------------------
-            // Lock new resources
-            //--------------------------
-            Run<?, ?> nextBuild = nextContext.getBuild();
-            StepContext nextContextContext = nextContext.getContext();
-            if(nextBuild != null) {
-                lock(resourcesForNextContext, requiredResourcesForNextContext, nextBuild, nextContextContext, step.getInversePrecedence(), step.getVariable());
-            }
-        }
-        save();
-    }
-
-    private synchronized QueuedContextStruct getNextQueuedContext(boolean inversePrecedence) {
-        if(this.queuedContexts == null) {
             return null;
         }
-        QueuedContextStruct newestEntry = null;
-        if(!inversePrecedence) {
-            for(QueuedContextStruct context : this.queuedContexts) {
-                EnvVars env = Utils.getEnvVars(context.getContext());
-                LockStep step = context.getStep();
-                String userId = Utils.getUserId(context.getBuild());
-                if(selectFreeResources(step.getRequiredResources(), null, env, userId) != null) {
-                    return context;
-                }
-            }
-        } else {
-            long newest = 0;
-            for(QueuedContextStruct context : this.queuedContexts) {
-                EnvVars env = Utils.getEnvVars(context.getContext());
-                LockStep step = context.getStep();
-                String userId = Utils.getUserId(context.getBuild());
-                if(selectFreeResources(step.getRequiredResources(), null, env, userId) != null) {
-                    Run<?, ?> run = context.getBuild();
-                    if((run != null) && (run.getStartTimeInMillis() > newest)) {
-                        newest = run.getStartTimeInMillis();
-                        newestEntry = context;
-                    }
-                }
+
+        Set<LockableResource> resourcesForNextContext = resourcesSelector.selectFreeResources(resources, nextStruct);
+        if(resourcesForNextContext != null) {
+            if(lock(resourcesForNextContext, nextStruct)) {
+                return nextStruct;
             }
         }
-        return newestEntry;
+        return null;
     }
 
     /**
@@ -703,18 +570,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     public synchronized void reserve(List<LockableResource> resources, @Nullable String byUser) {
-        reserve(resources, byUser, null, 0);
+        reserve(resources, byUser, null, null);
     }
 
-    public synchronized void reserve(List<LockableResource> resources, @Nullable String byUser, @Nullable String forUser, double hours) {
+    public synchronized void reserve(@Nonnull List<LockableResource> resources, @Nullable String byUser, @Nullable String forUser, @Nullable Double hours) {
+        double maxHours = getMaxReservationHours();
+        Double realHours;
+        if((hours != null) && (maxHours > 0)) {
+            realHours = Math.min(hours, maxHours);
+        } else if(getDefaultReservationHours() <= 0) {
+            realHours = null;
+        } else {
+            realHours = hours;
+        }
         for(LockableResource resource : resources) {
-            resource.reserveFor(byUser, forUser, hours);
+            resource.reserveFor(byUser, forUser, realHours);
         }
         save();
+
+        //--------------------------
+        // Check if there are works waiting for resources
+        //--------------------------
+        retryLock();
     }
 
-    public synchronized void unqueue(Collection<LockableResource> resources) {
-        for(LockableResource resource : resources) {
+    public synchronized void unqueue(QueueContext queueContext) {
+        Collection<LockableResource> toUnqueue = getQueuedResources(queueContext.getQueueId());
+        for(LockableResource resource : toUnqueue) {
             resource.unqueue();
         }
         save();
@@ -722,7 +604,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         //--------------------------
         // Check if there are works waiting for resources
         //--------------------------
-        resumeQueuedContext(false);
+        retryLock();
     }
 
     public synchronized void unreserve(Collection<LockableResource> resources) {
@@ -734,7 +616,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         //--------------------------
         // Check if there are works waiting for resources
         //--------------------------
-        resumeQueuedContext(false);
+        retryLock();
     }
 
     public synchronized void reset(Collection<LockableResource> resources) {
@@ -746,20 +628,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
         //--------------------------
         // Check if there are works waiting for resources
         //--------------------------
-        resumeQueuedContext(false);
+        retryLock();
     }
 
     @Override
     public synchronized boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+        LOGGER.fine("Entering manager.configure()");
         try {
-            LOGGER.fine("Entering manager.configure()");
             List<LockableResource> newResources = req.bindJSONToList(LockableResource.class, json.get("resources"));
             for(LockableResource resource : newResources) {
+                // Keep current queue/lock/reserved/offline status without modification
                 LockableResource oldResource = getResourceFromName(resource.getName());
                 if(oldResource != null) {
                     resource.setBuild(oldResource.getBuild());
                     resource.setQueued(oldResource.getQueueItemId(), oldResource.getQueueItemProject());
-                    resource.reserveFor(oldResource.getReservedBy(), oldResource.getReservedFor(), oldResource.getReservedUntil());
+                    resource.setReservedBy(oldResource.getReservedBy());
+                    resource.setReservedFor(oldResource.getReservedFor());
+                    resource.setReservedUntil(oldResource.getReservedUntil());
                 }
             }
             this.resources.clear();
@@ -767,12 +652,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
         } catch(JSONException e) {
             LOGGER.log(Level.SEVERE, "manager.configure()", e);
             return false;
-        }
-        try {
-            this.useFairSelection = json.getBoolean("useFairSelection");
-        } catch(JSONException e) {
-            LOGGER.log(Level.SEVERE, "manager.configure()", e);
-            this.useFairSelection = false; //backward compatibility
         }
         try {
             this.defaultReservationHours = json.getDouble("defaultReservationHours");
@@ -792,97 +671,48 @@ public class LockableResourcesManager extends GlobalConfiguration {
             LOGGER.log(Level.SEVERE, "manager.configure()", e);
             setShowWidget(true); //backward compatibility
         }
+        try {
+            setShowQueue(json.getBoolean("showQueue"));
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            setShowQueue(true); //backward compatibility
+        }
+        try {
+            this.resourcesSelector = req.bindJSON(ResourcesSelector.class, json.getJSONObject("resourcesSelector"));
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            this.resourcesSelector = new ResourcesDefaultSelector();
+        }
+        try {
+            this.queuePolicy = req.bindJSON(QueuePolicy.class, json.getJSONObject("queuePolicy"));
+        } catch(JSONException e) {
+            LOGGER.log(Level.SEVERE, "manager.configure()", e);
+            this.queuePolicy = new QueueFifoPolicy();
+        }
         save();
         return true;
     }
 
-    /**
-     * Queue lockable resources for later lock
-     * Get already queued item from the same project and build and try to complete the selection
-     * If all required resources are not available, then previously queued items are released
-     * <p>
-     * Requires a queue item (for example with a build of a standard freestyle project)
-     *
-     * @param project
-     * @param item
-     *
-     * @return Return the list of queued resources, or null if no enough resources
-     */
-    public synchronized Set<LockableResource> queue(Job<?, ?> project, Queue.Item item) {
-        final long taskId = item.getId();
-        final String projectFullName = project.getFullName();
-        final EnvVars env = Utils.getEnvVars(item);
-
-        RequiredResourcesProperty property = getProjectRequiredResourcesProperty(project);
-        if(property == null) {
-            return Collections.emptySet();
-        }
-        Collection<RequiredResources> requiredResourcesList = property.getRequiredResourcesList();
-        LOGGER.finest(projectFullName + " trying to get resources with these details: " + requiredResourcesList);
-
-        if(isAnotherBuildWaitingResources(projectFullName, taskId)) {
-            // The project has another buildable item waiting -> bail out
-            LOGGER.log(Level.FINEST, "{0} has another build waiting resources."
-                    + " Waiting for it to proceed first.",
-                    new Object[] {projectFullName});
-            return null;
-        }
-        Set<LockableResource> alreadyQueued = getQueuedResources(projectFullName, taskId);
-
-        LOGGER.finest(projectFullName + ": trying to get resources with these details: " + requiredResourcesList);
-        Set<LockableResource> selected = new HashSet<>(alreadyQueued);
-        String userId = Utils.getUserId(item);
-        selected = selectFreeResources(requiredResourcesList, selected, env, userId);
-
-        if(selected == null) {
-            // No enough resources for this build: unqueue all associated resources
-            for(LockableResource r : alreadyQueued) {
-                r.unqueue();
-            }
-        } else {
-            // Resources for this build have been selected: queue all associated resources
-            for(LockableResource r : selected) {
-                r.setQueued(taskId, projectFullName);
+    private synchronized void queueCleanup() {
+        for(Iterator<QueueContext> iter = this.queuedContexts.iterator(); iter.hasNext();) {
+            QueueContext entry = iter.next();
+            if(!entry.isStillApplicable()) {
+                LOGGER.info("Item in resources queue is no more appliable: " + entry);
+                iter.remove();
+                save();
             }
         }
-        return selected;
     }
 
-    // Return false if another item queued for this project -> bail out
-    private synchronized boolean isAnotherBuildWaitingResources(String projectFullName, long taskId) {
-        for(LockableResource resource : resources) {
-            // This project might already have something in queue
-            String rProject = resource.getQueueItemProject();
-            if(rProject != null && rProject.equals(projectFullName)) {
-                if(!resource.isQueuedByTask(taskId)) {
-                    // The project has another buildable item waiting -> bail out
-                    LOGGER.log(Level.FINEST, "{0} has another build "
-                            + "that already queued resource {1}. Continue queueing.",
-                            new Object[] {projectFullName, resource});
-                    return true;
-                }
-            }
-        }
-        return false;
+    public synchronized List<QueueContext> getQueue() {
+        queueCleanup();
+        return queuePolicy.sort(queuedContexts);
     }
 
-    /*
-     * Adds the given context and the required resources to the queue if
-     * this context is not yet queued.
-     */
-    public synchronized void queueContext(StepContext context, LockStep step) {
-        for(QueuedContextStruct entry : this.queuedContexts) {
-            if(entry.getContext() == context) {
-                return;
-            }
-        }
-        this.queuedContexts.add(new QueuedContextStruct(context, step));
-        save();
-    }
-
-    public synchronized boolean unqueueContext(StepContext context) {
-        for(Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext();) {
-            if(iter.next().getContext() == context) {
+    public synchronized boolean removeFromLockQueue(Queue.Item item) {
+        for(Iterator<QueueContext> iter = this.queuedContexts.iterator(); iter.hasNext();) {
+            QueueContext entry = iter.next();
+            if(entry.getQueueId() == item.getId()) {
                 iter.remove();
                 save();
                 return true;
@@ -891,60 +721,38 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return false;
     }
 
-    /**
-     * Brute force recursive algorithm to find a set of resources matching the request
-     *
-     * @param <T>
-     * @param request
-     *
-     * @return
-     */
-    public static <T> Set<T> selectAmongPossibilities(List<Tuple2<Set<T>, Integer>> request) {
-        //--------------------
-        // Easy case: solution found
-        //--------------------
-        if(request.size() <= 0) {
-            return new HashSet<>();
-        }
-        //--------------------
-        // Select first sub-request
-        // Try to select each candidate and perform recursive call with adapter request
-        //--------------------
-        Tuple2<Set<T>, Integer> subRequest = request.get(0);
-        Set<T> candidates = subRequest.getFirst();
-        int nb = subRequest.getSecond();
-        if(nb <= 0) {
-            // No resource needed: remove the sub-request and continue with others
-            List<Tuple2<Set<T>, Integer>> newRequest = new ArrayList<>(request);
-            newRequest.remove(subRequest);
-            return selectAmongPossibilities(newRequest);
-        } else if(nb <= candidates.size()) {
-            // Select each candidate, remove it from all other pools in subrequests, then perform recursive call
-            List<Tuple2<Set<T>, Integer>> newRequest = new ArrayList<>(request.size());
-            for(T v : candidates) {
-                newRequest.clear();
-                for(Tuple2<Set<T>, Integer> sr : request) {
-                    Set<T> newCandidates = new HashSet<>(sr.getFirst());
-                    newCandidates.remove(v);
-                    int newNb = ((sr == subRequest) ? nb - 1 : sr.getSecond());
-                    newRequest.add(new Tuple2<>(newCandidates, newNb));
-                }
-                Set<T> res = selectAmongPossibilities(newRequest);
-                if(res != null) {
-                    res.add(v);
-                    return res;
-                }
+    public synchronized boolean removeFromLockQueue(Run<?, ?> build) {
+        for(Iterator<QueueContext> iter = this.queuedContexts.iterator(); iter.hasNext();) {
+            QueueContext entry = iter.next();
+            if((entry.getBuild() == build) || (entry.getQueueId() == build.getQueueId())) {
+                iter.remove();
+                save();
+                return true;
             }
         }
-        // No solution
-        return null;
+        return false;
+    }
+
+    public synchronized boolean removeFromLockQueue(StepContext context) {
+        try {
+            Run<?, ?> build = context.get(Run.class);
+            if(build != null) {
+                for(Iterator<QueueContext> iter = this.queuedContexts.iterator(); iter.hasNext();) {
+                    QueueContext entry = iter.next();
+                    if((entry.getBuild() == build) || (entry.getQueueId() == build.getQueueId())) {
+                        iter.remove();
+                        save();
+                        return true;
+                    }
+                }
+            }
+        } catch(IOException | InterruptedException ex) {
+        }
+        return false;
     }
 
     public static LockableResourcesManager get() {
         Jenkins jenkins = Jenkins.getInstance();
-        if(jenkins != null) {
-            return (LockableResourcesManager) jenkins.getDescriptorOrDie(LockableResourcesManager.class);
-        }
-        throw new IllegalStateException("Jenkins instance has not been started or was already shut down.");
+        return (LockableResourcesManager) jenkins.getDescriptorOrDie(LockableResourcesManager.class);
     }
 }

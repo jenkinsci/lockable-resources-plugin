@@ -18,12 +18,12 @@ import hudson.model.Queue;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.model.queue.QueueTaskDispatcher;
 import java.util.Collection;
-import java.util.Set;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
-import org.jenkins.plugins.lockableresources.resources.LockableResource;
+import org.jenkins.plugins.lockableresources.queue.context.QueueItemContext;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 
@@ -48,8 +48,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         if(project == null) {
             return null;
         }
-        LockableResourcesManager manager = LockableResourcesManager.get();
-        RequiredResourcesProperty property = manager.getProjectRequiredResourcesProperty(project);
+        RequiredResourcesProperty property = RequiredResourcesProperty.getFromProject(project);
         if(property == null) {
             return null;
         }
@@ -57,13 +56,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     }
 
     @CheckForNull
-    private static CauseOfBlockage getCauseOfBlockage(Job<?, ?> project, Queue.Item item) {
-        Set<LockableResource> selected = LockableResourcesManager.get().queue(project, item);
-        if(selected == null) {
-            EnvVars env = Utils.getEnvVars(item);
-            return new BecauseResourcesLocked(project, env);
-        } else {
+    private static CauseOfBlockage getCauseOfBlockage(@Nonnull Job<?, ?> project, @Nonnull Queue.Item item) {
+        // At this stage, a RUN instance is not yet created, so we can not lock resources
+        // Instead, the resources are queued (temporary reserved), if available, and will be locked in LockRunListener.onStarted()
+        // If there is no enough free resources, a blocage is raised and the item remains in Jenkins tasks queue
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        QueueItemContext queueContext = new QueueItemContext(item);
+        if(manager.tryQueue(project, queueContext)) {
             return null;
+        } else {
+            EnvVars env = queueContext.getEnvVars();
+            return new BecauseResourcesLocked(project, env);
         }
     }
 
@@ -72,8 +75,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         private final EnvVars env;
 
         BecauseResourcesLocked(Job<?, ?> project, EnvVars env) {
-            LockableResourcesManager manager = LockableResourcesManager.get();
-            RequiredResourcesProperty property = manager.getProjectRequiredResourcesProperty(project);
+            RequiredResourcesProperty property = RequiredResourcesProperty.getFromProject(project);
             if(property == null) {
                 this.requiredResourcesList = null;
             } else {
@@ -84,17 +86,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
         @Override
         public String getShortDescription() {
-            StringBuilder lbl = new StringBuilder("Waiting for resources");
-            if(requiredResourcesList != null) {
-                for(RequiredResources rr : requiredResourcesList) {
-                    if(rr.getExpandedResources(env).isEmpty()) {
-                        lbl.append(" ").append(rr.getExpandedLabels(env));
-                    } else {
-                        lbl.append(" ").append(rr.getExpandedResources(env));
-                    }
-                }
-            }
-            return lbl.toString();
+            return "Waiting for resources " + RequiredResources.toString(requiredResourcesList, env);
         }
     }
 }

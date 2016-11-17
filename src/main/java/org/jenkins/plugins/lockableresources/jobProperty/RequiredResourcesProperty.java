@@ -12,9 +12,13 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
+import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import jenkins.model.OptionalJobProperty;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
@@ -62,12 +66,13 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
 
     @Exported
     public Collection<RequiredResources> getRequiredResourcesList() {
-        return requiredResourcesList;
+        return Collections.unmodifiableCollection(requiredResourcesList);
     }
 
     @DataBoundSetter
     public void setRequiredResourcesList(Collection<RequiredResources> requiredResourcesList) {
-        this.requiredResourcesList = requiredResourcesList;
+        this.requiredResourcesList.clear();
+        this.requiredResourcesList.addAll(requiredResourcesList);
     }
 
     @Exported
@@ -78,6 +83,17 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
     @DataBoundSetter
     public void setVariableName(String variableName) {
         this.variableName = variableName;
+    }
+
+    @CheckForNull
+    public static RequiredResourcesProperty getFromProject(@Nullable Job<?, ?> project) {
+        if(project == null) {
+            return null;
+        }
+        if(project instanceof MatrixConfiguration) {
+            return getFromProject((Job<?, ?>) project.getParent());
+        }
+        return project.getProperty(RequiredResourcesProperty.class);
     }
 
     /**

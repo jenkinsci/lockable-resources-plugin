@@ -30,15 +30,15 @@ public class LockableResourcesManagerTest {
         // Given
         String fullName = "my-project";
         String queueItemProject = "other-project";
-        Job<?, ?> project1 = mockups.createProjectMock("Project2", queueItemProject);
-        Job<?, ?> project2 = mockups.createProjectMock("Project1", fullName);
-        Queue.Item item1_1 = mockups.createQueuedItemMock(project1, 1);
-        Queue.Item item2_1 = mockups.createQueuedItemMock(project2, 1);
-        Queue.Item item2_2 = mockups.createQueuedItemMock(project2, 2);
+        Job<?, ?> project1 = Mockups.createProjectMock("Project2", queueItemProject);
+        Job<?, ?> project2 = Mockups.createProjectMock("Project1", fullName);
+        Queue.Item item1_1 = Mockups.createQueuedItemMock(project1, 1);
+        Queue.Item item2_1 = Mockups.createQueuedItemMock(project2, 1);
+        Queue.Item item2_2 = Mockups.createQueuedItemMock(project2, 2);
 
-        LockableResource resource1 = mockups.createQueuedLockableResourceMock("resource1", "desc", "r1", project1, item1_1);
-        LockableResource resource2 = mockups.createQueuedLockableResourceMock("resource2", "desc", "r2", project2, item2_1);
-        LockableResource resource3 = mockups.createQueuedLockableResourceMock("resource3", "desc", "r3", project2, item2_2);
+        LockableResource resource1 = Mockups.createQueuedLockableResourceMock("resource1", "desc", "r1", project1, item1_1);
+        LockableResource resource2 = Mockups.createQueuedLockableResourceMock("resource2", "desc", "r2", project2, item2_1);
+        LockableResource resource3 = Mockups.createQueuedLockableResourceMock("resource3", "desc", "r3", project2, item2_2);
 
         Set<LockableResource> resources = Sets.newHashSet();
         resources.add(resource1);
@@ -46,7 +46,7 @@ public class LockableResourcesManagerTest {
         resources.add(resource3);
 
         // When
-        LockableResourcesManager lockableResourcesManager = mockups.createLockableResourcesManagerMock(resources, false);
+        LockableResourcesManager lockableResourcesManager = Mockups.createLockableResourcesManagerMock(resources);
         Mockito.when(lockableResourcesManager.getQueuedResourcesFromProject(fullName)).thenCallRealMethod();
         Set<LockableResource> matching = lockableResourcesManager.getQueuedResourcesFromProject(fullName);
 
@@ -61,14 +61,14 @@ public class LockableResourcesManagerTest {
     @Test
     public void should_get_resources_from_build() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock("Project", "MyProject");
-        Queue.Item item = mockups.createQueuedItemMock(project, 1);
-        Run build = mockups.createBuildMock(item, null);
+        Job<?, ?> project = Mockups.createProjectMock("Project", "MyProject");
+        Queue.Item item = Mockups.createQueuedItemMock(project, 1);
+        Run build = Mockups.createBuildMock(item, null);
 
-        LockableResource resource1 = mockups.createLockedLockableResourceMock("resource1", "desc", "r1", project, item, build);
-        LockableResource resource2 = mockups.createQueuedLockableResourceMock("resource2", "desc", "r2", project, item);
-        LockableResource resource3 = mockups.createFreeLockableResourceMock("resource3", "desc", "r3");
-        LockableResource resource4 = mockups.createReservedLockableResourceMock("resource4", "desc", "r4", "ReservedBySomeone");
+        LockableResource resource1 = Mockups.createLockedLockableResourceMock("resource1", "desc", "r1", project, item, build);
+        LockableResource resource2 = Mockups.createQueuedLockableResourceMock("resource2", "desc", "r2", project, item);
+        LockableResource resource3 = Mockups.createFreeLockableResourceMock("resource3", "desc", "r3");
+        LockableResource resource4 = Mockups.createReservedLockableResourceMock("resource4", "desc", "r4", "ReservedBySomeone");
 
         Set<LockableResource> resources = Sets.newHashSet();
         resources.add(resource1);
@@ -77,7 +77,7 @@ public class LockableResourcesManagerTest {
         resources.add(resource4);
 
         // When
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(resources, false);
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(resources);
         Mockito.when(manager.getLockedResourcesFromBuild(build)).thenCallRealMethod();
         Set<LockableResource> matching = manager.getLockedResourcesFromBuild(build);
 

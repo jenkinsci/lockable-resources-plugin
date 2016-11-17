@@ -25,10 +25,9 @@ public class ResourceVariableNameAction extends InvisibleAction {
     }
 
     @Extension
-    public static final class ResourceVariableNameActionEnvironmentContributor extends EnvironmentContributor {
+    public static class ResourceVariableNameActionEnvironmentContributor extends EnvironmentContributor {
         @Override
-        public void buildEnvironmentFor(Run run, EnvVars envs, TaskListener listener)
-                throws IOException, InterruptedException {
+        public void buildEnvironmentFor(Run run, EnvVars envs, TaskListener listener) throws IOException, InterruptedException {
             List<ResourceVariableNameAction> actions = run.getActions(ResourceVariableNameAction.class);
 
             for(ResourceVariableNameAction action : actions) {

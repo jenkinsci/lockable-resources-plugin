@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.resources;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
@@ -36,6 +37,7 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
     }
 
     @Exported
+    @Nonnull
     public String getName() {
         return name;
     }
@@ -120,6 +122,45 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
         }
         return true;
     }
+    
+    /**
+     *
+     * @param resources
+     * @param neededCapabilities
+     * @param prohibitedCapabilities
+     * @param env                    Used only for Groovy script execution
+     *
+     * @return
+     */
+    public static Set<LockableResource> getResourcesFromCapabilities(@Nonnull Collection<LockableResource> resources, @Nullable Collection<ResourceCapability> neededCapabilities, @Nullable Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
+        HashSet<LockableResource> found = new HashSet<>();
+        for(LockableResource r : resources) {
+            if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
+                found.add(r);
+            }
+        }
+        return found;
+    }
+
+    /**
+     *
+     * @param resources
+     * @param neededCapabilities
+     * @param prohibitedCapabilities
+     * @param env                    Used only for Groovy script execution
+     *
+     * @return
+     */
+    public static Set<ResourceCapability> getCompatibleCapabilities(@Nonnull Collection<LockableResource> resources, Collection<ResourceCapability> neededCapabilities, Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
+        TreeSet<ResourceCapability> capabilities = new TreeSet<>();
+        for(LockableResource r : resources) {
+            if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
+                capabilities.addAll(r.getCapabilities());
+                capabilities.add(r.getMyselfAsCapability());
+            }
+        }
+        return capabilities;
+    }
 
     @Extension
     public static class DescriptorImpl extends Descriptor<ResourceCapability> {
@@ -138,29 +179,18 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
             Set<ResourceCapability> prohibitedCapabilities = ResourceCapability.splitCapabilities(prohibitedLabels);
             if(onlyResourceNames) {
                 // Add only resource names (sorted)
-                TreeSet<LockableResource> resources = new TreeSet<>(manager.getResourcesFromCapabilities(neededCapabilities, prohibitedCapabilities, null));
+                TreeSet<LockableResource> resources = new TreeSet<>(getResourcesFromCapabilities(manager.getAllResources(), neededCapabilities, prohibitedCapabilities, null));
                 for(LockableResource r : resources) {
                     res.add(r.getName());
                 }
             } else {
                 // Add all capabilities (sorted)
-                TreeSet<ResourceCapability> capabilities = new TreeSet<>(manager.getCompatibleCapabilities(neededCapabilities, prohibitedCapabilities, null));
+                TreeSet<ResourceCapability> capabilities = new TreeSet<>(getCompatibleCapabilities(manager.getAllResources(), neededCapabilities, prohibitedCapabilities, null));
                 for(ResourceCapability capability : capabilities) {
                     res.add(capability.name);
                 }
             }
             return res;
-        }
-
-        public static String getColor(@QueryParameter String name) {
-            LockableResourcesManager manager = LockableResourcesManager.get();
-            LockableResource r = manager.getResourceFromName(name);
-            String userId = Utils.getUserId();
-            if((r != null) && r.isFree(userId)) {
-                return "#0B610B";
-            } else {
-                return "#DF0101";
-            }
         }
     }
 }

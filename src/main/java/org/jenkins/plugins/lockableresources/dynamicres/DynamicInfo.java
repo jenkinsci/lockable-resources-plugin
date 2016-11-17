@@ -23,6 +23,7 @@
  */
 package org.jenkins.plugins.lockableresources.dynamicres;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -43,13 +44,13 @@ public class DynamicInfo {
      * @return A set of dynamic resource configurations that will be created by a job
      */
     public Set<Map<?, ?>> getWillCreate() {
-        return this.willCreate;
+        return Collections.unmodifiableSet(willCreate);
     }
 
     /**
      * @return A set of dynamic resource configurations that will be consumed by a job
      */
     public Set<Map<?, ?>> getWillConsume() {
-        return this.willConsume;
+        return Collections.unmodifiableSet(willConsume);
     }
 }

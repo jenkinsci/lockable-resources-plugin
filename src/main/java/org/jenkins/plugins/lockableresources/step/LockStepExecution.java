@@ -5,12 +5,13 @@ import hudson.EnvVars;
 import hudson.Util;
 import hudson.model.Run;
 import hudson.model.TaskListener;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
 import org.jenkins.plugins.lockableresources.Utils;
+import org.jenkins.plugins.lockableresources.queue.context.QueueStepContext;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
@@ -37,31 +38,40 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     @Override
     public boolean start() throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
-        EnvVars env = Utils.getEnvVars(run, listener);
+        QueueStepContext queueContext = new QueueStepContext(getContext(), step);
+        EnvVars env = queueContext.getEnvVars();
 
-        for(RequiredResources rr : step.requiredResourcesList) {
+        for(RequiredResources rr : step.getRequiredResources()) {
             // create missing resources only when specified explicitly
             String rsrcs = rr.getExpandedResources(env);
             if(Util.fixEmpty(rsrcs) != null) {
                 for(String resource : Utils.splitLabels(rsrcs)) {
                     if(manager.createResource(resource)) {
-                        listener.getLogger().println("Resource [" + rsrcs + "] did not exist. Created.");
+                        if(listener != null) {
+                            listener.getLogger().println("Resource [" + rsrcs + "] did not exist. Created.");
+                        }
                     }
                 }
             }
         }
 
-        listener.getLogger().println("Trying to acquire lock on [" + step.requiredResourcesList + "]");
+        if(listener != null) {
+            listener.getLogger().println("Trying to acquire lock on [" + step.getRequiredResources() + "]");
+        }
         // Determine if there are enough resources available to proceed
         // Function 'proceed' is called inside lock if execution is possible
         // Else, the task is queued for later retry
-        LockableResourcesManager.get().lockOrQueueForLater(step, getContext());
+        if(!manager.tryLock(queueContext)) {
+            if(listener != null) {
+                listener.getLogger().println(step.getRequiredResources() + " is locked, waiting...");
+            }
+        }
         return false; //asynchronous step execution
     }
 
     @Override
     public void stop(Throwable cause) throws Exception {
-        boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
+        boolean cleaned = LockableResourcesManager.get().removeFromLockQueue(getContext());
         if(!cleaned) {
             LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource witing list. The context is not in the waiting list.");
         }
@@ -75,34 +85,21 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
      * @param resourceNames
      * @param requiredresources
      * @param context
-     * @param inversePrecedence
      */
-    public static void proceed(Collection<String> resourceNames, Collection<RequiredResources> requiredresources, StepContext context, boolean inversePrecedence) {
-        Run<?, ?> r;
-        try {
-            r = context.get(Run.class);
-            context.get(TaskListener.class).getLogger().println("Lock acquired on " + requiredresources);
-            context.get(TaskListener.class).getLogger().println("Lock resources " + resourceNames);
-        } catch(IOException | InterruptedException e) {
-            context.onFailure(e);
-            return;
-        }
-        LOGGER.finest("Lock acquired on " + resourceNames + " by " + r.getExternalizableId());
+    public static void proceed(Collection<String> resourceNames, Collection<RequiredResources> requiredresources, @Nonnull StepContext context) {
         context.newBodyInvoker().
-                withCallback(new Callback(resourceNames, requiredresources, inversePrecedence)).
+                withCallback(new Callback(resourceNames, requiredresources)).
                 withDisplayName("Locking " + resourceNames).
                 start();
     }
 
-    private static final class Callback extends BodyExecutionCallback.TailCall {
+    private static class Callback extends BodyExecutionCallback.TailCall {
         private static final long serialVersionUID = 1L;
         private final Collection<String> resourceNames;
-        private final boolean inversePrecedence;
         private final Collection<RequiredResources> requiredresources;
 
-        Callback(Collection<String> resourceNames, Collection<RequiredResources> requiredresources, boolean inversePrecedence) {
+        Callback(Collection<String> resourceNames, Collection<RequiredResources> requiredresources) {
             this.resourceNames = resourceNames;
-            this.inversePrecedence = inversePrecedence;
             this.requiredresources = requiredresources;
         }
 
@@ -110,14 +107,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         protected void finished(StepContext context) throws Exception {
             LockableResourcesManager manager = LockableResourcesManager.get();
             Set<LockableResource> resources = manager.getResourcesFromNames(resourceNames);
-            Run<?, ?> build = context.get(Run.class);
-            if(build == null) {
-                LOGGER.warning("No valid build during resources unlocking: may lead to blocked resources");
+            if(resources == null) {
+                LOGGER.warning("Invalid resources names during unlocking: may lead to blocked resources");
             } else {
-                manager.unlock(resources, build, context, inversePrecedence);
+                Run<?, ?> build = context.get(Run.class);
+                TaskListener listener = context.get(TaskListener.class);
+                if(build == null) {
+                    LOGGER.warning("No valid build during resources unlocking: may lead to blocked resources");
+                } else {
+                    if(listener != null) {
+                        listener.getLogger().println("Lock released on " + requiredresources);
+                    }
+                    manager.unlock(resources, build, listener);
+                }
             }
-            context.get(TaskListener.class).getLogger().println("Lock released on " + requiredresources);
-            context.get(TaskListener.class).getLogger().println("Unlock resources " + resourceNames);
             LOGGER.finest("Lock released on " + resources);
         }
     }

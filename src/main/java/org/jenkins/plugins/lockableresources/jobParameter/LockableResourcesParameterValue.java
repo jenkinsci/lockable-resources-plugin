@@ -55,22 +55,24 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
 
     @Exported
     public LinkedHashSet<ResourceCapability> getSelectedCapabilities() {
-        return selectedCapabilities;
+        return new LinkedHashSet<>(selectedCapabilities);
     }
 
     @DataBoundSetter
     public void setSelectedCapabilities(LinkedHashSet<ResourceCapability> selectedCapabilities) {
-        this.selectedCapabilities = selectedCapabilities;
+        this.selectedCapabilities.clear();
+        this.selectedCapabilities.addAll(selectedCapabilities);
     }
 
     @Exported
     public LinkedHashSet<ResourceCapability> getNeededCapabilities() {
-        return neededCapabilities;
+        return new LinkedHashSet<>(neededCapabilities);
     }
 
     @DataBoundSetter
     public void setNeededCapabilities(LinkedHashSet<ResourceCapability> neededCapabilities) {
-        this.neededCapabilities = neededCapabilities;
+        this.neededCapabilities.clear();
+        this.neededCapabilities.addAll(neededCapabilities);
     }
 
     @Exported
@@ -131,7 +133,7 @@ public class LockableResourcesParameterValue extends ParameterValue implements C
 
     @Override
     public String toString() {
-        return "(LockableResourcesParameterValue) " + getShortDescription();
+        return getEnvString();
     }
 
     @Override

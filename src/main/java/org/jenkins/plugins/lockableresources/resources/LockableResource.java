@@ -54,12 +54,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable, Comparable<LockableResource> {
     private static final long serialVersionUID = 1L;
     private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
-    public static final int NOT_QUEUED = 0;
-    /**
-     * Groovy scripts are limited to labels of defined resources
-     * They can not be use for other structure (in particular RequiredResources)
-     */
-    public static final String GROOVY_LABEL_MARKER = "groovy:";
+    public static final long NOT_QUEUED = 0;
     private static final int QUEUE_TIMEOUT = 60;
     @Exported
     protected final String name;
@@ -72,7 +67,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @Exported
     protected String reservedFor = null;
     @Exported
-    protected long reservedUntil = 0;
+    protected Long reservedUntil = null;
     private long queueItemId = NOT_QUEUED;
     private String queueItemProject = null;
     private transient Run<?, ?> build = null;
@@ -125,7 +120,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     @Exported
     public String getLabels() {
-        if((labels != null) && labels.startsWith(GROOVY_LABEL_MARKER)) {
+        if((labels != null) && labels.startsWith(Utils.GROOVY_LABEL_MARKER)) {
             return "";
         }
         return labels;
@@ -162,40 +157,46 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundSetter
-    public void setReservedUntil(long reservedUntil) {
+    public void setReservedUntil(Long reservedUntil) {
         this.reservedUntil = reservedUntil;
     }
     
     @Exported
-    public long getReservedUntil() {
+    public Long getReservedUntil() {
         return reservedUntil;
     }
     
     @Exported
     public String getReservedUntilString() {
+        if(reservedUntil == null) {
+            return "";
+        }
         SimpleDateFormat formater = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         Date d = new Date(reservedUntil);
-        return formater.format(d);
+        return "until " + formater.format(d);
     }
     
-    public void reserveFor(String byUser, String forUser, double hours) {
-        LockableResourcesManager manager = LockableResourcesManager.get();
+    public void reserveFor(String byUser, String forUser, Double hours) {
         this.reservedBy = Utils.getUserId(byUser);
         this.reservedFor = Utils.getUserId(forUser);
         Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.SECOND, (int) Math.round(Math.min(hours, manager.getMaxReservationHours()) * 3600));
-        this.reservedUntil = cal.getTimeInMillis();
+        if(hours == null) {
+            this.reservedUntil = null;
+        } else {
+            cal.add(Calendar.SECOND, (int) (3_600 * hours));
+            this.reservedUntil = cal.getTimeInMillis();
+        }
         validateDataTimeout();
     }
 
     public void unReserve() {
         this.reservedBy = null;
         this.reservedFor = null;
-        this.reservedUntil = 0;
+        this.reservedUntil = null;
     }
 
     public Set<ResourceCapability> getCapabilities() {
-        if((labels != null) && labels.startsWith(GROOVY_LABEL_MARKER)) {
+        if((labels != null) && labels.startsWith(Utils.GROOVY_LABEL_MARKER)) {
             // Special case: the whole label is a groovy script
             return new TreeSet<>();
         }
@@ -215,7 +216,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if(neededCapabilities != null) {
             for(Iterator<ResourceCapability> it = neededCapabilities.iterator(); it.hasNext();) {
                 ResourceCapability r = it.next();
-                if(r.getName().startsWith(GROOVY_LABEL_MARKER)) {
+                if(r.getName().startsWith(Utils.GROOVY_LABEL_MARKER)) {
                     // Test the groovy returned value
                     if((env != null) && !expressionMatches(r.getName(), env)) {
                         return false;
@@ -228,7 +229,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if(prohibitedCapabilities != null) {
             for(Iterator<ResourceCapability> it = prohibitedCapabilities.iterator(); it.hasNext();) {
                 ResourceCapability r = it.next();
-                if(r.getName().startsWith(GROOVY_LABEL_MARKER)) {
+                if(r.getName().startsWith(Utils.GROOVY_LABEL_MARKER)) {
                     // Test the groovy returned value
                     if((env != null) && expressionMatches(r.getName(), env)) {
                         return false;
@@ -244,7 +245,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public boolean isValidLabel(String candidate, @Nonnull EnvVars env) {
-        return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(candidate, env) : labelsContain(candidate);
+        return candidate.startsWith(Utils.GROOVY_LABEL_MARKER) ? expressionMatches(candidate, env) : labelsContain(candidate);
     }
 
     private boolean expressionMatches(String expression, @Nonnull EnvVars env) {
@@ -252,7 +253,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         binding.setVariable("resourceName", Util.fixNull(name));
         binding.setVariable("resourceDescription", Util.fixNull(description));
         binding.setVariable("resourceLabels", Util.fixNull(labels));
-        String expressionToEvaluate = expression.replace(GROOVY_LABEL_MARKER, "");
+        String expressionToEvaluate = expression.replace(Utils.GROOVY_LABEL_MARKER, "");
         GroovyShell shell = new GroovyShell(binding);
         try {
             Object result = shell.evaluate(expressionToEvaluate);
@@ -303,9 +304,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return queueItemId != NOT_QUEUED;
     }
 
-    public boolean isQueuedByTask(long taskId) {
+    public boolean isQueuedByTask(long queueId) {
         this.validateDataTimeout();
-        return queueItemId == taskId;
+        return (queueItemId != NOT_QUEUED) && (queueItemId == queueId);
     }
 
     public void unqueue() {
@@ -319,16 +320,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return getBuild() != null;
     }
 
-    public boolean isLockedByBuild(@Nonnull Run<?, ?> build) {
-        return (this.buildExternalizableId != null) && (this.buildExternalizableId.equals(build.getExternalizableId()));
+    public boolean isLockedByBuild(@Nullable Run<?, ?> build) {
+        return (build != null) && (this.buildExternalizableId != null) && (this.buildExternalizableId.equals(build.getExternalizableId()));
     }
 
     public boolean isFree(@Nullable String userId) {
         return (!isLocked() && !isReserved(userId) && !isQueued());
     }
 
-    public boolean canLock(@Nullable String userId) {
-        return (!isLocked() && !isReserved(userId));
+    public boolean canLock(@Nullable String userId, long queueId) {
+        return isQueuedByTask(queueId) || isFree(userId);
     }
 
     /**
@@ -343,7 +344,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         }
         validateDataTimeout();
         if(reservedFor != null) {
-            return String.format("[%s] is reserved by '%s' for '%s' until %s", name, reservedBy, reservedFor, getReservedUntilString());
+            return String.format("[%s] is reserved by '%s' for '%s' %s", name, reservedBy, reservedFor, getReservedUntilString());
         } else if(reservedBy != null) {
             return String.format("[%s] is reserved by '%s'", name, reservedBy);
         }
@@ -397,7 +398,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     public void setQueued(long queueItemId) {
         this.queueItemId = queueItemId;
-        this.queuingStarted = System.currentTimeMillis() / 1000;
+        this.queuingStarted = System.currentTimeMillis() / 1_000;
     }
 
     public void setQueued(long queueItemId, String queueProjectName) {
@@ -407,17 +408,19 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     private void validateDataTimeout() {
         if(queuingStarted > 0) {
-            long now = System.currentTimeMillis() / 1000;
+            long now = System.currentTimeMillis() / 1_000;
             if(now - queuingStarted > QUEUE_TIMEOUT) {
                 unqueue();
+                LockableResourcesManager manager = LockableResourcesManager.get();
+                manager.retryLock();
             }
         }
-        if((reservedFor != null) && (Calendar.getInstance().getTimeInMillis() > reservedUntil)) {
+        if((reservedUntil != null) && (Calendar.getInstance().getTimeInMillis() > reservedUntil)) {
             reservedFor = null;
             reservedBy = null;
-            reservedUntil = 0;
+            reservedUntil = null;
             LockableResourcesManager manager = LockableResourcesManager.get();
-            manager.resumeQueuedContext(false);
+            manager.retryLock();
         }
     }
 

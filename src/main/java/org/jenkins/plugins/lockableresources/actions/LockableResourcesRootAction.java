@@ -12,11 +12,8 @@ import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.RootAction;
-import hudson.model.User;
 import hudson.security.AccessDeniedException2;
 import hudson.security.Permission;
-import hudson.security.PermissionGroup;
-import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +22,7 @@ import javax.annotation.CheckForNull;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
-import org.jenkins.plugins.lockableresources.Messages;
+import org.jenkins.plugins.lockableresources.LockableResources;
 import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
@@ -35,20 +32,9 @@ import org.kohsuke.stapler.export.Exported;
 
 @Extension
 public class LockableResourcesRootAction implements RootAction {
-    public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
-            LockableResourcesManager.class, Messages._permissionGroup());
-    public static final Permission UNLOCK = new Permission(PERMISSIONS_GROUP,
-            Messages.unlockPermission(),
-            Messages._unlockPermission_Description(), Jenkins.ADMINISTER,
-            PermissionScope.JENKINS);
-    public static final Permission RESERVE = new Permission(PERMISSIONS_GROUP,
-            Messages.reservePermission(),
-            Messages._reservePermission_Description(), Jenkins.ADMINISTER,
-            PermissionScope.JENKINS);
-    public static final Permission OFFLINE = new Permission(PERMISSIONS_GROUP,
-            Messages.offlinePermission(),
-            Messages._offlinePermission_Description(), Jenkins.ADMINISTER,
-            PermissionScope.JENKINS);
+    public static final Permission UNLOCK = LockableResources.UNLOCK;
+    public static final Permission RESERVE = LockableResources.RESERVE;
+    public static final Permission OFFLINE = LockableResources.OFFLINE;
     static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
     /**
@@ -61,8 +47,8 @@ public class LockableResourcesRootAction implements RootAction {
 
     @Override
     public String getIconFileName() {
-        if(User.current() != null) {
-            // only show if logged in
+        if(canRead()) {
+            // only show if READ permission
             return ICON;
         } else {
             return null;
@@ -83,10 +69,10 @@ public class LockableResourcesRootAction implements RootAction {
     public Set<LockableResource> getResources() {
         return LockableResourcesManager.get().getResources();
     }
-
+    
     @Exported
     public int getFreeResourceAmount(String labels) {
-        return LockableResourcesManager.get().getFreeAmount(labels, null, null);
+        return LockableResourcesManager.get().getFreeAmount(labels);
     }
 
     @Exported
@@ -97,6 +83,11 @@ public class LockableResourcesRootAction implements RootAction {
     @Exported
     public int getNumberOfAllLabels() {
         return LockableResourcesManager.get().getAllLabels(false).size();
+    }
+
+    @Exported
+    public static boolean canRead() {
+        return LockableResources.canRead();
     }
 
     @Exported
@@ -160,10 +151,22 @@ public class LockableResourcesRootAction implements RootAction {
         }
         String forUser = req.getParameter("forUser");
         Double hours;
-        try {
-            hours = Double.parseDouble(req.getParameter("hours"));
-        } catch(NumberFormatException ex) {
-            hours = 12.0; //default value = 12hours
+        String hoursTxt = req.getParameter("hours");
+        Double defaultHours = getDefaultReservationHours();
+        if(hoursTxt == null) {
+            hours = null;
+        } else {
+            try {
+                hours = Double.parseDouble(req.getParameter("hours"));
+            } catch(NumberFormatException ex) {
+                hours = defaultHours;
+            }
+        }
+        if((hours == null) && (defaultHours != null) && (defaultHours > 0)) {
+            hours = getDefaultReservationHours();
+        }
+        if((hours != null) && (hours <= 0) && Jenkins.getInstance().hasPermission(OFFLINE)) {
+            hours = null; //unlimited
         }
 
         List<LockableResource> resources = new ArrayList<>();
@@ -210,8 +213,7 @@ public class LockableResourcesRootAction implements RootAction {
          */
         String userId = Utils.getUserId();
         if(!(Jenkins.getInstance().hasPermission(UNLOCK))) {
-            if((userId == null) || !(
-                    (Jenkins.getInstance().hasPermission(RESERVE) && userId.equals(r.getReservedBy()))
+            if((userId == null) || !((Jenkins.getInstance().hasPermission(RESERVE) && userId.equals(r.getReservedBy()))
                     || userId.equals(r.getReservedFor()))) {
                 throw new AccessDeniedException2(Jenkins.getAuthentication(), UNLOCK);
             }
@@ -242,23 +244,23 @@ public class LockableResourcesRootAction implements RootAction {
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         manager.reset(resources);
-        
+
         rsp.forwardToPreviousPage(req);
     }
-    
+
     @Exported
     @CheckForNull
     public static String getUserId() {
         return Utils.getUserId();
     }
-    
+
     @Exported
     @CheckForNull
     public Double getDefaultReservationHours() {
         LockableResourcesManager manager = LockableResourcesManager.get();
         return manager.getDefaultReservationHours();
     }
-    
+
     @Exported
     @CheckForNull
     public Double getMaxReservationHours() {

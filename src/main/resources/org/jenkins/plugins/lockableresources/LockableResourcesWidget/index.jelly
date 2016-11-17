@@ -12,15 +12,17 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
          xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
          xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
-    <style>
-        #LockableResources {
-        margin-top: 20px;
-        }
-    </style>
-    <l:pane width="2" title="${%Lockable resources}" id="LockableResources">
-        <j:set var="short" value="true" />
-        <j:forEach var="resource" items="${it.resources}" indexVar="i">
-            <st:include page="details.jelly" class="org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction" />
-        </j:forEach>
-    </l:pane>
+    <j:if test="${it.canRead()}">
+        <style>
+            #lockableResources {
+            margin-top: 20px;
+            }
+        </style>
+        <l:pane width="2" title="${%Lockable resources}" id="lockableResources">
+            <j:set var="short" value="true" />
+            <j:forEach var="resource" items="${it.resources}" indexVar="i">
+                <st:include page="details.jelly" class="org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction" />
+            </j:forEach>
+        </l:pane>
+    </j:if>
 </j:jelly>

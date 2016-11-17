@@ -47,7 +47,7 @@
                 </j:when>
                 <j:when test="${resource.hasExclusiveUse(it.UserId)}">
                     <div style="color: green;">
-                        <strong>EXCLUSIVE</strong> until ${resource.reservedUntilString}
+                        <strong>EXCLUSIVE</strong> ${resource.reservedUntilString}
                     </div>
                 </j:when>
                 <j:when test="${!resource.isReserved(it.UserId)}">
@@ -57,7 +57,7 @@
                 </j:when>
                 <j:when test="${resource.reservedFor != null}">
                     <div style="color: #800080;">
-                        <strong>RESERVED</strong> until ${resource.reservedUntilString}
+                        <strong>RESERVED</strong> ${resource.reservedUntilString}
                     </div>
                 </j:when>
                 <j:when test="${resource.reservedBy != null}">
@@ -110,9 +110,22 @@
                 function reserveFor_resource_${i}() {
                 var forUser = prompt("Id or full name of the user:", "${it.UserId}");
                 if(forUser == null) {return}
-                var hours = prompt("Duration of the reservation (max = ${it.maxReservationHours} hours):", "${it.defaultReservationHours}");
+                if(${it.defaultReservationHours > 0}) {
+                var hours;
+                var txt = "Duration of the reservation";
+                if(${app.hasPermission(it.OFFLINE)}) {
+                txt += " (hours, 0 = unlimited):";
+                } else if(${it.maxReservationHours > 0}) {
+                txt += " (max = ${it.maxReservationHours} hours):";
+                } else {
+                txt += " (hours):";
+                }
+                hours = prompt(txt, "${it.defaultReservationHours}");
                 if(hours == null) {return}
                 window.location.assign("reserveFor?resource=${resource.name}&amp;forUser=" + forUser + "&amp;hours=" + hours);
+                } else {
+                window.location.assign("reserveFor?resource=${resource.name}&amp;forUser=" + forUser);
+                }
                 }
                 function unreserveFor_resource_${i}() {
                 if(!confirm("Are you sure ? You will lost reservation for this resource.")) {return}

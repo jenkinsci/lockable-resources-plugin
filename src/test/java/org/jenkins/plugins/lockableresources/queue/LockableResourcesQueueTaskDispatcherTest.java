@@ -6,13 +6,12 @@ import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.CauseOfBlockage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.jenkins.plugins.lockableresources.Utils;
-import org.jenkins.plugins.lockableresources.mockups;
+import org.jenkins.plugins.lockableresources.Mockups;
+import org.jenkins.plugins.lockableresources.queue.context.QueueItemContext;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
@@ -40,15 +39,15 @@ public class LockableResourcesQueueTaskDispatcherTest {
     @Test
     public void cause_of_blockage_is_null_when_no_locakble_resources_property() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
-        when(manager.queue(project, item)).thenReturn((Set) Collections.emptySet());
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
 
         // Then
         assertThat(causeOfBlockage).isNull();
@@ -57,12 +56,12 @@ public class LockableResourcesQueueTaskDispatcherTest {
     @Test
     public void cause_of_blockage_is_null_when_required_resources_is_null() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
-        mockups.createPropertyMock(manager, project, null, null);
-        when(manager.queue(project, item)).thenReturn((Set) Collections.emptySet());
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
+        Mockups.createPropertyMock(project, null, null);
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
@@ -75,28 +74,22 @@ public class LockableResourcesQueueTaskDispatcherTest {
     @Test
     public void cause_of_blockage_is_null_when_required_resource_names_and_label_are_empty() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        EnvVars env = mockups.createEnvVarsMock(item);
+        EnvVars env = Mockups.createEnvVarsMock(item);
         env.put("key", "value");
 
-        List<RequiredResources> resources = new ArrayList();
         String label = "";
         String resourceName = "";
         Integer resourceNumber = 0;
-        RequiredResources resource = mock(RequiredResources.class);
-        resource.setResources(resourceName);
-        resource.setLabels(label);
-        resource.setQuantity(resourceNumber);
+        RequiredResources resource = new RequiredResources(resourceName, label, resourceNumber);
+        List<RequiredResources> resources = new ArrayList();
         resources.add(resource);
-        when(resource.getExpandedResources(env)).thenReturn(resourceName);
-        when(resource.getExpandedLabels(env)).thenReturn(label);
-        when(resource.getQuantity()).thenReturn(resourceNumber);
-
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
-        mockups.createPropertyMock(manager, project, resources, null);
-        when(manager.queue(project, item)).thenReturn((Set) Collections.emptySet());
+        
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
+        Mockups.createPropertyMock(project, resources, null);
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
@@ -109,103 +102,82 @@ public class LockableResourcesQueueTaskDispatcherTest {
     @Test
     public void should_parse_required_number_even_if_number_format_exception_is_thrown() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        EnvVars env = mockups.createEnvVarsMock(item);
+        EnvVars env = Mockups.createEnvVarsMock(item);
         env.put("key", "value");
 
-        RequiredResources resource = mock(RequiredResources.class);
         String label = "label";
         String resourceName = "resource-name";
-        Integer resourceNumber = null;
-        resource.setResources(label);
-        resource.setLabels(resourceName);
-        resource.setQuantity(null); //"NOT_A_NUMBER";
-        List<RequiredResources> resources = new ArrayList<>();
+        Integer resourceNumber = null; //"NOT_A_NUMBER";
+        RequiredResources resource = new RequiredResources(resourceName, label, resourceNumber);
+        List<RequiredResources> resources = new ArrayList();
         resources.add(resource);
-        when(resource.getExpandedResources(env)).thenReturn(resourceName);
-        when(resource.getExpandedLabels(env)).thenReturn(label);
-        when(resource.getQuantity()).thenReturn(resourceNumber);
 
-        HashSet<LockableResource> reservedResources = Sets.newHashSet();
-
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
-        mockups.createPropertyMock(manager, project, resources, null);
-        when(manager.queue(project, item)).thenReturn(reservedResources);
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
+        Mockups.createPropertyMock(project, resources, null);
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
 
         // Then
-        verify(manager).queue(project, item);
+        verify(manager).tryQueue(project, new QueueItemContext(item));
         assertThat(causeOfBlockage).isNull();
     }
 
     @Test
     public void cause_of_blockage_is_null_when_required_resources_have_been_reserved() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        EnvVars env = mockups.createEnvVarsMock(item);
+        EnvVars env = Mockups.createEnvVarsMock(item);
         env.put("key", "value");
 
-        RequiredResources resource = mock(RequiredResources.class);
         String label = "";
         String resourceName = "resource-name";
         Integer resourceNumber = 1;
-        resource.setResources(label);
-        resource.setLabels(resourceName);
-        resource.setQuantity(resourceNumber);
-        List<RequiredResources> resources = new ArrayList<>();
+        RequiredResources resource = new RequiredResources(resourceName, label, resourceNumber);
+        List<RequiredResources> resources = new ArrayList();
         resources.add(resource);
-        when(resource.getExpandedResources(env)).thenReturn(resourceName);
-        when(resource.getExpandedLabels(env)).thenReturn(label);
-        when(resource.getQuantity()).thenReturn(resourceNumber);
 
         HashSet<LockableResource> reservedResources = Sets.newHashSet(new LockableResource("resource"));
 
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
-        mockups.createPropertyMock(manager, project, resources, null);
-        when(manager.queue(project, item)).thenReturn(reservedResources);
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
+        Mockups.createPropertyMock(project, resources, null);
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
 
         // Then
-        verify(manager).queue(project, item);
+        verify(manager).tryQueue(project, new QueueItemContext(item));
         assertThat(causeOfBlockage).isNull();
     }
 
     @Test
     public void should_get_cause_of_blockage_with_label_when_required_resources_have_not_been_reserved() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        EnvVars env = mockups.createEnvVarsMock(item);
+        EnvVars env = Mockups.createEnvVarsMock(item);
         env.put("key", "value");
 
-        RequiredResources resource = mock(RequiredResources.class);
         String label = "label";
         String resourceName = "";
         Integer resourceNumber = 0;
-        resource.setResources(resourceName);
-        resource.setLabels(label);
-        resource.setQuantity(resourceNumber);
-        when(resource.getExpandedResources(env)).thenReturn(resourceName);
-        when(resource.getExpandedLabels(env)).thenReturn(label);
-        when(resource.getQuantity()).thenReturn(resourceNumber);
-
+        RequiredResources resource = new RequiredResources(resourceName, label, resourceNumber);
         List<RequiredResources> resources = new ArrayList<>();
         resources.add(resource);
 
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
-        mockups.createPropertyMock(manager, project, resources, null);
-        when(manager.queue(project, item)).thenReturn(null);
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
+        Mockups.createPropertyMock(project, resources, null);
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(false);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
@@ -219,36 +191,29 @@ public class LockableResourcesQueueTaskDispatcherTest {
     @Test
     public void should_get_cause_of_blockage_with_resource_names_when_required_resources_have_not_been_reserved() throws Exception {
         // Given
-        Job<?, ?> project = mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
-        Queue.Item item = mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
+        Job<?, ?> project = Mockups.createProjectMock(DEFAULT_PROJECT_NAME, DEFAULT_PROJECT_FULLNAME);
+        Queue.Item item = Mockups.createQueuedItemMock(project, DEFAULT_ITEM_ID);
 
-        EnvVars env = mockups.createEnvVarsMock(item);
+        EnvVars env = Mockups.createEnvVarsMock(item);
         env.put("key", "value");
 
-        RequiredResources resource = mock(RequiredResources.class);
         String label = "";
         String resourceName = "resource-name";
         Integer resourceNumber = 0;
-        resource.setResources(resourceName);
-        resource.setLabels(label);
-        resource.setQuantity(resourceNumber);
-        when(resource.getExpandedResources(env)).thenReturn(resourceName);
-        when(resource.getExpandedLabels(env)).thenReturn(label);
-        when(resource.getQuantity()).thenReturn(resourceNumber);
-
+        RequiredResources resource = new RequiredResources(resourceName, label, resourceNumber);
         List<RequiredResources> resources = new ArrayList<>();
         resources.add(resource);
 
-        LockableResourcesManager manager = mockups.createLockableResourcesManagerMock(null, false);
-        mockups.createPropertyMock(manager, project, resources, null);
-        when(manager.queue(project, item)).thenReturn(null);
+        LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
+        Mockups.createPropertyMock(project, resources, null);
+        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(false);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
 
         // Then
-        verify(manager).queue(project, item);
+        verify(manager).tryQueue(project, new QueueItemContext(item));
         assertThat(causeOfBlockage).isNotNull();
         assertThat(causeOfBlockage.getShortDescription()).isEqualTo("Waiting for resources " + resourceName);
     }

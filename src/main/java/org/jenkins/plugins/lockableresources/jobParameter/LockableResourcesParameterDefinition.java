@@ -71,32 +71,35 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
 
     @Exported
     public LinkedHashSet<ResourceCapability> getSelectedCapabilities() {
-        return selectedCapabilities;
+        return new LinkedHashSet<>(selectedCapabilities);
     }
 
     @DataBoundSetter
     public void setSelectedCapabilities(LinkedHashSet<ResourceCapability> selectedCapabilities) {
-        this.selectedCapabilities = selectedCapabilities;
+        this.selectedCapabilities.clear();
+        this.selectedCapabilities.addAll(selectedCapabilities);
     }
 
     @Exported
     public LinkedHashSet<ResourceCapability> getNeededCapabilities() {
-        return neededCapabilities;
+        return new LinkedHashSet<>(neededCapabilities);
     }
 
     @DataBoundSetter
     public void setNeededCapabilities(LinkedHashSet<ResourceCapability> neededCapabilities) {
-        this.neededCapabilities = neededCapabilities;
+        this.neededCapabilities.clear();
+        this.neededCapabilities.addAll(neededCapabilities);
     }
 
     @Exported
     public LinkedHashSet<ResourceCapability> getProhibitedCapabilities() {
-        return prohibitedCapabilities;
+        return new LinkedHashSet<>(prohibitedCapabilities);
     }
 
     @DataBoundSetter
     public void setProhibitedCapabilities(LinkedHashSet<ResourceCapability> prohibitedCapabilities) {
-        this.prohibitedCapabilities = prohibitedCapabilities;
+        this.prohibitedCapabilities.clear();
+        this.prohibitedCapabilities.addAll(prohibitedCapabilities);
     }
 
     public String getNeededLabels() {
@@ -128,7 +131,7 @@ public class LockableResourcesParameterDefinition extends ParameterDefinition {
         LOGGER.fine("*** createValue: bindJSON ***");
         for(Object v : jo.entrySet()) {
             if(v instanceof Map.Entry) {
-                Map.Entry e = (Map.Entry) v;
+                Map.Entry<?, ?> e = (Map.Entry<?, ?>) v;
                 LOGGER.fine("'" + e.getKey().toString() + "' = '" + e.getValue().toString() + "'");
             } else {
                 LOGGER.fine("Unknown entrey type: " + v.getClass().getName());

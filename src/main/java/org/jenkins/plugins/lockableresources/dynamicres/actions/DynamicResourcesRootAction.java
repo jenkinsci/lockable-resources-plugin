@@ -30,7 +30,9 @@ import hudson.model.RootAction;
 import java.util.Map;
 import java.util.Set;
 import org.jenkins.plugins.lockableresources.BackwardCompatibility;
+import org.jenkins.plugins.lockableresources.LockableResources;
 import org.jenkins.plugins.lockableresources.dynamicres.DynamicResourcesManager;
+import org.kohsuke.stapler.export.Exported;
 
 @Extension
 public class DynamicResourcesRootAction implements RootAction {
@@ -44,14 +46,27 @@ public class DynamicResourcesRootAction implements RootAction {
     /* use the same icon as lockable resources */
     public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
+    @Override
     public String getIconFileName() {
-        return ICON;
+        if(canRead()) {
+            // only show if READ permission
+            return ICON;
+        } else {
+            return null;
+        }
     }
 
+    @Exported
+    public static boolean canRead() {
+        return LockableResources.canRead();
+    }
+
+    @Override
     public String getDisplayName() {
         return "Dynamic Resources";
     }
 
+    @Override
     public String getUrlName() {
         return "dynamic-resources";
     }

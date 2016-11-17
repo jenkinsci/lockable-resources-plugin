@@ -13,13 +13,13 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>2.17</version>
+        <version>2.19</version>
         <relativePath />
     </parent>
 
     <groupId>org.6wind.jenkins</groupId>
     <artifactId>lockable-resources</artifactId>
-    <version>1.11-SNAPSHOT</version>
+    <version>2.0-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>Lockable Resources plugin</name>
     <description>
@@ -31,7 +31,7 @@
 
     <properties>
         <!-- Globals -->
-        <jenkins.version>2.19.1</jenkins.version>
+        <jenkins.version>2.19.2</jenkins.version>
         <findbugs.failOnError>true</findbugs.failOnError>
         <jenkins.test.timeout>30</jenkins.test.timeout>
         

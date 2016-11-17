@@ -27,7 +27,6 @@ import hudson.security.Permission;
 import hudson.widgets.Widget;
 import java.util.Set;
 import javax.annotation.CheckForNull;
-import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.kohsuke.stapler.export.Exported;
@@ -37,10 +36,10 @@ import org.kohsuke.stapler.export.Exported;
  * @author Eb
  */
 public class LockableResourcesWidget extends Widget {
-    public static final Permission UNLOCK = LockableResourcesRootAction.UNLOCK;
-    public static final Permission RESERVE = LockableResourcesRootAction.RESERVE;
-    public static final Permission OFFLINE = LockableResourcesRootAction.OFFLINE;
-    
+    public static final Permission UNLOCK = LockableResources.UNLOCK;
+    public static final Permission RESERVE = LockableResources.RESERVE;
+    public static final Permission OFFLINE = LockableResources.OFFLINE;
+
     @Exported
     public Set<LockableResource> getResources() {
         LockableResourcesManager manager = LockableResourcesManager.get();
@@ -50,6 +49,11 @@ public class LockableResourcesWidget extends Widget {
     @Exported
     @CheckForNull
     public static String getUserId() {
-        return LockableResourcesRootAction.getUserId();
+        return Utils.getUserId();
+    }
+    
+    @Exported
+    public static boolean canRead() {
+        return LockableResources.canRead();
     }
 }

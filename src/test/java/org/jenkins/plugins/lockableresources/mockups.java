@@ -9,12 +9,16 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
+import org.jenkins.plugins.lockableresources.queue.policy.QueueFifoPolicy;
+import org.jenkins.plugins.lockableresources.queue.policy.QueuePolicy;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
+import org.jenkins.plugins.lockableresources.resources.selector.ResourcesDefaultSelector;
+import org.jenkins.plugins.lockableresources.resources.selector.ResourcesSelector;
 import static org.mockito.Mockito.when;
 import org.powermock.api.mockito.PowerMockito;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -22,7 +26,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * Convenient factory to describe the expected behavior of each class
  */
-public abstract class mockups {
+public abstract class Mockups {
+    private Mockups() {
+    }
+    
     //----------------------------------------
     //Jenkins mockups
     //----------------------------------------
@@ -36,7 +43,7 @@ public abstract class mockups {
     public static final Queue.Item createQueuedItemMock(final Job<?, ?> project, long id) {
         Queue.Item item = PowerMockito.mock(Queue.Item.class);
         when(item.getId()).thenReturn(id);
-        when(Utils.getProject(item)).thenReturn(project);
+        when(Utils.getProject(item)).thenReturn((Job)project);
         return item;
     }
 
@@ -50,7 +57,7 @@ public abstract class mockups {
         return build;
     }
 
-    public static final EnvVars createEnvVarsMock(Queue.Item item) {
+    public static final EnvVars createEnvVarsMock(@Nonnull Queue.Item item) {
         EnvVars env = new EnvVars();
         when(Utils.getEnvVars(item)).thenReturn(env);
         return env;
@@ -59,9 +66,9 @@ public abstract class mockups {
     //----------------------------------------
     // Lockable resources mockups
     //----------------------------------------
-    public static final RequiredResourcesProperty createPropertyMock(LockableResourcesManager manager, Job<?, ?> project, Collection<RequiredResources> requiredResourcesList, String variableName) throws Exception {
+    public static final RequiredResourcesProperty createPropertyMock(Job<?, ?> project, Collection<RequiredResources> requiredResourcesList, String variableName) throws Exception {
         RequiredResourcesProperty property = PowerMockito.mock(RequiredResourcesProperty.class);
-        when(manager.getProjectRequiredResourcesProperty(project)).thenReturn(property);
+        when(RequiredResourcesProperty.getFromProject(project)).thenReturn(property);
         when(project.getProperty(RequiredResourcesProperty.class)).thenReturn(property);
 
         ReflectionTestUtils.setField(property, "requiredResourcesList", requiredResourcesList, Collection.class);
@@ -72,17 +79,27 @@ public abstract class mockups {
         return property;
     }
 
-    public static final LockableResourcesManager createLockableResourcesManagerMock(Set<LockableResource> resources, boolean useFairSelection) throws Exception {
+    public static final LockableResourcesManager createLockableResourcesManagerMock(Set<LockableResource> resources) throws Exception {
+        return createLockableResourcesManagerMock(resources, new ResourcesDefaultSelector(), new QueueFifoPolicy());
+    }
+    
+    public static final LockableResourcesManager createLockableResourcesManagerMock(Set<LockableResource> resources, ResourcesSelector resourcesSelector, QueuePolicy queuePolicy) throws Exception {
         LockableResourcesManager manager = PowerMockito.mock(LockableResourcesManager.class);
         when(LockableResourcesManager.get()).thenReturn(manager);
 
         ReflectionTestUtils.setField(manager, "resources", resources, Set.class);
         when(manager.getAllResources()).thenReturn(resources);
 
-        ReflectionTestUtils.setField(manager, "useFairSelection", useFairSelection, Boolean.class);
-        when(manager.getUseFairSelection()).thenReturn(useFairSelection);
+        ReflectionTestUtils.setField(manager, "resourcesSelector", resourcesSelector, ResourcesSelector.class);
+        when(manager.getResourcesSelector()).thenReturn(resourcesSelector);
 
-        ReflectionTestUtils.setField(manager, "queuedContexts", new ArrayList<>(), List.class);
+        ReflectionTestUtils.setField(manager, "resourcesSelector", resourcesSelector, ResourcesSelector.class);
+        when(manager.getResourcesSelector()).thenReturn(resourcesSelector);
+
+        ReflectionTestUtils.setField(manager, "queuePolicy", queuePolicy, QueuePolicy.class);
+        when(manager.getQueuePolicy()).thenReturn(queuePolicy);
+
+        ReflectionTestUtils.setField(manager, "queuedContexts", new SmartSerializableSet<>(), SmartSerializableSet.class);
 
         return manager;
     }
