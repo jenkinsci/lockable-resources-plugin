@@ -113,7 +113,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public List<LockableResource> getResourcesMatchingScript(SecureGroovyScript script,
-														Map<String, Object> params) {
+                                                             Map<String, Object> params) {
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
 			if (r.scriptMatches(script, params))
