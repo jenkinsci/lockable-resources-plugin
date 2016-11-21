@@ -28,13 +28,15 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+import javax.annotation.CheckForNull;
+
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	private final String resourceNames;
 	private final String resourceNamesVar;
 	private final String resourceNumber;
 	private final String labelName;
-	private final SecureGroovyScript script;
+	private final @CheckForNull SecureGroovyScript script;
 
 	@DataBoundConstructor
 	public RequiredResourcesProperty(String resourceNames,
@@ -61,8 +63,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	private Object readResolve() {
 		if (script == null && labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
-			return new RequiredResourcesProperty(null, null, null, null,
-					new SecureGroovyScript(labelName.replace(LockableResource.GROOVY_LABEL_MARKER, ""), false, null)
+			return new RequiredResourcesProperty(resourceNames, resourceNamesVar, resourceNumber, null,
+					new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
 							.configuring(ApprovalContext.create()));
 		}
 
@@ -111,43 +113,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 
 		@Override
-		public RequiredResourcesProperty newInstance(StaplerRequest req,
-				JSONObject formData) throws FormException {
-
-			if (formData.isNullObject())
-				return null;
-
-			JSONObject json = formData
-					.getJSONObject("required-lockable-resources");
-			if (json.isNullObject())
-				return null;
-
-			String resourceNames = Util.fixEmptyAndTrim(json
-					.getString("resourceNames"));
-
-			String resourceNamesVar = Util.fixEmptyAndTrim(json
-					.getString("resourceNamesVar"));
-
-			String resourceNumber = Util.fixEmptyAndTrim(json
-					.getString("resourceNumber"));
-
-			String labelName = Util.fixEmptyAndTrim(json
-					.getString("labelName"));
-
-			String labelScriptString = Util.fixEmptyAndTrim(json
-					.getString("script"));
-
-			SecureGroovyScript labelScript = null;
-
-			if (labelScriptString != null && !labelScriptString.equals("")) {
-				labelScript = new SecureGroovyScript(labelScriptString, true, null);
+		public RequiredResourcesProperty newInstance(StaplerRequest req, JSONObject formData) throws FormException {
+			if (formData.containsKey("required-lockable-resources")) {
+				return (RequiredResourcesProperty) super.newInstance(req, formData.getJSONObject("required-lockable-resources"));
 			}
-
-			if (resourceNames == null && labelName == null && labelScript == null)
-				return null;
-
-			return new RequiredResourcesProperty(resourceNames,
-					resourceNamesVar, resourceNumber, labelName, labelScript);
+			return null;
 		}
 
 		public FormValidation doCheckResourceNames(@QueryParameter String value) {

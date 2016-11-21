@@ -84,6 +84,50 @@ public class BasicIntegrationTest {
 				buildB.getStartTimeInMillis() >= buildAEndTime);
 	}
 
+	@Test
+	public void configRoundTrip() throws Exception {
+		LockableResourcesManager.get().createResource("resource1");
+
+		FreeStyleProject withResource = j.createFreeStyleProject("withResource");
+		withResource.addProperty(new RequiredResourcesProperty("resource1", "resourceNameVar", null, null, null));
+		FreeStyleProject withResourceRoundTrip = j.configRoundtrip(withResource);
+
+		RequiredResourcesProperty withResourceProp = withResourceRoundTrip.getProperty(RequiredResourcesProperty.class);
+		assertNotNull(withResourceProp);
+		assertEquals("resource1", withResourceProp.getResourceNames());
+		assertEquals("resourceNameVar", withResourceProp.getResourceNamesVar());
+		assertEquals("", withResourceProp.getResourceNumber());
+		assertEquals("", withResourceProp.getLabelName());
+		assertNull(withResourceProp.getScript());
+
+		FreeStyleProject withLabel = j.createFreeStyleProject("withLabel");
+		withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "some-label", null));
+		FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
+
+		RequiredResourcesProperty withLabelProp = withLabelRoundTrip.getProperty(RequiredResourcesProperty.class);
+		assertNotNull(withLabelProp);
+		assertEquals("", withLabelProp.getResourceNames());
+		assertEquals("", withLabelProp.getResourceNamesVar());
+		assertEquals("", withLabelProp.getResourceNumber());
+		assertEquals("some-label", withLabelProp.getLabelName());
+		assertNull(withLabelProp.getScript());
+
+		FreeStyleProject withScript = j.createFreeStyleProject("withScript");
+		SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
+		withScript.addProperty(new RequiredResourcesProperty(null, null, null, null, origScript));
+		FreeStyleProject withScriptRoundTrip = j.configRoundtrip(withScript);
+
+		RequiredResourcesProperty withScriptProp = withScriptRoundTrip.getProperty(RequiredResourcesProperty.class);
+		assertNotNull(withScriptProp);
+		assertEquals("", withScriptProp.getResourceNames());
+		assertEquals("", withScriptProp.getResourceNamesVar());
+		assertEquals("", withScriptProp.getResourceNumber());
+		assertEquals("", withScriptProp.getLabelName());
+		assertNotNull(withScriptProp.getScript());
+		assertEquals("return true", withScriptProp.getScript().getScript());
+		assertEquals(false, withScriptProp.getScript().isSandbox());
+	}
+
 	@TestExtension
 	public static class PrinterBuilder extends MockBuilder {
 
