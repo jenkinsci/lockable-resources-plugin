@@ -1,14 +1,12 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import hudson.model.ItemGroup;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.triggers.TimerTrigger;
+import hudson.util.FormValidation;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.junit.Rule;
 import org.junit.Test;
@@ -126,6 +124,24 @@ public class BasicIntegrationTest {
 		assertNotNull(withScriptProp.getScript());
 		assertEquals("return true", withScriptProp.getScript().getScript());
 		assertEquals(false, withScriptProp.getScript().isSandbox());
+	}
+
+	@Test
+	public void validationFailure() throws Exception {
+		RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
+		LockableResourcesManager.get().createResource("resource1");
+		LockableResource r = LockableResourcesManager.get().getResources().get(0);
+		r.setLabels("some-label");
+
+		assertEquals("Only label, groovy expression, or resources can be defined, not more than one.", d.doCheckResourceNames("resource1", null, true).getMessage());
+		assertEquals("Only label, groovy expression, or resources can be defined, not more than one.", d.doCheckResourceNames("resource1", "some-label", false).getMessage());
+		assertEquals("Only label, groovy expression, or resources can be defined, not more than one.", d.doCheckResourceNames("resource1", "some-label", true).getMessage());
+		assertEquals("Only label, groovy expression, or resources can be defined, not more than one.", d.doCheckLabelName("some-label", "resource1", false).getMessage());
+		assertEquals("Only label, groovy expression, or resources can be defined, not more than one.", d.doCheckLabelName("some-label", null, true).getMessage());
+		assertEquals("Only label, groovy expression, or resources can be defined, not more than one.", d.doCheckLabelName("some-label", "resource1", true).getMessage());
+
+		assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false));
+		assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false));
 	}
 
 	@TestExtension

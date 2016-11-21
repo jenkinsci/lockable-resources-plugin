@@ -121,16 +121,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 
 		public FormValidation doCheckResourceNames(@QueryParameter String value,
-												   @QueryParameter String label,
+												   @QueryParameter String labelName,
 												   @QueryParameter boolean script) {
-			String labelVal = Util.fixEmptyAndTrim(label);
-
+			String labelVal = Util.fixEmptyAndTrim(labelName);
 			String names = Util.fixEmptyAndTrim(value);
+
 			if (names == null) {
 				return FormValidation.ok();
 			} else if (labelVal != null || script) {
 				return FormValidation.error(
-						"Only label, groovy expression, or resources can be defined, not all three.");
+						"Only label, groovy expression, or resources can be defined, not more than one.");
 			} else {
 				List<String> wrongNames = new ArrayList<String>();
 				for (String name : names.split("\\s+")) {
@@ -166,7 +166,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.ok();
 			} else if (names != null || script) {
 				return FormValidation.error(
-						"Only label, groovy expression, or resources can be defined, not all three.");
+						"Only label, groovy expression, or resources can be defined, not more than one.");
 			} else {
 				if (LockableResourcesManager.get().isValidLabel(label)) {
 					return FormValidation.ok();
