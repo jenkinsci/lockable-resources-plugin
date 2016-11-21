@@ -27,6 +27,7 @@ import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -74,8 +75,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	public Boolean isValidLabel(String label)
 	{
-		return label.startsWith(LockableResource.GROOVY_LABEL_MARKER)
-				|| this.getAllLabels().contains(label);
+		return this.getAllLabels().contains(label);
 	}
 
 	public Set<String> getAllLabels()
@@ -107,6 +107,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
 			if (r.isValidLabel(label, params))
+				found.add(r);
+		}
+		return found;
+	}
+
+	public List<LockableResource> getResourcesMatchingScript(SecureGroovyScript script,
+														Map<String, Object> params) {
+		List<LockableResource> found = new ArrayList<LockableResource>();
+		for (LockableResource r : this.resources) {
+			if (r.scriptMatches(script, params))
 				found.add(r);
 		}
 		return found;
@@ -149,10 +159,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		List<LockableResource> candidates = new ArrayList<LockableResource>();
-		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+		if (requiredResources.label != null && requiredResources.label.isEmpty() && requiredResources.script == null) {
 			candidates = requiredResources.required;
-		} else {
+		} else if (requiredResources.script == null) {
 			candidates = getResourcesWithLabel(requiredResources.label, params);
+		} else {
+			candidates = getResourcesMatchingScript(requiredResources.script, params);
 		}
 
 		for (LockableResource rs : candidates) {
@@ -219,6 +231,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public synchronized boolean lock(List<LockableResource> resources,
 			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
 		boolean needToWait = false;
+
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
 				needToWait = true;

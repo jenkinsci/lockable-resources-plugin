@@ -44,7 +44,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		LockableResourcesStruct resources = Utils.requiredResources(project);
 		if (resources == null ||
-			(resources.required.isEmpty() && resources.label.isEmpty())) {
+			(resources.required.isEmpty() && resources.label.isEmpty() && resources.script == null)) {
 			return null;
 		}
 
@@ -58,7 +58,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		LOGGER.finest(project.getName() +
 			" trying to get resources with these details: " + resources);
 
-		if (resourceNumber > 0 || !resources.label.isEmpty()) {
+		if (resourceNumber > 0 || !resources.label.isEmpty() || resources.script != null) {
 			Map<String, Object> params = new HashMap<String, Object>();
 			if (item.task instanceof MatrixConfiguration) {
 			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;

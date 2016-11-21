@@ -22,6 +22,8 @@ import java.util.List;
 
 import net.sf.json.JSONObject;
 
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -32,16 +34,39 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	private final String resourceNamesVar;
 	private final String resourceNumber;
 	private final String labelName;
+	private final SecureGroovyScript script;
 
 	@DataBoundConstructor
 	public RequiredResourcesProperty(String resourceNames,
 			String resourceNamesVar, String resourceNumber,
-			String labelName) {
+			String labelName, SecureGroovyScript script) {
 		super();
 		this.resourceNames = resourceNames;
 		this.resourceNamesVar = resourceNamesVar;
 		this.resourceNumber = resourceNumber;
 		this.labelName = labelName;
+		if (script != null) {
+			this.script = script.configuringWithKeyItem();
+		} else {
+			this.script = null;
+		}
+	}
+
+	@Deprecated
+	public RequiredResourcesProperty(String resourceNames,
+									 String resourceNamesVar, String resourceNumber,
+									 String labelName) {
+		this(resourceNames, resourceNamesVar, resourceNumber, labelName, null);
+	}
+
+	private Object readResolve() {
+		if (script == null && labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+			return new RequiredResourcesProperty(null, null, null, null,
+					new SecureGroovyScript(labelName.replace(LockableResource.GROOVY_LABEL_MARKER, ""), false, null)
+							.configuring(ApprovalContext.create()));
+		}
+
+		return this;
 	}
 
 	public String[] getResources() {
@@ -66,6 +91,10 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 	public String getLabelName() {
 		return labelName;
+	}
+
+	public SecureGroovyScript getScript() {
+		return script;
 	}
 
 	@Extension
@@ -105,11 +134,20 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String labelName = Util.fixEmptyAndTrim(json
 					.getString("labelName"));
 
-			if (resourceNames == null && labelName == null)
+			String labelScriptString = Util.fixEmptyAndTrim(json
+					.getString("script"));
+
+			SecureGroovyScript labelScript = null;
+
+			if (labelScriptString != null && !labelScriptString.equals("")) {
+				labelScript = new SecureGroovyScript(labelScriptString, true, null);
+			}
+
+			if (resourceNames == null && labelName == null && labelScript == null)
 				return null;
 
 			return new RequiredResourcesProperty(resourceNames,
-					resourceNamesVar, resourceNumber, labelName);
+					resourceNamesVar, resourceNumber, labelName, labelScript);
 		}
 
 		public FormValidation doCheckResourceNames(@QueryParameter String value) {
@@ -142,14 +180,17 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 		public FormValidation doCheckLabelName(
 				@QueryParameter String value,
-				@QueryParameter String resourceNames) {
+				@QueryParameter String resourceNames,
+				@QueryParameter String script) {
 			String label = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
+			String labelScript = Util.fixEmptyAndTrim(script);
+
 			if (label == null) {
 				return FormValidation.ok();
-			} else if (names != null) {
+			} else if (names != null || labelScript != null) {
 				return FormValidation.error(
-						"Only label or resources can be defined, not both.");
+						"Only label, label script, or resources can be defined, not all three.");
 			} else {
 				if (LockableResourcesManager.get().isValidLabel(label)) {
 					return FormValidation.ok();

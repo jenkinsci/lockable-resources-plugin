@@ -17,6 +17,7 @@ import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 
 public class LockableResourcesStruct implements Serializable {
 
@@ -24,6 +25,7 @@ public class LockableResourcesStruct implements Serializable {
 	public String label;
 	public String requiredVar;
 	public String requiredNumber;
+	public SecureGroovyScript script;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property,
 			EnvVars env) {
@@ -39,6 +41,8 @@ public class LockableResourcesStruct implements Serializable {
 		label = env.expand(property.getLabelName());
 		if (label == null)
 			label = "";
+
+		script = property.getScript();
 
 		requiredVar = property.getResourceNamesVar();
 
@@ -58,6 +62,7 @@ public class LockableResourcesStruct implements Serializable {
 	public String toString() {
 		return "Required resources: " + this.required +
 			", Required label: " + this.label +
+			", Required label script: " + (this.script != null ? this.script.getScript() : "") +
 			", Variable name: " + this.requiredVar +
 			", Number of resources: " + this.requiredNumber;
 	}

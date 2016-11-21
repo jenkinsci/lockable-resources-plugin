@@ -11,6 +11,7 @@ package org.jenkins.plugins.lockableresources;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import hudson.Extension;
+import hudson.PluginManager;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
@@ -34,6 +35,7 @@ import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -123,8 +125,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
-		return candidate.startsWith(GROOVY_LABEL_MARKER) ? expressionMatches(
-				candidate, params) : labelsContain(candidate);
+		return labelsContain(candidate);
 	}
 
 	private boolean labelsContain(String candidate) {
@@ -135,18 +136,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return Arrays.asList(labels.split("\\s+"));
 	}
 
-	private boolean expressionMatches(String expression,
-			Map<String, Object> params) {
+	public boolean scriptMatches(SecureGroovyScript script,
+								 Map<String, Object> params) {
 		Binding binding = new Binding(params);
 		binding.setVariable("resourceName", name);
 		binding.setVariable("resourceDescription", description);
 		binding.setVariable("resourceLabels", makeLabelsList());
-		String expressionToEvaluate = expression.replace(GROOVY_LABEL_MARKER, "");
-		GroovyShell shell = new GroovyShell(binding);
 		try {
-			Object result = shell.evaluate(expressionToEvaluate);
+			Object result = script.evaluate(Jenkins.getInstance().getPluginManager().uberClassLoader, binding);
 			if (LOGGER.isLoggable(Level.FINE)) {
-				LOGGER.fine("Checked resource " + name + " for " + expression
+				LOGGER.fine("Checked resource " + name + " for " + script.getScript()
 						+ " with " + binding + " -> " + result);
 			}
 			return (Boolean) result;
@@ -154,7 +153,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			LOGGER.log(
 					Level.SEVERE,
 					"Cannot get boolean result out of groovy expression '"
-							+ expressionToEvaluate + "' on (" + binding + ")",
+							+ script.getScript() + "' on (" + binding + ")",
 					e);
 			return false;
 		}
