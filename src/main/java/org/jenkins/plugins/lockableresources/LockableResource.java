@@ -47,6 +47,8 @@ import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
+import javax.annotation.Nonnull;
+
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
 
@@ -136,7 +138,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return Arrays.asList(labels.split("\\s+"));
 	}
 
-	public boolean scriptMatches(SecureGroovyScript script,
+	public boolean scriptMatches(@Nonnull SecureGroovyScript script,
 								 Map<String, Object> params) {
 		Binding binding = new Binding(params);
 		binding.setVariable("resourceName", name);
