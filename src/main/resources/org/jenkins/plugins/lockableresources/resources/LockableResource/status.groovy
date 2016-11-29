@@ -46,6 +46,10 @@ tr {
                     text _(" by ")
                 }
                 a(href:rootURL + "/" + my.build.url, style:"color: blue;", my.build.fullDisplayName)
+                def buildUserName = Utils.getUserName(Utils.getUserId(my.build))
+                if(buildUserName != null) {
+                    text " (" + buildUserName + ")"
+                }
             }
         } else if(my.queued) {
             div(style:"color: red;") {
