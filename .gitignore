@@ -4,3 +4,6 @@ work/
 .*
 .idea
 *.iml
+/build.bat
+/nb-configuration.xml
+/nbactions.xml

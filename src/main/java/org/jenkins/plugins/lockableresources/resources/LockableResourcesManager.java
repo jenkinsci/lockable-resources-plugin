@@ -464,7 +464,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String lbl = getParameterValue(resources);
             build.addAction(new ResourceVariableNameAction(new StringParameterValue(variableName, lbl)));
         }
-        build.addAction(new LockedResourcesBuildAction(resources));
+        LockedResourcesBuildAction action = build.getAction(LockedResourcesBuildAction.class);
+        if(action == null) {
+            build.addAction(new LockedResourcesBuildAction(resources));
+        } else {
+            action.addLockedResources(resources);
+        }
         if(queueContext instanceof QueueStepContext) {
             StepContext context = ((QueueStepContext) queueContext).getContext();
             if(context != null) {
