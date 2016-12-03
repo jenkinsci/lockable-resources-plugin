@@ -13,6 +13,7 @@ import hudson.model.Descriptor;
 import hudson.util.ListBoxModel;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
@@ -133,7 +134,7 @@ public class ResourceCapability extends AbstractDescribableImpl<ResourceCapabili
      * @return
      */
     public static Set<LockableResource> getResourcesFromCapabilities(@Nonnull Collection<LockableResource> resources, @Nullable Collection<ResourceCapability> neededCapabilities, @Nullable Collection<ResourceCapability> prohibitedCapabilities, @Nullable EnvVars env) {
-        HashSet<LockableResource> found = new HashSet<>();
+        LinkedHashSet<LockableResource> found = new LinkedHashSet<>(); // Keep resources order if possible
         for(LockableResource r : resources) {
             if(r.hasCapabilities(neededCapabilities, prohibitedCapabilities, env)) {
                 found.add(r);

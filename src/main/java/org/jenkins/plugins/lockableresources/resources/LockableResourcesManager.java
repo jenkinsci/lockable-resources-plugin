@@ -416,7 +416,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public synchronized boolean tryLock(@Nonnull QueueContext queueContext) {
         queuedContexts.add(queueContext);
         save();
-        return (queueContext.equals(retryLock()));
+        return retryLock().contains(queueContext);
     }
 
     /**
@@ -438,16 +438,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if(build == null) {
             return false;
         }
+        queuedContexts.remove(queueContext); // Remove context to prevent another possible lock call in sub-functions
         String userId = queueContext.getUserId();
         for(LockableResource r : resources) {
             if(!r.canLock(userId, queueContext.getQueueId())) {
                 // At least one resource is not available: abort lock process
+                queuedContexts.add(queueContext);
                 return false;
             }
         }
         
         LOGGER.info("Lock resources " + resources + " by " + build.getExternalizableId());
-        queuedContexts.remove(queueContext);
         for(LockableResource r : resources) {
             r.unqueue();
             r.setBuild(build);
@@ -534,22 +535,31 @@ public class LockableResourcesManager extends GlobalConfiguration {
         retryLock();
     }
 
-    @CheckForNull
-    public synchronized QueueContext retryLock() {
-        queueCleanup();
-        QueueContext nextStruct = queuePolicy.select(queuedContexts, resources, resourcesSelector);
-        if(nextStruct == null) {
-            // no context is queued which can be started once these resources are free'd.
-            return null;
-        }
+    @Nonnull
+    public synchronized Set<QueueContext> retryLock() {
+        Set<QueueContext> res = new HashSet<>();
 
-        Set<LockableResource> resourcesForNextContext = resourcesSelector.selectFreeResources(resources, nextStruct);
-        if(resourcesForNextContext != null) {
+        while(true) {
+            queueCleanup();
+            QueueContext nextStruct = queuePolicy.select(queuedContexts, resources, resourcesSelector);
+            if(nextStruct == null) {
+                // No context is queued which can be started once these resources are free'd.
+                break;
+            }
+            
+            Set<LockableResource> resourcesForNextContext = resourcesSelector.selectFreeResources(resources, nextStruct);
+            if(resourcesForNextContext == null) {
+                // No enough resources
+                break;
+            }
             if(lock(resourcesForNextContext, nextStruct)) {
-                return nextStruct;
+                res.add(nextStruct);
+            } else {
+                // For an unknown problem (bug ?) lock is not possible on selected resources
+                break;
             }
         }
-        return null;
+        return res;
     }
 
     /**

@@ -31,6 +31,7 @@ import hudson.model.Descriptor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.CheckForNull;
@@ -51,6 +52,7 @@ public abstract class ResourcesSelector extends AbstractDescribableImpl<Resource
 
     @CheckForNull
     public Set<LockableResource> selectResources(@Nonnull Collection<LockableResource> allResources, @Nonnull Collection<LockableResource> freeResources, @Nonnull QueueContext queueContext) {
+        List<LockableResource> sortedResources = sortResources(allResources, queueContext);
         Set<LockableResource> res = new HashSet<>();
         Collection<RequiredResources> requiredResourcesList = queueContext.getRequiredResources();
         if(requiredResourcesList == null) {
@@ -79,7 +81,7 @@ public abstract class ResourcesSelector extends AbstractDescribableImpl<Resource
         for(RequiredResources rr : requiredResourcesList) {
             Set<ResourceCapability> capabilities = rr.getCapabilitiesList(env);
             if(capabilities.size() > 0) {
-                Set<LockableResource> candidates = ResourceCapability.getResourcesFromCapabilities(allResources, capabilities, null, env);
+                Set<LockableResource> candidates = ResourceCapability.getResourcesFromCapabilities(sortedResources, capabilities, null, env);
                 candidates.removeAll(res); // Already selected by names: can not be re-use for capabilities selection
                 int candidatesSize = candidates.size();
                 candidates.retainAll(freeResources);
@@ -156,7 +158,7 @@ public abstract class ResourcesSelector extends AbstractDescribableImpl<Resource
             for(T v : candidates) {
                 newRequest.clear();
                 for(Tuple2<Set<T>, Integer> sr : request) {
-                    Set<T> newCandidates = new HashSet<>(sr.getFirst());
+                    Set<T> newCandidates = new LinkedHashSet<>(sr.getFirst()); //Keep resources order if possible
                     newCandidates.remove(v);
                     int newNb = ((sr == subRequest) ? nb - 1 : sr.getSecond());
                     newRequest.add(new Tuple2<>(newCandidates, newNb));

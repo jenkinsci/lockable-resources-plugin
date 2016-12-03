@@ -97,6 +97,49 @@ public class BasicIntegrationTest {
     }
 
     @Test
+    public void valid_resources_quantity_in_property_variable() throws Exception {
+        LockableResourcesManager.get().createResource("resource1", "capa1 capa2");
+        LockableResourcesManager.get().createResource("resource2", "capa1 capa3");
+        LockableResourcesManager.get().createResource("resource3", "capa1 capa4");
+
+        FreeStyleProject project1 = jenkinsRule.createFreeStyleProject("project1");
+        project1.addProperty(
+                new RequiredResourcesProperty(
+                        Lists.newArrayList(new RequiredResources(null, "capa1", 1)),
+                        "resourceNameVar1"));
+        project1.getBuildersList().add(new PrinterBuilder("resourceNameVar1"));
+        FreeStyleBuild build1 = project1.scheduleBuild2(0).get();
+
+        jenkinsRule.assertLogContains("resourceNameVar1: resource1", build1);
+        jenkinsRule.assertLogNotContains("resource2", build1);
+        jenkinsRule.assertLogNotContains("resource3", build1);
+        jenkinsRule.assertBuildStatus(Result.SUCCESS, build1);
+
+        FreeStyleProject project2 = jenkinsRule.createFreeStyleProject("project2");
+        project2.addProperty(
+                new RequiredResourcesProperty(
+                        Lists.newArrayList(new RequiredResources(null, "capa1", 2)),
+                        "resourceNameVar2"));
+        project2.getBuildersList().add(new PrinterBuilder("resourceNameVar2"));
+        FreeStyleBuild build2 = project2.scheduleBuild2(0).get();
+
+        jenkinsRule.assertLogContains("resourceNameVar2: resource1, resource2", build2);
+        jenkinsRule.assertLogNotContains("resource3", build2);
+        jenkinsRule.assertBuildStatus(Result.SUCCESS, build2);
+        
+        FreeStyleProject project3 = jenkinsRule.createFreeStyleProject("project3");
+        project3.addProperty(
+                new RequiredResourcesProperty(
+                        Lists.newArrayList(new RequiredResources(null, "capa1", 0)),
+                        "otherVarName"));
+        project3.getBuildersList().add(new PrinterBuilder("otherVarName"));
+        FreeStyleBuild build3 = project3.scheduleBuild2(0).get();
+
+        jenkinsRule.assertLogContains("otherVarName: resource1, resource2, resource3", build3);
+        jenkinsRule.assertBuildStatus(Result.SUCCESS, build3);
+    }
+    
+    @Test
     public void valid_resources_mixed_in_property_variable() throws Exception {
         LockableResourcesManager.get().createResource("resource1", "capa1 capa2");
         LockableResourcesManager.get().createResource("resource2", "capa1 capa3");

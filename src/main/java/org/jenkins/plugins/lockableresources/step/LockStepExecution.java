@@ -28,13 +28,13 @@ import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
 public class LockStepExecution extends AbstractStepExecutionImpl {
     private static final long serialVersionUID = 1L;
     @Inject(optional = true)
-    private LockStep step;
+    protected LockStep step;
     @StepContextParameter
-    private transient Run<?, ?> run;
+    protected transient Run<?, ?> run;
     @StepContextParameter
     protected transient TaskListener listener = null;
     private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
-
+    
     @Override
     public boolean start() throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
@@ -122,6 +122,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
                 }
             }
             LOGGER.finest("Lock released on " + resources);
+            context.onSuccess(true);
         }
     }
 }
