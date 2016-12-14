@@ -37,7 +37,7 @@ public class LockStepTest {
 			public void evaluate() throws Throwable {
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1') {\n" +
+						"lock('resource1') {\n" +
 						"	echo 'Resource locked'\n" +
 						"}\n" +
 						"echo 'Finish'"
@@ -51,7 +51,7 @@ public class LockStepTest {
 	}
 
 	@Test
-	public void autoCreateResourceWithLabel() {
+	public void lockWithLabel() {
 		story.addStep(new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
@@ -170,7 +170,7 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1') {\n" +
+						"lock('resource1') {\n" +
 						"	semaphore 'wait-inside'\n" +
 						"}\n" +
 						"echo 'Finish'"
@@ -248,11 +248,11 @@ public class LockStepTest {
 				p.setDefinition(new CpsFlowDefinition(
 						"parallel a: {\n" +
 						"	sleep 5\n" +
-						"	lock(resource: 'resource1') {\n" +
+						"	lock('resource1') {\n" +
 						"		sleep 5\n" +
 						"	}\n" +
 						"}, b: {\n" +
-						"	lock(resource: 'resource1') {\n" +
+						"	lock('resource1') {\n" +
 						"		semaphore 'wait-b'\n" +
 						"	}\n" +
 						"}\n"
@@ -279,7 +279,7 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1') {\n" +
+						"lock('resource1') {\n" +
 						"	semaphore 'wait-inside'\n" +
 						"}\n" +
 						"echo 'Finish'"
@@ -328,7 +328,7 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1') {\n" +
+						"lock('resource1') {\n" +
 						"	echo 'Locked'\n" +
 						"}\n" +
 						"echo 'Finish'"
@@ -366,7 +366,7 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResource("resource1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource1') {\n" +
+						"lock('resource1') {\n" +
 						"	semaphore 'wait-inside'\n" +
 						"}\n" +
 						"echo 'Finish'"

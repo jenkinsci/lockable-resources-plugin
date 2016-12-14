@@ -14,8 +14,6 @@ import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.listeners.RunListener;
-import hudson.model.ParametersAction;
-import hudson.model.ParameterValue;
 import hudson.model.StringParameterValue;
 
 import java.util.ArrayList;
@@ -85,7 +83,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {
-			LockableResourcesManager.get().unlock(required, build, null);
+			LockableResourcesManager.get().unlock(required, build);
 			listener.getLogger().printf("%s released lock on %s\n",
 					LOG_PREFIX, required);
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
@@ -104,7 +102,7 @@ public class LockRunListener extends RunListener<AbstractBuild<?, ?>> {
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {
-			LockableResourcesManager.get().unlock(required, build, null);
+			LockableResourcesManager.get().unlock(required, build);
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);
 		}

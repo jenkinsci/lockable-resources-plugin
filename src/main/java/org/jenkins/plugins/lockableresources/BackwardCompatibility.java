@@ -21,6 +21,7 @@ import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class BackwardCompatibility {
@@ -28,8 +29,8 @@ public final class BackwardCompatibility {
                                             .getName());
 
     @Initializer(after = InitMilestone.JOB_LOADED)
-    public static void beforeInitMilestonePluginsStarted() {
-        LOG.fine("\n\n LOCKABLE RESOURCES COMPATABILITY INIT \n\n");
+    public static void compatibilityMigration() {
+        LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run");
 		List<LockableResource> resources = LockableResourcesManager.get().getResources();
 		for (LockableResource resource : resources) {
 			List<StepContext> queuedContexts = resource.getQueuedContexts();

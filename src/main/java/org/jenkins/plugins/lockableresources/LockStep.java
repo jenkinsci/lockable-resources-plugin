@@ -28,18 +28,18 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public boolean inversePrecedence = false;
 
+	// it should be LockStep() - without params. But keeping this for backward compatibility
+	// so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource is not required)
 	@DataBoundConstructor
-	public LockStep() {
+	public LockStep(String resource) {
+		if (resource != null && !resource.isEmpty()) {
+			this.resource = resource;
+		}
 	}
 
 	@DataBoundSetter
 	public void setInversePrecedence(boolean inversePrecedence) {
 		this.inversePrecedence = inversePrecedence;
-	}
-
-	@DataBoundSetter
-	public void setResource(String resource) {
-		this.resource = resource;
 	}
 
 	@DataBoundSetter
@@ -83,7 +83,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
             String resourceLabel = Util.fixEmpty(value);
 			String resourceName = Util.fixEmpty(resource);
-			if ((resourceLabel != null) && (resourceName != null)) {
+			if (resourceLabel != null && resourceName != null) {
 				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
 			}
 			if ((resourceLabel == null) && (resourceName == null)) {
@@ -109,7 +109,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		if (this.resource != null) {
 			return this.resource;
 		}
-		return "";
+		return "[no resource/label specified - probably a bug]";
 	}
 
 	private static final long serialVersionUID = 1L;

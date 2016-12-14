@@ -1,8 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,10 +41,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}
 		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
 		List<String> resources = new ArrayList<String>();
-		resources.add(step.resource);
+		if (step.resource != null) {
+			resources.add(step.resource);
+		}
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
 		// determine if there are enough resources available to proceed
-		List<LockableResource> available = LockableResourcesManager.get().getAvailableResources(resourceHolder, listener.getLogger(), null);
+		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
 		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.inversePrecedence)) {
 			listener.getLogger().println("[" + step + "] is locked, waiting...");
 			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString());
@@ -84,7 +84,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}
 
 		protected void finished(StepContext context) throws Exception {
-			LockableResourcesManager.get().unlockNames(this.resourcenames, context.get(Run.class), context, this.inversePrecedence);
+			LockableResourcesManager.get().unlockNames(this.resourcenames, context.get(Run.class), this.inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceDescription + "]");
 			LOGGER.finest("Lock released on [" + resourceDescription + "]");
 		}
