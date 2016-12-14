@@ -2,4 +2,5 @@ target/
 bin/
 work/
 .*
+.idea
 *.iml

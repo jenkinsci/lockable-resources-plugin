@@ -72,7 +72,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return matching;
 	}
 
-	public List<LockableResource> getResourcesFromBuild(AbstractBuild<?, ?> build) {
+	public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
 		List<LockableResource> matching = new ArrayList<LockableResource>();
 		for (LockableResource r : resources) {
 			Run<?, ?> rBuild = r.getBuild();

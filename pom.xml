@@ -19,7 +19,7 @@
 
 	<groupId>org.6wind.jenkins</groupId>
 	<artifactId>lockable-resources</artifactId>
-	<version>1.10-SNAPSHOT</version>
+	<version>1.11-SNAPSHOT</version>
 	<packaging>hpi</packaging>
 	<name>Lockable Resources plugin</name>
 	<description>
@@ -156,7 +156,7 @@
 
 	<scm>
 		<connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
-		<developerConnection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</developerConnection>
+		<developerConnection>scm:git:git@github.com:jenkinsci/lockable-resources-plugin.git</developerConnection>
 		<url>https://github.com/jenkinsci/lockable-resources-plugin</url>
 	  <tag>HEAD</tag>
   </scm>
