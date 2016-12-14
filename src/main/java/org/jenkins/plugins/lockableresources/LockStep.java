@@ -81,7 +81,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		}
 		
 		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
-            String resourceLabel = Util.fixEmpty(value);
+			String resourceLabel = Util.fixEmpty(value);
 			String resourceName = Util.fixEmpty(resource);
 			if (resourceLabel != null && resourceName != null) {
 				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
@@ -89,12 +89,12 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 			if ((resourceLabel == null) && (resourceName == null)) {
 				return FormValidation.error("Either label or resource name must be specified.");
 			}
-            return FormValidation.ok();
+			return FormValidation.ok();
         }
 		
 		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
-            return doCheckLabel(label, value);
-        }
+			return doCheckLabel(label, value);
+		}
 	}
 
 	public String toString() {

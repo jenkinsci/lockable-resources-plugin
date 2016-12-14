@@ -25,12 +25,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class BackwardCompatibility {
-    private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class
-                                            .getName());
+	private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
 
-    @Initializer(after = InitMilestone.JOB_LOADED)
-    public static void compatibilityMigration() {
-        LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run");
+	@Initializer(after = InitMilestone.JOB_LOADED)
+	public static void compatibilityMigration() {
+		LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run");
 		List<LockableResource> resources = LockableResourcesManager.get().getResources();
 		for (LockableResource resource : resources) {
 			List<StepContext> queuedContexts = resource.getQueuedContexts();
@@ -44,5 +43,5 @@ public final class BackwardCompatibility {
 				queuedContexts.clear();
 			}
 		}
-    }
+	}
 }

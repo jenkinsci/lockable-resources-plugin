@@ -546,7 +546,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return selected;
 	}
 
-    /*
+	/*
 	 * Adds the given context and the required resources to the queue if
 	 * this context is not yet queued.
 	 */
