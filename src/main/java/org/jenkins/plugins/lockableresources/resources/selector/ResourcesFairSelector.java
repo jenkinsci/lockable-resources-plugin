@@ -86,7 +86,7 @@ public class ResourcesFairSelector extends ResourcesDefaultSelector {
         ArrayList<LockableResource> res = new ArrayList<>();
         for(Tuple2<LockableResource, Double> t : sorted) {
             res.add(t.getFirst());
-            LOGGER.info(" - " + t.getFirst().getName() + ": " + t.getSecond());
+            LOGGER.finer(" - " + t.getFirst().getName() + ": " + t.getSecond());
         }
         return super.sortResources(res, queueContext);
     }

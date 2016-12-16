@@ -39,6 +39,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     public boolean start() throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         QueueStepContext queueContext = new QueueStepContext(getContext(), step);
+        
         EnvVars env = queueContext.getEnvVars();
 
         for(RequiredResources rr : step.getRequiredResources()) {
@@ -61,7 +62,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         // Determine if there are enough resources available to proceed
         // Function 'proceed' is called inside lock if execution is possible
         // Else, the task is queued for later retry
-        if(!manager.tryLock(queueContext)) {
+        if(!manager.lockNowOrLater(queueContext)) {
             if(listener != null) {
                 listener.getLogger().println(step.getRequiredResources() + " is locked, waiting...");
             }
@@ -122,7 +123,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
                 }
             }
             LOGGER.finest("Lock released on " + resources);
-            context.onSuccess(true);
+            //context.onSuccess(true);
         }
     }
 }

@@ -55,8 +55,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             }
             LockableResourcesManager manager = LockableResourcesManager.get();
             QueueBuildContext queueContext = new QueueBuildContext(build, listener);
-            if(!manager.tryLock(queueContext)) {
-                manager.unqueue(queueContext);
+            if(!manager.lockNowOrNever(queueContext)) {
                 LOGGER.severe("Impossible to lock resources that shall be queued");
             }
         }

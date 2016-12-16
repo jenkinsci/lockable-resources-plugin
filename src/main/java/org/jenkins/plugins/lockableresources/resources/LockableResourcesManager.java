@@ -411,12 +411,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
      *
      * @param queueContext
      *
-     * @return Return the list of locked resources, or null if no enough resources
+     * @return Return true if resources has been locked, or false if no enough resources
      */
-    public synchronized boolean tryLock(@Nonnull QueueContext queueContext) {
+    public synchronized boolean lockNowOrLater(@Nonnull QueueContext queueContext) {
         queuedContexts.add(queueContext);
         save();
         return retryLock().contains(queueContext);
+    }
+
+    /**
+     * Try to lock required resources.<br>
+     * If not possible, do nothing
+     *
+     * @param queueContext
+     *
+     * @return Return true if resources has been locked, or false if no enough resources
+     */
+    public synchronized boolean lockNowOrNever(@Nonnull QueueContext queueContext) {
+        Set<LockableResource> resourcesForNextContext = resourcesSelector.selectFreeResources(resources, queueContext);
+        if(resourcesForNextContext == null) {
+            // No enough resources
+            return false;
+        }
+        return lock(resourcesForNextContext, queueContext);
     }
 
     /**
@@ -438,12 +455,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if(build == null) {
             return false;
         }
-        queuedContexts.remove(queueContext); // Remove context to prevent another possible lock call in sub-functions
+        boolean removed = queuedContexts.remove(queueContext); // Remove context to prevent another possible lock call in sub-functions
         String userId = queueContext.getUserId();
         for(LockableResource r : resources) {
             if(!r.canLock(userId, queueContext.getQueueId())) {
                 // At least one resource is not available: abort lock process
-                queuedContexts.add(queueContext);
+                if(removed) {
+                    queuedContexts.add(queueContext);
+                }
                 return false;
             }
         }
@@ -546,16 +565,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 // No context is queued which can be started once these resources are free'd.
                 break;
             }
-            
-            Set<LockableResource> resourcesForNextContext = resourcesSelector.selectFreeResources(resources, nextStruct);
-            if(resourcesForNextContext == null) {
-                // No enough resources
-                break;
-            }
-            if(lock(resourcesForNextContext, nextStruct)) {
+            if(lockNowOrNever(nextStruct)) {
                 res.add(nextStruct);
             } else {
-                // For an unknown problem (bug ?) lock is not possible on selected resources
                 break;
             }
         }
