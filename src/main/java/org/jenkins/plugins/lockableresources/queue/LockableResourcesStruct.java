@@ -18,6 +18,8 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
+
 public class LockableResourcesStruct implements Serializable {
 
 	public List<LockableResource> required;
@@ -47,11 +49,29 @@ public class LockableResourcesStruct implements Serializable {
 			requiredNumber = null;
 	}
 
-	public LockableResourcesStruct(String resource) {
+	public LockableResourcesStruct(@Nullable List<String> resources) {
+		this(resources, null, 0);
+	}
+
+	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
 		required = new ArrayList<LockableResource>();
-		LockableResource r = LockableResourcesManager.get().fromName(resource);
-		if (r != null) {
-			this.required.add(r);
+		if (resources != null) {
+			for (String resource : resources) {
+				LockableResource r = LockableResourcesManager.get().fromName(resource);
+				if (r != null) {
+					this.required.add(r);
+				}
+			}
+		}
+
+		this.label = label;
+		if (this.label == null) {
+		    this.label = "";
+		}
+
+		this.requiredNumber = null;
+		if (quantity > 0) {
+			this.requiredNumber = String.valueOf(quantity);
 		}
 	}
 

@@ -66,9 +66,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private long queuingStarted = 0;
 
 	/**
-	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
-	 * otherwise (freestyle builds) regular Jenkins queue is used.
+	 * Was used within the initial implementation of Pipeline functionality
+	 * using {@link LockStep}, but became deprecated once several resources
+	 * could be locked at once. See queuedContexts in {@link LockableResourcesManager}.
 	 */
+	@Deprecated
 	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
 
 	@Deprecated
@@ -90,6 +92,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			queuedContexts = new ArrayList<StepContext>();
 		}
 		return this;
+	}
+
+	@Deprecated
+	public List<StepContext> getQueuedContexts() {
+		return this.queuedContexts;
 	}
 
 	@DataBoundSetter
@@ -115,11 +122,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getLabels() {
 		return labels;
-	}
-
-
-	public Integer getContextsInQueue() {
-		return queuedContexts.size();
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
@@ -294,49 +296,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			if (now - queuingStarted > QUEUE_TIMEOUT)
 				unqueue();
 		}
-	}
-
-	public void queueAdd(StepContext context) {
-		queuedContexts.add(context);
-	}
-
-	/**
-	 * Returns the next context (if exists) waiting to get thye lock.
-	 * It removes the returned context from the queue.
-	 */
-	@CheckForNull
-	/* package */ StepContext getNextQueuedContext(boolean inversePrecedence) {
-		if (queuedContexts.size() > 0) {
-			if (!inversePrecedence) {
-				return queuedContexts.remove(0);
-			} else {
-				long newest = 0;
-				int index = 0;
-				int newestIndex = 0;
-				for(Iterator<StepContext> iterator = queuedContexts.iterator(); iterator.hasNext();) {
-					StepContext c = iterator.next();
-					try {
-						Run<?, ?> run = c.get(Run.class);
-						if (run.getStartTimeInMillis() > newest) {
-							newest = run.getStartTimeInMillis();
-							newestIndex = index;
-						}
-					} catch (Exception e) {
-						// skip this one and remove from queue
-						iterator.remove();
-						LOGGER.log(Level.FINE, "Skipping queued context as it does not hold a Run object", e);
-					}
-					index++;
-				}
-				
-				return queuedContexts.remove(newestIndex);
-			}
-		}
-		return null;
-	}
-
-	/* package */ boolean remove(StepContext context) {
-		return queuedContexts.remove(context);
 	}
 
 	@DataBoundSetter
