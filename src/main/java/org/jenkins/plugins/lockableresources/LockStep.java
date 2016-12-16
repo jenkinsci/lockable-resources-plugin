@@ -44,7 +44,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	@DataBoundSetter
 	public void setLabel(String label) {
-		if (!label.isEmpty()) {
+		if (label != null && !label.isEmpty()) {
 			this.label = label;
 		}
 	}
@@ -110,6 +110,15 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 			return this.resource;
 		}
 		return "[no resource/label specified - probably a bug]";
+	}
+
+	/**
+	 * Label and resource are mutual exclusive.
+	 */
+	public void validate() throws Exception {
+		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
+			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
+		}
 	}
 
 	private static final long serialVersionUID = 1L;

@@ -31,17 +31,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	@Override
 	public boolean start() throws Exception {
-		if (step.label != null && !step.label.isEmpty() && step.resource !=  null && !step.resource.isEmpty()) {
-			throw new Exception("Label and resource name cannot be specified simultaneously.");
-		}
-		
-		// create resoure only when specified explicitly
-		if (step.label == null && LockableResourcesManager.get().createResource(step.resource)) {
-			listener.getLogger().println("Resource [" + step + "] did not exist. Created.");
-		}
+		step.validate();
+
 		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
 		List<String> resources = new ArrayList<String>();
 		if (step.resource != null) {
+			if (LockableResourcesManager.get().createResource(step.resource)) {
+				listener.getLogger().println("Resource [" + step + "] did not exist. Created.");
+			}
 			resources.add(step.resource);
 		}
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
@@ -73,18 +70,18 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	private static final class Callback extends BodyExecutionCallback.TailCall {
 
-		private final List<String> resourcenames;
+		private final List<String> resourceNames;
 		private final String resourceDescription;
 		private final boolean inversePrecedence;
 
-		Callback(List<String> resourcenames, String resourceDescription, boolean inversePrecedence) {
-			this.resourcenames = resourcenames;
+		Callback(List<String> resourceNames, String resourceDescription, boolean inversePrecedence) {
+			this.resourceNames = resourceNames;
 			this.resourceDescription = resourceDescription;
 			this.inversePrecedence = inversePrecedence;
 		}
 
 		protected void finished(StepContext context) throws Exception {
-			LockableResourcesManager.get().unlockNames(this.resourcenames, context.get(Run.class), this.inversePrecedence);
+			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceDescription + "]");
 			LOGGER.finest("Lock released on [" + resourceDescription + "]");
 		}

@@ -285,8 +285,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
 	}
 
-	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock,
-										 Run<?, ?> build, boolean inversePrecedence) {
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, Run<?, ?> build, boolean inversePrecedence) {
 		// make sure there is a list of resource names to unlock
 		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.size() == 0)) {
 			return;
