@@ -2,6 +2,8 @@ package org.jenkins.plugins.lockableresources.step;
 
 import com.google.common.collect.Lists;
 import hudson.Extension;
+import hudson.Util;
+import hudson.util.FormValidation;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,6 +13,7 @@ import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.export.Exported;
 
 /**
@@ -32,7 +35,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     public LockStep() {
     }
 
-    @DataBoundConstructor
+    // it should be LockStep() - without params. But keeping this for backward compatibility
+	// so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource is not required)
+	@DataBoundConstructor
     public LockStep(String resource) {
         setResource(resource);
     }
@@ -40,7 +45,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     @DataBoundSetter
     @SuppressWarnings("FinalMethod")
     public final void setResource(String resource) {
-        if(resource != null) {
+        if(resource != null && !resource.isEmpty()) {
             if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
                 requiredResourcesList = Lists.newArrayList(new RequiredResources(resource, null, 0));
             } else {
@@ -66,7 +71,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
     @DataBoundSetter
     public void setLabel(String label) {
-        if(label != null) {
+        if(label != null && !label.isEmpty()) {
             if(requiredResourcesList == null || requiredResourcesList.isEmpty()) {
                 requiredResourcesList = Lists.newArrayList(new RequiredResources(null, label, 0));
             } else {
@@ -176,5 +181,23 @@ public class LockStep extends AbstractStepImpl implements Serializable {
         public boolean takesImplicitBlockArgument() {
             return true;
         }
+		
+		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
+			String resourceLabel = Util.fixEmpty(value);
+			String resourceName = Util.fixEmpty(resource);
+            // In API 2.0, both resourceLabel + resourceName can be set at the same time
+            // => resourceName is selected first, then (resourceLabel + quantity)
+			/*if (resourceLabel != null && resourceName != null) {
+				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
+			}*/
+			if ((resourceLabel == null) && (resourceName == null)) {
+				return FormValidation.error("Either label or resource name must be specified.");
+			}
+			return FormValidation.ok();
+        }
+		
+		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
+			return doCheckLabel(label, value);
+		}
     }
 }

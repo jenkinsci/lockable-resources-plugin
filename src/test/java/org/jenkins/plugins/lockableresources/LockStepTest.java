@@ -251,6 +251,27 @@ public class LockStepTest {
         });
     }
 
+ 	@Test
+	public void lockWithLabel() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1", "label1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock(label: 'label1') {\n" +
+						"	echo 'Resource locked'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForCompletion(b1);
+				story.j.assertBuildStatus(Result.SUCCESS, b1);
+				story.j.assertLogContains("Lock released on [label1]", b1);
+			}
+		});
+	}
+
     @Test
     public void lockOrder() {
         story.addStep(new Statement() {
