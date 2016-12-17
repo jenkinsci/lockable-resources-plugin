@@ -67,6 +67,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @Exported
     protected String reservedFor = null;
     @Exported
+    protected String reservedComments = "";
+    @Exported
     protected Long reservedUntil = null;
     private long queueItemId = NOT_QUEUED;
     private String queueItemProject = null;
@@ -175,10 +177,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         Date d = new Date(reservedUntil);
         return "until " + formater.format(d);
     }
+
+    @DataBoundSetter
+    public void setReservedComments(String comments) {
+        this.reservedComments = comments;
+    }
     
-    public void reserveFor(String byUser, String forUser, Double hours) {
+    @Exported
+    public String getReservedComments() {
+        return Util.fixNull(reservedComments);
+    }
+    
+    public void reserveFor(String byUser, String forUser, Double hours, String comments) {
         this.reservedBy = Utils.getUserId(byUser);
         this.reservedFor = Utils.getUserId(forUser);
+        this.reservedComments = comments;
         Calendar cal = Calendar.getInstance();
         if(hours == null) {
             this.reservedUntil = null;
@@ -419,6 +432,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             reservedFor = null;
             reservedBy = null;
             reservedUntil = null;
+            reservedComments = "";
             LockableResourcesManager manager = LockableResourcesManager.get();
             manager.retryLock();
         }

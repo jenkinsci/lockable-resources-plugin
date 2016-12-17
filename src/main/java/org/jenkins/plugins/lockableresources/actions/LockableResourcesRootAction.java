@@ -126,11 +126,12 @@ public class LockableResourcesRootAction implements RootAction {
             rsp.sendError(404, "Resource not found " + name);
             return;
         }
+        String comments = req.getParameter("comments");
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         String byId = Utils.getUserId();
-        manager.reserve(resources, byId);
+        manager.reserve(resources, byId, comments);
 
         rsp.forwardToPreviousPage(req);
     }
@@ -168,11 +169,12 @@ public class LockableResourcesRootAction implements RootAction {
         if((hours != null) && (hours <= 0) && Jenkins.getInstance().hasPermission(OFFLINE)) {
             hours = null; //unlimited
         }
+        String comments = req.getParameter("comments");
 
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         String byId = Utils.getUserId();
-        manager.reserve(resources, byId, forUser, hours);
+        manager.reserve(resources, byId, forUser, hours, comments);
 
         rsp.forwardToPreviousPage(req);
     }

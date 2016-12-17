@@ -596,11 +596,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return false;
     }
 
-    public synchronized void reserve(List<LockableResource> resources, @Nullable String byUser) {
-        reserve(resources, byUser, null, null);
+    public synchronized void reserve(List<LockableResource> resources, @Nullable String byUser, @Nonnull String comments) {
+        reserve(resources, byUser, null, null, comments);
     }
 
-    public synchronized void reserve(@Nonnull List<LockableResource> resources, @Nullable String byUser, @Nullable String forUser, @Nullable Double hours) {
+    public synchronized void reserve(@Nonnull List<LockableResource> resources, @Nullable String byUser, @Nullable String forUser, @Nullable Double hours, @Nonnull String comments) {
         double maxHours = getMaxReservationHours();
         Double realHours;
         if((hours != null) && (maxHours > 0)) {
@@ -611,7 +611,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             realHours = hours;
         }
         for(LockableResource resource : resources) {
-            resource.reserveFor(byUser, forUser, realHours);
+            resource.reserveFor(byUser, forUser, realHours, comments);
         }
         save();
 

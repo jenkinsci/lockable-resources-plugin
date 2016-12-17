@@ -58,7 +58,8 @@ tr {
                 text my.queueItemProject my.queueItemId
             }
         } else if(my.hasExclusiveUse(userId)) {
-            div(style:"color: green;") {
+            comments = my.reservedComments
+            div(style:"color: green;", title:comments) {
                 strong _("EXCLUSIVE")
                 if(!compact) {
                     text " " + my.reservedUntilString
@@ -69,14 +70,16 @@ tr {
                 strong _("AVAILABLE")
             }
         } else if(my.reservedFor != null) {
-            div(style:"color: #800080;") {
-                strong _("RESERVED")
+            comments = my.reservedComments
+            div(style:"color: #800080;", title:comments) {
+                strong _("RESERVED pouet")
                 if(!compact) {
                     text " " + my.reservedUntilString
                 }
             }
         } else if(my.reservedBy != null) {
-            div(style:"color: grey;") {
+            comments = my.reservedComments
+            div(style:"color: grey;", title:comments) {
                 strong _("OFFLINE")
             }
         } else {
@@ -88,18 +91,30 @@ tr {
         // Then, manage online/offline and reservation
         if(!compact) {
             if(my.reservedFor != null) {
-                div(style:"color: #800080;") {
+                comments = my.reservedComments
+                div(style:"color: #800080;", title:comments) {
                     strong _("RESERVED")
                     text _(" by ")
                     text my.reservedByName
                     text _(" for ")
                     strong my.reservedForName
                 }
+                if(comments != "") {
+                    div(style:"color: #800080;") {
+                        em comments
+                    }
+                }
             } else if(my.reservedBy != null) {
-                div(style:"color: grey;") {
+                comments = my.reservedComments
+                div(style:"color: grey;", title:comments) {
                     strong _("RESERVED")
                     text _(" by ")
                     strong my.reservedByName
+                }
+                if(comments != "") {
+                    div(style:"color: grey;") {
+                        em comments
+                    }
                 }
             }
         }
@@ -115,7 +130,8 @@ if(!confirm('Are you sure ? A conflict with another job may occures.')) {return}
     window.location.assign('unlock?resource=${my.name}');
 }
 function reserve_resource_${safeName}() {
-    window.location.assign('reserve?resource=${my.name}');
+    var comments = prompt('Comments:', '');
+    window.location.assign('reserve?resource=${my.name}' + '&comments=' + comments);
 }
 function unreserve_resource_${safeName}() {
     if(!confirm('Are you sure ? Anyone will be able to use this resource (even queued jobs).')) {return}
@@ -128,6 +144,7 @@ function reset_resource_${safeName}() {
 function reserveFor_resource_${safeName}() {
     var forUser = prompt('Id or full name of the user:', '${userId}');
     if(forUser == null) {return}
+    var comments = prompt('Comments for reservation:', '');
     if(${manager.defaultReservationHours > 0}) {
         var hours;
         var txt = 'Duration of the reservation';
@@ -141,10 +158,10 @@ function reserveFor_resource_${safeName}() {
         hours = prompt(txt, '${manager.defaultReservationHours}');
         if(hours == null) {return}
         console.log("1/ forUser = " + forUser)
-        window.location.assign('reserveFor?resource=${my.name}""" + /&/ + """forUser=' + forUser + '&hours=' + hours);
+        window.location.assign('reserveFor?resource=${my.name}""" + /&/ + """forUser=' + forUser + '&hours=' + hours + '&comments=' + comments);
     } else {\n\
         console.log("2/ forUser = " + forUser)
-        window.location.assign('reserveFor?resource=${my.name}&forUser=' + forUser);
+        window.location.assign('reserveFor?resource=${my.name}&forUser=' + forUser + '&comments=' + comments);
     }
 }
 function unreserveFor_resource_${safeName}() {
