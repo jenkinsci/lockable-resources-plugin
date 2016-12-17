@@ -7,7 +7,9 @@ import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Result;
+import hudson.model.StringParameterDefinition;
 import java.io.IOException;
 import java.util.Collections;
 import org.jenkins.plugins.lockableresources.jobProperty.RequiredResourcesProperty;
@@ -160,6 +162,19 @@ public class BasicIntegrationTest {
 
         jenkinsRule.assertLogContains("resourceNameVar: resource1, resource2, resource3, resource4, resource5, resource6", build);
         jenkinsRule.assertBuildStatus(Result.SUCCESS, build);
+    }
+
+    @Test
+    @Issue("JENKINS-30308")
+    public void testResourceNameFromParameter() throws Exception {
+        LockableResourcesManager.get().createResource("resource1");
+        FreeStyleProject p = jenkinsRule.createFreeStyleProject("p");
+        p.addProperty(new RequiredResourcesProperty(Collections.singletonList(new RequiredResources("$resource", null, null)), null));
+        p.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("resource", "resource1")));
+
+        FreeStyleBuild b1 = p.scheduleBuild2(0).get();
+        jenkinsRule.assertLogContains("Lock resources [resource1]", b1);
+        jenkinsRule.assertBuildStatus(Result.SUCCESS, b1);
     }
 
     @TestExtension

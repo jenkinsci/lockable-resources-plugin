@@ -5,6 +5,7 @@ import hudson.EnvVars;
 import hudson.Util;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
 import java.util.logging.Level;
@@ -94,7 +95,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
                 start();
     }
 
-    private static class Callback extends BodyExecutionCallback.TailCall {
+    private static class Callback extends BodyExecutionCallback {
         private static final long serialVersionUID = 1L;
         private final Collection<String> resourceNames;
         private final Collection<RequiredResources> requiredresources;
@@ -105,7 +106,25 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         }
 
         @Override
-        protected void finished(StepContext context) throws Exception {
+        public void onFailure(StepContext context, Throwable t) {
+            try {
+                finished(context);
+            } catch(IOException | InterruptedException ex) {
+                t.addSuppressed(ex);
+            }
+            context.onFailure(t);
+        }
+
+        @Override
+        public void onSuccess(StepContext context, Object result) {
+            try {
+                context.onSuccess(finished(context));
+            } catch(IOException | InterruptedException ex) {
+                context.onFailure(ex);
+            }
+        }
+        
+        public boolean finished(StepContext context) throws IOException, InterruptedException {
             LockableResourcesManager manager = LockableResourcesManager.get();
             Set<LockableResource> resources = manager.getResourcesFromNames(resourceNames);
             if(resources == null) {
@@ -123,7 +142,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
                 }
             }
             LOGGER.finest("Lock released on " + resources);
-            //context.onSuccess(true);
+            return true;
         }
     }
 }
