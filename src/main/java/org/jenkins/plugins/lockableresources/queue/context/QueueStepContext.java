@@ -14,9 +14,13 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Set;
+import javax.annotation.Nonnull;
 import org.jenkins.plugins.lockableresources.Utils;
+import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 import org.jenkins.plugins.lockableresources.step.LockStep;
+import org.jenkins.plugins.lockableresources.step.LockStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 /*
@@ -41,7 +45,8 @@ public class QueueStepContext extends QueueContext implements Serializable {
      * @param context
      * @param step
      */
-    public QueueStepContext(StepContext context, LockStep step) {
+    public QueueStepContext(StepContext context, LockStep step, Double timeoutSeconds) {
+        super(timeoutSeconds);
         this.context = context;
         this.step = step;
     }
@@ -92,6 +97,7 @@ public class QueueStepContext extends QueueContext implements Serializable {
     }
 
     @Override
+    @Nonnull
     public Collection<RequiredResources> getRequiredResources() {
         return step.getRequiredResources();
     }
@@ -123,6 +129,9 @@ public class QueueStepContext extends QueueContext implements Serializable {
         if(context == null) {
             return false;
         }
+        if(!super.isStillApplicable()) {
+            return false;
+        }
         Run<?, ?> build;
         try {
             build = context.get(Run.class);
@@ -133,6 +142,22 @@ public class QueueStepContext extends QueueContext implements Serializable {
             return (build == currentBuild);
         } catch(IOException | InterruptedException ex) {
             return false;
+        }
+    }
+    
+    @Override
+    public void proceed(@Nonnull Set<LockableResource> resources) {
+        super.proceed(resources);
+        if(context != null) {
+            LockStepExecution.proceed(resources, getRequiredResources(), context);
+        }
+    }
+    
+    @Override
+    public void cancel() {
+        super.cancel();
+        if(context != null) {
+            LockStepExecution.abort(context);
         }
     }
 

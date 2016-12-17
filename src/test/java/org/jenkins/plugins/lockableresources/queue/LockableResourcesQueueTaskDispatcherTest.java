@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
-import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.Mockups;
+import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.queue.context.QueueItemContext;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
@@ -47,7 +47,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(true);
 
         // Then
         assertThat(causeOfBlockage).isNull();
@@ -61,7 +61,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
         Mockups.createPropertyMock(project, null, null);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
@@ -89,7 +89,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
         
         LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
         Mockups.createPropertyMock(project, resources, null);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
@@ -117,14 +117,14 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
         Mockups.createPropertyMock(project, resources, null);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
 
         // Then
-        verify(manager).tryQueue(project, new QueueItemContext(item));
+        verify(manager).tryQueue(project, new QueueItemContext(item, null));
         assertThat(causeOfBlockage).isNull();
     }
 
@@ -148,14 +148,14 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
         Mockups.createPropertyMock(project, resources, null);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(true);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(true);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
 
         // Then
-        verify(manager).tryQueue(project, new QueueItemContext(item));
+        verify(manager).tryQueue(project, new QueueItemContext(item, null));
         assertThat(causeOfBlockage).isNull();
     }
 
@@ -177,7 +177,7 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
         Mockups.createPropertyMock(project, resources, null);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(false);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(false);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
@@ -206,14 +206,14 @@ public class LockableResourcesQueueTaskDispatcherTest {
 
         LockableResourcesManager manager = Mockups.createLockableResourcesManagerMock(null);
         Mockups.createPropertyMock(project, resources, null);
-        when(manager.tryQueue(project, new QueueItemContext(item))).thenReturn(false);
+        when(manager.tryQueue(project, new QueueItemContext(item, null))).thenReturn(false);
 
         // When
         LockableResourcesQueueTaskDispatcher dispatcher = spy(LockableResourcesQueueTaskDispatcher.class);
         CauseOfBlockage causeOfBlockage = dispatcher.canRun(item);
 
         // Then
-        verify(manager).tryQueue(project, new QueueItemContext(item));
+        verify(manager).tryQueue(project, new QueueItemContext(item, null));
         assertThat(causeOfBlockage).isNotNull();
         assertThat(causeOfBlockage.getShortDescription()).isEqualTo("Waiting for resources " + resourceName);
     }

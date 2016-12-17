@@ -61,7 +61,14 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         // Instead, the resources are queued (temporary reserved), if available, and will be locked in LockRunListener.onStarted()
         // If there is no enough free resources, a blocage is raised and the item remains in Jenkins tasks queue
         LockableResourcesManager manager = LockableResourcesManager.get();
-        QueueItemContext queueContext = new QueueItemContext(item);
+        RequiredResourcesProperty property = RequiredResourcesProperty.getFromProject(project);
+        Double timeout;
+        if(property == null) {
+            timeout = null;
+        } else {
+            timeout = property.getTimeout();
+        }
+        QueueItemContext queueContext = new QueueItemContext(item, timeout);
         if(manager.tryQueue(project, queueContext)) {
             return null;
         } else {

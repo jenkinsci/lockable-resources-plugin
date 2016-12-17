@@ -13,16 +13,48 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
+import jenkins.util.Timer;
 import org.jenkins.plugins.lockableresources.Utils;
+import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 
 /*
  * This interface is used to queue tasks
  */
 public abstract class QueueContext {
+    private final Long timeoutTimeMillis;
+    private boolean waiting = true;
+
+    protected QueueContext() {
+        this(null);
+    }
+    
+    protected QueueContext(Double timeoutSeconds) {
+        this.waiting = true;
+        if(timeoutSeconds == null) {
+            this.timeoutTimeMillis = null;
+        } else {
+            long timeoutMillis = (long)(timeoutSeconds * 1_000);
+            this.timeoutTimeMillis = System.currentTimeMillis() + timeoutMillis;
+            Timer.get().schedule(new Runnable() {
+                @Override
+                public void run() {
+                    // remove queued context after a possible timeout
+                    synchronized(QueueContext.this) {
+                        if(isStillWaiting()) {
+                            cancel();
+                        }
+                    }
+                }
+            }, timeoutMillis, TimeUnit.MILLISECONDS);
+        }
+    }
+    
     public abstract long getQueueId();
 
     @CheckForNull
@@ -40,7 +72,21 @@ public abstract class QueueContext {
     @Nonnull
     public abstract EnvVars getEnvVars();
 
-    public abstract boolean isStillApplicable();
+    public boolean isStillApplicable() {
+        return (timeoutTimeMillis == null) || (System.currentTimeMillis() < timeoutTimeMillis);
+    }
+    
+    public synchronized boolean isStillWaiting() {
+        return waiting;
+    }
+    
+    public synchronized void proceed(@Nonnull Set<LockableResource> resources) {
+        waiting = false;
+    }
+    
+    public synchronized void cancel() {
+        waiting = false;
+    }
 
     @Nonnull
     public String getResourcesString() {

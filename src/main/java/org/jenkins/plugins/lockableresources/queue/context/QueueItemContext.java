@@ -29,7 +29,8 @@ public class QueueItemContext extends QueueContext {
     /*
      * Constructor for the QueuedContextStruct class.
      */
-    public QueueItemContext(Queue.Item item) {
+    public QueueItemContext(Queue.Item item, Double timeoutSeconds) {
+        super(timeoutSeconds);
         this.item = item;
     }
     
@@ -93,7 +94,18 @@ public class QueueItemContext extends QueueContext {
             // After Jenkins crash, for exemple
             return false;
         }
+        if(!super.isStillApplicable()) {
+            return false;
+        }
         Queue.Item currentItem = Jenkins.getInstance().getQueue().getItem(getQueueId());
         return (currentItem != null) && (item.task == currentItem.task);
+    }
+    
+    @Override
+    public void cancel() {
+        super.cancel();
+        if(item != null) {
+            Queue.getInstance().cancel(item);
+        }
     }
 }

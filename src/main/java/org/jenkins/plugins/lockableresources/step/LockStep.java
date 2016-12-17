@@ -24,6 +24,9 @@ import org.kohsuke.stapler.export.Exported;
  */
 public class LockStep extends AbstractStepImpl implements Serializable {
     private static final long serialVersionUID = 1L;
+    /** Lock retry timeout, in seconds*/
+    @Exported
+    protected Double timeout = null;
     @Exported
     protected String variable = null;
     @Exported
@@ -136,6 +139,16 @@ public class LockStep extends AbstractStepImpl implements Serializable {
     @Exported
     public String getVariable() {
         return this.variable;
+    }
+
+    @DataBoundSetter
+    public void setTimeout(Double timeout) {
+        this.timeout = timeout;
+    }
+
+    @Exported
+    public Double getTimeout() {
+        return this.timeout;
     }
 
     @Override

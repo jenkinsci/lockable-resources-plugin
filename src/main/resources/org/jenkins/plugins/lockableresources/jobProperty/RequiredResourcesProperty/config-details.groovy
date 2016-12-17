@@ -14,6 +14,9 @@ def st = namespace("jelly:stapler")
 f.entry(title:_("Variable name")) {
     f.textbox(field:"variableName")
 }
+f.entry(title:_("Lock retry timeout (seconds)")) {
+    f.textbox(field:"timeout")
+}
 f.entry(title:_("Lockable Resources")) {
     f.repeatable(field:"requiredResourcesList", header:_("Required resources"), minimum:"1", add:_("Add required resources")) {
         table(width:"100%") {

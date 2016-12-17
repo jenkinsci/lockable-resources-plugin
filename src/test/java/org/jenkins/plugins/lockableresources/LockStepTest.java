@@ -485,6 +485,32 @@ public class LockStepTest {
             }
         });
     }
+    
+    @Test
+    public void lockTimeout() throws Exception {
+        story.addStep(new Statement() {
+            @Override
+            public void evaluate() throws Throwable {
+                LockableResourcesManager.get().createResource("resource1", "label1");
+                WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p1.setDefinition(new CpsFlowDefinition(
+                        "lock(label: 'label1', quantity: 2, timeout: 10) {\n"
+                        + "  echo 'locked!'\n"
+                        + "}"));
+                WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+                story.j.waitForMessage("[Pipeline] lock", b1);
+                Thread.sleep(2000); //Ensure b1 is started
+                story.j.assertLogNotContains("locked!", b1);
+                
+                Thread.sleep(7800); //Ensure b1 is still running after 9.8 seconds
+                story.j.assertBuildStatus(null, b1);
+                
+                Thread.sleep(400); //Ensure b1 is ended after 10.2 seconds
+                story.j.assertBuildStatus(Result.FAILURE, b1);
+                story.j.assertLogNotContains("locked!", b1);
+            }
+        });
+    }
 
     @Test
     public void interoperability() {

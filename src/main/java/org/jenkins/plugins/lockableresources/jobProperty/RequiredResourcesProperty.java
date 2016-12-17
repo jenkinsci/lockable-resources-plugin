@@ -44,6 +44,8 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
     protected Collection<RequiredResources> requiredResourcesList = new ArrayList<>();
     @Exported
     protected String variableName = null;
+    @Exported
+    protected Double timeout = null; //seconds
 
     /**
      * Backward compatibility
@@ -83,6 +85,20 @@ public class RequiredResourcesProperty extends OptionalJobProperty<Job<?, ?>> {
     @DataBoundSetter
     public void setVariableName(String variableName) {
         this.variableName = variableName;
+    }
+
+    @Exported
+    public Double getTimeout() {
+        return timeout;
+    }
+
+    @DataBoundSetter
+    public void setTimeout(Double timeout) {
+        if((timeout == null) || (timeout <= 0)) {
+            this.timeout = null;
+        } else {
+            this.timeout = timeout;
+        }
     }
 
     @CheckForNull

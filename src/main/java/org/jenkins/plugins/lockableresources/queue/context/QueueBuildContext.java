@@ -31,6 +31,7 @@ public class QueueBuildContext extends QueueContext {
      * Constructor for the QueuedContextStruct class.
      */
     public QueueBuildContext(@Nonnull Run<?, ?> build, @Nonnull TaskListener listener) {
+        super();
         this.build = build;
         this.buildExternalizableId = build.getExternalizableId();
         this.listener = listener;
@@ -89,6 +90,9 @@ public class QueueBuildContext extends QueueContext {
     @Override
     public boolean isStillApplicable() {
         if(build == null) {
+            return false;
+        }
+        if(!super.isStillApplicable()) {
             return false;
         }
         Run<?, ?> currentBuild = Run.fromExternalizableId(build.getExternalizableId());

@@ -49,13 +49,11 @@ import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 import org.jenkins.plugins.lockableresources.queue.LockQueueWidget;
 import org.jenkins.plugins.lockableresources.queue.context.QueueContext;
-import org.jenkins.plugins.lockableresources.queue.context.QueueStepContext;
 import org.jenkins.plugins.lockableresources.queue.policy.QueueFifoPolicy;
 import org.jenkins.plugins.lockableresources.queue.policy.QueuePolicy;
 import org.jenkins.plugins.lockableresources.resources.selector.ResourcesDefaultSelector;
 import org.jenkins.plugins.lockableresources.resources.selector.ResourcesSelector;
 import org.jenkins.plugins.lockableresources.step.LockStep;
-import org.jenkins.plugins.lockableresources.step.LockStepExecution;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -292,7 +290,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null;
     }
 
-    public static List<String> getResourcesNames(Collection<LockableResource> resources) {
+    public static List<String> getResourcesNames(@Nonnull Collection<LockableResource> resources) {
         // since LockableResource contains transient variables, they cannot be correctly serialized
         // hence we use their unique resource names
         ArrayList<String> resourceNames = new ArrayList<>();
@@ -490,12 +488,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         } else {
             action.addLockedResources(resources);
         }
-        if(queueContext instanceof QueueStepContext) {
-            StepContext context = ((QueueStepContext) queueContext).getContext();
-            if(context != null) {
-                LockStepExecution.proceed(getResourcesNames(resources), queueContext.getRequiredResources(), context);
-            }
-        }
+        queueContext.proceed(resources);
         return true;
     }
 
@@ -722,11 +715,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     private synchronized void queueCleanup() {
         for(Iterator<QueueContext> iter = this.queuedContexts.iterator(); iter.hasNext();) {
-            QueueContext entry = iter.next();
-            if(!entry.isStillApplicable()) {
-                LOGGER.info("Item in resources queue is no more appliable: " + entry);
+            QueueContext queueContext = iter.next();
+            if(!queueContext.isStillApplicable()) {
+                LOGGER.info("Item in resources queue is no more applicable: " + queueContext);
                 iter.remove();
                 save();
+                queueContext.cancel();
             }
         }
     }

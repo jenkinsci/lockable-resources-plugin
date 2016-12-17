@@ -8,6 +8,7 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
@@ -15,6 +16,7 @@ import org.jenkins.plugins.lockableresources.Utils;
 import org.jenkins.plugins.lockableresources.queue.context.QueueStepContext;
 import org.jenkins.plugins.lockableresources.resources.LockableResource;
 import org.jenkins.plugins.lockableresources.resources.LockableResourcesManager;
+import static org.jenkins.plugins.lockableresources.resources.LockableResourcesManager.getResourcesNames;
 import org.jenkins.plugins.lockableresources.resources.RequiredResources;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
@@ -39,7 +41,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     @Override
     public boolean start() throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
-        QueueStepContext queueContext = new QueueStepContext(getContext(), step);
+        Double lockTimeout = step.getTimeout();
+        QueueStepContext queueContext = new QueueStepContext(getContext(), step, lockTimeout);
         
         EnvVars env = queueContext.getEnvVars();
 
@@ -88,11 +91,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
      * @param requiredresources
      * @param context
      */
-    public static void proceed(Collection<String> resourceNames, Collection<RequiredResources> requiredresources, @Nonnull StepContext context) {
+    public static void proceed(@Nonnull Set<LockableResource> resources, @Nonnull Collection<RequiredResources> requiredresources, @Nonnull StepContext context) {
+        Collection<String> resourceNames = getResourcesNames(resources);
         context.newBodyInvoker().
                 withCallback(new Callback(resourceNames, requiredresources)).
                 withDisplayName("Locking " + resourceNames).
                 start();
+    }
+    
+    public static void abort(@Nonnull StepContext context) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        boolean removed = manager.removeFromLockQueue(context);
+        if(removed) {
+            context.onFailure(new TimeoutException("Timeout when locking resources"));
+        }
     }
 
     private static class Callback extends BodyExecutionCallback {
