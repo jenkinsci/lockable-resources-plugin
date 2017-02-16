@@ -324,10 +324,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			save();
 			return;
 		} else {
+			List<String> resourceNamesToLock = new ArrayList<String>();
+
 			// lock all (old and new resources)
 			for (LockableResource requiredResource : requiredResourceForNextContext) {
 				try {
 					requiredResource.setBuild(nextContext.getContext().get(Run.class));
+					resourceNamesToLock.add(requiredResource.getName());
 				} catch (Exception e) {
 					throw new IllegalStateException("Can not access the context of a running build", e);
 				}
@@ -353,11 +356,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			this.freeResources(freeResources, build);
 
 			// continue with next context
-			List<String> resourceNames = new ArrayList<String>();
-			for (LockableResource resource : this.resources) {
-				resourceNames.add(resource.getName());
-			}
-			LockStepExecution.proceed(resourceNames, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
 		}
 		save();
 	}
