@@ -524,80 +524,59 @@ public class LockStepTest {
 			public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResource("resource1");
 				LockableResourcesManager.get().createResource("resource2");
-				LockableResourcesManager.get().createResource("resource3");
-				LockableResourcesManager.get().createResource("resource4");
 				WorkflowJob j = story.j.jenkins.createProject(WorkflowJob.class, "j");
 				j.setDefinition(new CpsFlowDefinition(
 						"lock(resource: 'resource1') {\n" +
-								"    sleep 1\n" +
+								"    semaphore 'wait-inside-1'\n" +
 								"}\n" +
 								"lock(resource: 'resource2') { \n" +
-								"    sleep 3\n" +
-								"}\n" +
-								"lock(resource: 'resource3') { \n" +
-								"    sleep 3\n" +
-								"}\n" +
-								"lock(resource: 'resource4') { \n" +
-								"    sleep 3\n" +
 								"    echo 'Entering semaphore now'\n" +
-								"    semaphore 'wait-inside'\n" +
+								"    semaphore 'wait-inside-2'\n" +
 								"}\n",
 						true));
 
-				WorkflowRun r1 = j.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("Lock acquired on [resource1]", r1);
-
 				List<WorkflowRun> nextRuns = new ArrayList<>();
-				WorkflowRun r2 = j.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("Lock acquired on [resource1]", r2);
-				nextRuns.add(r2);
 
-				for (int i = 0; i < 10; i++) {
-					// Make sure all the later builds are locked waiting on the first build.
+				WorkflowRun toUnlock = null;
+				for (int i = 0; i < 5; i++) {
 					WorkflowRun rNext = j.scheduleBuild2(0).waitForStart();
-					System.err.println("Waiting to acquire initial lock for " + rNext.getNumber());
-					story.j.waitForMessage("Lock acquired on [resource1]", rNext);
+					if (toUnlock != null) {
+						story.j.waitForMessage("[resource1] is locked, waiting...", rNext);
+						SemaphoreStep.success("wait-inside-1/" + i, toUnlock);
+					}
+					SemaphoreStep.waitForStart("wait-inside-1/" + (i + 1), rNext);
 					nextRuns.add(rNext);
+					toUnlock = rNext;
 				}
-
-				for (WorkflowRun r : nextRuns) {
-					System.err.println("Waiting to acquire second lock for " + r.getNumber());
-					story.j.waitForMessage("Lock acquired on [resource2]", r);
-				}
-				waitAndClear(r1, 1, nextRuns);
+				SemaphoreStep.success("wait-inside-1/" + nextRuns.size(), toUnlock);
+				waitAndClear(1, nextRuns);
 			}
 		});
 	}
 
-	private void waitAndClear(WorkflowRun toClear, int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
-		System.err.println("Waiting to enter semaphore for  " + toClear.getNumber());
-
-		story.j.waitForMessage("Entering semaphore now", toClear);
+	private void waitAndClear(int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
+		WorkflowRun toClear = nextRuns.get(0);
 
 		System.err.println("Waiting for semaphore to start for " + toClear.getNumber());
-		SemaphoreStep.waitForStart("wait-inside/" + semaphoreIndex, toClear);
-		SemaphoreStep.success("wait-inside/" + semaphoreIndex, toClear);
+		SemaphoreStep.waitForStart("wait-inside-2/" + semaphoreIndex, toClear);
+
+		List<WorkflowRun> remainingRuns = new ArrayList<>();
+
+		if (nextRuns.size() > 1) {
+			remainingRuns.addAll(nextRuns.subList(1, nextRuns.size()));
+
+			for (WorkflowRun r : remainingRuns) {
+				System.err.println("Verifying no semaphore yet for " + r.getNumber());
+				story.j.assertLogNotContains("Entering semaphore now", r);
+			}
+		}
+
+		SemaphoreStep.success("wait-inside-2/" + semaphoreIndex, toClear);
 		System.err.println("Waiting for " + toClear.getNumber() + " to complete");
 		story.j.assertBuildStatusSuccess(story.j.waitForCompletion(toClear));
 
-		if (nextRuns != null && !nextRuns.isEmpty()) {
-			WorkflowRun nextToClear = nextRuns.get(0);
-			List<WorkflowRun> remainingRuns = new ArrayList<>();
-
-			System.err.println("Waiting for lock to acquire on " + nextToClear.getNumber());
-
-			story.j.waitForMessage("Lock acquired on [resource4]", nextToClear);
-
-			if (nextRuns.size() > 1) {
-				remainingRuns.addAll(nextRuns.subList(1, nextRuns.size()));
-
-				for (WorkflowRun r : remainingRuns) {
-					System.err.println("Verifying no semaphore yet for " + r.getNumber());
-					story.j.assertLogNotContains("Entering semaphore now", r);
-				}
-			}
-
-			waitAndClear(nextToClear, semaphoreIndex + 1, remainingRuns);
+		if (!remainingRuns.isEmpty()) {
+			waitAndClear(semaphoreIndex + 1, remainingRuns);
 		}
 	}
 }
