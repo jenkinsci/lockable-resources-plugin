@@ -1,6 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -512,5 +514,90 @@ public class LockStepTest {
 				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b3));
 			}
 		});
+	}
+
+	@Issue("JENKINS-40879")
+	@Test
+	public void parallelLockRelease() throws Exception {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1");
+				LockableResourcesManager.get().createResource("resource2");
+				LockableResourcesManager.get().createResource("resource3");
+				LockableResourcesManager.get().createResource("resource4");
+				WorkflowJob j = story.j.jenkins.createProject(WorkflowJob.class, "j");
+				j.setDefinition(new CpsFlowDefinition(
+						"lock(resource: 'resource1') {\n" +
+								"    sleep 1\n" +
+								"}\n" +
+								"lock(resource: 'resource2') { \n" +
+								"    sleep 3\n" +
+								"}\n" +
+								"lock(resource: 'resource3') { \n" +
+								"    sleep 3\n" +
+								"}\n" +
+								"lock(resource: 'resource4') { \n" +
+								"    sleep 3\n" +
+								"    echo 'Entering semaphore now'\n" +
+								"    semaphore 'wait-inside'\n" +
+								"}\n",
+						true));
+
+				WorkflowRun r1 = j.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("Lock acquired on [resource1]", r1);
+
+				List<WorkflowRun> nextRuns = new ArrayList<>();
+				WorkflowRun r2 = j.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("Lock acquired on [resource1]", r2);
+				nextRuns.add(r2);
+
+				for (int i = 0; i < 10; i++) {
+					// Make sure all the later builds are locked waiting on the first build.
+					WorkflowRun rNext = j.scheduleBuild2(0).waitForStart();
+					System.err.println("Waiting to acquire initial lock for " + rNext.getNumber());
+					story.j.waitForMessage("Lock acquired on [resource1]", rNext);
+					nextRuns.add(rNext);
+				}
+
+				for (WorkflowRun r : nextRuns) {
+					System.err.println("Waiting to acquire second lock for " + r.getNumber());
+					story.j.waitForMessage("Lock acquired on [resource2]", r);
+				}
+				waitAndClear(r1, 1, nextRuns);
+			}
+		});
+	}
+
+	private void waitAndClear(WorkflowRun toClear, int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
+		System.err.println("Waiting to enter semaphore for  " + toClear.getNumber());
+
+		story.j.waitForMessage("Entering semaphore now", toClear);
+
+		System.err.println("Waiting for semaphore to start for " + toClear.getNumber());
+		SemaphoreStep.waitForStart("wait-inside/" + semaphoreIndex, toClear);
+		SemaphoreStep.success("wait-inside/" + semaphoreIndex, toClear);
+		System.err.println("Waiting for " + toClear.getNumber() + " to complete");
+		story.j.assertBuildStatusSuccess(story.j.waitForCompletion(toClear));
+
+		if (nextRuns != null && !nextRuns.isEmpty()) {
+			WorkflowRun nextToClear = nextRuns.get(0);
+			List<WorkflowRun> remainingRuns = new ArrayList<>();
+
+			System.err.println("Waiting for lock to acquire on " + nextToClear.getNumber());
+
+			story.j.waitForMessage("Lock acquired on [resource4]", nextToClear);
+
+			if (nextRuns.size() > 1) {
+				remainingRuns.addAll(nextRuns.subList(1, nextRuns.size()));
+
+				for (WorkflowRun r : remainingRuns) {
+					System.err.println("Verifying no semaphore yet for " + r.getNumber());
+					story.j.assertLogNotContains("Entering semaphore now", r);
+				}
+			}
+
+			waitAndClear(nextToClear, semaphoreIndex + 1, remainingRuns);
+		}
 	}
 }
