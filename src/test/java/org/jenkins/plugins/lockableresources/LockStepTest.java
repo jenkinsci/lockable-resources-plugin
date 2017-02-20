@@ -1,6 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -512,5 +514,69 @@ public class LockStepTest {
 				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b3));
 			}
 		});
+	}
+
+	@Issue("JENKINS-40879")
+	@Test
+	public void parallelLockRelease() throws Exception {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1");
+				LockableResourcesManager.get().createResource("resource2");
+				WorkflowJob j = story.j.jenkins.createProject(WorkflowJob.class, "j");
+				j.setDefinition(new CpsFlowDefinition(
+						"lock(resource: 'resource1') {\n" +
+								"    semaphore 'wait-inside-1'\n" +
+								"}\n" +
+								"lock(resource: 'resource2') { \n" +
+								"    echo 'Entering semaphore now'\n" +
+								"    semaphore 'wait-inside-2'\n" +
+								"}\n",
+						true));
+
+				List<WorkflowRun> nextRuns = new ArrayList<>();
+
+				WorkflowRun toUnlock = null;
+				for (int i = 0; i < 5; i++) {
+					WorkflowRun rNext = j.scheduleBuild2(0).waitForStart();
+					if (toUnlock != null) {
+						story.j.waitForMessage("[resource1] is locked, waiting...", rNext);
+						SemaphoreStep.success("wait-inside-1/" + i, toUnlock);
+					}
+					SemaphoreStep.waitForStart("wait-inside-1/" + (i + 1), rNext);
+					nextRuns.add(rNext);
+					toUnlock = rNext;
+				}
+				SemaphoreStep.success("wait-inside-1/" + nextRuns.size(), toUnlock);
+				waitAndClear(1, nextRuns);
+			}
+		});
+	}
+
+	private void waitAndClear(int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
+		WorkflowRun toClear = nextRuns.get(0);
+
+		System.err.println("Waiting for semaphore to start for " + toClear.getNumber());
+		SemaphoreStep.waitForStart("wait-inside-2/" + semaphoreIndex, toClear);
+
+		List<WorkflowRun> remainingRuns = new ArrayList<>();
+
+		if (nextRuns.size() > 1) {
+			remainingRuns.addAll(nextRuns.subList(1, nextRuns.size()));
+
+			for (WorkflowRun r : remainingRuns) {
+				System.err.println("Verifying no semaphore yet for " + r.getNumber());
+				story.j.assertLogNotContains("Entering semaphore now", r);
+			}
+		}
+
+		SemaphoreStep.success("wait-inside-2/" + semaphoreIndex, toClear);
+		System.err.println("Waiting for " + toClear.getNumber() + " to complete");
+		story.j.assertBuildStatusSuccess(story.j.waitForCompletion(toClear));
+
+		if (!remainingRuns.isEmpty()) {
+			waitAndClear(semaphoreIndex + 1, remainingRuns);
+		}
 	}
 }
