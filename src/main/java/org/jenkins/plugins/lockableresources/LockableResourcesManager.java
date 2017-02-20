@@ -255,7 +255,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return !needToWait;
 	}
 	
-	private synchronized void freeResources(List<String> unlockResourceNames, Run<?, ?> build) {
+	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
 			for (LockableResource resource : this.resources) {
 				if (resource.getName().equals(unlockResourceName)) {
@@ -269,12 +269,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 	}
 
-	public synchronized void unlock(List<LockableResource> resourcesToUnLock, Run<?, ?> build) {
+	public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
 		unlock(resourcesToUnLock, build, false);
 	}
 
 	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
-									Run<?, ?> build, boolean inversePrecedence) {
+									@Nullable Run<?, ?> build, boolean inversePrecedence) {
 		List<String> resourceNamesToUnLock = new ArrayList<String>();
 		if (resourcesToUnLock != null) {
 			for (LockableResource r : resourcesToUnLock) {
@@ -285,7 +285,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
 	}
 
-	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, Run<?, ?> build, boolean inversePrecedence) {
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
 		// make sure there is a list of resource names to unlock
 		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.size() == 0)) {
 			return;
@@ -320,7 +320,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		if (needToWait) {
-			this.freeResources(resourceNamesToUnLock, build);
+			freeResources(resourceNamesToUnLock, build);
 			save();
 			return;
 		} else {
@@ -332,7 +332,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					requiredResource.setBuild(nextContext.getContext().get(Run.class));
 					resourceNamesToLock.add(requiredResource.getName());
 				} catch (Exception e) {
-					throw new IllegalStateException("Can not access the context of a running build", e);
+					// skip this context, as the build cannot be retrieved (maybe it was deleted while running?)
+					LOGGER.log(Level.WARNING, "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, " +
+							"this could be a legitimate status if the build waiting for the lock was deleted or" +
+							" hard killed. More information at Level.FINE if debug is needed.");
+					LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+					unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+					return;
 				}
 			}
 
@@ -353,7 +359,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 
 			// free old resources no longer needed
-			this.freeResources(freeResources, build);
+			freeResources(freeResources, build);
 
 			// continue with next context
 			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
@@ -574,5 +580,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
 	}
+
+	private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
 }
