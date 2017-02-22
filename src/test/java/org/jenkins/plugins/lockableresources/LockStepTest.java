@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.Issue;
+import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 import org.jvnet.hudson.test.TestBuilder;
 
@@ -553,6 +554,44 @@ public class LockStepTest {
 					story.j.waitForMessage("Lock acquired on [resource1]", rNext);
 
 					SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
+					prevBuild = rNext;
+				}
+				SemaphoreStep.success("wait-inside/3", null);
+				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(prevBuild));
+			}
+		});
+	}
+
+	@Test
+	public void unlockButtonWithWaitingRuns() throws Exception {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition("retry(99) {\n" +
+						"    lock('resource1') {\n" +
+						"        semaphore('wait-inside')\n" +
+						"     }\n" +
+						"}", true));
+
+				JenkinsRule.WebClient wc = story.j.createWebClient();
+
+				WorkflowRun prevBuild = null;
+				for (int i = 0; i < 3; i++) {
+					WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
+					if (prevBuild != null) {
+						story.j.waitForMessage("[resource1] is locked, waiting...", rNext);
+						wc.goTo("lockable-resources/unlock?resource=resource1");
+					}
+
+					story.j.waitForMessage("Lock acquired on [resource1]", rNext);
+					SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
+
+					if (prevBuild != null) {
+						SemaphoreStep.success("wait-inside/" + i, null);
+						story.j.assertBuildStatusSuccess(story.j.waitForCompletion(prevBuild));
+					}
 					prevBuild = rNext;
 				}
 				SemaphoreStep.success("wait-inside/3", null);
