@@ -539,16 +539,7 @@ public class LockStepTest {
 					WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
 					if (prevBuild != null) {
 						story.j.waitForMessage("[resource1] is locked, waiting...", rNext);
-						Executor ex = prevBuild.getExecutor();
-						assertNotNull(ex);
-						ex.interrupt();
-						story.j.waitForMessage("Click here to forcibly terminate running steps", prevBuild);
-						prevBuild.doTerm();
-						story.j.waitForMessage("Click here to forcibly kill entire build", prevBuild);
-						prevBuild.doKill();
-						story.j.waitForMessage("Hard kill!", prevBuild);
-						story.j.waitForCompletion(prevBuild);
-						story.j.assertBuildStatus(Result.ABORTED, prevBuild);
+						interruptTermKill(prevBuild);
 					}
 
 					story.j.waitForMessage("Lock acquired on [resource1]", rNext);
@@ -560,6 +551,67 @@ public class LockStepTest {
 				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(prevBuild));
 			}
 		});
+	}
+
+	@Issue("JENKINS-40368")
+	@Test
+	public void hardKillWithWaitingRunsOnLabel() throws Exception {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition("retry(99) {\n" +
+						"    lock(label: 'label1', quantity: 1) {\n" +
+						"        semaphore('wait-inside')\n" +
+						"     }\n" +
+						"}", true));
+
+				WorkflowRun firstPrev = null;
+				WorkflowRun secondPrev = null;
+				for (int i = 0; i < 3; i++) {
+					WorkflowRun firstNext = p.scheduleBuild2(0).waitForStart();
+					story.j.waitForMessage("Trying to acquire lock on", firstNext);
+					WorkflowRun secondNext = p.scheduleBuild2(0).waitForStart();
+					story.j.waitForMessage("Trying to acquire lock on", secondNext);
+
+					if (firstPrev != null) {
+						story.j.waitForMessage("is locked, waiting...", firstNext);
+						story.j.waitForMessage("is locked, waiting...", secondNext);
+					}
+
+					interruptTermKill(firstPrev);
+					story.j.waitForMessage("Lock acquired on ", firstNext);
+					interruptTermKill(secondPrev);
+					story.j.waitForMessage("Lock acquired on ", secondNext);
+
+					SemaphoreStep.waitForStart("wait-inside/" + ((i * 2) + 1), firstNext);
+					SemaphoreStep.waitForStart("wait-inside/" + ((i * 2) + 2), secondNext);
+					firstPrev = firstNext;
+					secondPrev = secondNext;
+				}
+				SemaphoreStep.success("wait-inside/5", null);
+				SemaphoreStep.success("wait-inside/6", null);
+				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(firstPrev));
+				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(secondPrev));
+			}
+		});
+	}
+
+	private void interruptTermKill(WorkflowRun b) throws Exception {
+		if (b != null) {
+			Executor ex = b.getExecutor();
+			assertNotNull(ex);
+			ex.interrupt();
+			story.j.waitForMessage("Click here to forcibly terminate running steps", b);
+			b.doTerm();
+			story.j.waitForMessage("Click here to forcibly kill entire build", b);
+			b.doKill();
+			story.j.waitForMessage("Hard kill!", b);
+			story.j.waitForCompletion(b);
+			story.j.assertBuildStatus(Result.ABORTED, b);
+		}
 	}
 
 	@Test
