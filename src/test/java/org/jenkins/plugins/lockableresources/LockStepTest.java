@@ -555,8 +555,8 @@ public class LockStepTest {
 					SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
 					prevBuild = rNext;
 				}
-				prevBuild.doKill();
-				story.j.assertBuildStatus(Result.ABORTED, story.j.waitForCompletion(prevBuild));
+				SemaphoreStep.success("wait-inside/3", null);
+				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(prevBuild));
 			}
 		});
 	}
