@@ -587,13 +587,13 @@ public class LockStepTest {
 					WorkflowRun rNext = j.scheduleBuild2(0).waitForStart();
 					if (toUnlock != null) {
 						story.j.waitForMessage("[resource1] is locked, waiting...", rNext);
-						SemaphoreStep.success("wait-inside-1/" + i, toUnlock);
+						SemaphoreStep.success("wait-inside-1/" + i, null);
 					}
 					SemaphoreStep.waitForStart("wait-inside-1/" + (i + 1), rNext);
 					nextRuns.add(rNext);
 					toUnlock = rNext;
 				}
-				SemaphoreStep.success("wait-inside-1/" + nextRuns.size(), toUnlock);
+				SemaphoreStep.success("wait-inside-1/" + nextRuns.size(), null);
 				waitAndClear(1, nextRuns);
 			}
 		});
@@ -616,7 +616,7 @@ public class LockStepTest {
 			}
 		}
 
-		SemaphoreStep.success("wait-inside-2/" + semaphoreIndex, toClear);
+		SemaphoreStep.success("wait-inside-2/" + semaphoreIndex, null);
 		System.err.println("Waiting for " + toClear.getNumber() + " to complete");
 		story.j.assertBuildStatusSuccess(story.j.waitForCompletion(toClear));
 
