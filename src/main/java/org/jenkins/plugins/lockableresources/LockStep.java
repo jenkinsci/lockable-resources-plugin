@@ -26,6 +26,10 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public int quantity = 0;
 
+	/** name of environment variable to store locked resources in */
+	@CheckForNull
+	public String variable = null;
+
 	public boolean inversePrecedence = false;
 
 	// it should be LockStep() - without params. But keeping this for backward compatibility
@@ -46,6 +50,13 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	public void setLabel(String label) {
 		if (label != null && !label.isEmpty()) {
 			this.label = label;
+		}
+	}
+
+	@DataBoundSetter
+	public void setVariable(String variable) {
+		if (variable != null && !variable.isEmpty()) {
+			this.variable = variable;
 		}
 	}
 

@@ -248,7 +248,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				LockStepExecution.proceed(resourceNames, context, logmessage, null, inversePrecedence);
 			}
 		}
 		save();
@@ -356,7 +356,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			this.freeResources(freeResources, build);
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), nextContext.getResources().requiredVar, inversePrecedence);
 		}
 		save();
 	}

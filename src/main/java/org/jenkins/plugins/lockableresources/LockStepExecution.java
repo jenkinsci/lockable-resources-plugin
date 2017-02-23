@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -8,11 +9,14 @@ import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
+import org.jenkinsci.plugins.workflow.steps.BodyInvoker;
+import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
 
 import com.google.inject.Inject;
 
+import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 
@@ -51,7 +55,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		return false;
 	}
 
-	public static void proceed(List<String> resourcenames, StepContext context, String resourceDescription, boolean inversePrecedence) {
+	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence) {
 		Run<?, ?> r = null;
 		try {
 			r = context.get(Run.class);
@@ -62,10 +66,23 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}
 
 		LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
-		context.newBodyInvoker().
-			withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
-			withDisplayName(null).
-			start();
+		try {
+			BodyInvoker bodyInvoker = context.newBodyInvoker().
+				withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
+				withDisplayName(null);
+			if(variable != null && variable.length()>0)
+				// set the variable for the duration of the block
+				bodyInvoker.withContext(EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
+					@Override
+					public void expand(EnvVars env) throws IOException, InterruptedException {
+						final String resources = resourcenames.toString();
+						env.override(variable, resources.substring(1, resources.length()-1));
+					}
+				}));
+			bodyInvoker.start();
+		} catch (IOException | InterruptedException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	private static final class Callback extends BodyExecutionCallback.TailCall {
