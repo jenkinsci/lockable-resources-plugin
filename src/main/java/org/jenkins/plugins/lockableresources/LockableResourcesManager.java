@@ -221,14 +221,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 	
 	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, false);
+		return lock(resources, build, context, null, null, false);
 	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
+			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage,
+			final String variable, boolean inversePrecedence) {
 		boolean needToWait = false;
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
@@ -248,7 +249,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, null, inversePrecedence);
+				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
 			}
 		}
 		save();

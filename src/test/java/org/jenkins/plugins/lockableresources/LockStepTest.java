@@ -62,7 +62,7 @@ public class LockStepTest {
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
 						"lock(label: 'label1', variable: 'var') {\n" +
-						"	echo 'Resource locked: ${env.var}'\n" +
+						"	echo \"Resource locked: ${env.var}\"\n" +
 						"}\n" +
 						"echo 'Finish'"
 				));

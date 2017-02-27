@@ -48,7 +48,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
 		// determine if there are enough resources available to proceed
 		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
-		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.inversePrecedence)) {
+		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
 			listener.getLogger().println("[" + step + "] is locked, waiting...");
 			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString());
 		} // proceed is called inside lock if execution is possible
@@ -76,7 +76,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 					@Override
 					public void expand(EnvVars env) throws IOException, InterruptedException {
 						final String resources = resourcenames.toString();
-						env.override(variable, resources.substring(1, resources.length()-1));
+						final String resourcesString = resources.substring(1, resources.length()-1);
+								LOGGER.finest("Setting [" + variable + "] to [" + resourcesString
+										+ "] for the duration of the block");
+						
+						env.override(variable, resourcesString);
 					}
 				}));
 			bodyInvoker.start();
