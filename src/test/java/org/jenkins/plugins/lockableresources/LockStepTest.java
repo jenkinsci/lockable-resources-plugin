@@ -11,7 +11,6 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.model.Statement;
@@ -521,7 +520,6 @@ public class LockStepTest {
 		});
 	}
 
-	@Ignore("Enable when JENKINS-40368 fix goes in")
 	@Issue("JENKINS-40368")
 	@Test
 	public void hardKillWithWaitingRuns() throws Exception {
@@ -555,7 +553,6 @@ public class LockStepTest {
 		});
 	}
 
-	@Ignore("Enable when JENKINS-40368 fix goes in")
 	@Issue("JENKINS-40368")
 	@Test
 	public void hardKillWithWaitingRunsOnLabel() throws Exception {
