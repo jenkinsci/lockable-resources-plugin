@@ -13,6 +13,7 @@ import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.CheckForNull;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -25,7 +26,9 @@ public class LockableResourcesStruct implements Serializable {
 	public String label;
 	public String requiredVar;
 	public String requiredNumber;
-	public SecureGroovyScript script;
+        
+	@CheckForNull
+	private SecureGroovyScript resourceMatchScript;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property,
 			EnvVars env) {
@@ -42,7 +45,7 @@ public class LockableResourcesStruct implements Serializable {
 		if (label == null)
 			label = "";
 
-		script = property.getScript();
+		resourceMatchScript = property.getResourceMatchScript();
 
 		requiredVar = property.getResourceNamesVar();
 
@@ -59,10 +62,21 @@ public class LockableResourcesStruct implements Serializable {
 		}
 	}
 
+        /**
+         * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
+         * @return System Groovy Script if defined
+         * @since TODO
+         * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map) 
+         */
+        @CheckForNull
+        public SecureGroovyScript getResourceMatchScript() {
+            return resourceMatchScript;
+        }
+        
 	public String toString() {
 		return "Required resources: " + this.required +
 			", Required label: " + this.label +
-			", Required label script: " + (this.script != null ? this.script.getScript() : "") +
+			", Required label script: " + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "") +
 			", Variable name: " + this.requiredVar +
 			", Number of resources: " + this.requiredNumber;
 	}

@@ -36,21 +36,21 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	private final String resourceNamesVar;
 	private final String resourceNumber;
 	private final String labelName;
-	private final @CheckForNull SecureGroovyScript script;
+	private final @CheckForNull SecureGroovyScript resourceMatchScript;
 
 	@DataBoundConstructor
 	public RequiredResourcesProperty(String resourceNames,
 			String resourceNamesVar, String resourceNumber,
-			String labelName, SecureGroovyScript script) {
+			String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
 		super();
 		this.resourceNames = resourceNames;
 		this.resourceNamesVar = resourceNamesVar;
 		this.resourceNumber = resourceNumber;
 		this.labelName = labelName;
-		if (script != null) {
-			this.script = script.configuringWithKeyItem();
+		if (resourceMatchScript != null) {
+			this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
 		} else {
-			this.script = null;
+			this.resourceMatchScript = null;
 		}
 	}
 
@@ -62,7 +62,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	}
 
 	private Object readResolve() {
-		if (script == null && labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+		// SECURITY-368 migration logic
+		if (resourceMatchScript == null && labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
 			return new RequiredResourcesProperty(resourceNames, resourceNamesVar, resourceNumber, null,
 					new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
 							.configuring(ApprovalContext.create()));
@@ -95,8 +96,15 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return labelName;
 	}
 
-	public SecureGroovyScript getScript() {
-		return script;
+        /**
+         * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
+         * @return System Groovy Script if defined
+         * @since TODO
+         * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map) 
+         */
+        @CheckForNull
+	public SecureGroovyScript getResourceMatchScript() {
+		return resourceMatchScript;
 	}
 
 	@Extension

@@ -21,7 +21,7 @@
 			<f:entry title="${%Label}" field="labelName">
 				<f:textbox autoCompleteDelimChar=" "/>
 			</f:entry>
-			<f:optionalProperty title="${%Groovy Expression}" field="script"/>
+			<f:optionalProperty title="${%Groovy Expression}" field="resourceMatchScript"/>
 			<f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
 				<f:textbox/>
 			</f:entry>

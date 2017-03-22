@@ -32,6 +32,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import javax.annotation.Nonnull;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
@@ -112,7 +113,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return found;
 	}
 
-	public List<LockableResource> getResourcesMatchingScript(SecureGroovyScript script,
+	public List<LockableResource> getResourcesMatchingScript(@Nonnull SecureGroovyScript script,
                                                              Map<String, Object> params) {
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
@@ -159,12 +160,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		List<LockableResource> candidates = new ArrayList<LockableResource>();
-		if (requiredResources.label != null && requiredResources.label.isEmpty() && requiredResources.script == null) {
+                final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
+		if (requiredResources.label != null && requiredResources.label.isEmpty() && systemGroovyScript == null) {
 			candidates = requiredResources.required;
-		} else if (requiredResources.script == null) {
+		} else if (systemGroovyScript == null) {
 			candidates = getResourcesWithLabel(requiredResources.label, params);
 		} else {
-			candidates = getResourcesMatchingScript(requiredResources.script, params);
+			candidates = getResourcesMatchingScript(systemGroovyScript, params);
 		}
 
 		for (LockableResource rs : candidates) {

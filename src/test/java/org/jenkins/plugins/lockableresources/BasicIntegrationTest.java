@@ -60,8 +60,8 @@ public class BasicIntegrationTest {
 		FreeStyleProject p2 = j.jenkins.getItem("p", (ItemGroup)null, FreeStyleProject.class);
 		RequiredResourcesProperty newProp = p2.getProperty(RequiredResourcesProperty.class);
 		assertNull(newProp.getLabelName());
-		assertNotNull(newProp.getScript());
-		assertEquals("resourceName == 'resource1'", newProp.getScript().getScript());
+		assertNotNull(newProp.getResourceMatchScript());
+		assertEquals("resourceName == 'resource1'", newProp.getResourceMatchScript().getScript());
 
 		p2.getBuildersList().add(new SleepBuilder(5000));
 
@@ -96,7 +96,7 @@ public class BasicIntegrationTest {
 		assertEquals("resourceNameVar", withResourceProp.getResourceNamesVar());
 		assertEquals("", withResourceProp.getResourceNumber());
 		assertEquals("", withResourceProp.getLabelName());
-		assertNull(withResourceProp.getScript());
+		assertNull(withResourceProp.getResourceMatchScript());
 
 		FreeStyleProject withLabel = j.createFreeStyleProject("withLabel");
 		withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "some-label", null));
@@ -108,7 +108,7 @@ public class BasicIntegrationTest {
 		assertEquals("", withLabelProp.getResourceNamesVar());
 		assertEquals("", withLabelProp.getResourceNumber());
 		assertEquals("some-label", withLabelProp.getLabelName());
-		assertNull(withLabelProp.getScript());
+		assertNull(withLabelProp.getResourceMatchScript());
 
 		FreeStyleProject withScript = j.createFreeStyleProject("withScript");
 		SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
@@ -121,9 +121,9 @@ public class BasicIntegrationTest {
 		assertEquals("", withScriptProp.getResourceNamesVar());
 		assertEquals("", withScriptProp.getResourceNumber());
 		assertEquals("", withScriptProp.getLabelName());
-		assertNotNull(withScriptProp.getScript());
-		assertEquals("return true", withScriptProp.getScript().getScript());
-		assertEquals(false, withScriptProp.getScript().isSandbox());
+		assertNotNull(withScriptProp.getResourceMatchScript());
+		assertEquals("return true", withScriptProp.getResourceMatchScript().getScript());
+		assertEquals(false, withScriptProp.getResourceMatchScript().isSandbox());
 	}
 
 	@Test
