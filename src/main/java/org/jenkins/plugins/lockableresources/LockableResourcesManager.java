@@ -13,6 +13,7 @@ import hudson.Extension;
 import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -401,7 +402,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			for (String resourceNameToUnlock : resourceNamesToUnLock) {
 				boolean resourceStillNeeded = false;
 				for (LockableResource requiredResource : requiredResourceForNextContext) {
-					if (resourceNameToUnlock == requiredResource.getName()) {
+					if (resourceNameToUnlock != null && resourceNameToUnlock.equals(requiredResource.getName())) {
 						resourceStillNeeded = true;
 						break;
 					}
@@ -445,11 +446,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
 					try {
 						Run<?, ?> run = entry.getContext().get(Run.class);
-						if (run.getStartTimeInMillis() > newest) {
+						if (run != null && run.getStartTimeInMillis() > newest) {
 							newest = run.getStartTimeInMillis();
 							newestEntry = entry;
 						}
-					} catch (Exception e) {
+					} catch (IOException | InterruptedException e) {
 						// skip this one, for some reason there is no Run object for this context
 						orphan.add(entry);
 					}
@@ -549,11 +550,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			@Nullable PrintStream logger, @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
 		// get possible resources
 		int requiredAmount = 0; // 0 means all
-		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		List<LockableResource> candidates = new ArrayList<>();
 		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
-			candidates = requiredResources.required;
+			candidates.addAll(requiredResources.required);
 		} else {
-			candidates = getResourcesWithLabel(requiredResources.label, null);
+			candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
 			if (requiredResources.requiredNumber != null) {
 				try {
 					requiredAmount = Integer.parseInt(requiredResources.requiredNumber);

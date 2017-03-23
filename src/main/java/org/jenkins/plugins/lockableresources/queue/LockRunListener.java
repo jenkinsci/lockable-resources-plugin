@@ -48,16 +48,16 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
 				if (resources != null) {
 					if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
-						required = LockableResourcesManager.get().
-								getResourcesFromProject(proj.getFullName());
+						required.addAll(LockableResourcesManager.get().
+								getResourcesFromProject(proj.getFullName()));
 					} else {
-						required = resources.required;
+						required.addAll(resources.required);
 					}
 
 					if (LockableResourcesManager.get().lock(required, build, null)) {
 						build.addAction(LockedResourcesBuildAction
 								.fromResources(required));
-						listener.getLogger().printf("%s acquired lock on %s\n",
+						listener.getLogger().printf("%s acquired lock on %s%n",
 								LOG_PREFIX, required);
 						LOGGER.fine(build.getFullDisplayName()
 								+ " acquired lock on " + required);
@@ -67,7 +67,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 									required.toString().replaceAll("[\\]\\[]", ""))));
 						}
 					} else {
-						listener.getLogger().printf("%s failed to lock %s\n",
+						listener.getLogger().printf("%s failed to lock %s%n",
 								LOG_PREFIX, required);
 						LOGGER.fine(build.getFullDisplayName() + " failed to lock "
 								+ required);
@@ -91,7 +91,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 				.getResourcesFromBuild(build);
 		if (required.size() > 0) {
 			LockableResourcesManager.get().unlock(required, build);
-			listener.getLogger().printf("%s released lock on %s\n",
+			listener.getLogger().printf("%s released lock on %s%n",
 					LOG_PREFIX, required);
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);

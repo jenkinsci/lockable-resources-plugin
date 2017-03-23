@@ -49,8 +49,8 @@ public class LockedResourcesBuildAction implements Action {
 
 	public static class ResourcePOJO {
 
-		public String name;
-		public String description;
+		private String name;
+		private String description;
 
 		public ResourcePOJO(String name, String description) {
 			this.name = name;
@@ -60,6 +60,14 @@ public class LockedResourcesBuildAction implements Action {
 		public ResourcePOJO(LockableResource r) {
 			this.name = r.getName();
 			this.description = r.getDescription();
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public String getDescription() {
+			return description;
 		}
 
 	}
