@@ -46,11 +46,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		this.resourceNames = resourceNames;
 		this.resourceNamesVar = resourceNamesVar;
 		this.resourceNumber = resourceNumber;
-		this.labelName = labelName;
 		if (resourceMatchScript != null) {
 			this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
+			this.labelName = labelName;
+		} else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+			this.resourceMatchScript = new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()),
+					false, null).configuring(ApprovalContext.create());
+			this.labelName = null;
 		} else {
 			this.resourceMatchScript = null;
+			this.labelName = labelName;
 		}
 	}
 
