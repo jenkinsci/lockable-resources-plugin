@@ -10,24 +10,48 @@ import org.kohsuke.stapler.QueryParameter;
 
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
+import hudson.util.FormValidation;
+import hudson.Util;
+
+import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 public class LockStep extends AbstractStepImpl implements Serializable {
 
-	public final String resource;
+	@CheckForNull
+	public String resource = null;
+
+	@CheckForNull
+	public String label = null;
+
+	public int quantity = 0;
 
 	public boolean inversePrecedence = false;
 
+	// it should be LockStep() - without params. But keeping this for backward compatibility
+	// so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource is not required)
 	@DataBoundConstructor
 	public LockStep(String resource) {
-		if (resource == null || resource.isEmpty()) {
-			throw new IllegalArgumentException("must specify resource");
+		if (resource != null && !resource.isEmpty()) {
+			this.resource = resource;
 		}
-		this.resource = resource;
 	}
 
 	@DataBoundSetter
 	public void setInversePrecedence(boolean inversePrecedence) {
 		this.inversePrecedence = inversePrecedence;
+	}
+
+	@DataBoundSetter
+	public void setLabel(String label) {
+		if (label != null && !label.isEmpty()) {
+			this.label = label;
+		}
+	}
+
+	@DataBoundSetter
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
 	}
 
 	@Extension
@@ -54,6 +78,46 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
 			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
+		}
+		
+		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
+			String resourceLabel = Util.fixEmpty(value);
+			String resourceName = Util.fixEmpty(resource);
+			if (resourceLabel != null && resourceName != null) {
+				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
+			}
+			if ((resourceLabel == null) && (resourceName == null)) {
+				return FormValidation.error("Either label or resource name must be specified.");
+			}
+			return FormValidation.ok();
+        }
+		
+		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
+			return doCheckLabel(label, value);
+		}
+	}
+
+	public String toString() {
+		// a label takes always priority
+		if (this.label != null) {
+			if (this.quantity > 0) {
+				return "Label: " + this.label + ", Quantity: " + this.quantity;
+			}
+			return "Label: " + this.label;
+		}
+		// make sure there is an actual resource specified
+		if (this.resource != null) {
+			return this.resource;
+		}
+		return "[no resource/label specified - probably a bug]";
+	}
+
+	/**
+	 * Label and resource are mutual exclusive.
+	 */
+	public void validate() throws Exception {
+		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
+			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
 		}
 	}
 

@@ -8,11 +8,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
 import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
+import java.io.PrintStream;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.ArrayList;
@@ -28,6 +31,7 @@ import net.sf.json.JSONObject;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -42,6 +46,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	@Deprecated
 	private transient String priorityParameterName;
 	private List<LockableResource> resources;
+
+
+	/**
+	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
+	 * otherwise (freestyle builds) regular Jenkins queue is used.
+	 */
+	private List<QueuedContextStruct> queuedContexts = new ArrayList<QueuedContextStruct>();
 
 	public LockableResourcesManager() {
 		resources = new ArrayList<LockableResource>();
@@ -224,75 +235,193 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 	
 	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, false);
+		return lock(resources, build, context, null, false);
 	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
+			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
 				needToWait = true;
-				if (context != null) {
-					r.queueAdd(context);
-					break;
-				}
+				break;
 			}
 		}
 		if (!needToWait) {
 			for (LockableResource r : resources) {
 				r.unqueue();
 				r.setBuild(build);
-				if (context != null) {
-					LockStepExecution.proceed(context, r.getName(), inversePrecedence);
-					break;
+			}
+			if (context != null) {
+				// since LockableResource contains transient variables, they cannot be correctly serialized
+				// hence we use their unique resource names
+				List<String> resourceNames = new ArrayList<String>();
+				for (LockableResource resource : resources) {
+					resourceNames.add(resource.getName());
 				}
+				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
 			}
 		}
 		save();
 		return !needToWait;
 	}
 	
-	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
-			Run<?, ?> build, @Nullable StepContext context) {
-		unlock(resourcesToUnLock, build, context, false);
-	}
-
-	public synchronized void unlock(List<LockableResource> resourcesToUnLock,
-			Run<?, ?> build, @Nullable StepContext context, boolean inversePrecedence) {
-		for (LockableResource r : resourcesToUnLock) {
-			// Search the resource in the internal list to unlock it
-			for (LockableResource internal : resources) {
-				if (internal.getName().equals(r.getName())) {
-					if (build == null ||
-							(internal.getBuild() != null && build.getExternalizableId().equals(internal.getBuild().getExternalizableId()))) {
-						// this will remove the context from the queue and setBuild(null) if there are no more contexts
-						StepContext nextContext = internal.getNextQueuedContext(inversePrecedence);
-						if (nextContext != null) {
-							try {
-								internal.setBuild(nextContext.get(Run.class));
-							} catch (Exception e) {
-								throw new IllegalStateException("Can not access the context of a running build", e);
-							}
-							LockStepExecution.proceed(nextContext, internal.getName(), inversePrecedence);
-						} else {
-							// No more contexts, unlock resource
-							internal.unqueue();
-							internal.setBuild(null);
-						}
+	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+		for (String unlockResourceName : unlockResourceNames) {
+			for (LockableResource resource : this.resources) {
+				if (resource.getName().equals(unlockResourceName)) {
+					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
+						// No more contexts, unlock resource
+						resource.unqueue();
+						resource.setBuild(null);
 					}
 				}
 			}
 		}
+	}
+
+	public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
+		unlock(resourcesToUnLock, build, false);
+	}
+
+	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
+									@Nullable Run<?, ?> build, boolean inversePrecedence) {
+		List<String> resourceNamesToUnLock = new ArrayList<String>();
+		if (resourcesToUnLock != null) {
+			for (LockableResource r : resourcesToUnLock) {
+				resourceNamesToUnLock.add(r.getName());
+			}
+		}
+
+		this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+	}
+
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
+		// make sure there is a list of resource names to unlock
+		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.size() == 0)) {
+			return;
+		}
+
+		// check if there are resources which can be unlocked (and shall not be unlocked)
+		List<LockableResource> requiredResourceForNextContext = null;
+		QueuedContextStruct nextContext = this.getNextQueuedContext(resourceNamesToUnLock, inversePrecedence);
+
+		// no context is queued which can be started once these resources are free'd.
+		if (nextContext == null) {
+			this.freeResources(resourceNamesToUnLock, build);
+			save();
+			return;
+		}
+			
+		// remove context from queue and process it
+		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
+		this.queuedContexts.remove(nextContext);
+			
+		// resourceNamesToUnlock contains the names of the previous resources.
+		// requiredResourceForNextContext contains the resource objects which are required for the next context.
+		// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
+		boolean needToWait = false;
+		for (LockableResource requiredResource : requiredResourceForNextContext) {
+			if (!resourceNamesToUnLock.contains(requiredResource.getName())) {
+				if (requiredResource.isReserved() || requiredResource.isLocked()) {
+					needToWait = true;
+					break;
+				}
+			}
+		}
+
+		if (needToWait) {
+			freeResources(resourceNamesToUnLock, build);
+			save();
+			return;
+		} else {
+			List<String> resourceNamesToLock = new ArrayList<String>();
+
+			// lock all (old and new resources)
+			for (LockableResource requiredResource : requiredResourceForNextContext) {
+				try {
+					requiredResource.setBuild(nextContext.getContext().get(Run.class));
+					resourceNamesToLock.add(requiredResource.getName());
+				} catch (Exception e) {
+					// skip this context, as the build cannot be retrieved (maybe it was deleted while running?)
+					LOGGER.log(Level.WARNING, "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, " +
+							"this could be a legitimate status if the build waiting for the lock was deleted or" +
+							" hard killed. More information at Level.FINE if debug is needed.");
+					LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+					unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+					return;
+				}
+			}
+
+			// determine old resources no longer needed
+			List<String> freeResources = new ArrayList<String>();
+			for (String resourceNameToUnlock : resourceNamesToUnLock) {
+				boolean resourceStillNeeded = false;
+				for (LockableResource requiredResource : requiredResourceForNextContext) {
+					if (resourceNameToUnlock == requiredResource.getName()) {
+						resourceStillNeeded = true;
+						break;
+					}
+				}
+
+				if (!resourceStillNeeded) {
+					freeResources.add(resourceNameToUnlock);
+				}
+			}
+
+			// free old resources no longer needed
+			freeResources(freeResources, build);
+
+			// continue with next context
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+		}
 		save();
 	}
 
-	public synchronized String getLockCause(String r) {
-		return new LockableResourcesStruct(r).required.get(0).getLockCause();
+	/**
+	 * Returns the next queued context with all its requirements satisfied.
+	 *
+	 * @param resourceNamesToUnLock resource names locked at the moment but available is required (as they are going to be unlocked soon
+	 * @param inversePrecedence false pick up context as they are in the queue or true to take the most recent one (satisfying requirements)
+	 * @return the context or null
+	 */
+	@CheckForNull
+	private QueuedContextStruct getNextQueuedContext(List<String> resourceNamesToUnLock, boolean inversePrecedence) {
+		QueuedContextStruct newestEntry = null;
+		List<LockableResource> requiredResourceForNextContext = null;
+		if (!inversePrecedence) {
+			for (QueuedContextStruct entry : this.queuedContexts) {
+				if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
+					return entry;
+				}
+			}
+		} else {
+			long newest = 0;
+			List<QueuedContextStruct> orphan = new ArrayList<QueuedContextStruct>();
+			for (QueuedContextStruct entry : this.queuedContexts) {
+				if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
+					try {
+						Run<?, ?> run = entry.getContext().get(Run.class);
+						if (run.getStartTimeInMillis() > newest) {
+							newest = run.getStartTimeInMillis();
+							newestEntry = entry;
+						}
+					} catch (Exception e) {
+						// skip this one, for some reason there is no Run object for this context
+						orphan.add(entry);
+					}
+				}
+			}
+			if (!orphan.isEmpty()) {
+				this.queuedContexts.removeAll(orphan);
+			}
+		}
+
+		return newestEntry;
 	}
 
 	/**
@@ -308,11 +437,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return false;
 	}
 
-	public synchronized boolean cleanWaitingContext(LockableResource resource, StepContext context) {
-		for (LockableResource r : resources) {
-			if (r.equals(resource)) {
-				return r.remove(context);
-			}
+	public synchronized boolean createResourceWithLabel(String name, String label) {
+		LockableResource existent = fromName(name);
+		if (existent == null) {
+			getResources().add(new LockableResource(name, "", label, null));
+			save();
+			return true;
 		}
 		return false;
 	}
@@ -371,9 +501,101 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 	}
 
+	/**
+	 * Checks if there are enough resources available to satisfy the requirements specified
+	 * within requiredResources and returns the necessary available resources.
+	 * If not enough resources are available, returns null.
+	 */
+	public synchronized List<LockableResource> checkResourcesAvailability(LockableResourcesStruct requiredResources,
+			@Nullable PrintStream logger, @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+		// get possible resources
+		int requiredAmount = 0; // 0 means all
+		List<LockableResource> candidates = new ArrayList<LockableResource>();
+		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+			candidates = requiredResources.required;
+		} else {
+			candidates = getResourcesWithLabel(requiredResources.label, null);
+			if (requiredResources.requiredNumber != null) {
+				try {
+					requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
+				} catch (NumberFormatException e) {
+					requiredAmount = 0;
+				}
+			}
+		}
+
+		if (requiredAmount == 0) {
+			requiredAmount = candidates.size();
+		}
+
+		// start with an empty set of selected resources
+		List<LockableResource> selected = new ArrayList<LockableResource>();
+
+		// some resources might be already locked, but will be freeed.
+		// Determine if these resources can be reused
+		if (lockedResourcesAboutToBeUnlocked != null) {
+			for (LockableResource candidate : candidates) {
+				if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
+					selected.add(candidate);
+				}
+			}
+			// if none of the currently locked resources can be reussed,
+			// this context is not suitable to be continued with
+			if (selected.size() == 0) {
+				return null;
+			}
+		}
+
+		for (LockableResource rs : candidates) {
+			if (selected.size() >= requiredAmount) {
+				break;
+			}
+			if (!rs.isReserved() && !rs.isLocked()) {
+				selected.add(rs);
+			}
+		}
+
+		if (selected.size() < requiredAmount) {
+			if (logger != null) {
+				logger.println("Found " + selected.size() + " available resource(s). Waiting for correct amount: " + requiredAmount + ".");
+			}
+			return null;
+		}
+
+		return selected;
+	}
+
+	/*
+	 * Adds the given context and the required resources to the queue if
+	 * this context is not yet queued.
+	 */
+	public void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
+		for (QueuedContextStruct entry : this.queuedContexts) {
+			if (entry.getContext() == context) {
+				return;
+			}
+		}
+
+		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+		save();
+	}
+
+	public boolean unqueueContext(StepContext context) {
+		for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
+			if (iter.next().getContext() == context) {
+				iter.remove();
+				save();
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static LockableResourcesManager get() {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
 	}
+
+	private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
 }
