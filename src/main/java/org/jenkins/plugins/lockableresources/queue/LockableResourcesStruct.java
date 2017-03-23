@@ -9,6 +9,8 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.EnvVars;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ import javax.annotation.CheckForNull;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
+import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 
 public class LockableResourcesStruct implements Serializable {
@@ -27,8 +30,11 @@ public class LockableResourcesStruct implements Serializable {
 	public String requiredVar;
 	public String requiredNumber;
         
+        @CheckForNull
+        private final SerializableSecureGroovyScript serializableResourceMatchScript;
+        
 	@CheckForNull
-	private SecureGroovyScript resourceMatchScript;
+	private transient SecureGroovyScript resourceMatchScript;
 
 	public LockableResourcesStruct(RequiredResourcesProperty property,
 			EnvVars env) {
@@ -46,7 +52,8 @@ public class LockableResourcesStruct implements Serializable {
 			label = "";
 
 		resourceMatchScript = property.getResourceMatchScript();
-
+                serializableResourceMatchScript = new SerializableSecureGroovyScript(resourceMatchScript);
+                
 		requiredVar = property.getResourceNamesVar();
 
 		requiredNumber = property.getResourceNumber();
@@ -54,14 +61,22 @@ public class LockableResourcesStruct implements Serializable {
 			requiredNumber = null;
 	}
 
+        /**
+         * Light-weight constructor for declaring a resource only.
+         * @param resource Resource to be required
+         */
 	public LockableResourcesStruct(String resource) {
 		required = new ArrayList<LockableResource>();
 		LockableResource r = LockableResourcesManager.get().fromName(resource);
 		if (r != null) {
 			this.required.add(r);
 		}
+                
+                // We do not support 
+                this.serializableResourceMatchScript = null;
+                this.resourceMatchScript = null;
 	}
-
+        
         /**
          * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
          * @return System Groovy Script if defined
@@ -70,6 +85,9 @@ public class LockableResourcesStruct implements Serializable {
          */
         @CheckForNull
         public SecureGroovyScript getResourceMatchScript() {
+            if (resourceMatchScript == null && serializableResourceMatchScript != null) {
+                resourceMatchScript = serializableResourceMatchScript.rehydrate();
+            }
             return resourceMatchScript;
         }
         
