@@ -36,6 +36,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import java.util.concurrent.ExecutionException;
 import javax.annotation.Nonnull;
 
 @Extension
@@ -124,8 +125,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return found;
 	}
 
+	/**
+	 * Get a list of resources matching the script.
+	 * @param script Script
+	 * @param params Additional parameters
+	 * @return List of the matching resources
+	 * @throws ExecutionException Script execution failed for one of the resources.
+	 *                            It is considered as a fatal failure since the requirement list may be incomplete
+	 * @since TODO
+	 */
+	@Nonnull
 	public List<LockableResource> getResourcesMatchingScript(@Nonnull SecureGroovyScript script,
-                                                             Map<String, Object> params) {
+                                                             @CheckForNull Map<String, Object> params) throws ExecutionException{
 		List<LockableResource> found = new ArrayList<LockableResource>();
 		for (LockableResource r : this.resources) {
 			if (r.scriptMatches(script, params))
@@ -154,12 +165,40 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	/**
+	 * @deprecated USe {@link #tryQueue(org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct, long, java.lang.String, int, java.util.Map, java.util.logging.Logger)}
+	 */
+	@Deprecated
+	@CheckForNull
 	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
 	                                                 long queueItemId,
 	                                                 String queueItemProject,
 	                                                 int number,  // 0 means all
 	                                                 Map<String, Object> params,
 	                                                 Logger log) {
+		try {
+			return tryQueue(requiredResources, queueItemId, queueItemProject, number, params, log);
+		} catch(ExecutionException ex) {
+			if (LOGGER.isLoggable(Level.WARNING)) {
+				String itemName = queueItemProject + " (id=" + queueItemId + ")";
+				LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, ex.getCause() != null ? ex.getCause() : ex);
+			}
+			return null;
+		}
+	}
+	
+	/**
+	 * Try to acquire the resources required by the task.
+	 * @param number Number of resources to acquire. {@code 0} means all
+	 * @return List of the locked resources if the task has been accepted.
+	 *         {@code null} if the item is still waiting for the resources
+	 * @throws ExecutionException Cannot queue the resource due to the execution failure. Carries info in the cause
+	 * @since TODO
+	 */
+	@CheckForNull
+	public synchronized List<LockableResource> tryQueue(LockableResourcesStruct requiredResources,
+			long queueItemId, String queueItemProject, int number,
+			Map<String, Object> params, Logger log) throws ExecutionException {
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {

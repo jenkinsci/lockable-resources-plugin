@@ -46,8 +46,11 @@ import org.kohsuke.stapler.export.ExportedBean;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import java.util.concurrent.ExecutionException;
 
 import javax.annotation.Nonnull;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
@@ -140,8 +143,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return Arrays.asList(labels.split("\\s+"));
 	}
 
-	public boolean scriptMatches(@Nonnull SecureGroovyScript script,
-								 Map<String, Object> params) {
+        /**
+         * Checks if the script matches the requirement.
+         * @param script Script to be executed
+         * @param params Extra script parameters
+         * @return {@code true} if the script returns true (resource matches).
+         * @throws ExecutionException Script execution failed (e.g. due to the missing permissions). Carries info in the cause
+         */
+        @Restricted(NoExternalUse.class)
+	public boolean scriptMatches(@Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params) 
+		throws ExecutionException {
 		Binding binding = new Binding(params);
 		binding.setVariable("resourceName", name);
 		binding.setVariable("resourceDescription", description);
@@ -154,12 +165,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			}
 			return (Boolean) result;
 		} catch (Exception e) {
-			LOGGER.log(
-					Level.SEVERE,
-					"Cannot get boolean result out of groovy expression '"
-							+ script.getScript() + "' on (" + binding + ")",
-					e);
-			return false;
+			String message = "Cannot get boolean result out of groovy expression. ";
+			LOGGER.log(Level.WARNING, message + "'" + script.getScript() + "' on (" + binding + ")", e);
+			throw new ExecutionException(message + " See system log for more info", e);
 		}
 	}
 

@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
@@ -20,10 +21,14 @@ import hudson.model.queue.CauseOfBlockage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
@@ -64,14 +69,28 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
 			    params.putAll(matrix.getCombination());
 			}
-
-			List<LockableResource> selected = LockableResourcesManager.get().queue(
+                        
+			final List<LockableResource> selected ;
+			try {
+				selected = LockableResourcesManager.get().tryQueue(
 					resources,
 					item.getId(),
 					project.getFullName(),
 					resourceNumber,
 					params,
 					LOGGER);
+			} catch(ExecutionException ex) {
+				Throwable toReport = ex.getCause();
+				if (toReport == null) { // We care about the cause only
+					toReport = ex;
+				}	
+				if (LOGGER.isLoggable(Level.WARNING)) {
+					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
+					LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport);
+				}
+				
+				return new BecauseResourcesQueueFailed(resources, toReport);
+			}
 
 			if (selected != null) {
 				LOGGER.finest(project.getName() + " reserved resources " + selected);
@@ -109,5 +128,26 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				return "Waiting for resources with label " + rscStruct.label;
 		}
 	}
+        
+	// Only for UI
+	@Restricted(NoExternalUse.class)
+	public static class BecauseResourcesQueueFailed extends CauseOfBlockage {
+		
+		@NonNull
+		private final LockableResourcesStruct resources;
+		@NonNull
+		private final Throwable cause;
+		
+		public BecauseResourcesQueueFailed(@NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
+			this.cause = cause;
+			this.resources = resources;
+		}
 
+		@Override
+		public String getShortDescription() {
+			//TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
+			String resourceInfo = (resources.label.isEmpty()) ? resources.required.toString() : "with label " + resources.label;
+			return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
+		}
+	}
 }
