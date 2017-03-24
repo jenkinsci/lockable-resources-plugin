@@ -32,8 +32,11 @@ import java.util.logging.Logger;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import hudson.util.FormValidation;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ClasspathEntry;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -104,8 +107,9 @@ public class SerializableSecureGroovyScript implements Serializable {
         @CheckForNull
         private ClasspathEntry rehydrate(){
             try {
-                if (url.startsWith("file:") || url.startsWith("jar:file:")) {
-                    return new ClasspathEntry(url);
+                ClasspathEntry entry = new ClasspathEntry(url);
+                if (ScriptApproval.get().checking(entry).kind.equals(FormValidation.Kind.OK)) {
+                    return entry;
                 } else {
                     return null;
                 }
