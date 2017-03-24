@@ -86,7 +86,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				}	
 				if (LOGGER.isLoggable(Level.WARNING)) {
 					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
-					LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport);
+					LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
 				}
 				
 				return new BecauseResourcesQueueFailed(resources, toReport);

@@ -166,7 +166,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 			return (Boolean) result;
 		} catch (Exception e) {
 			String message = "Cannot get boolean result out of groovy expression. ";
-			LOGGER.log(Level.WARNING, message + "'" + script.getScript() + "' on (" + binding + ")", e);
+			LOGGER.log(Level.WARNING, message + "'" + script.getScript() + "' on (" + binding + ") - " + e.getMessage());
 			throw new ExecutionException(message + " See system log for more info", e);
 		}
 	}
