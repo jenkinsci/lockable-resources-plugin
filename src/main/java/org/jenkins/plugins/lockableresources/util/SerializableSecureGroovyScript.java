@@ -104,7 +104,11 @@ public class SerializableSecureGroovyScript implements Serializable {
         @CheckForNull
         private ClasspathEntry rehydrate(){
             try {
-                return new ClasspathEntry(url);
+                if (url.startsWith("file:") || url.startsWith("jar:file:")) {
+                    return new ClasspathEntry(url);
+                } else {
+                    return null;
+                }
             } catch (MalformedURLException ex) {
                 // Unrealistic
                 LOGGER.log(Level.SEVERE, "Failed to rehydrate the URL " + url + ". It will be skipped", ex);
