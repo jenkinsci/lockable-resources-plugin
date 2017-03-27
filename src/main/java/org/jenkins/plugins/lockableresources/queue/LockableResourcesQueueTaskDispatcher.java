@@ -18,6 +18,7 @@ import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.kohsuke.accmod.Restricted;
@@ -32,6 +34,8 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
+
+	private transient Map<Queue.Item,Date> lastLogged = new HashMap<>();
 
 	static final Logger LOGGER = Logger
 			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
@@ -85,8 +89,12 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 					toReport = ex;
 				}	
 				if (LOGGER.isLoggable(Level.WARNING)) {
-					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
-					LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
+					if (lastLogged.get(item) == null || lastLogged.get(item).before(DateUtils.addMinutes(new Date(), -30))) {
+						lastLogged.put(item, new Date());
+
+						String itemName = project.getFullName() + " (id=" + item.getId() + ")";
+						LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
+					}
 				}
 				
 				return new BecauseResourcesQueueFailed(resources, toReport);
