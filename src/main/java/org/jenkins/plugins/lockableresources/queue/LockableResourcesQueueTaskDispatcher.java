@@ -8,6 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
@@ -23,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,7 +38,7 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
-	private transient Map<Queue.Item,Date> lastLogged = new HashMap<>();
+	private transient Cache<Long,Date> lastLogged = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
 
 	static final Logger LOGGER = Logger
 			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
@@ -89,8 +92,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 					toReport = ex;
 				}	
 				if (LOGGER.isLoggable(Level.WARNING)) {
-					if (lastLogged.get(item) == null || lastLogged.get(item).before(DateUtils.addMinutes(new Date(), -30))) {
-						lastLogged.put(item, new Date());
+					if (lastLogged.getIfPresent(item.getId()) == null) {
+						lastLogged.put(item.getId(), new Date());
 
 						String itemName = project.getFullName() + " (id=" + item.getId() + ")";
 						LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
