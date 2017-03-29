@@ -11,9 +11,6 @@ package org.jenkins.plugins.lockableresources.queue;
 import java.io.Serializable;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 
 /* 
  * This class is used to queue pipeline contexts 
@@ -38,12 +35,21 @@ public class QueuedContextStruct implements Serializable {
 	private String resourceDescription;
 
 	/*
+	 * Name of the environment variable holding the resource name
+	 */
+	private String resourceVariableName;
+
+	/*
 	 * Constructor for the QueuedContextStruct class.
 	 */
-	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription) {
+	public QueuedContextStruct(StepContext context,
+                               LockableResourcesStruct lockableResourcesStruct,
+                               String resourceDescription,
+                               String resourceVariableName) {
 		this.context = context;
 		this.lockableResourcesStruct = lockableResourcesStruct;
 		this.resourceDescription = resourceDescription;
+		this.resourceVariableName = resourceVariableName;
 	}
 	
 	/*
@@ -66,6 +72,10 @@ public class QueuedContextStruct implements Serializable {
 	public String getResourceDescription() {
 		return this.resourceDescription;
 	}
-	
-	private static final long serialVersionUID = 1L;
+
+    public String getResourceVariableName() {
+        return resourceVariableName;
+    }
+
+    private static final long serialVersionUID = 1L;
 }
