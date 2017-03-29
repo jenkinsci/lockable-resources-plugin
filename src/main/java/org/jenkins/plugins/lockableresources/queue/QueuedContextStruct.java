@@ -1,10 +1,10 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2016, Florian Hug. All rights reserved.             *
- *                                                                     *
+ * Copyright (c) 2016, Florian Hug. All rights reserved.			 *
+ *																	 *
  * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
+ * published under the MIT license.									*
+ *																	 *
+ * See the "LICENSE.txt" file for more information.					*
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
@@ -53,22 +53,19 @@ public class QueuedContextStruct implements Serializable {
 	private transient volatile String buildExternalizableId = null;
 
 
-	/*
-	 * Constructor for the QueuedContextStruct class.
+	/* 
+	 * Name of the environment variable holding the resource name
 	 */
-	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription) {
-		this.context = context;
-		this.lockableResourcesStruct = lockableResourcesStruct;
-		this.resourceDescription = resourceDescription;
-	}
+	private String resourceVariableName;
 
 	/*
 	 * Constructor for the QueuedContextStruct class.
 	 */
-	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription, int lockPriority) {
+	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription, String resourceVariableName, int lockPriority) {
 		this.context = context;
 		this.lockableResourcesStruct = lockableResourcesStruct;
 		this.resourceDescription = resourceDescription;
+		this.resourceVariableName = resourceVariableName;
 		this.lockPriority = lockPriority;
 	}
 
@@ -125,6 +122,10 @@ public class QueuedContextStruct implements Serializable {
 
 	public int getLockPriority() {
 		return this.lockPriority;
+	}
+
+	public String getResourceVariableName() {
+		return resourceVariableName;
 	}
 
 	private static final long serialVersionUID = 1L;

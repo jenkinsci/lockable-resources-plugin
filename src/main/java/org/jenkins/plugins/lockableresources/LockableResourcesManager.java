@@ -276,14 +276,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 	
 	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, false);
+		return lock(resources, build, context, null, false, null);
 	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
+									 Run<?, ?> build,
+									 @Nullable StepContext context,
+									 @Nullable String logmessage,
+									 boolean inversePrecedence,
+									 String resourceVariableName) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
@@ -304,7 +308,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence, resourceVariableName);
 			}
 		}
 		save();
@@ -419,7 +423,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			freeResources(freeResources, build);
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence, nextContext.getResourceVariableName());
 		}
 		save();
 	}
@@ -598,7 +602,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Adds the given context and the required resources to the queue if
 	 * this context is not yet queued.
 	 */
-	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription, int lockPriority) {
+	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription, String resourceVariableName,  int lockPriority) {
 		int priorityQueueIndex = 0;
 		// Scan through the whole queue to find if the context is a duplicate
 		for (QueuedContextStruct entry : this.queuedContexts) {
@@ -615,10 +619,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		if (lockPriority == 0)
 			// Priority of 0 is the lowest priority, so can safely add to the end of the queue
-			this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+			this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription, resourceVariableName, lockPriority));
 		else
-			// add into the queue maintaining priority ordering
-			this.queuedContexts.add(priorityQueueIndex, new QueuedContextStruct(context, requiredResources, resourceDescription, lockPriority));
+			// add into the queue to maintain priority ordering
+			this.queuedContexts.add(priorityQueueIndex, new QueuedContextStruct(context, requiredResources, resourceDescription, resourceVariableName, lockPriority));
 		LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
 		save();
 	}

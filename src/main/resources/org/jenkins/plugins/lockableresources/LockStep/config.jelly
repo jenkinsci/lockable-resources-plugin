@@ -4,6 +4,9 @@
 	<f:entry title="${%Resource}" field="resource">
 		<f:textbox/>
 	</f:entry>
+	<f:entry title="${%Variable}" field="variable">
+    		<f:textbox/>
+    	</f:entry>
 	<f:entry title="${%Label}" field="label">
 		<f:textbox/>
 	</f:entry>

@@ -24,6 +24,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	@CheckForNull
 	public String label = null;
 
+	@CheckForNull
+	public String variable = null;
+
 	public int quantity = 0;
 
 	public boolean inversePrecedence = false;
@@ -61,6 +64,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		this.quantity = quantity;
 	}
 
+	@DataBoundSetter
+	public void setVariable(String variable) {
+		this.variable = variable;
+	}
+
 	@Extension
 	public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
 
@@ -86,7 +94,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
 			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
 		}
-		
+
 		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
 			String resourceLabel = Util.fixEmpty(value);
 			String resourceName = Util.fixEmpty(resource);
@@ -97,8 +105,8 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 				return FormValidation.error("Either label or resource name must be specified.");
 			}
 			return FormValidation.ok();
-        }
-		
+		}
+
 		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
 			return doCheckLabel(label, value);
 		}
@@ -119,6 +127,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		}
 		if (this.lockPriority > 0) {
 			instanceString.append(", LockPriority: ").append(this.lockPriority);
+		}
+		if (variable != null) {
+			instanceString.append(", Variable: ").append(this.variable);
 		}
 		return instanceString.toString();
 	}
