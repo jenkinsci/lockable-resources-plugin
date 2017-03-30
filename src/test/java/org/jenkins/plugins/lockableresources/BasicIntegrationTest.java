@@ -16,6 +16,7 @@ import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDispatcher;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
@@ -175,7 +176,7 @@ public class BasicIntegrationTest {
 
 	@Test
 	public void approvalRequired() throws Exception {
-		LockableResourcesManager.get().createResource(Jenkins.getInstance().getSystemMessage() + "-resource");
+		LockableResourcesManager.get().createResource(LockableResourcesRootAction.ICON);
 
 		j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
 
@@ -184,7 +185,7 @@ public class BasicIntegrationTest {
 				.grant(Jenkins.ADMINISTER).everywhere().to("bob")
 				.grant(Item.CONFIGURE, Item.BUILD).everywhere().to("alice"));
 
-		final String SCRIPT = "resourceName == jenkins.model.Jenkins.instance.systemMessage + '-resource';";
+		final String SCRIPT = "resourceName == org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
 
 		FreeStyleProject p = j.createFreeStyleProject();
 		SecurityContext orig = ACL.impersonate(User.get("alice").impersonate());
@@ -218,7 +219,8 @@ public class BasicIntegrationTest {
 		assertEquals(1, pending.size());
 		ScriptApproval.PendingSignature firstPending = pending.get(0);
 
-		assertEquals("staticMethod jenkins.model.Jenkins getInstance", firstPending.signature);
+		assertEquals("staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction ICON",
+				firstPending.signature);
 		approval.approveSignature(firstPending.signature);
 
 		j.assertBuildStatusSuccess(futureBuild);
