@@ -175,7 +175,7 @@ public class BasicIntegrationTest {
 
 	@Test
 	public void approvalRequired() throws Exception {
-		LockableResourcesManager.get().createResource("resource1");
+		LockableResourcesManager.get().createResource(Jenkins.getInstance().getSystemMessage() + "-resource");
 
 		j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
 
@@ -184,7 +184,7 @@ public class BasicIntegrationTest {
 				.grant(Jenkins.ADMINISTER).everywhere().to("bob")
 				.grant(Item.CONFIGURE, Item.BUILD).everywhere().to("alice"));
 
-		final String SCRIPT = "resourceName == java.util.Arrays.asList(\"resource1\").get(0);";
+		final String SCRIPT = "resourceName == jenkins.model.Jenkins.instance.systemMessage + '-resource';";
 
 		FreeStyleProject p = j.createFreeStyleProject();
 		SecurityContext orig = ACL.impersonate(User.get("alice").impersonate());
@@ -218,7 +218,7 @@ public class BasicIntegrationTest {
 		assertEquals(1, pending.size());
 		ScriptApproval.PendingSignature firstPending = pending.get(0);
 
-		assertEquals("staticMethod java.util.Arrays asList java.lang.Object[]", firstPending.signature);
+		assertEquals("staticMethod jenkins.model.Jenkins getInstance", firstPending.signature);
 		approval.approveSignature(firstPending.signature);
 
 		j.assertBuildStatusSuccess(futureBuild);
