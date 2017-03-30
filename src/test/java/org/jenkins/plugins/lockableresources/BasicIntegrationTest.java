@@ -1,17 +1,30 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import hudson.model.Item;
 import hudson.model.ItemGroup;
+import hudson.model.Queue;
+import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
+import hudson.security.ACL;
 import hudson.triggers.TimerTrigger;
 import hudson.util.FormValidation;
+import jenkins.model.Jenkins;
+import org.acegisecurity.context.SecurityContext;
+import org.acegisecurity.context.SecurityContextHolder;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDispatcher;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.MockBuilder;
 import org.jvnet.hudson.test.SleepBuilder;
 import org.jvnet.hudson.test.TestExtension;
@@ -24,6 +37,7 @@ import hudson.model.FreeStyleProject;
 import hudson.model.Result;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -57,7 +71,7 @@ public class BasicIntegrationTest {
 
 		j.jenkins.reload();
 
-		FreeStyleProject p2 = j.jenkins.getItem("p", (ItemGroup)null, FreeStyleProject.class);
+		FreeStyleProject p2 = j.jenkins.getItemByFullName("p", FreeStyleProject.class);
 		RequiredResourcesProperty newProp = p2.getProperty(RequiredResourcesProperty.class);
 		assertNull(newProp.getLabelName());
 		assertNotNull(newProp.getResourceMatchScript());
@@ -158,5 +172,57 @@ public class BasicIntegrationTest {
 		}
 		
 	}
+
+	@Test
+	public void approvalRequired() throws Exception {
+		LockableResourcesManager.get().createResource("resource1");
+
+		j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+
+		j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
+				.grant(Jenkins.READ, Item.READ).everywhere().toAuthenticated()
+				.grant(Jenkins.ADMINISTER).everywhere().to("bob")
+				.grant(Item.CONFIGURE, Item.BUILD).everywhere().to("alice"));
+
+		final String SCRIPT = "resourceName == java.util.Arrays.asList(\"resource1\").get(0);";
+
+		FreeStyleProject p = j.createFreeStyleProject();
+		SecurityContext orig = ACL.impersonate(User.get("alice").impersonate());
+		SecurityContextHolder.setContext(orig);
+		SecureGroovyScript groovyScript = new SecureGroovyScript(SCRIPT, true, null).configuring(ApprovalContext.create());
+
+		p.addProperty(new RequiredResourcesProperty(null, null, null, null, groovyScript));
+
+		JenkinsRule.WebClient wc = j.createWebClient();
+		wc.login("alice");
+
+		QueueTaskFuture<FreeStyleBuild> futureBuild = p.scheduleBuild2(0);
+
+		// Sleeping briefly to make sure the queue gets updated.
+		Thread.sleep(2000);
+
+		List<Queue.Item> items = j.jenkins.getQueue().getItems(p);
+		assertNotNull(items);
+		assertEquals(1, items.size());
+
+		assertTrue(items.get(0) instanceof Queue.BlockedItem);
+
+		Queue.BlockedItem blockedItem = (Queue.BlockedItem) items.get(0);
+		assertTrue(blockedItem.getCauseOfBlockage() instanceof LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed);
+
+		ScriptApproval approval = ScriptApproval.get();
+		List<ScriptApproval.PendingSignature> pending = new ArrayList<>();
+		pending.addAll(approval.getPendingSignatures());
+
+		assertFalse(pending.isEmpty());
+		assertEquals(1, pending.size());
+		ScriptApproval.PendingSignature firstPending = pending.get(0);
+
+		assertEquals("staticMethod java.util.Arrays asList java.lang.Object[]", firstPending.signature);
+		approval.approveSignature(firstPending.signature);
+
+		j.assertBuildStatusSuccess(futureBuild);
+	}
+
 
 }
