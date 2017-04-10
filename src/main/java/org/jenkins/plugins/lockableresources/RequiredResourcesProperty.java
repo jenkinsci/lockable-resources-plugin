@@ -122,7 +122,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 		@Override
 		public boolean isApplicable(Class<? extends Job> jobType) {
-			return AbstractProject.class.isAssignableFrom(jobType);
+			return Job.class.isAssignableFrom(jobType);
 		}
 
 		@Override
