@@ -610,7 +610,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Adds the given context and the required resources to the queue if
 	 * this context is not yet queued.
 	 */
-	public void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
+	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
 		for (QueuedContextStruct entry : this.queuedContexts) {
 			if (entry.getContext() == context) {
 				return;
@@ -621,7 +621,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 	}
 
-	public boolean unqueueContext(StepContext context) {
+	public synchronized boolean unqueueContext(StepContext context) {
 		for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
 			if (iter.next().getContext() == context) {
 				iter.remove();
