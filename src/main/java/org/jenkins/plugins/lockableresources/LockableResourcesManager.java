@@ -278,11 +278,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return lock(resources, build, context, null, false);
 	}
 
+	public synchronized boolean lock(List<LockableResource> resources,
+									 Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
+		return lock(resources, build, context, logmessage, inversePrecedence, false);
+	}
+
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
+									 Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence,
+									 boolean nonBlock) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
@@ -303,7 +309,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				if (nonBlock) {
+					GetLockStep.Execution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				} else {
+					LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				}
 			}
 		}
 		save();
@@ -417,7 +427,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			freeResources(freeResources, build);
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			if (nextContext.isNonBlock()) {
+				GetLockStep.Execution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(),
+						inversePrecedence);
+
+			} else {
+				LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			}
 		}
 		save();
 	}
@@ -610,13 +626,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * this context is not yet queued.
 	 */
 	public void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
+		queueContext(context, requiredResources, resourceDescription, false);
+	}
+
+	/*
+	 * Adds the given context and the required resources to the queue if
+	 * this context is not yet queued.
+	 */
+	public void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription,
+							 boolean nonBlock) {
 		for (QueuedContextStruct entry : this.queuedContexts) {
 			if (entry.getContext() == context) {
 				return;
 			}
 		}
 
-		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription, nonBlock));
 		save();
 	}
 
@@ -629,6 +654,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 		return false;
+	}
+
+	@CheckForNull
+	public LockableResourcesStruct getResourceForQueuedContext(@Nonnull StepContext context) {
+		for (QueuedContextStruct queuedContextStruct : queuedContexts) {
+			if (queuedContextStruct.getContext().equals(context)) {
+				return queuedContextStruct.getResources();
+			}
+		}
+
+		return null;
 	}
 
 	public static LockableResourcesManager get() {

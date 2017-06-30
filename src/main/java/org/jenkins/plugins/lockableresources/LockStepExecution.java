@@ -33,21 +33,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	public boolean start() throws Exception {
 		step.validate();
 
-		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
-		List<String> resources = new ArrayList<String>();
-		if (step.resource != null) {
-			if (LockableResourcesManager.get().createResource(step.resource)) {
-				listener.getLogger().println("Resource [" + step + "] did not exist. Created.");
-			}
-			resources.add(step.resource);
-		}
-		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
-		// determine if there are enough resources available to proceed
-		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
-		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.inversePrecedence)) {
-			listener.getLogger().println("[" + step + "] is locked, waiting...");
-			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString());
-		} // proceed is called inside lock if execution is possible
+		LockUtils.queueLock(step, step.resource, step.label, step.quantity, step.inversePrecedence, getContext());
+
 		return false;
 	}
 
