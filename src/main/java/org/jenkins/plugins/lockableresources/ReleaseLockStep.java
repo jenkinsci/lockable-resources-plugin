@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import hudson.Extension;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import org.jenkins.plugins.lockableresources.actions.LockedFlowNodeAction;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.graphanalysis.LinearScanner;
 import org.jenkinsci.plugins.workflow.graphanalysis.NodeStepTypePredicate;
@@ -60,7 +61,7 @@ public class ReleaseLockStep extends Step {
             FlowNode getLock = scanner.findFirstMatch(thisNode, new NodeStepTypePredicate("getLock"));
 
             if (getLock != null) {
-                LockedResourcesAction action = getLock.getAction(LockedResourcesAction.class);
+                LockedFlowNodeAction action = getLock.getAction(LockedFlowNodeAction.class);
                 if (action != null && !action.isReleased()) {
                     LockableResourcesManager.get().unlockNames(action.getResourceNames(), getContext().get(Run.class),
                             action.isInversePrecedence());

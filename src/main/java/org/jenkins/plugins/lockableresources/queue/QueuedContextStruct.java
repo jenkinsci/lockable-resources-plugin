@@ -11,9 +11,6 @@ package org.jenkins.plugins.lockableresources.queue;
 import java.io.Serializable;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 
 /**
  * This class is used to queue pipeline contexts 
@@ -40,7 +37,7 @@ public class QueuedContextStruct implements Serializable {
 	/**
 	 * True if the relevant step is "getLock" rather than "lock"
 	 */
-	private boolean nonBlock = false;
+	private boolean nonBlockScoped = false;
 
 	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription) {
 		this(context, lockableResourcesStruct, resourceDescription, false);
@@ -50,11 +47,11 @@ public class QueuedContextStruct implements Serializable {
 	 * Constructor for the QueuedContextStruct class.
 	 */
 	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription,
-							   boolean nonBlock) {
+							   boolean nonBlockScoped) {
 		this.context = context;
 		this.lockableResourcesStruct = lockableResourcesStruct;
 		this.resourceDescription = resourceDescription;
-		this.nonBlock = nonBlock;
+		this.nonBlockScoped = nonBlockScoped;
 	}
 	
 	/**
@@ -81,8 +78,8 @@ public class QueuedContextStruct implements Serializable {
 	/**
 	 * True if the relevant step is "getLock" (and therefore not block-scoped)
 	 */
-	public boolean isNonBlock() {
-		return nonBlock;
+	public boolean isNonBlockScoped() {
+		return nonBlockScoped;
 	}
 
 	private static final long serialVersionUID = 1L;

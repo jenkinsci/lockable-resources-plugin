@@ -5,6 +5,7 @@ import hudson.Util;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
+import org.jenkins.plugins.lockableresources.actions.LockedFlowNodeAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -135,7 +136,7 @@ public class GetLockStep extends Step {
         public void stop(@Nonnull Throwable cause) {
             boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
             if (!cleaned) {
-                LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource witing list. The context is not in the waiting list.");
+                LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
             }
             getContext().onFailure(cause);
 
@@ -159,7 +160,7 @@ public class GetLockStep extends Step {
                                    @CheckForNull String resourceDescription, boolean inversePrecedence) {
             try {
                 context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
-                context.get(FlowNode.class).addAction(new LockedResourcesAction(resourceNames, resourceDescription, inversePrecedence));
+                context.get(FlowNode.class).addAction(new LockedFlowNodeAction(resourceNames, resourceDescription, inversePrecedence));
                 context.onSuccess(null);
             } catch (Exception e) {
                 context.onFailure(e);

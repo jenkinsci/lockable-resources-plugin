@@ -81,7 +81,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	public void stop(Throwable cause) throws Exception {
 		boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
 		if (!cleaned) {
-			LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource witing list. The context is not in the waiting list.");
+			LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
 		}
 		getContext().onFailure(cause);
 	}

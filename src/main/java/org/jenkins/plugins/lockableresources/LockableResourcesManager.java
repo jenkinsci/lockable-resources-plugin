@@ -10,7 +10,6 @@ package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
-import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
 import java.io.IOException;
@@ -427,7 +426,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			freeResources(freeResources, build);
 
 			// continue with next context
-			if (nextContext.isNonBlock()) {
+			if (nextContext.isNonBlockScoped()) {
 				GetLockStep.Execution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(),
 						inversePrecedence);
 

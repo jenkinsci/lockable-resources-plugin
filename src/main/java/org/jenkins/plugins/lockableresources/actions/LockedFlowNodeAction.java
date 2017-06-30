@@ -1,4 +1,4 @@
-package org.jenkins.plugins.lockableresources;
+package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.InvisibleAction;
 
@@ -7,14 +7,14 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LockedResourcesAction extends InvisibleAction {
+public class LockedFlowNodeAction extends InvisibleAction {
     private List<String> resourceNames = new ArrayList<>();
     private boolean inversePrecedence;
     private String resourceDescription;
     private boolean released;
 
-    public LockedResourcesAction(@Nonnull List<String> resourceNames, @CheckForNull String resourceDescription,
-                                 boolean inversePrecedence) {
+    public LockedFlowNodeAction(@Nonnull List<String> resourceNames, @CheckForNull String resourceDescription,
+                                boolean inversePrecedence) {
         this.resourceNames.addAll(resourceNames);
         this.resourceDescription = resourceDescription;
         this.inversePrecedence = inversePrecedence;
