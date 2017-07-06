@@ -588,6 +588,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		for (LockableResource rs : candidates) {
 			if (selected.size() >= requiredAmount) {
+				if (requiredAmount != 0 && selected.size() > requiredAmount) {
+					selected = selected.subList(0, requiredAmount);
+				}
 				break;
 			}
 			if (!rs.isReserved() && !rs.isLocked()) {
