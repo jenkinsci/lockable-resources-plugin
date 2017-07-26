@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <!--
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Copyright (c) 2013, 6WIND S.A. All rights reserved.                       *
@@ -22,7 +23,7 @@
 	<f:entry title="${%Labels}" field="labels">
 		<f:textbox/>
 	</f:entry>
-    <f:entry title="${%Reserved for nodes}" field="reservedForNodes">
+	<f:entry title="${%Reserved for nodes}" field="reservedForNodes">
 		<f:textbox/>
 	</f:entry>
 	<f:entry title="${%Reserved by user}" field="reservedBy">

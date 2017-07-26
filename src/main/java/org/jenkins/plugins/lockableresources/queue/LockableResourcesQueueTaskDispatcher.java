@@ -11,27 +11,41 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
 import hudson.model.AbstractProject;
 import hudson.model.Node;
+import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
-	static final Logger LOGGER = Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
+	private transient Cache<Long,Date> lastLogged = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
+
+	static final Logger LOGGER = Logger
+			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
 	/**
 	 * @param node The node that is checked if is able to run this queue item
@@ -47,13 +61,15 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		if (item.task instanceof MatrixProject)
 			return null;
 
-		AbstractProject<?, ?> project = Utils.getProject(item);
+		Job<?, ?> project = Utils.getProject(item);
 		if (project == null)
 			return null;
 
 		LockableResourcesStruct resources = Utils.requiredResources(project);
-		if (resources == null || (resources.required.isEmpty() && resources.label.isEmpty()))
+		if (resources == null ||
+			(resources.required.isEmpty() && resources.label.isEmpty() && resources.getResourceMatchScript() == null)) {
 			return null;
+		}
 
 		int resourceNumber;
 		try {
@@ -65,22 +81,39 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		LOGGER.finest(project.getName() +
 			" trying to get resources with these details: " + resources);
 
-		if (resourceNumber > 0 || !resources.label.isEmpty()) {
+		if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
 			Map<String, Object> params = new HashMap<String, Object>();
 			if (item.task instanceof MatrixConfiguration) {
 			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
 			    params.putAll(matrix.getCombination());
 			}
+                        
+			final List<LockableResource> selected ;
+			try {
+				selected = LockableResourcesManager.get().tryQueue(
+					resources,
+					item.getId(),
+					project.getFullName(),
+					resourceNumber,
+					params,
+					LOGGER,
+					node);
+			} catch(ExecutionException ex) {
+				Throwable toReport = ex.getCause();
+				if (toReport == null) { // We care about the cause only
+					toReport = ex;
+				}	
+				if (LOGGER.isLoggable(Level.WARNING)) {
+					if (lastLogged.getIfPresent(item.getId()) == null) {
+						lastLogged.put(item.getId(), new Date());
 
-			/* retreive a list of resources that can be used by this node */
-			List<LockableResource> selected = LockableResourcesManager.get()
-					.findAvailableResources(resources,
-											item.id,
-											project.getFullName(),
-											resourceNumber,
-											params,
-											LOGGER,
-											node);
+						String itemName = project.getFullName() + " (id=" + item.getId() + ")";
+						LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
+					}
+				}
+				
+				return new BecauseResourcesQueueFailed(resources, toReport);
+			}
 
 			if (selected != null) {
 				/* just to be sure, double check if all the resources in the list can be
@@ -96,9 +129,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				}
 
 				/* enqueue the resources for the itemId and project */
-				LockableResourcesManager.get().queueProject(selected,
-															item.id,
-															project.getFullName());
+				LockableResourcesManager.get().queue(selected, project.getFullName(), item.getId(), node);
 
 				LOGGER.finest(project.getName() + " reserved resources " + selected);
 				return null;
@@ -108,11 +139,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 
 		} else {
-			/* attempt to enqueue the resources. If the resources could not be
-			 * added to the queue, return a causeOfBlockage, otherwise return null
-			 * as success
-			 */
-			if (LockableResourcesManager.get().queueId(resources.required, item.id, node)) {
+			if (LockableResourcesManager.get().queue(resources.required, project.getFullName(), item.getId(), node)) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
@@ -136,6 +163,28 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				return "Waiting for resources " + rscStruct.required.toString();
 			else
 				return "Waiting for resources with label " + rscStruct.label;
+		}
+	}
+        
+	// Only for UI
+	@Restricted(NoExternalUse.class)
+	public static class BecauseResourcesQueueFailed extends CauseOfBlockage {
+		
+		@NonNull
+		private final LockableResourcesStruct resources;
+		@NonNull
+		private final Throwable cause;
+		
+		public BecauseResourcesQueueFailed(@NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
+			this.cause = cause;
+			this.resources = resources;
+		}
+
+		@Override
+		public String getShortDescription() {
+			//TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
+			String resourceInfo = (resources.label.isEmpty()) ? resources.required.toString() : "with label " + resources.label;
+			return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
 		}
 	}
 

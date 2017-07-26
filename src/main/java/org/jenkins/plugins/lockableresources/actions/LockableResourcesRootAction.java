@@ -35,14 +35,14 @@ import org.kohsuke.stapler.StaplerResponse;
 public class LockableResourcesRootAction implements RootAction {
 
 	public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
-			LockableResourcesManager.class, Messages._PermissionGroup());
+			LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
 	public static final Permission UNLOCK = new Permission(PERMISSIONS_GROUP,
-			Messages.UnlockPermission(),
-			Messages._UnlockPermission_Description(), Jenkins.ADMINISTER,
+			Messages.LockableResourcesRootAction_UnlockPermission(),
+			Messages._LockableResourcesRootAction_UnlockPermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
 	public static final Permission RESERVE = new Permission(PERMISSIONS_GROUP,
-			Messages.ReservePermission(),
-			Messages._ReservePermission_Description(), Jenkins.ADMINISTER,
+			Messages.LockableResourcesRootAction_ReservePermission(),
+			Messages._LockableResourcesRootAction_ReservePermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
 
 	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
@@ -57,8 +57,9 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
 	public String getUserName() {
-		if (User.current() != null)
-			return User.current().getFullName();
+		User current = User.current();
+		if (current != null)
+			return current.getFullName();
 		else
 			return null;
 	}

@@ -1,0 +1,27 @@
+<div>
+    <p>
+        You can specify a groovy expression to be evaluated each time a resource is checked
+        to be appropriate for a build. The expression must result into a boolean value. The
+        following variables are available:
+    </p>
+    <dl>
+        <dt>resourceName</dt>
+        <dd>as per resource configuration</dd>
+        <dt>resourceDescription</dt>
+        <dd>as per resource configuration</dd>
+        <dt>resourceLabels</dt>
+        <dd><code>java.util.List&lt;String&gt;</code> of labels as per resource configuration</dd>
+    </dl>
+    <p>
+        For matrix jobs, axis names and axis values can be referenced as well. Examples:
+    </p>
+    <ul>
+        <li><code>resourceLabels.contains("hardcoded")</code></li>
+        <li><code>resourceLabels.contains(axisName)</code></li>
+        <li><code>resourceName == axisName</code></li>
+    </ul>
+    
+    <p>
+      The script's contents need to pass approval by the <a href="https://plugins.jenkins.io/script-security">Script Security Plugin</a>.
+    </p>
+</div>

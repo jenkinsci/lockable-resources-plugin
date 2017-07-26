@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <!--
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
@@ -20,6 +21,7 @@
 			<f:entry title="${%Label}" field="labelName">
 				<f:textbox autoCompleteDelimChar=" "/>
 			</f:entry>
+			<f:optionalProperty title="${%Groovy Expression}" field="resourceMatchScript"/>
 			<f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
 				<f:textbox/>
 			</f:entry>
