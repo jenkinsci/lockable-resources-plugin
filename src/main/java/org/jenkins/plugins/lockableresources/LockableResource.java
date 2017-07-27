@@ -451,12 +451,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	/**
-	 * Sets the 'reservedForNodes' and 'reservedForNodesSet' to null, thus removing all reservations
-	 * set for nodes
+	 * Remove the node reservation restrictions for this resource
 	 */
 	public void unReserveForAllNodes() {
-		this.reservedForNodes = null;
-		this.reservedForNodesSet.clear();
+		this.reservedForNodes = "";
+		this.reservedForNodesSet = new WhitespaceSet("");
 	}
 
 	/**
