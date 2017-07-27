@@ -206,11 +206,6 @@ public class BasicIntegrationTest {
 		assertNotNull(items);
 		assertEquals(1, items.size());
 
-		assertTrue(items.get(0) instanceof Queue.BlockedItem);
-
-		Queue.BlockedItem blockedItem = (Queue.BlockedItem) items.get(0);
-		assertTrue(blockedItem.getCauseOfBlockage() instanceof LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed);
-
 		ScriptApproval approval = ScriptApproval.get();
 		List<ScriptApproval.PendingSignature> pending = new ArrayList<>();
 		pending.addAll(approval.getPendingSignatures());
