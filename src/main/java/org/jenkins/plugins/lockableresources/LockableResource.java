@@ -69,12 +69,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	/** The name of this resource */
 	private final String name;
 	/** The name(s) of the nodes that can use this resource */
-	private String reservedForNodes;
+	private String reservedForNodes = "";
 
 	/** A set of node names (slave names) that can use this resource; same as
 	 *  reservedForNodes, but names are split by whitespace
 	 */
-	private transient Set<String> reservedForNodesSet;
+	private transient Set<String> reservedForNodesSet = new WhitespaceSet(" ");
 
 	private String description = "";
 	private String labels = "";
