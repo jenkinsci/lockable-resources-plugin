@@ -27,6 +27,7 @@ package org.jenkins.plugins.lockableresources;
 import static org.mockito.Mockito.*;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.junit.*;
+import org.mockito.ArgumentMatchers;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -51,7 +52,8 @@ public class LockableResourcesManagerTest {
 	@Test
 	public void checkAvailabilityShouldNotReturnMoreThanRequiredResources() {
 		// Configure partial mock for SUT and mock underlying classes
-		when(resourceManager.checkResourcesAvailability(any(LockableResourcesStruct.class), isNull(PrintStream.class), any(ArrayList.class)))
+		when(resourceManager.checkResourcesAvailability(any(LockableResourcesStruct.class),
+			ArgumentMatchers.<PrintStream>isNull(), any(ArrayList.class)))
 				.thenCallRealMethod();
 
 		ArrayList<LockableResource> candidateList = new ArrayList<LockableResource>();
@@ -63,7 +65,7 @@ public class LockableResourcesManagerTest {
 			candidateList.add(l);
 		}
 
-		when(resourceManager.getResourcesWithLabel(any(String.class), any(Map.class)))
+		when(resourceManager.getResourcesWithLabel(any(String.class), ArgumentMatchers.<Map<String, Object>>isNull()))
 				.thenReturn(candidateList);
 
 		LockableResourcesStruct resourceStructMock = mock(LockableResourcesStruct.class);
@@ -76,10 +78,11 @@ public class LockableResourcesManagerTest {
 		soonToBeUnlockedList.add("r2");
 		soonToBeUnlockedList.add("r4");
 
-		List<LockableResource> lockableResources = resourceManager.checkResourcesAvailability(resourceStructMock, null, soonToBeUnlockedList);
+		List<LockableResource> lockableResources = resourceManager.checkResourcesAvailability(resourceStructMock,
+				null, soonToBeUnlockedList);
 
 		// Make sure that the manager can figure out we need 2 resources even though there are more on the way
-		Assert.assertNotNull(lockableResources);
+		Assert.assertNotNull("checkResourcesAvailability returned null when expecting a list of LockableResources", lockableResources);
 		Assert.assertEquals(2, lockableResources.size());
 	}
 
