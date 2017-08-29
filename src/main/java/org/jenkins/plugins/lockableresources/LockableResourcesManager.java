@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
+import hudson.BulkChange;
 import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
@@ -635,6 +636,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
 	}
+
+	public synchronized void save() {
+                if(BulkChange.contains(this))
+                    return;
+
+                try {
+                    getConfigFile().write(this);
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(),e);
+                }
+        }
 
 	private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
