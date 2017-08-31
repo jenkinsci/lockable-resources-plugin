@@ -14,6 +14,7 @@ import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
 
+import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 
 import hudson.EnvVars;
@@ -22,7 +23,9 @@ import hudson.model.TaskListener;
 
 public class LockStepExecution extends AbstractStepExecutionImpl {
 
-	@Inject(optional = true)
+	private static final Joiner COMMA_JOINER = Joiner.on(',');
+
+    @Inject(optional = true)
 	private LockStep step;
 
 	@StepContextParameter
@@ -75,12 +78,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 				bodyInvoker.withContext(EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
 					@Override
 					public void expand(EnvVars env) throws IOException, InterruptedException {
-						final String resources = resourcenames.toString();
-						final String resourcesString = resources.substring(1, resources.length()-1);
-								LOGGER.finest("Setting [" + variable + "] to [" + resourcesString
+						final String resources = COMMA_JOINER.join(resourcenames);
+								LOGGER.finest("Setting [" + variable + "] to [" + resources
 										+ "] for the duration of the block");
 						
-						env.override(variable, resourcesString);
+						env.override(variable, resources);
 					}
 				}));
 			bodyInvoker.start();
