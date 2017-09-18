@@ -74,36 +74,38 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
 			Map<String, Object> params = new HashMap<String, Object>();
-			if (item.task instanceof MatrixConfiguration) {
-			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
-			    params.putAll(matrix.getCombination());
-			} else {
-				try {
-					List<ParametersAction> itemparams = item.getActions(ParametersAction.class);
-					if (itemparams != null) {
-						for ( ParametersAction actparam : itemparams) {
-							if (actparam == null) continue;
-							for ( ParameterValue p : actparam.getParameters() ) {
-								if (p == null) continue;
-								params.put(p.getName(), p.getValue());
-							}
-						}
-					}
-				} catch(Exception ex) {
-					// Report the error and go on with the build -
-					// perhaps this item is not a build with args, etc.
-					Throwable toReport = ex.getCause();
-					if (toReport == null) { // We care about the cause only
-						toReport = ex;
-					}
-					if (LOGGER.isLoggable(Level.WARNING)) {
-						if (lastLogged.getIfPresent(item.getId()) == null) {
-							lastLogged.put(item.getId(), new Date());
-						String itemName = project.getFullName() + " (id=" + item.getId() + ")";
-						LOGGER.log(Level.WARNING, "Failed to get build params from item " + itemName, toReport.getMessage());
+
+			// Inject Build Parameters, if possible and applicable to the "item" type
+			try {
+				List<ParametersAction> itemparams = item.getActions(ParametersAction.class);
+				if (itemparams != null) {
+					for ( ParametersAction actparam : itemparams) {
+						if (actparam == null) continue;
+						for ( ParameterValue p : actparam.getParameters() ) {
+							if (p == null) continue;
+							params.put(p.getName(), p.getValue());
 						}
 					}
 				}
+			} catch(Exception ex) {
+				// Report the error and go on with the build -
+				// perhaps this item is not a build with args, etc.
+				Throwable toReport = ex.getCause();
+				if (toReport == null) { // We care about the cause only
+					toReport = ex;
+				}
+				if (LOGGER.isLoggable(Level.WARNING)) {
+					if (lastLogged.getIfPresent(item.getId()) == null) {
+						lastLogged.put(item.getId(), new Date());
+					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
+					LOGGER.log(Level.WARNING, "Failed to get build params from item " + itemName, toReport.getMessage());
+					}
+				}
+			}
+
+			if (item.task instanceof MatrixConfiguration) {
+				MatrixConfiguration matrix = (MatrixConfiguration) item.task;
+				params.putAll(matrix.getCombination());
 			}
 
 			final List<LockableResource> selected ;
