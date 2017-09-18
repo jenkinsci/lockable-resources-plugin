@@ -187,7 +187,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Try to acquire the resources required by the task.
 	 * @param number Number of resources to acquire. {@code 0} means all
@@ -273,7 +273,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 		return true;
 	}
-	
+
 	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
 		return lock(resources, build, context, null, false);
 	}
@@ -309,7 +309,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 		return !needToWait;
 	}
-	
+
 	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
 			for (LockableResource resource : this.resources) {
@@ -356,11 +356,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			save();
 			return;
 		}
-			
+
 		// remove context from queue and process it
 		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
 		this.queuedContexts.remove(nextContext);
-			
+
 		// resourceNamesToUnlock contains the names of the previous resources.
 		// requiredResourceForNextContext contains the resource objects which are required for the next context.
 		// It is guaranteed that there is an overlap between the two - the resources which are to be reused.

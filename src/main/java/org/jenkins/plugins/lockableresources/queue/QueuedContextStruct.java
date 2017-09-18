@@ -15,8 +15,8 @@ import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
 
-/* 
- * This class is used to queue pipeline contexts 
+/*
+ * This class is used to queue pipeline contexts
  * which shall be executed once the necessary
  * resources are free'd.
  */
@@ -26,12 +26,12 @@ public class QueuedContextStruct implements Serializable {
 	 * Reference to the pipeline step context.
 	 */
 	private StepContext context;
-	
+
 	/*
 	 * Reference to the resources required by the step context.
 	 */
 	private LockableResourcesStruct lockableResourcesStruct;
-	
+
 	/*
 	 * Description of the required resources used within logging messages.
 	 */
@@ -45,14 +45,14 @@ public class QueuedContextStruct implements Serializable {
 		this.lockableResourcesStruct = lockableResourcesStruct;
 		this.resourceDescription = resourceDescription;
 	}
-	
+
 	/*
 	 * Gets the pipeline step context.
 	 */
 	public StepContext getContext() {
 		return this.context;
 	}
-	
+
 	/*
 	 * Gets the required resources.
 	 */
@@ -66,6 +66,6 @@ public class QueuedContextStruct implements Serializable {
 	public String getResourceDescription() {
 		return this.resourceDescription;
 	}
-	
+
 	private static final long serialVersionUID = 1L;
 }

@@ -143,15 +143,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return Arrays.asList(labels.split("\\s+"));
 	}
 
-        /**
-         * Checks if the script matches the requirement.
-         * @param script Script to be executed
-         * @param params Extra script parameters
-         * @return {@code true} if the script returns true (resource matches).
-         * @throws ExecutionException Script execution failed (e.g. due to the missing permissions). Carries info in the cause
-         */
-        @Restricted(NoExternalUse.class)
-	public boolean scriptMatches(@Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params) 
+	/**
+	 * Checks if the script matches the requirement.
+	 * @param script Script to be executed
+	 * @param params Extra script parameters
+	 * @return {@code true} if the script returns true (resource matches).
+	 * @throws ExecutionException Script execution failed (e.g. due to the missing permissions). Carries info in the cause
+	 */
+	@Restricted(NoExternalUse.class)
+	public boolean scriptMatches(@Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
 		throws ExecutionException {
 		Binding binding = new Binding(params);
 		binding.setVariable("resourceName", name);
