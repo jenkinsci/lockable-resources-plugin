@@ -90,15 +90,12 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			} catch(Exception ex) {
 				// Report the error and go on with the build -
 				// perhaps this item is not a build with args, etc.
-				Throwable toReport = ex.getCause();
-				if (toReport == null) { // We care about the cause only
-					toReport = ex;
-				}
+				// Note this is likely to fail a bit later in such case.
 				if (LOGGER.isLoggable(Level.WARNING)) {
 					if (lastLogged.getIfPresent(item.getId()) == null) {
 						lastLogged.put(item.getId(), new Date());
 					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
-					LOGGER.log(Level.WARNING, "Failed to get build params from item " + itemName, toReport.getMessage());
+					LOGGER.log(Level.WARNING, "Failed to get build params from item " + itemName, ex);
 					}
 				}
 			}
