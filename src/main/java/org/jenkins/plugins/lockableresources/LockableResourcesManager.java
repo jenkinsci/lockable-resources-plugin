@@ -188,7 +188,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Try to acquire the resources required by the task.
 	 * @param number Number of resources to acquire. {@code 0} means all
@@ -276,14 +276,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 	
 	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, false);
+		return lock(resources, build, context, null, false, null);
 	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
+									 Run<?, ?> build,
+									 @Nullable StepContext context,
+									 @Nullable String logmessage,
+									 boolean inversePrecedence,
+									 String resourceVariableName) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
@@ -304,7 +308,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence, resourceVariableName);
 			}
 		}
 		save();
@@ -418,7 +422,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			freeResources(freeResources, build);
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence, nextContext.getResourceVariableName());
 		}
 		save();
 	}
@@ -610,14 +614,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Adds the given context and the required resources to the queue if
 	 * this context is not yet queued.
 	 */
-	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
+	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription, String resourceVariableName) {
 		for (QueuedContextStruct entry : this.queuedContexts) {
 			if (entry.getContext() == context) {
 				return;
 			}
 		}
 
-		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription, resourceVariableName));
 		save();
 	}
 

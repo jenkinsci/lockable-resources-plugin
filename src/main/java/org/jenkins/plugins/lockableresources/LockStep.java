@@ -24,6 +24,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	@CheckForNull
 	public String label = null;
 
+	@CheckForNull
+	public String variable = null;
+
 	public int quantity = 0;
 
 	public boolean inversePrecedence = false;
@@ -54,6 +57,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		this.quantity = quantity;
 	}
 
+	@DataBoundSetter
+	public void setVariable(String variable) {
+		this.variable = variable;
+	}
+
 	@Extension
 	public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
 
@@ -79,7 +87,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
 			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
 		}
-		
+
 		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
 			String resourceLabel = Util.fixEmpty(value);
 			String resourceName = Util.fixEmpty(resource);
@@ -90,31 +98,46 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 				return FormValidation.error("Either label or resource name must be specified.");
 			}
 			return FormValidation.ok();
-        }
-		
+		}
+
 		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
 			return doCheckLabel(label, value);
 		}
 	}
 
 	public String toString() {
+
+		StringBuilder result = new StringBuilder();
+
 		// a label takes always priority
 		if (this.label != null) {
+			result.append("Label: ").append(this.label);
+
 			if (this.quantity > 0) {
-				return "Label: " + this.label + ", Quantity: " + this.quantity;
+				result.append(", Quantity: ").append(this.quantity);
 			}
-			return "Label: " + this.label;
+
+			if (variable != null) {
+				result.append(", Variable: ").append(this.variable);
+			}
+			return result.toString();
 		}
 		// make sure there is an actual resource specified
 		if (this.resource != null) {
-			return this.resource;
+			result.append(this.resource);
+		} else {
+			return "[no resource/label specified - probably a bug]";
 		}
-		return "[no resource/label specified - probably a bug]";
+		if (variable != null) {
+			result.append(", Variable: ").append(this.variable);
+		}
+
+		return result.toString();
 	}
 
 	/**
-	 * Label and resource are mutual exclusive.
-	 */
+	* Label and resource are mutual exclusive.
+	*/
 	public void validate() throws Exception {
 		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
 			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");

@@ -419,6 +419,114 @@ public class LockStepTest {
 		});
 	}
 
+	@Test
+	public void lockWithVariable() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource0");
+                LockableResourcesManager.get().createResourceWithLabel("resource1", "res");
+                LockableResourcesManager.get().createResourceWithLabel("resource2", "res");
+                LockableResourcesManager.get().createResourceWithLabel("resource3", "res");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock(resource: 'resource0', variable: 'MY_VAR') {\n" +
+								"	echo 'Resource locked'\n" +
+								"	echo \"got resource:[ ${env.MY_VAR} ]\"\n" +
+								"}\n" +
+                                "lock(label: 'res', variable: 'MY_VAR') {\n" +
+                                "	echo 'multiple resources locked'\n" +
+                                "	echo \"got resources:[ ${env.MY_VAR} ]\"\n" +
+                                "}\n" +
+                                "echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForCompletion(b1);
+				story.j.assertBuildStatus(Result.SUCCESS, b1);
+				story.j.assertLogContains("Lock released on resource [resource0, Variable: MY_VAR]", b1);
+				story.j.assertLogContains("got resource:[ resource0 ]", b1);
+
+                story.j.assertLogContains("Lock released on resource [Label: res, Variable: MY_VAR]", b1);
+                story.j.assertLogContains("got resources:[ resource1, resource2, resource3 ]", b1);
+			}
+		});
+	}
+
+    @Test
+    public void lockWithVariableNested() {
+        story.addStep(new Statement() {
+            @Override
+            public void evaluate() throws Throwable {
+                LockableResourcesManager.get().createResource("resource1");
+                LockableResourcesManager.get().createResource("resource2");
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "lock(resource: 'resource1', variable: 'MY_VAR1') {\n" +
+                                "	echo \"got resource#1.1:[ ${env.MY_VAR1} ]\"\n" +
+                                "   lock(resource: 'resource2', variable: 'MY_VAR2') {\n" +
+								"	   echo \"got resource#1.2:[ ${env.MY_VAR1} ]\"\n" +
+                                "	   echo \"got resource#2.1:[ ${env.MY_VAR2} ]\"\n" +
+                                "   }\n" +
+                                "	echo \"got resource#1.3:[ ${env.MY_VAR1} ]\"\n" +
+                                "	echo \"(unset after block) got no resource#:[ ${env.MY_VAR2} ]\"\n" +
+                                "   lock(resource: 'resource2', variable: 'MY_VAR1') {\n" +
+                                "	   echo \"(shadowing) got resource#2.2:[ ${env.MY_VAR1} ]\"\n" +
+                                "   }\n" +
+                                "	echo \"(is reset) got resource#1.4:[ ${env.MY_VAR1} ]\"\n" +
+                                "}\n" +
+                                "echo 'Finish'"
+                ));
+                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+                story.j.waitForCompletion(b1);
+                story.j.assertBuildStatus(Result.SUCCESS, b1);
+                story.j.assertLogContains("got resource#1.1:[ resource1 ]", b1);
+
+                story.j.assertLogContains("got resource#1.2:[ resource1 ]", b1);
+                story.j.assertLogContains("got resource#2.1:[ resource2 ]", b1);
+
+                story.j.assertLogContains("got resource#1.3:[ resource1 ]", b1);
+                // "null" is a bit strange but more of an echo problem
+                story.j.assertLogContains("got no resource#:[ null ]", b1);
+                story.j.assertLogContains("got resource#2.2:[ resource2 ]", b1);
+                story.j.assertLogContains("got resource#1.4:[ resource1 ]", b1);
+            }
+        });
+    }
+
+    @Test
+    public void lockWithVariableParallel() {
+        story.addStep(new Statement() {
+            @Override
+            public void evaluate() throws Throwable {
+                LockableResourcesManager.get().createResource("resource1");
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "parallel a: {\n" +
+                                "	sleep 5\n" +
+                                "	lock(resource: 'resource1', variable: 'MY_VAR') {\n" +
+                                "	    echo \"got resource#1:[ ${env.MY_VAR} ]\"\n" +
+                                "	}\n" +
+                                "}, b: {\n" +
+                                "	lock(resource: 'resource1', variable: 'MY_VAR') {\n" +
+                                "	   echo \"got resource#2:[ ${env.MY_VAR} ]\"\n" +
+                                "	   sleep 7\n" +
+                                "	}\n" +
+                                "}\n"
+                ));
+
+                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+                story.j.waitForCompletion(b1);
+
+                story.j.assertLogContains("[b] Lock acquired on [resource1, Variable: MY_VAR]", b1);
+                story.j.assertLogContains("[b] got resource#2:[ resource1 ]", b1);
+                story.j.assertLogContains("[a] [resource1, Variable: MY_VAR] is locked, waiting...", b1);
+
+                story.j.assertLogContains("[a] Lock acquired on [resource1, Variable: MY_VAR]", b1);
+                story.j.assertLogContains("[a] got resource#1:[ resource1 ]", b1);
+            }
+        });
+    }
+
 	@Issue("JENKINS-36479")
 	@Test public void hardKillNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {
