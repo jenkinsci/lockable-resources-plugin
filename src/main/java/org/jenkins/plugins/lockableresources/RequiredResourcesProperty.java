@@ -43,7 +43,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String resourceNamesVar, String resourceNumber,
 			String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
 		super();
-		this.resourceNames = resourceNames;
+		if (resourceNames != null) {
+			this.resourceNames = resourceNames.trim();
+		} else {
+			this.resourceNames = null;
+		}
 		this.resourceNamesVar = resourceNamesVar;
 		this.resourceNumber = resourceNumber;
 		if (resourceMatchScript != null) {
