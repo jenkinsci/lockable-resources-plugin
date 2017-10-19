@@ -46,7 +46,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
 		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.inversePrecedence)) {
 			listener.getLogger().println("[" + step + "] is locked, waiting...");
-			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString());
+			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString(), step.lockPriority);
 		} // proceed is called inside lock if execution is possible
 		return false;
 	}

@@ -186,7 +186,7 @@ public class LockStepTest {
 	}
 
 	@Test
-	public void mixOfSpecificResourceTheLabelLocks() {
+	public void mixOfSpecificResourceThenLabelLocks() {
 		// Test that when mixing requests for locks based on specific resources and then label resources are handled
 		story.addStep(new Statement() {
 			@Override
@@ -216,6 +216,99 @@ public class LockStepTest {
 
 				// resource[12] are now free, so label build is free to finish
 				stepIndex = acquireLockAndFinishBuild(labelBuild, labelLockMessage, stepIndex);
+			}
+		});
+	}
+
+	@Test
+	public void jobOrderingPreservedWithinPriorityBands() {
+		// Testing that high priority builds are scheduled in advance of lower priority builds, but within a
+		// priority band, builds still acquire the lock in the order they were scheduled
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				int stepIndex = 1;
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1'", "no-priority");
+				String resource1LockMessage = "resource1";
+				WorkflowJob resource1P10Job = createWaitingForResourcesJob("resource: 'resource1', lockPriority: 10", "priority10");
+				String resource1P10LockMessage = "resource1, LockPriority: 10";
+				WorkflowJob resource1P20Job = createWaitingForResourcesJob("resource: 'resource1', lockPriority: 20", "priority20");
+				String resource1P20LockMessage = "resource1, LockPriority: 20";
+
+				// First build to be scheduled takes lock, even though low priority
+				WorkflowRun resource1Build1 = resource1Job.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", resource1Build1);
+
+				// schedule 2 builds each for priorities 20, 10 and no priority, with priority order mixed up
+				WorkflowRun resource1Build2 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1Build3 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1P10Build1 = scheduleBuildAndCheckWaiting(resource1P10Job, resource1P10LockMessage, 1, 0);
+				WorkflowRun resource1P20Build1 = scheduleBuildAndCheckWaiting(resource1P20Job, resource1P20LockMessage, 1, 0);
+				WorkflowRun resource1P20Build2 = scheduleBuildAndCheckWaiting(resource1P20Job, resource1P20LockMessage, 1, 0);
+				WorkflowRun resource1P10Build2 = scheduleBuildAndCheckWaiting(resource1P10Job, resource1P10LockMessage, 1, 0);
+
+				// Finish the first build so the subsequent builds can complete
+				stepIndex = acquireLockAndFinishBuild(resource1Build1, resource1LockMessage, stepIndex);
+
+				// make sure the P20 builds complete first, then the P10, then the no-priority builds
+				// The order in the priority bands is preserved though
+				stepIndex = acquireLockAndFinishBuild(resource1P20Build1, resource1P20LockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(resource1P20Build2, resource1P20LockMessage, stepIndex);
+
+				stepIndex = acquireLockAndFinishBuild(resource1P10Build1, resource1P10LockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(resource1P10Build2, resource1P10LockMessage, stepIndex);
+
+				stepIndex = acquireLockAndFinishBuild(resource1Build2, resource1LockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(resource1Build3, resource1LockMessage, stepIndex);
+			}
+		});
+	}
+
+	@Test
+	public void lockOrderLabelWithPriorityResource() {
+		// Testing that mixing label based locks with specific resources locks and priorities work
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				int stepIndex = 1;
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "labelPriority0");
+				String labelLockMessage = "Label: label1, Quantity: 2";
+				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1', lockPriority: 10", "priority10");
+				String resource1LockMessage = "resource1, LockPriority: 10";
+				WorkflowJob resource2Job = createWaitingForResourcesJob("resource: 'resource2', lockPriority: 20", "priority20");
+				String resource2LockMessage = "resource2, LockPriority: 20";
+				WorkflowRun labelBuild1 = labelJob.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", labelBuild1);
+
+				WorkflowRun labelBuild2 = scheduleBuildAndCheckWaiting(labelJob, labelLockMessage, 2, 0);
+				WorkflowRun labelBuild3 = scheduleBuildAndCheckWaiting(labelJob, labelLockMessage, 2, 0);
+				// Both 2 and 3 are waiting for locking Label: label1, Quantity: 2
+
+				// These 2 builds waiting for resource1 have a priority of 10, so will jump the queue for labelBuild2 and labelBuild3 above
+				WorkflowRun resource1Build1 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1Build2 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
+
+				// This build for resource2 has priority 20, though scheduled last, will run first once its resource is freed
+				WorkflowRun resource2Build = scheduleBuildAndCheckWaiting(resource2Job, resource2LockMessage, 1, 0);
+
+				// All other builds are now waiting for resources that labelBuild1 has locked
+				stepIndex = acquireLockAndFinishBuild(labelBuild1, labelLockMessage, stepIndex);
+
+				// resource2Build had the highest priority, so proceeds first
+				stepIndex = acquireLockAndFinishBuild(resource2Build, resource2LockMessage, stepIndex);
+
+				// both #resource1Build[12] had a high priority (10) so get the lock before labelBuild2 and labelBuild3,
+				// but their order is still preserved
+				stepIndex = acquireLockAndFinishBuild(resource1Build1, resource1LockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(resource1Build2, resource1LockMessage, stepIndex);
+
+				// labelBuild2 and labelBuild3 were priority 0 and so get the locks last.
+				// #2 gets the lock before #3 (in the order as they requested the lock)
+				stepIndex = acquireLockAndFinishBuild(labelBuild2, labelLockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(labelBuild3, labelLockMessage, stepIndex);
 			}
 		});
 	}

@@ -13,4 +13,7 @@
 	<f:entry title="${%Inverse precedence}" field="inversePrecedence">
 		<f:checkbox/>
 	</f:entry>
+	<f:entry title="${%Lock Priority}" field="lockPriority">
+		<f:number/>
+	</f:entry>
 </j:jelly>

@@ -28,6 +28,8 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public boolean inversePrecedence = false;
 
+	public int lockPriority = 0;
+
 	// it should be LockStep() - without params. But keeping this for backward compatibility
 	// so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource is not required)
 	@DataBoundConstructor
@@ -40,6 +42,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	@DataBoundSetter
 	public void setInversePrecedence(boolean inversePrecedence) {
 		this.inversePrecedence = inversePrecedence;
+	}
+
+	@DataBoundSetter
+	public void setLockPriority(int lockPriority) {
+		this.lockPriority = lockPriority;
 	}
 
 	@DataBoundSetter
@@ -98,26 +105,34 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	}
 
 	public String toString() {
+		StringBuilder instanceString = new StringBuilder();
 		// a label takes always priority
 		if (this.label != null) {
-			if (this.quantity > 0) {
-				return "Label: " + this.label + ", Quantity: " + this.quantity;
-			}
-			return "Label: " + this.label;
+			instanceString.append("Label: ").append(this.label);
+		} else if (this.resource != null) {
+			instanceString.append(this.resource);
+		} else {
+			return "[no resource/label specified - probably a bug]";
 		}
-		// make sure there is an actual resource specified
-		if (this.resource != null) {
-			return this.resource;
+		if (this.quantity > 0) {
+			 instanceString.append(", Quantity: ").append(this.quantity);
 		}
-		return "[no resource/label specified - probably a bug]";
+		if (this.lockPriority > 0) {
+			instanceString.append(", LockPriority: ").append(this.lockPriority);
+		}
+		return instanceString.toString();
 	}
 
 	/**
-	 * Label and resource are mutual exclusive.
+	 * Label and resource are mutually exclusive.
+	 * LockPriority must be positive
 	 */
 	public void validate() throws Exception {
 		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
 			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
+		}
+		if (this.lockPriority < 0) {
+			throw new IllegalArgumentException("LockPriority must be 0 or positive");
 		}
 	}
 

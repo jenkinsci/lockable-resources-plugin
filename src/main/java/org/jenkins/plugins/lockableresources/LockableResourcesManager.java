@@ -597,14 +597,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Adds the given context and the required resources to the queue if
 	 * this context is not yet queued.
 	 */
-	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
+	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription, int lockPriority) {
+		int priorityQueueIndex = 0;
+		// Scan through the whole queue to find if the context is a duplicate
 		for (QueuedContextStruct entry : this.queuedContexts) {
 			if (entry.getContext() == context) {
 				return;
 			}
+			// Search for where the insertion point would be if a non zero priority were specified
+			// Entries will be in decreasing priority order. Stop moving index forward when entry priority  is less than
+			// the requested priority
+			if (entry.getLockPriority() >= lockPriority) {
+				priorityQueueIndex++;
+			}
 		}
 
-		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+		if (lockPriority == 0)
+			// Priority of 0 is the lowest priority, so can safely add to the end of the queue
+			this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+		else
+			// add into the queue maintaining priority ordering
+			this.queuedContexts.add(priorityQueueIndex, new QueuedContextStruct(context, requiredResources, resourceDescription, lockPriority));
 		save();
 	}
 
