@@ -131,6 +131,31 @@ function reset_resource_${i}() {
 			</table>
 </j:if>
 
+<h3>Resource queue</h3>
+<j:choose>
+    <j:when test="${it.getNumberQueuedContexts() != 0}">
+       <table class="pane" style="width: 50%;">
+            <tbody>
+                <tr>
+                    <td class="pane-header">Resource requested</td>
+                    <td class="pane-header">Requested by</td>
+                </tr>
+                <j:forEach var="context" items="${it.getQueuedContexts()}">
+                    <tr>
+                        <td class="pane" >${context.resourceDescription}</td>
+                        <td class="pane" >
+                            <a href="${rootURL}/${context.build.url}">
+                                ${context.build.fullDisplayName}
+                            </a>
+                        </td>
+                    </tr>
+                </j:forEach>
+            </tbody>
+        </table>
+    </j:when>
+    <j:otherwise><h4>Empty</h4></j:otherwise>
+</j:choose>
+
 		</l:main-panel>
 	</l:layout>
 </j:jelly>
