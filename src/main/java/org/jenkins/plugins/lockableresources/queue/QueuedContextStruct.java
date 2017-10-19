@@ -8,18 +8,24 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import java.io.IOException;
 import java.io.Serializable;
 
+import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import hudson.model.AbstractBuild;
+import hudson.model.Run;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 /* 
  * This class is used to queue pipeline contexts 
  * which shall be executed once the necessary
  * resources are free'd.
  */
+@ExportedBean(defaultVisibility = 999)
 public class QueuedContextStruct implements Serializable {
 
 	/*
@@ -41,6 +47,11 @@ public class QueuedContextStruct implements Serializable {
 	 * Priority this context should have in the queue. Lowest priority being 0.
 	 */
 	private int lockPriority = 0;
+
+	// build information in the requesting context. Useful for displaying on the ui and logging
+	private transient volatile Run<?, ?> build = null;
+	private transient volatile String buildExternalizableId = null;
+
 
 	/*
 	 * Constructor for the QueuedContextStruct class.
@@ -67,7 +78,36 @@ public class QueuedContextStruct implements Serializable {
 	public StepContext getContext() {
 		return this.context;
 	}
-	
+
+	@Exported
+	public String getBuildExternalizableId() {
+		if (this.buildExternalizableId == null) {
+			// getting the externalizableId can fail for many reasons, set to null if it fails for some reason
+			try {
+				buildExternalizableId = this.context.get(Run.class).getExternalizableId();
+			} catch (Exception e) {
+				buildExternalizableId = null;
+			}
+		}
+		return this.buildExternalizableId;
+	}
+
+	@WithBridgeMethods(value=AbstractBuild.class, adapterMethod="getAbstractBuild")
+	public Run<?, ?> getBuild() {
+		if (build == null) {
+			build = Run.fromExternalizableId(getBuildExternalizableId());
+		}
+		return build;
+	}
+
+	@Exported
+	public String getBuildName() {
+		if (getBuild() != null)
+			return getBuild().getFullDisplayName();
+		else
+			return null;
+	}
+
 	/*
 	 * Gets the required resources.
 	 */
@@ -78,6 +118,7 @@ public class QueuedContextStruct implements Serializable {
 	/*
 	 * Gets the resource description for logging messages.
 	 */
+	@Exported
 	public String getResourceDescription() {
 		return this.resourceDescription;
 	}
@@ -87,4 +128,9 @@ public class QueuedContextStruct implements Serializable {
 	}
 
 	private static final long serialVersionUID = 1L;
+
+	@Override
+	public String toString() {
+		return "Build(" + getBuildExternalizableId() + ") Resource(" + resourceDescription + ")";
+	}
 }

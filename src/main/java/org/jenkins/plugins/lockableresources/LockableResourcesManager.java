@@ -361,7 +361,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		// remove context from queue and process it
 		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
 		this.queuedContexts.remove(nextContext);
-			
+		LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
+
 		// resourceNamesToUnlock contains the names of the previous resources.
 		// requiredResourceForNextContext contains the resource objects which are required for the next context.
 		// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
@@ -618,6 +619,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		else
 			// add into the queue maintaining priority ordering
 			this.queuedContexts.add(priorityQueueIndex, new QueuedContextStruct(context, requiredResources, resourceDescription, lockPriority));
+		LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
 		save();
 	}
 
@@ -625,6 +627,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
 			if (iter.next().getContext() == context) {
 				iter.remove();
+				LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
 				save();
 				return true;
 			}
@@ -635,6 +638,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public static LockableResourcesManager get() {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
+	}
+
+	public synchronized int getQueuedContextsSize() {
+		return this.queuedContexts.size();
+	}
+
+	public synchronized ArrayList<QueuedContextStruct> getQueuedContexts() {
+		return new ArrayList<>(this.queuedContexts);
 	}
 
 	public synchronized void save() {
