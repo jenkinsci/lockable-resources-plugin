@@ -124,6 +124,102 @@ public class LockStepTest {
 		});
 	}
 
+	// Below are utility functions to help with some of the repetitive setup and running of the tests
+	private WorkflowJob createWaitingForResourcesJob(String lockParameters, String jobName) throws Throwable {
+		// Create job definition that tries to acquire a lock and then wait on a semaphore
+		WorkflowJob resourceJob = story.j.jenkins.createProject(WorkflowJob.class, jobName);
+		resourceJob.setDefinition(new CpsFlowDefinition(
+				"lock(" + lockParameters + ") {\n" +
+						"	semaphore 'wait-inside'\n" +
+						"}\n" +
+						"echo 'Finish'"
+		));
+		return resourceJob;
+	}
+
+	private WorkflowRun scheduleBuildAndCheckWaiting(WorkflowJob job, String lockMessage, int correctAmount, int available) throws Throwable {
+		// schedule a build for which it is expected there aren't enough resources to start and the build will wait
+		WorkflowRun build = job.scheduleBuild2(0).waitForStart();
+		story.j.waitForMessage("Trying to acquire lock on [" + lockMessage + "]", build);
+		story.j.waitForMessage("Found " + available + " available resource(s). Waiting for correct amount: " + correctAmount + ".", build);
+		return build;
+	}
+
+	private int acquireLockAndFinishBuild(WorkflowRun build, String lockMessage, int stepIndex) throws Throwable{
+		// the build should be able to acquire the lock it needs, signal its semaphore and finish successfully
+		story.j.waitForMessage("Lock acquired on [" + lockMessage + "]", build);
+		SemaphoreStep.success("wait-inside/" + stepIndex++, null);
+		story.j.waitForMessage("Lock released on resource [" + lockMessage + "]", build);
+		story.j.waitForMessage("Finish", build);
+		return stepIndex;
+	}
+
+	@Test
+	public void mixOfLabelLockThenSpecificResource() {
+		// Test that when mixing requests for locks based on labels and then specific resources are handled
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				int stepIndex = 1;
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "labelJob");
+				String labelLockMessage = "Label: label1, Quantity: 2";
+				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1'", "resource1Job");
+				String resource1LockMessage = "resource1";
+				WorkflowJob resource2Job = createWaitingForResourcesJob("resource: 'resource2'", "resource2Job");
+				String resource2LockMessage = "resource2";
+				// Label build runs first and acquires resource 1 and 2
+				WorkflowRun labelBuild1 = labelJob.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", labelBuild1);
+
+				// Specific resource lock build will both wait on the label build
+				WorkflowRun resource1Build = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource2Build = scheduleBuildAndCheckWaiting(resource2Job, resource2LockMessage, 1, 0);
+
+				stepIndex = acquireLockAndFinishBuild(labelBuild1, labelLockMessage, stepIndex);
+				// Once the label build has finished, the 2 specific lock builds should complete
+				stepIndex = acquireLockAndFinishBuild(resource1Build, resource1LockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(resource2Build, resource2LockMessage, stepIndex);
+			}
+		});
+	}
+
+	@Test
+	public void mixOfSpecificResourceTheLabelLocks() {
+		// Test that when mixing requests for locks based on specific resources and then label resources are handled
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				int stepIndex = 1;
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "label");
+				String labelLockMessage = "Label: label1, Quantity: 2";
+				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1'", "resource1");
+				String resource1LockMessage = "resource1";
+				WorkflowJob resource2Job = createWaitingForResourcesJob("resource: 'resource2'", "resource2");
+				String resource2LockMessage = "resource2";
+				WorkflowRun resource1Build = resource1Job.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", resource1Build);
+
+				// labelBuild will wait as resource1 has been locked and it needs both resource[12]
+				WorkflowRun labelBuild = scheduleBuildAndCheckWaiting(labelJob, labelLockMessage, 2, 1);
+
+				// resource2Build is free to schedule and acquire lock as labelBuild hasn't locked resource2
+				WorkflowRun resource2Build = resource2Job.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/2", resource2Build);
+
+				// resource[12]Builds should complete and release their locks
+				stepIndex = acquireLockAndFinishBuild(resource1Build, resource1LockMessage, stepIndex);
+				stepIndex = acquireLockAndFinishBuild(resource2Build, resource2LockMessage, stepIndex);
+
+				// resource[12] are now free, so label build is free to finish
+				stepIndex = acquireLockAndFinishBuild(labelBuild, labelLockMessage, stepIndex);
+			}
+		});
+	}
+
 	@Test
 	public void lockOrderLabelQuantity() {
 		story.addStep(new Statement() {
