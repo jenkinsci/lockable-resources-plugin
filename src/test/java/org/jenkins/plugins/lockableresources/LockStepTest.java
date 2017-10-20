@@ -221,6 +221,46 @@ public class LockStepTest {
 	}
 
 	@Test
+	public void resourcesWithLabelsAreAllAcquirable() {
+		// Test making multiple requests on a label that ultimately use all the available resources
+		// should take all those resources and not block
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource4", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource5", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource6", "label1");
+				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "label");
+				String labelLockMessage = "Label: label1, Quantity: 2";
+
+				// Make sure all builds schedule and acquire all locks. No queueing.
+				// The actual resources selected should be random, but they should all be acquired.
+				WorkflowRun labelBuild1 = labelJob.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", labelBuild1);
+				story.j.waitForMessage("Lock acquired on [" + labelLockMessage + "]", labelBuild1);
+				WorkflowRun labelBuild2 = labelJob.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/2", labelBuild2);
+				story.j.waitForMessage("Lock acquired on [" + labelLockMessage + "]", labelBuild2);
+				WorkflowRun labelBuild3 = labelJob.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/3", labelBuild3);
+				story.j.waitForMessage("Lock acquired on [" + labelLockMessage + "]", labelBuild3);
+
+				// ok to complete the builds in reverse order as nothing is waiting on locks
+				int stepIndex = 3;
+				SemaphoreStep.success("wait-inside/" + stepIndex--, null);
+				story.j.waitForMessage("Finish", labelBuild3);
+				SemaphoreStep.success("wait-inside/" + stepIndex--, null);
+				story.j.waitForMessage("Finish", labelBuild2);
+				SemaphoreStep.success("wait-inside/" + stepIndex--, null);
+				story.j.waitForMessage("Finish", labelBuild1);
+			}
+		});
+	}
+
+	@Test
 	public void jobOrderingPreservedWithinPriorityBands() {
 		// Testing that high priority builds are scheduled in advance of lower priority builds, but within a
 		// priority band, builds still acquire the lock in the order they were scheduled

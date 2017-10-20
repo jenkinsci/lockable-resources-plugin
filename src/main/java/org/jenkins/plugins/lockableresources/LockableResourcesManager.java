@@ -16,13 +16,7 @@ import hudson.model.Run;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -201,8 +195,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public synchronized List<LockableResource> tryQueue(LockableResourcesStruct requiredResources,
 			long queueItemId, String queueItemProject, int number,
 			Map<String, Object> params, Logger log) throws ExecutionException {
-		List<LockableResource> selected = new ArrayList<LockableResource>();
 
+		List<LockableResource> selected = new ArrayList<>();
 		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
 			// The project has another buildable item waiting -> bail out
 			log.log(Level.FINEST, "{0} has another build waiting resources." +
@@ -221,12 +215,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			candidates = getResourcesMatchingScript(systemGroovyScript, params);
 		}
 
-		for (LockableResource rs : candidates) {
-			if (number != 0 && (selected.size() >= number))
-				break;
-			if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued())
-				selected.add(rs);
-		}
+		selected = selectResourcesFromCandidates(candidates, number, null, selected);
 
 		// if did not get wanted amount or did not get all
 		int required_amount = number == 0 ? candidates.size() : number;
@@ -246,6 +235,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		for (LockableResource rsc : selected) {
 			rsc.setQueued(queueItemId, queueItemProject);
+		}
+		return selected;
+	}
+
+	private List<LockableResource> selectResourcesFromCandidates(List<LockableResource> candidates,
+																 int numberRequired,
+																 @Nullable List<String> resourceNamesToBeUnlocked,
+																 List<LockableResource> selected) {
+		// select randomly from candidates list for any resources that are free to be locked, until the number
+		// required have been selected
+		// the selected list passed in may already contain some resources
+		// no checks are made to see if any already selected resources are also in the candidates list
+		// if the numberRequired is 0, that means try to select all the candidates
+		Random rand = new Random();
+		int candidatesSize = candidates.size();
+		// Keep a record of which candidates seen
+		HashSet<Integer> inspectedIndexes = new HashSet<>();
+		while (inspectedIndexes.size() < candidatesSize) {
+			int index = rand.nextInt(candidatesSize);
+			// only check if this candidate is valid, if we haven't checked it already
+			if (!inspectedIndexes.contains(index)) {
+				LockableResource candidate = candidates.get(index);
+				if ((!candidate.isReserved() && !candidate.isLocked() && !candidate.isQueued()) ||
+						(resourceNamesToBeUnlocked != null && resourceNamesToBeUnlocked.contains(candidate.getName())))
+					selected.add(candidate);
+				if (numberRequired != 0 && (selected.size() >= numberRequired))
+					break;
+				inspectedIndexes.add(index);
+			}
 		}
 		return selected;
 	}
@@ -575,19 +593,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// start with an empty set of selected resources
-		List<LockableResource> selected = new ArrayList<LockableResource>();
-
-		// Check resource candidates if they are not reserved and not locked or are about to be unlocked
-		for (LockableResource candidate : candidates) {
-			if (selected.size() >= requiredAmount) {
-				break;
-			}
-			if ((!candidate.isReserved() && !candidate.isLocked()) ||
-					(lockedResourcesAboutToBeUnlocked != null && lockedResourcesAboutToBeUnlocked.contains(candidate.getName()))) {
-				selected.add(candidate);
-			}
-		}
-
+		List<LockableResource> selected = selectResourcesFromCandidates(candidates, requiredAmount, lockedResourcesAboutToBeUnlocked, new ArrayList<LockableResource>());
 		if (selected.size() < requiredAmount) {
 			if (logger != null) {
 				logger.println("Found " + selected.size() + " available resource(s). Waiting for correct amount: " + requiredAmount + ".");
