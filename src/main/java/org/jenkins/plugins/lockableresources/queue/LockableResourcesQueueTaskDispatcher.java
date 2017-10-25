@@ -140,7 +140,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 
 		} else {
-			if (LockableResourcesManager.get().queue(resources.required, item.getId())) {
+			if (LockableResourcesManager.get().queue(resources.required, item.getId(), project.getFullDisplayName())) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
