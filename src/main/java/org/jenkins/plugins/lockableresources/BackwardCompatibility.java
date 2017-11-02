@@ -15,6 +15,7 @@ import hudson.init.Initializer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 
@@ -35,7 +36,7 @@ public final class BackwardCompatibility {
 					List<String> resourcesNames = new ArrayList<String>();
 					resourcesNames.add(resource.getName());
 					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-					LockableResourcesManager.get().queueContext(queuedContext, resourceHolder, resource.getName(), null, 0);
+					LockableResourcesManager.get().queueContext(new QueuedContextStruct(queuedContext, resourceHolder, resource.getName(), null, 0));
 				}
 				queuedContexts.clear();
 			}

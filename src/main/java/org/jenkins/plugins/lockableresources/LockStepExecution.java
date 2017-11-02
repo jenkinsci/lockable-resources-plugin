@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,29 +49,32 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			resources.add(step.resource);
 		}
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
-		// determine if there are enough resources available to proceed
-		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
-        if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.inversePrecedence, step.variable)) {
-			listener.getLogger().println("[" + step + "] is locked, waiting...");
-			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString(), step.variable, step.lockPriority);
-		} // proceed is called inside lock if execution is possible
+		LockableResourcesManager.get().lockOrQueue(resourceHolder, getContext(), step, listener.getLogger());
 		return false;
 	}
 
-	public static void proceed(List<String> resourcenames, StepContext context, String resourceDescription, boolean inversePrecedence, String resourceVariableName) {
+	public static void proceed(List<String> resourceNames, StepContext context, String resourceDescription, String resourceVariableName) {
 		Run<?, ?> r = null;
+		String logString;
 		try {
 			r = context.get(Run.class);
-			context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
+			logString = "Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId();
+            for (String name: resourceNames) {
+                if (!resourceDescription.contains(name)) {
+                    logString += " Resources " + resourceNames;
+                    break;
+                }
+            }
+			context.get(TaskListener.class).getLogger().println(logString);
 		} catch (Exception e) {
 			context.onFailure(e);
 			return;
 		}
 
-        LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
+        LOGGER.finest(logString);
 
-        handleResourceVariable(context, resourcenames, resourceVariableName)
-                .withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence))
+        handleResourceVariable(context, resourceNames, resourceVariableName)
+                .withCallback(new Callback(resourceNames, resourceDescription, resourceVariableName))
                 .withDisplayName(null)
                 .start();
     }
@@ -96,18 +100,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		private final List<String> resourceNames;
 		private final String resourceDescription;
-		private final boolean inversePrecedence;
+		private final String resourceVariableName;
 
-		Callback(List<String> resourceNames, String resourceDescription, boolean inversePrecedence) {
+		Callback(List<String> resourceNames, String resourceDescription, String resourceVariableName) {
 			this.resourceNames = resourceNames;
 			this.resourceDescription = resourceDescription;
-			this.inversePrecedence = inversePrecedence;
+			this.resourceVariableName = resourceVariableName;
 		}
 
 		protected void finished(StepContext context) throws Exception {
-			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
-			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceDescription + "]");
-			LOGGER.finest("Lock released on [" + resourceDescription + "]");
+		    Run build = context.get(Run.class);
+			LockableResourcesManager.get().releaseResourceNames(this.resourceNames, build);
+			PrintStream taskLogger = context.get(TaskListener.class).getLogger();
+            String logString = "Lock released on resource [" + this.resourceDescription + "] by " + build.getExternalizableId();
+            for (String name: this.resourceNames) {
+                if (!this.resourceDescription.contains(name)) {
+                    logString += " Resources " + this.resourceNames;
+                    break;
+                }
+            }
+			if (taskLogger != null)
+				taskLogger.println(logString);
+			LOGGER.finest(logString);
 		}
 
 		private static final long serialVersionUID = 1L;
@@ -140,7 +154,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	public void stop(Throwable cause) throws Exception {
 		boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
 		if (!cleaned) {
-			LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource witing list. The context is not in the waiting list.");
+			LOGGER.log(Level.WARNING, "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
 		}
 		getContext().onFailure(cause);
 	}

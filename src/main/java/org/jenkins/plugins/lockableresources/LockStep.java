@@ -112,26 +112,47 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		}
 	}
 
+	public static String toLogString(String resource,
+                                     String label,
+                                     int quantity,
+                                     String variable,
+                                     boolean inversePrecedence,
+                                     int lockPriority) {
+	    StringBuilder instanceString = new StringBuilder();
+        // a label takes always priority over resource if both specified
+        if (label != null && !label.isEmpty()) {
+            instanceString.append("Label: ").append(label);
+            instanceString.append(", Quantity: ");
+            if (quantity > 0) {
+                instanceString.append(quantity);
+            } else {
+                instanceString.append("All");
+            }
+        } else if (resource != null) {
+            instanceString.append(resource);
+        } else {
+            return "[no resource or label specified - probably a bug]";
+        }
+        if (lockPriority > 0) {
+            instanceString.append(", LockPriority: ").append(lockPriority);
+        }
+        if (variable != null && !variable.isEmpty()) {
+            instanceString.append(", Variable: ").append(variable);
+        }
+        if (inversePrecedence) {
+            instanceString.append(", InversePrecedence: ").append(inversePrecedence);
+        }
+        return instanceString.toString();
+    }
+
 	public String toString() {
-		StringBuilder instanceString = new StringBuilder();
-		// a label takes always priority
-		if (this.label != null) {
-			instanceString.append("Label: ").append(this.label);
-		} else if (this.resource != null) {
-			instanceString.append(this.resource);
-		} else {
-			return "[no resource/label specified - probably a bug]";
-		}
-		if (this.quantity > 0) {
-			 instanceString.append(", Quantity: ").append(this.quantity);
-		}
-		if (this.lockPriority > 0) {
-			instanceString.append(", LockPriority: ").append(this.lockPriority);
-		}
-		if (variable != null) {
-			instanceString.append(", Variable: ").append(this.variable);
-		}
-		return instanceString.toString();
+	    return toLogString(
+	            this.resource,
+                this.label,
+                this.quantity,
+                this.variable,
+                this.inversePrecedence,
+                this.lockPriority);
 	}
 
 	/**
