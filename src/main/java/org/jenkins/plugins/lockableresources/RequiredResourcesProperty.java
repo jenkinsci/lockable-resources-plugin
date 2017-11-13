@@ -101,13 +101,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return labelName;
 	}
 
-        /**
-         * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
-         * @return System Groovy Script if defined
-         * @since TODO
-         * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map) 
-         */
-        @CheckForNull
+	/**
+	 * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
+	 * @return System Groovy Script if defined
+	 * @since TODO
+	 * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
+	 */
+	@CheckForNull
 	public SecureGroovyScript getResourceMatchScript() {
 		return resourceMatchScript;
 	}

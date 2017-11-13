@@ -118,7 +118,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				Throwable toReport = ex.getCause();
 				if (toReport == null) { // We care about the cause only
 					toReport = ex;
-				}	
+				}
 				if (LOGGER.isLoggable(Level.WARNING)) {
 					if (lastLogged.getIfPresent(item.getId()) == null) {
 						lastLogged.put(item.getId(), new Date());
@@ -127,7 +127,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 						LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
 					}
 				}
-				
+
 				return new BecauseResourcesQueueFailed(resources, toReport);
 			}
 
@@ -167,7 +167,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				return "Waiting for resources with label " + rscStruct.label;
 		}
 	}
-        
+
 	// Only for UI
 	@Restricted(NoExternalUse.class)
 	public static class BecauseResourcesQueueFailed extends CauseOfBlockage {
@@ -176,7 +176,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		private final LockableResourcesStruct resources;
 		@NonNull
 		private final Throwable cause;
-		
+
 		public BecauseResourcesQueueFailed(@NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
 			this.cause = cause;
 			this.resources = resources;
