@@ -158,12 +158,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean queue(List<LockableResource> resources,
-			long queueItemId) {
+			long queueItemId, String queueProjectName) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
-		for (LockableResource r : resources)
-			r.setQueued(queueItemId);
+		for (LockableResource r : resources) {
+			r.setQueued(queueItemId, queueProjectName);
+		}
 		return true;
 	}
 
