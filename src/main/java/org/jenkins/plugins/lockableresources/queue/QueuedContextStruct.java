@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import java.io.Serializable;
+import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
@@ -30,7 +31,7 @@ public class QueuedContextStruct implements Serializable {
 	/*
 	 * Reference to the resources required by the step context.
 	 */
-	private LockableResourcesStruct lockableResourcesStruct;
+	private List<LockableResourcesStruct> lockableResourcesStruct;
 
 	/*
 	 * Description of the required resources used within logging messages.
@@ -40,7 +41,7 @@ public class QueuedContextStruct implements Serializable {
 	/*
 	 * Constructor for the QueuedContextStruct class.
 	 */
-	public QueuedContextStruct(StepContext context, LockableResourcesStruct lockableResourcesStruct, String resourceDescription) {
+	public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription) {
 		this.context = context;
 		this.lockableResourcesStruct = lockableResourcesStruct;
 		this.resourceDescription = resourceDescription;
@@ -56,7 +57,7 @@ public class QueuedContextStruct implements Serializable {
 	/*
 	 * Gets the required resources.
 	 */
-	public LockableResourcesStruct getResources() {
+	public List<LockableResourcesStruct> getResources() {
 		return this.lockableResourcesStruct;
 	}
 

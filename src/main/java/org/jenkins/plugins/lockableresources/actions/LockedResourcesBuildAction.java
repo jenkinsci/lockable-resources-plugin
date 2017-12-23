@@ -11,6 +11,7 @@ package org.jenkins.plugins.lockableresources.actions;
 import hudson.model.Action;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -40,7 +41,7 @@ public class LockedResourcesBuildAction implements Action {
 	}
 
 	public static LockedResourcesBuildAction fromResources(
-			List<LockableResource> resources) {
+			Collection<LockableResource> resources) {
 		List<ResourcePOJO> resPojos = new ArrayList<ResourcePOJO>();
 		for (LockableResource r : resources)
 			resPojos.add(new ResourcePOJO(r));

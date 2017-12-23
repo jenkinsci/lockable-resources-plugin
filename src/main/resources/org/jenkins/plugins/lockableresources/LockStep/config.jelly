@@ -13,4 +13,14 @@
 	<f:entry title="${%Inverse precedence}" field="inversePrecedence">
 		<f:checkbox/>
 	</f:entry>
+	<f:entry title="${%Extra resources}">
+		<f:repeatable field="extra" header="" minimum="0" add="${%Add Resource}">
+			<table width="100%">
+				<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockStepResource"/>
+				<f:entry title="">
+					<div align="right"><f:repeatableDeleteButton/></div>
+				</f:entry>
+			</table>
+		</f:repeatable>
+	</f:entry>
 </j:jelly>

@@ -13,6 +13,7 @@ import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -38,7 +39,7 @@ public final class BackwardCompatibility {
 					List<String> resourcesNames = new ArrayList<String>();
 					resourcesNames.add(resource.getName());
 					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-					LockableResourcesManager.get().queueContext(queuedContext, resourceHolder, resource.getName());
+					LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName());
 				}
 				queuedContexts.clear();
 			}

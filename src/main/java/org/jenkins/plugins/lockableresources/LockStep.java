@@ -1,6 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
@@ -19,18 +22,21 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 public class LockStep extends AbstractStepImpl implements Serializable {
 
 	@CheckForNull
-	public String resource = null;
+	private String resource = null;
 
 	@CheckForNull
-	public String label = null;
+	private String label = null;
 
-	public int quantity = 0;
+	private int quantity = 0;
 
 	/** name of environment variable to store locked resources in */
 	@CheckForNull
 	public String variable = null;
 
 	public boolean inversePrecedence = false;
+
+	@CheckForNull
+	private List<LockStepResource> extra = null;
 
 	// it should be LockStep() - without params. But keeping this for backward compatibility
 	// so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource is not required)
@@ -65,6 +71,11 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		this.quantity = quantity;
 	}
 
+	@DataBoundSetter
+	public void setExtra(List<LockStepResource> extra) {
+		this.extra = extra;
+	}
+
 	@Extension
 	public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
 
@@ -92,44 +103,41 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		}
 
 		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
-			String resourceLabel = Util.fixEmpty(value);
-			String resourceName = Util.fixEmpty(resource);
-			if (resourceLabel != null && resourceName != null) {
-				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
-			}
-			if ((resourceLabel == null) && (resourceName == null)) {
-				return FormValidation.error("Either label or resource name must be specified.");
-			}
-			return FormValidation.ok();
+			return LockStepResource.DescriptorImpl.doCheckLabel(value, resource);
 		}
 
 		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
-			return doCheckLabel(label, value);
+			return LockStepResource.DescriptorImpl.doCheckLabel(label, value);
 		}
 	}
 
 	public String toString() {
-		// a label takes always priority
-		if (this.label != null) {
-			if (this.quantity > 0) {
-				return "Label: " + this.label + ", Quantity: " + this.quantity;
+		if (extra != null && !extra.isEmpty()) {
+			StringBuilder builder = new StringBuilder();
+			for (LockStepResource resource : getResources()) {
+				builder.append("{" + resource.toString() + "},");
 			}
-			return "Label: " + this.label;
+			return builder.toString();
+		} else {
+			return LockStepResource.toString(resource, label, quantity);
 		}
-		// make sure there is an actual resource specified
-		if (this.resource != null) {
-			return this.resource;
-		}
-		return "[no resource/label specified - probably a bug]";
 	}
 
 	/**
 	 * Label and resource are mutual exclusive.
 	 */
 	public void validate() throws Exception {
-		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
-			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
+		LockStepResource.validate(resource, label, quantity);
+	}
+	
+	public List<LockStepResource> getResources() {
+		List<LockStepResource> resources = new ArrayList<>();
+		resources.add(new LockStepResource(resource, label, quantity));
+		
+		if (extra != null) {
+			resources.addAll(extra);
 		}
+		return resources;
 	}
 
 	private static final long serialVersionUID = 1L;
