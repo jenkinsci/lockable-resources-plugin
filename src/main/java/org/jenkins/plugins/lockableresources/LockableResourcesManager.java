@@ -34,6 +34,7 @@ import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
@@ -638,9 +639,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public synchronized Set<LockableResource> checkResourcesAvailability(List<LockableResourcesStruct> requiredResourcesList,
 			@Nullable PrintStream logger, @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
 		
-		// Build possible resources for each requirement
-		Map<List<LockableResource>, Integer> allCandidates = new HashMap<>();
+		List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 		
+		// Build possible resources for each requirement
 		for (LockableResourcesStruct requiredResources : requiredResourcesList) {
 			// get possible resources
 			int requiredAmount = 0; // 0 means all
@@ -662,25 +663,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				requiredAmount = candidates.size();
 			}
 			
-			allCandidates.put(candidates, requiredAmount);
+			requiredResourcesCandidatesList.add(new LockableResourcesCandidatesStruct(candidates, requiredAmount));
 		}
 		
 		// Process freed resources
-		Map<Map.Entry<List<LockableResource>, Integer>, List<LockableResource>> currentSelection = new HashMap<>();
 		int totalSelected = 0;
 		
-		for (Map.Entry<List<LockableResource>, Integer> entry : allCandidates.entrySet()) {
-			List<LockableResource> candidates = entry.getKey();
-			int requiredAmount = entry.getValue();
-			
+		for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
 			// start with an empty set of selected resources
 			List<LockableResource> selected = new ArrayList<LockableResource>();
 			
 			// some resources might be already locked, but will be freed.
 			// Determine if these resources can be reused
 			if (lockedResourcesAboutToBeUnlocked != null) {
-				for (LockableResource candidate : candidates) {
-					if (selected.size() >= requiredAmount) {
+				for (LockableResource candidate : requiredResources.candidates) {
+					if (selected.size() >= requiredResources.requiredAmount) {
 						break;
 					}
 					if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
@@ -690,7 +687,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 			
 			totalSelected += selected.size();
-			currentSelection.put(entry, selected);
+			requiredResources.selected = selected;
 		}
 		
 		// if none of the currently locked resources can be reused,
@@ -702,11 +699,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		// Find remaining resources
 		Set<LockableResource> allSelected = new HashSet<>();
 		
-		for (Map.Entry<Map.Entry<List<LockableResource>, Integer>, List<LockableResource>> entry : currentSelection.entrySet()) {
-			List<LockableResource> candidates = entry.getKey().getKey();
-			List<LockableResource> selected = entry.getValue();
-			int requiredAmount = entry.getKey().getValue();
+		for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
+			List<LockableResource> candidates = requiredResources.candidates;
+			List<LockableResource> selected = requiredResources.selected;
+			int requiredAmount = requiredResources.requiredAmount;
 			
+			// Try and re-use as many previously selected resources first
+			List<LockableResource> alreadySelectedCandidates = new ArrayList<>(candidates);
+			alreadySelectedCandidates.retainAll(allSelected);
+			for (LockableResource rs : alreadySelectedCandidates) {
+				if (selected.size() >= requiredAmount) {
+					break;
+				}
+				if (!rs.isReserved() && !rs.isLocked()) {
+					selected.add(rs);
+				}
+			}
+			
+			candidates.removeAll(alreadySelectedCandidates);
 			for (LockableResource rs : candidates) {
 				if (selected.size() >= requiredAmount) {
 					break;
