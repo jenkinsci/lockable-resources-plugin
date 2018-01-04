@@ -190,6 +190,63 @@ public class LockStepTest {
 	}
 
 	@Test
+	public void lockOrderLabelQuantityFreedResources() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock(label: 'label1') {\n" +
+						"	semaphore 'wait-inside'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
+				p2.setDefinition(new CpsFlowDefinition(
+						"lock(label: 'label1', quantity: 2) {\n" +
+						"	semaphore 'wait-inside-quantity2'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+				// Ensure that b2 reaches the lock before b3
+				story.j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b2);
+				story.j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 2.", b2);
+
+				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
+				p3.setDefinition(new CpsFlowDefinition(
+						"lock(label: 'label1', quantity: 1) {\n" +
+						"	semaphore 'wait-inside-quantity1'\n" +
+						"}\n" +
+						"echo 'Finish'"
+				));
+				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("[Label: label1, Quantity: 1] is locked, waiting...", b3);
+				story.j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 1.", b3);
+
+				// Unlock Label: label1
+				SemaphoreStep.success("wait-inside/1", null);
+				story.j.waitForMessage("Lock released on resource [Label: label1]", b1);
+
+				// Both get their lock
+				story.j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
+				story.j.waitForMessage("Lock acquired on [Label: label1, Quantity: 1]", b3);
+				
+				SemaphoreStep.success("wait-inside-quantity2/1", null);
+				SemaphoreStep.success("wait-inside-quantity1/1", null);
+				story.j.waitForMessage("Finish", b2);
+				story.j.waitForMessage("Finish", b3);
+			}
+		});
+	}
+
+	@Test
 	public void lockOrder() {
 		story.addStep(new Statement() {
 			@Override

@@ -671,6 +671,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		
 		for (Map.Entry<List<LockableResource>, Integer> entry : allCandidates.entrySet()) {
 			List<LockableResource> candidates = entry.getKey();
+			int requiredAmount = entry.getValue();
 			
 			// start with an empty set of selected resources
 			List<LockableResource> selected = new ArrayList<LockableResource>();
@@ -679,6 +680,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			// Determine if these resources can be reused
 			if (lockedResourcesAboutToBeUnlocked != null) {
 				for (LockableResource candidate : candidates) {
+					if (selected.size() >= requiredAmount) {
+						break;
+					}
 					if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
 						selected.add(candidate);
 					}
