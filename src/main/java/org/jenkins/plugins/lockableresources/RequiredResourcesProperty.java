@@ -43,23 +43,33 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String resourceNamesVar, String resourceNumber,
 			String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
 		super();
-		if (resourceNames != null) {
-			this.resourceNames = resourceNames.trim();
+		
+		if (resourceNames == null || resourceNames.trim().isEmpty()) {
+		    this.resourceNames = null;
 		} else {
-			this.resourceNames = null;
+		    this.resourceNames = resourceNames.trim();
 		}
-		this.resourceNamesVar = resourceNamesVar;
-		this.resourceNumber = resourceNumber;
+		if (resourceNamesVar == null || resourceNamesVar.trim().isEmpty()) {
+		    this.resourceNamesVar = null;
+		} else {
+		    this.resourceNamesVar = resourceNamesVar.trim();
+		}
+		if (resourceNumber == null || resourceNumber.trim().isEmpty()) {
+		    this.resourceNumber = null;
+		} else {
+		    this.resourceNumber = resourceNumber.trim();
+		}
+		String labelNamePreparation = (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
 		if (resourceMatchScript != null) {
 			this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
-			this.labelName = labelName;
+			this.labelName = labelNamePreparation;
 		} else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
 			this.resourceMatchScript = new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()),
 					false, null).configuring(ApprovalContext.create());
 			this.labelName = null;
 		} else {
 			this.resourceMatchScript = null;
-			this.labelName = labelName;
+			this.labelName = labelNamePreparation;
 		}
 	}
 
