@@ -71,6 +71,11 @@ public class LockableResourcesStruct implements Serializable {
 		this(resources, null, 0);
 	}
 
+	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
+		this(resources, label, quantity);
+		requiredVar = variable;
+	}
+
 	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
 		required = new ArrayList<LockableResource>();
 		if (resources != null) {

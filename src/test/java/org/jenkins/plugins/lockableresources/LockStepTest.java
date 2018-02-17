@@ -69,8 +69,8 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
 				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
 				p.setDefinition(new CpsFlowDefinition(
-						"lock(label: 'label1') {\n" +
-						"	echo 'Resource locked'\n" +
+						"lock(label: 'label1', variable: 'var') {\n" +
+						"	echo \"Resource locked: ${env.var}\"\n" +
 						"}\n" +
 						"echo 'Finish'"
 				));
@@ -78,6 +78,7 @@ public class LockStepTest {
 				story.j.waitForCompletion(b1);
 				story.j.assertBuildStatus(Result.SUCCESS, b1);
 				story.j.assertLogContains("Lock released on resource [Label: label1]", b1);
+				story.j.assertLogContains("Resource locked: resource1", b1);
 			}
 		});
 	}
