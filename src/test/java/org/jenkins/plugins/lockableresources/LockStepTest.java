@@ -456,6 +456,27 @@ public class LockStepTest {
 		});
 	}
 
+	@Issue("JENKINS-31437")
+	@Test
+	public void canUseDefinedProperties()throws Exception {
+		story.addStep(new Statement() {
+			@Override public void evaluate() throws Throwable {
+                LockableResourcesManager.get().createResource("resource1", "id", "1");
+
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "lock(resource: 'resource1', quantity: 1, injectProperties: true) {\n" +
+                                "	echo 'env.id: ' + env.id\n" +
+                                "}\n" +
+                                "echo 'Finish'"
+                ));
+
+                WorkflowRun build = p.scheduleBuild2(0).waitForStart();
+                story.j.waitForMessage("Finish", build);
+                story.j.assertLogContains("env.id: 1", build);
+			}});
+	}
+
 	@Issue("JENKINS-36479")
 	@Test public void hardKillNewBuildClearsLock() throws Exception {
 		story.addStep(new Statement() {

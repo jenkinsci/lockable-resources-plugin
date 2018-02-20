@@ -11,7 +11,6 @@ package org.jenkins.plugins.lockableresources;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
 import hudson.BulkChange;
-import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
 import java.io.IOException;
@@ -276,16 +275,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
-	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, null, false);
+	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, StepContext context) {
+		return lock(resources, build, context, null, null, false, true, false, false);
 	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage,
-			final String variable, boolean inversePrecedence) {
+			Run<?, ?> build, StepContext context, @Nullable String logmessage,
+			final String variable, boolean inversePrecedence,
+			boolean injectProperties, boolean prefixProperties, boolean uppercaseProperties) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
@@ -303,10 +303,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				// since LockableResource contains transient variables, they cannot be correctly serialized
 				// hence we use their unique resource names
 				List<String> resourceNames = new ArrayList<String>();
+				List<LockStepData> stepData = new ArrayList<LockStepData>();
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
+					stepData.add(LockStepData.from(resource));
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
+
+				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence, stepData, injectProperties, prefixProperties, uppercaseProperties);
 			}
 		}
 		save();
@@ -402,11 +405,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 			// determine old resources no longer needed
 			List<String> freeResources = new ArrayList<String>();
+			List<LockStepData> stepData = new ArrayList<LockStepData>();
 			for (String resourceNameToUnlock : resourceNamesToUnLock) {
 				boolean resourceStillNeeded = false;
 				for (LockableResource requiredResource : requiredResourceForNextContext) {
 					if (resourceNameToUnlock != null && resourceNameToUnlock.equals(requiredResource.getName())) {
 						resourceStillNeeded = true;
+						stepData.add(LockStepData.from(requiredResource));
 						break;
 					}
 				}
@@ -420,7 +425,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			freeResources(freeResources, build);
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), nextContext.getResources().requiredVar, inversePrecedence);
+			LockableResourcesStruct resource = nextContext.getResources();
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), resource.requiredVar, inversePrecedence, stepData, resource.injectResourcesProperties, resource.prefixResourcesProperties, resource.upperCaseResourcesProperties);
 		}
 		save();
 	}
@@ -470,20 +476,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	/**
 	 * Creates the resource if it does not exist.
 	 */
-	public synchronized boolean createResource(String name) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name));
-			save();
-			return true;
-		}
-		return false;
+	public synchronized boolean createResource(String name, String...propertiesKeysValues) {
+		return createResourceWithLabel(name, null, propertiesKeysValues);
 	}
 
-	public synchronized boolean createResourceWithLabel(String name, String label) {
+	public synchronized boolean createResourceWithLabel(String name, String label, String...propertiesKeysValues) {
 		LockableResource existent = fromName(name);
+		if (propertiesKeysValues.length % 2 != 0) {
+			throw new IllegalStateException("provided key-values are incomplete");
+		}
 		if (existent == null) {
-			getResources().add(new LockableResource(name, "", label, null));
+			LockableResource lr = new LockableResource(name, "", label, null);
+			for (int i = 0; i < propertiesKeysValues.length; i+=2) {
+				lr.getProperties().add(new LockableResourceProperty(propertiesKeysValues[i], propertiesKeysValues[i+1]));
+			}
+			getResources().add(lr);
 			save();
 			return true;
 		}
