@@ -477,7 +477,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Creates the resource if it does not exist.
 	 */
 	public synchronized boolean createResource(String name, String...propertiesKeysValues) {
-		return createResourceWithLabel(name, null, propertiesKeysValues);
+		return createResourceWithLabel(name, "", propertiesKeysValues);
 	}
 
 	public synchronized boolean createResourceWithLabel(String name, String label, String...propertiesKeysValues) {
