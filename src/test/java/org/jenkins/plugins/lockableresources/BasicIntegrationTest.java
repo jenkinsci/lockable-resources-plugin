@@ -199,16 +199,15 @@ public class BasicIntegrationTest {
 
 		QueueTaskFuture<FreeStyleBuild> futureBuild = p.scheduleBuild2(0);
 
-		// Sleeping briefly to make sure the queue gets updated.
-		Thread.sleep(2000);
-
-		List<Queue.Item> items = j.jenkins.getQueue().getItems(p);
-		assertNotNull(items);
-		assertEquals(1, items.size());
-
-		assertTrue(items.get(0) instanceof Queue.BlockedItem);
-
-		Queue.BlockedItem blockedItem = (Queue.BlockedItem) items.get(0);
+		Queue.BlockedItem blockedItem = null;
+		while (blockedItem == null) {
+			List<Queue.Item> items = j.jenkins.getQueue().getItems(p);
+			if (!items.isEmpty() && items.get(0) instanceof Queue.BlockedItem) {
+				blockedItem = (Queue.BlockedItem) items.get(0);
+			}
+			if (blockedItem == null)
+				Thread.sleep(1000);
+		}
 		assertTrue(blockedItem.getCauseOfBlockage() instanceof LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed);
 
 		ScriptApproval approval = ScriptApproval.get();

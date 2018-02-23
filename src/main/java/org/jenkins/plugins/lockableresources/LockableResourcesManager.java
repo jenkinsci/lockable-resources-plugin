@@ -11,21 +11,25 @@ package org.jenkins.plugins.lockableresources;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
 import hudson.BulkChange;
-import hudson.model.AbstractBuild;
-import hudson.model.Run;
+import hudson.model.*;
 
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import hudson.model.Queue;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkins.plugins.lockableresources.queue.QueuedFreestyleStruct;
+import org.jenkins.plugins.lockableresources.queue.QueuedStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -42,14 +46,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private transient int defaultPriority;
 	@Deprecated
 	private transient String priorityParameterName;
+
+	// Whenever a public method is called will read or alter the state of the resources, the resource states themselves
+	// or the lock queue, you MUST take a read or write lock as appropriate.
+    // And if you take a write lock, you probably want to call save() when you're done
+	// Remember, read locks can't be escalated to write locks. Take a write lock if you might want to write.
+	private transient ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock(true);
 	private List<LockableResource> resources;
-
-
-	/**
-	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
-	 * otherwise (freestyle builds) regular Jenkins queue is used.
-	 */
-	private List<QueuedContextStruct> queuedContexts = new ArrayList<QueuedContextStruct>();
+	private List<QueuedStruct> queuedContexts = new ArrayList<>();
 
 	public LockableResourcesManager() {
 		resources = new ArrayList<LockableResource>();
@@ -57,72 +61,111 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public List<LockableResource> getResources() {
-		return resources;
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			return resources;
+		} finally {
+			accessLock.unlock();
+		}
 	}
 
 	public List<LockableResource> getResourcesFromProject(String fullName) {
-		List<LockableResource> matching = new ArrayList<LockableResource>();
-		for (LockableResource r : resources) {
-			String rName = r.getQueueItemProject();
-			if (rName != null && rName.equals(fullName)) {
-				matching.add(r);
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			List<LockableResource> matching = new ArrayList<LockableResource>();
+			for (LockableResource r : resources) {
+				String rName = r.getQueueItemProject();
+				if (rName != null && rName.equals(fullName)) {
+					matching.add(r);
+				}
 			}
+			return matching;
+		} finally {
+			accessLock.unlock();
 		}
-		return matching;
 	}
 
 	public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
-		List<LockableResource> matching = new ArrayList<LockableResource>();
-		for (LockableResource r : resources) {
-			Run<?, ?> rBuild = r.getBuild();
-			if (rBuild != null && rBuild == build) {
-				matching.add(r);
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			List<LockableResource> matching = new ArrayList<LockableResource>();
+			for (LockableResource r : resources) {
+				Run<?, ?> rBuild = r.getBuild();
+				if (rBuild != null && rBuild == build) {
+					matching.add(r);
+				}
 			}
+			return matching;
+		} finally {
+			accessLock.unlock();
 		}
-		return matching;
 	}
 
 	public Boolean isValidLabel(String label)
 	{
-		return this.getAllLabels().contains(label);
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			return this.getAllLabels().contains(label);
+		} finally {
+			accessLock.unlock();
+		}
 	}
 
 	public Set<String> getAllLabels()
 	{
-		Set<String> labels = new HashSet<String>();
-		for (LockableResource r : this.resources) {
-			String rl = r.getLabels();
-			if (rl == null || "".equals(rl))
-				continue;
-			labels.addAll(Arrays.asList(rl.split("\\s+")));
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			Set<String> labels = new HashSet<String>();
+			for (LockableResource r : this.resources) {
+				String rl = r.getLabels();
+				if (rl == null || "".equals(rl))
+					continue;
+				labels.addAll(Arrays.asList(rl.split("\\s+")));
+			}
+			return labels;
+		} finally {
+			accessLock.unlock();
 		}
-		return labels;
 	}
 
 	public int getFreeResourceAmount(String label)
 	{
-		int free = 0;
-		for (LockableResource r : this.resources) {
-			if (r.isLocked() || r.isQueued() || r.isReserved())
-				continue;
-			if (Arrays.asList(r.getLabels().split("\\s+")).contains(label))
-				free += 1;
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			int free = 0;
+			for (LockableResource r : this.resources) {
+				if (r.isAvailable() && Arrays.asList(r.getLabels().split("\\s+")).contains(label))
+					free += 1;
+			}
+			return free;
+		} finally {
+			accessLock.unlock();
 		}
-		return free;
 	}
 
-	public List<LockableResource> getResourcesWithLabel(String label,
-			Map<String, Object> params) {
-		List<LockableResource> found = new ArrayList<LockableResource>();
-		for (LockableResource r : this.resources) {
-			if (r.isValidLabel(label, params))
-				found.add(r);
+	public List<LockableResource> getResourcesWithLabel(String label) {
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			List<LockableResource> found = new ArrayList<LockableResource>();
+			for (LockableResource r : this.resources) {
+				if (r.isValidLabel(label))
+					found.add(r);
+			}
+			return found;
+		} finally {
+			accessLock.unlock();
 		}
-		return found;
 	}
 
 	/**
-	 * Get a list of resources matching the script.
+	 * Get a list of available resources matching the script.
 	 * @param script Script
 	 * @param params Additional parameters
 	 * @return List of the matching resources
@@ -131,123 +174,108 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * @since TODO
 	 */
 	@Nonnull
-	public List<LockableResource> getResourcesMatchingScript(@Nonnull SecureGroovyScript script,
-                                                             @CheckForNull Map<String, Object> params) throws ExecutionException{
-		List<LockableResource> found = new ArrayList<LockableResource>();
+	private List<LockableResource> getResourcesMatchingScript(@Nonnull SecureGroovyScript script,
+															 @CheckForNull Map<String, Object> params) throws ExecutionException {
+		List<LockableResource> found = new ArrayList<>();
 		for (LockableResource r : this.resources) {
-			if (r.scriptMatches(script, params))
+			if (r.isAvailable() && r.scriptMatches(script, params))
 				found.add(r);
 		}
 		return found;
 	}
 
 	public LockableResource fromName(String resourceName) {
-		if (resourceName != null) {
-			for (LockableResource r : resources) {
-				if (resourceName.equals(r.getName()))
-					return r;
-			}
-		}
-		return null;
-	}
-
-	public synchronized boolean queue(List<LockableResource> resources,
-			long queueItemId) {
-		for (LockableResource r : resources)
-			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
-				return false;
-		for (LockableResource r : resources)
-			r.setQueued(queueItemId);
-		return true;
-	}
-
-	/**
-	 * @deprecated USe {@link #tryQueue(org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct, long, java.lang.String, int, java.util.Map, java.util.logging.Logger)}
-	 */
-	@Deprecated
-	@CheckForNull
-	public synchronized List<LockableResource> queue(LockableResourcesStruct requiredResources,
-	                                                 long queueItemId,
-	                                                 String queueItemProject,
-	                                                 int number,  // 0 means all
-	                                                 Map<String, Object> params,
-	                                                 Logger log) {
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
 		try {
-			return tryQueue(requiredResources, queueItemId, queueItemProject, number, params, log);
-		} catch(ExecutionException ex) {
-			if (LOGGER.isLoggable(Level.WARNING)) {
-				String itemName = queueItemProject + " (id=" + queueItemId + ")";
-				LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, ex.getCause() != null ? ex.getCause() : ex);
+			if (resourceName != null) {
+				for (LockableResource r : resources) {
+					if (resourceName.equals(r.getName()))
+						return r;
+				}
 			}
 			return null;
+		} finally {
+			accessLock.unlock();
 		}
 	}
-	
+
 	/**
-	 * Try to acquire the resources required by the task.
-	 * @param number Number of resources to acquire. {@code 0} means all
+	 * Try to acquire the resources required by the freestyleproject.
 	 * @return List of the locked resources if the task has been accepted.
 	 *         {@code null} if the item is still waiting for the resources
 	 * @throws ExecutionException Cannot queue the resource due to the execution failure. Carries info in the cause
-	 * @since TODO
 	 */
 	@CheckForNull
-	public synchronized List<LockableResource> tryQueue(LockableResourcesStruct requiredResources,
-			long queueItemId, String queueItemProject, int number,
-			Map<String, Object> params, Logger log) throws ExecutionException {
-
-		List<LockableResource> selected = new ArrayList<>();
-		if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
-			// The project has another buildable item waiting -> bail out
-			log.log(Level.FINEST, "{0} has another build waiting resources." +
-			        " Waiting for it to proceed first.",
-			        new Object[]{queueItemProject});
-			return null;
-		}
-
-		List<LockableResource> candidates = new ArrayList<LockableResource>();
-                final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
-		if (requiredResources.label != null && requiredResources.label.isEmpty() && systemGroovyScript == null) {
-			candidates = requiredResources.required;
-		} else if (systemGroovyScript == null) {
-			candidates = getResourcesWithLabel(requiredResources.label, params);
-		} else {
-			candidates = getResourcesMatchingScript(systemGroovyScript, params);
-		}
-
-		selected = selectResourcesFromCandidates(candidates, number, null, selected);
-
-		// if did not get wanted amount or did not get all
-		int required_amount = number == 0 ? candidates.size() : number;
-
-		if (selected.size() != required_amount) {
-			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
-			        "Waiting for correct amount: {2}.",
-			        new Object[]{queueItemProject, selected.size(), required_amount});
-			// just to be sure, clean up
-			for (LockableResource x : resources) {
-				if (x.getQueueItemProject() != null &&
-				    x.getQueueItemProject().equals(queueItemProject))
-					x.unqueue();
+	public List<LockableResource> freeStyleLockOrQueue(LockableResourcesStruct requiredResources,
+													   long queueId, Job queueItemProject,
+													   Map<String, Object> params, Logger log) throws ExecutionException {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			// Freestyle projects keep polling and so if already in queue, don't add again.
+			for (QueuedStruct queuedContext : this.queuedContexts) {
+				if (queuedContext instanceof QueuedFreestyleStruct) {
+					long contextId = (Long) queuedContext.getIdentifier();
+					if (contextId == queueId) {
+						return null;
+					}
+				}
 			}
-			return null;
-		}
 
-		for (LockableResource rsc : selected) {
-			rsc.setQueued(queueItemId, queueItemProject);
+			// Check to see any resources are already queued for this job. The build might not have been assigned
+			// to them yet. This is specific to freestyle jobs that get the resources assigned to them before they start
+			List<LockableResource> alreadyQueued = new ArrayList<>();
+			for (LockableResource candidate : this.resources) {
+				if (candidate.isQueued() &&
+						candidate.getQueueItemId() == queueId &&
+						candidate.getQueueItemProject().equals(queueItemProject.getFullName())) {
+					alreadyQueued.add(candidate);
+				}
+			}
+			if (!alreadyQueued.isEmpty()) {
+				return alreadyQueued;
+			}
+
+			log.log(Level.INFO, "Project: {0} not already in queue, seeing if enough free resources {1}",
+					new Object[]{queueItemProject.getFullName(), requiredResources.toLogString()});
+
+			List<LockableResource> candidates = getCandidateResources(requiredResources, null, null);
+			if (candidates == null || candidates.isEmpty()) {
+				log.log(Level.INFO, "{0} found insufficient resource(s) to start. Queueing for correct amount: {1}",
+						new Object[]{queueItemProject.getFullName(), requiredResources.toLogString()});
+				//TODO Sue get the lock priority
+				queueContext(new QueuedFreestyleStruct(queueId, queueItemProject, requiredResources,
+						requiredResources.toLogString(), requiredResources.requiredVar, 0));
+                save();
+                return null;
+			} else {
+                List<LockableResource> queuedResources = setResourcesAsQueued(candidates, queueId, queueItemProject.getFullName());
+			    save();
+				return queuedResources;
+			}
+		} finally {
+			accessLock.unlock();
 		}
-		return selected;
+	}
+
+	// This is for freestyle builds to mark resources as queued for them
+	private List<LockableResource> setResourcesAsQueued(List<LockableResource> resources,
+														long queueId,
+														String projectName) {
+		LOGGER.log(Level.INFO, "Queueing selected resources " + resources + " for build " + projectName);
+		for (LockableResource rsc : resources) {
+			rsc.setQueued(queueId, projectName);
+		}
+		return resources;
 	}
 
 	private List<LockableResource> selectResourcesFromCandidates(List<LockableResource> candidates,
-																 int numberRequired,
-																 @Nullable List<String> resourceNamesToBeUnlocked,
-																 List<LockableResource> selected) {
+																 int numberRequired) {
 		// select randomly from candidates list for any resources that are free to be locked, until the number
 		// required have been selected
-		// the selected list passed in may already contain some resources
-		// no checks are made to see if any already selected resources are also in the candidates list
-		// if the numberRequired is 0, that means try to select all the candidates
+		// if the numberRequired is 0, that means try to select all candidates
+		List<LockableResource> selected =  new ArrayList<LockableResource>();
 		Random rand = new Random();
 		int candidatesSize = candidates.size();
 		// Keep a record of which candidates seen
@@ -257,8 +285,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			// only check if this candidate is valid, if we haven't checked it already
 			if (!inspectedIndexes.contains(index)) {
 				LockableResource candidate = candidates.get(index);
-				if ((!candidate.isReserved() && !candidate.isLocked() && !candidate.isQueued()) ||
-						(resourceNamesToBeUnlocked != null && resourceNamesToBeUnlocked.contains(candidate.getName())))
+				if (candidate.isAvailable())
 					selected.add(candidate);
 				if (numberRequired != 0 && (selected.size() >= numberRequired))
 					break;
@@ -268,280 +295,267 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return selected;
 	}
 
-	// Adds already selected (in previous queue round) resources to 'selected'
-	// Return false if another item queued for this project -> bail out
-	private boolean checkCurrentResourcesStatus(List<LockableResource> selected,
-	                                            String project,
-	                                            long taskId,
-	                                            Logger log) {
-		for (LockableResource r : resources) {
-			// This project might already have something in queue
-			String rProject = r.getQueueItemProject();
-			if (rProject != null && rProject.equals(project)) {
-				if (r.isQueuedByTask(taskId)) {
-					// this item has queued the resource earlier
-					selected.add(r);
+	/**
+	 * For workflow jobs, try to lock the resources and queue if unavailable and return true if locked.
+	 */
+	public boolean lockOrQueue(LockableResourcesStruct resources,
+											@Nullable StepContext context,
+											LockStep lockStep,
+											@Nullable PrintStream logger) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			List<LockableResource> availableResources = getCandidateResources(resources, null, logger);
+			if (availableResources != null && !availableResources.isEmpty()) {
+				lockResourcesAndTriggerWorkflow(availableResources, context,
+						lockStep.toString(), lockStep.variable);
+			} else {
+				if (logger != null) {
+					logger.println("[" + lockStep + "] is locked, waiting...");
+				}
+				int priority = lockStep.lockPriority;
+				if (lockStep.inversePrecedence) {
+					// semantics of inversePrecedence (LIFO) are a little odd when there are also
+					// priorities for other queued items
+					if (priority == 0 && !this.queuedContexts.isEmpty()) {
+						// if priority of 0 set to the current max of the queue + 1
+						priority = this.queuedContexts.get(0).getLockPriority() + 1;
+					} else {
+						// if there is a priority, set it to 1 above that priority group
+						priority += 1;
+					}
+				}
+				queueContext(new QueuedContextStruct(context, resources,
+						lockStep.toString(), lockStep.variable,
+						priority));
+			}
+			save();
+			return availableResources != null;
+		} catch (ExecutionException e) {
+			if (logger != null) {
+				// This should never happen. Execution exceptions come from running scripts
+				logger.println("Trying to log resources failed " + lockStep + " " + e);
+			}
+			return false;
+		} finally {
+			accessLock.unlock();
+		}
+	}
+
+	/**
+	 * Locks the resources for a workflow job and triggers it to proceed
+ 	 */
+
+	private void lockResourcesAndTriggerWorkflow(List<LockableResource> resources,
+																							 StepContext context,
+																							 String resourceDescription,
+																							 String resourceVariableName) {
+		// since LockableResource contains transient variables, they cannot be correctly serialized
+		// hence we use their unique resource names
+		List<String> resourceNames = new ArrayList<>();
+		try {
+			for (LockableResource resource : resources) {
+				resource.unqueue(); // this should be unnecessary. Workflow resources are never queued first.
+				resourceNames.add(resource.getName());
+				resource.setBuild(context.get(Run.class));
+			}
+			LockStepExecution.proceed(resourceNames, context, resourceDescription, resourceVariableName);
+		} catch (Exception e) {
+			// skip this context, as the build cannot be retrieved (maybe it was deleted while running?)
+			LOGGER.log(Level.WARNING, "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, " +
+					"this could be a legitimate status if the build waiting for the lock was deleted or" +
+					" hard killed. More information at Level.FINE if debug is needed.");
+			LOGGER.log(Level.WARNING, "Can not get the Run object from the context to proceed with lock", e);
+			for (LockableResource r : resources) {
+				r.setBuild(null);
+			}
+		}
+	}
+
+	/**
+	 * Only called with FreestyleProjects
+	 * A freestylebuild queues the resources on a project. This is what locks the resources with the
+	 * actual build. This should never fail. The resources should already be queue for this project.
+	 */
+	public boolean lockQueuedResourcesWithBuild(List<LockableResource> resources, Run<?, ?> build) {
+		// if resources is empty, then they have been unqueued as this build has been too slow starting and
+		// has the queueing has timed out. This shouldn't happen, but has been seen on jenkins restarts.
+		if (resources.isEmpty()) {
+			return false;
+		}
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			LOGGER.log(Level.INFO, "Locking queued resources " + resources + " for freestyle build " + build.getFullDisplayName());
+			for (LockableResource r : resources) {
+				// check that we are actually unqueueing resources that were queued for this build
+				if (r.getQueueItemProject().equals(((FreeStyleBuild)build).getProject().getFullName())) {
+					r.unqueue();
+					r.setBuild(build);
 				} else {
-					// The project has another buildable item waiting -> bail out
-					log.log(Level.FINEST, "{0} has another build " +
-						"that already queued resource {1}. Continue queueing.",
-						new Object[]{project, r});
 					return false;
 				}
 			}
+			save();
+			return true;
+		} finally {
+			accessLock.unlock();
 		}
-		return true;
 	}
 	
-	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, false, null);
-	}
-
-	/**
-	 * Try to lock the resource and return true if locked.
-	 */
-	public synchronized boolean lock(List<LockableResource> resources,
-									 Run<?, ?> build,
-									 @Nullable StepContext context,
-									 @Nullable String logmessage,
-									 boolean inversePrecedence,
-									 String resourceVariableName) {
-		boolean needToWait = false;
-
-		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked()) {
-				needToWait = true;
-				break;
-			}
-		}
-		if (!needToWait) {
-			for (LockableResource r : resources) {
-				r.unqueue();
-				r.setBuild(build);
-			}
-			if (context != null) {
-				// since LockableResource contains transient variables, they cannot be correctly serialized
-				// hence we use their unique resource names
-				List<String> resourceNames = new ArrayList<String>();
-				for (LockableResource resource : resources) {
-					resourceNames.add(resource.getName());
-				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence, resourceVariableName);
-			}
-		}
-		save();
-		return !needToWait;
-	}
-	
-	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
-		for (String unlockResourceName : unlockResourceNames) {
-			for (LockableResource resource : this.resources) {
-				if (resource.getName().equals(unlockResourceName)) {
-					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
-						// No more contexts, unlock resource
-						resource.unqueue();
-						resource.setBuild(null);
-					}
+	public void releaseResources(List<LockableResource> lockableResources, @Nullable Run<?, ?> build) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			for (LockableResource resource : lockableResources) {
+				// check we have the right build before releasing. Should be unnecessary
+				if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
+					resource.setBuild(null);
 				}
 			}
-		}
-	}
-
-	public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-		unlock(resourcesToUnLock, build, false);
-	}
-
-	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
-									@Nullable Run<?, ?> build, boolean inversePrecedence) {
-		List<String> resourceNamesToUnLock = new ArrayList<String>();
-		if (resourcesToUnLock != null) {
-			for (LockableResource r : resourcesToUnLock) {
-				resourceNamesToUnLock.add(r.getName());
-			}
-		}
-
-		this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
-	}
-
-	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
-		// make sure there is a list of resource names to unlock
-		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.size() == 0)) {
-			return;
-		}
-
-		// check if there are resources which can be unlocked (and shall not be unlocked)
-		List<LockableResource> requiredResourceForNextContext = null;
-		QueuedContextStruct nextContext = this.getNextQueuedContext(resourceNamesToUnLock, inversePrecedence);
-
-		// no context is queued which can be started once these resources are free'd.
-		if (nextContext == null) {
-			this.freeResources(resourceNamesToUnLock, build);
+			//go through queue and proceed with all jobs that can be run as a result of releasing resources
+			processQueue();
 			save();
-			return;
+		} finally {
+			accessLock.unlock();
 		}
-			
-		// remove context from queue and process it
-		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
-		this.queuedContexts.remove(nextContext);
-		LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
-
-		// resourceNamesToUnlock contains the names of the previous resources.
-		// requiredResourceForNextContext contains the resource objects which are required for the next context.
-		// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
-		boolean needToWait = false;
-		for (LockableResource requiredResource : requiredResourceForNextContext) {
-			if (!resourceNamesToUnLock.contains(requiredResource.getName())) {
-				if (requiredResource.isReserved() || requiredResource.isLocked()) {
-					needToWait = true;
-					break;
-				}
-			}
-		}
-
-		if (needToWait) {
-			freeResources(resourceNamesToUnLock, build);
-			save();
-			return;
-		} else {
-			List<String> resourceNamesToLock = new ArrayList<String>();
-
-			// lock all (old and new resources)
-			for (LockableResource requiredResource : requiredResourceForNextContext) {
-				try {
-					requiredResource.setBuild(nextContext.getContext().get(Run.class));
-					resourceNamesToLock.add(requiredResource.getName());
-				} catch (Exception e) {
-					// skip this context, as the build cannot be retrieved (maybe it was deleted while running?)
-					LOGGER.log(Level.WARNING, "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, " +
-							"this could be a legitimate status if the build waiting for the lock was deleted or" +
-							" hard killed. More information at Level.FINE if debug is needed.");
-					LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
-					unlockNames(resourceNamesToUnLock, build, inversePrecedence);
-					return;
-				}
-			}
-
-			// determine old resources no longer needed
-			List<String> freeResources = new ArrayList<String>();
-			for (String resourceNameToUnlock : resourceNamesToUnLock) {
-				boolean resourceStillNeeded = false;
-				for (LockableResource requiredResource : requiredResourceForNextContext) {
-					if (resourceNameToUnlock != null && resourceNameToUnlock.equals(requiredResource.getName())) {
-						resourceStillNeeded = true;
-						break;
-					}
-				}
-
-				if (!resourceStillNeeded) {
-					freeResources.add(resourceNameToUnlock);
-				}
-			}
-
-			// free old resources no longer needed
-			freeResources(freeResources, build);
-
-			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence, nextContext.getResourceVariableName());
-		}
-		save();
 	}
 
-	/**
-	 * Returns the next queued context with all its requirements satisfied.
-	 *
-	 * @param resourceNamesToUnLock resource names locked at the moment but available is required (as they are going to be unlocked soon
-	 * @param inversePrecedence false pick up context as they are in the queue or true to take the most recent one (satisfying requirements)
-	 * @return the context or null
-	 */
-	@CheckForNull
-	private QueuedContextStruct getNextQueuedContext(List<String> resourceNamesToUnLock, boolean inversePrecedence) {
-		QueuedContextStruct newestEntry = null;
-		List<LockableResource> requiredResourceForNextContext = null;
-		if (!inversePrecedence) {
-			for (QueuedContextStruct entry : this.queuedContexts) {
-				if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
-					return entry;
-				}
-			}
-		} else {
-			long newest = 0;
-			List<QueuedContextStruct> orphan = new ArrayList<QueuedContextStruct>();
-			for (QueuedContextStruct entry : this.queuedContexts) {
-				if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
-					try {
-						Run<?, ?> run = entry.getContext().get(Run.class);
-						if (run != null && run.getStartTimeInMillis() > newest) {
-							newest = run.getStartTimeInMillis();
-							newestEntry = entry;
-						}
-					} catch (IOException | InterruptedException e) {
-						// skip this one, for some reason there is no Run object for this context
-						orphan.add(entry);
+	public void releaseResourceNames(List<String> resourceNames, @Nullable Run<?, ?> build) {
+		List<LockableResource> resourcesToRelease = new ArrayList<>();
+		for (String resourceName: resourceNames) {
+			resourcesToRelease.add(fromName(resourceName));
+		}
+		// access lock acquired in this call
+		releaseResources(resourcesToRelease, build);
+	}
+
+	private void processQueue() {
+		for (Iterator<QueuedStruct> iter = this.queuedContexts.listIterator(); iter.hasNext();) {
+			QueuedStruct queuedContext = iter.next();
+			try {
+				// If this queuedContext doesn't correspond to a valid build, remove it from queue
+				List<LockableResource> availableResources = getCandidateResources(queuedContext.getResources(), null, null);
+				// unqueue id the build for this queueitem has gone away or if there are enough resources for it
+				if (!queuedContext.isBuildStatusGood() ||
+						(availableResources != null && !availableResources.isEmpty())) {
+					iter.remove();
+					if (queuedContext instanceof QueuedContextStruct) {
+						QueuedContextStruct queueItem = (QueuedContextStruct) queuedContext;
+						lockResourcesAndTriggerWorkflow(availableResources, queueItem.getContext(),
+								queuedContext.getResourceDescription(), queuedContext.getResourceVariableName());
+					} else if (queuedContext instanceof QueuedFreestyleStruct) {
+						QueuedFreestyleStruct freestyleStruct = (QueuedFreestyleStruct) queuedContext;
+						// queue the resources for the project. The project is polling and will notice and start
+						setResourcesAsQueued(availableResources,
+								(Long) freestyleStruct.getIdentifier(),
+								freestyleStruct.getBuildName());
+					} else {
+						LOGGER.log(Level.SEVERE, "Don't know how to assign resources for build " +
+						queuedContext.getBuildName() + " removing from queue anyway");
 					}
 				}
-			}
-			if (!orphan.isEmpty()) {
-				this.queuedContexts.removeAll(orphan);
+			} catch (ExecutionException e) {
+				//Don't unqueue as script processing getting candidates has failed
 			}
 		}
-
-		return newestEntry;
 	}
 
 	/**
 	 * Creates the resource if it does not exist.
 	 */
-	public synchronized boolean createResource(String name) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name));
-			save();
-			return true;
-		}
-		return false;
-	}
-
-	public synchronized boolean createResourceWithLabel(String name, String label) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name, "", label, null));
-			save();
-			return true;
-		}
-		return false;
-	}
-
-	public synchronized boolean reserve(List<LockableResource> resources,
-			String userName) {
-		for (LockableResource r : resources) {
-			if (r.isReserved() || r.isLocked() || r.isQueued()) {
-				return false;
+	public boolean createResource(String name) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			LockableResource existent = fromName(name);
+			if (existent == null) {
+				this.resources.add(new LockableResource(name));
+				save();
+				processQueue();
+				return true;
 			}
+            save();
+            return false;
+		} finally {
+			accessLock.unlock();
 		}
-		for (LockableResource r : resources) {
-			r.setReservedBy(userName);
-		}
-		save();
-		return true;
 	}
 
-	public synchronized void unreserve(List<LockableResource> resources) {
-		for (LockableResource r : resources) {
-			r.unReserve();
+	public boolean createResourceWithLabel(String name, String label) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			LockableResource existent = fromName(name);
+			if (existent == null) {
+				this.resources.add(new LockableResource(name, "", label, null));
+				LOGGER.log(Level.INFO, "Created " + name + " label " + label);
+				save();
+				processQueue();
+				return true;
+			}
+            save();
+            return false;
+		} finally {
+			accessLock.unlock();
 		}
-		save();
+	}
+
+	public boolean reserve(List<LockableResource> resources,
+												 String userName) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			for (LockableResource r : resources) {
+				if (!r.isAvailable()) {
+					return false;
+				}
+			}
+			for (LockableResource r : resources) {
+				r.setReservedBy(userName);
+			}
+			LOGGER.log(Level.INFO, "Reserved " + resources + " by " + userName);
+			save();
+			// no need to processQueue, nothing new is released
+			return true;
+		} finally {
+			accessLock.unlock();
+		}
+	}
+
+	public void unreserve(List<LockableResource> resources) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			for (LockableResource r : resources) {
+				r.unReserve();
+			}
+			LOGGER.log(Level.INFO, "Unreserved " + resources);
+			save();
+			processQueue();
+		} finally {
+			accessLock.unlock();
+		}
+	}
+
+	public void reset(List<LockableResource> resources) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			for (LockableResource r : resources) {
+				r.reset();
+			}
+			LOGGER.log(Level.INFO, "Reset " + resources);
+			save();
+			processQueue();
+		} finally {
+			accessLock.unlock();
+		}
 	}
 
 	@Override
 	public String getDisplayName() {
 		return "External Resources";
-	}
-
-	public synchronized void reset(List<LockableResource> resources) {
-		for (LockableResource r : resources) {
-			r.reset();
-		}
-		save();
 	}
 
 	@Override
@@ -557,9 +571,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
 				}
 			}
-			resources = newResouces;
-			save();
-			return true;
+			Lock accessLock = stateLock.writeLock();
+			accessLock.lock();
+			try {
+				resources = newResouces;
+				save();
+				return true;
+			} finally {
+				accessLock.unlock();
+			}
 		} catch (JSONException e) {
 			return false;
 		}
@@ -568,37 +588,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	/**
 	 * Checks if there are enough resources available to satisfy the requirements specified
 	 * within requiredResources and returns the necessary available resources.
-	 * If not enough resources are available, returns null.
+	 * If not enough resources are available, returns empty collection.
 	 */
-	public synchronized List<LockableResource> checkResourcesAvailability(LockableResourcesStruct requiredResources,
-			@Nullable PrintStream logger, @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+	private List<LockableResource> getCandidateResources(LockableResourcesStruct requiredResources,
+														 //TODO Sue test buildParams
+														 @Nullable Map<String, Object> params,
+														 @Nullable PrintStream logger) throws ExecutionException {
 		// get possible resources
-		int requiredAmount = 0; // 0 means all
+		int requiredAmount = requiredResources.getResourceCount();
 		List<LockableResource> candidates = new ArrayList<>();
-		if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+		final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
+		// groovy script specific to freestyle jobs
+		if (systemGroovyScript != null) {
+				candidates = getResourcesMatchingScript(systemGroovyScript, params);
+		} else if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 			candidates.addAll(requiredResources.required);
-		} else {
-			candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
-			if (requiredResources.requiredNumber != null) {
-				try {
-					requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
-				} catch (NumberFormatException e) {
-					requiredAmount = 0;
-				}
+		} else { // label is specified
+			for (LockableResource resource : this.resources) {
+				if (resource.isValidLabel(requiredResources.label))
+					candidates.add(resource);
 			}
 		}
 
-		if (requiredAmount == 0) {
-			requiredAmount = candidates.size();
+		// The candidates can't meet the criteria
+		if (candidates.isEmpty() || candidates.size() < requiredAmount) {
+			return new ArrayList<>();
 		}
 
-		// start with an empty set of selected resources
-		List<LockableResource> selected = selectResourcesFromCandidates(candidates, requiredAmount, lockedResourcesAboutToBeUnlocked, new ArrayList<LockableResource>());
+		if (requiredAmount == 0) { // 0 means all
+			requiredAmount = candidates.size();
+		}
+		List<LockableResource> selected = selectResourcesFromCandidates(candidates, requiredAmount);
 		if (selected.size() < requiredAmount) {
 			if (logger != null) {
 				logger.println("Found " + selected.size() + " available resource(s). Waiting for correct amount: " + requiredAmount + ".");
 			}
-			return null;
+			return new ArrayList<>();
 		}
 
 		return selected;
@@ -606,43 +631,58 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	/*
 	 * Adds the given context and the required resources to the queue if
-	 * this context is not yet queued.
+	 * this context is not already queued.
 	 */
-	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription, String resourceVariableName,  int lockPriority) {
-		int priorityQueueIndex = 0;
-		// Scan through the whole queue to find if the context is a duplicate
-		for (QueuedContextStruct entry : this.queuedContexts) {
-			if (entry.getContext() == context) {
-				return;
+	protected void queueContext(QueuedStruct queuedStruct) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			int priorityQueueIndex = 0;
+			// Scan through the whole queue to find if the context is a duplicate
+			for (QueuedStruct entry : this.queuedContexts) {
+				if (entry.getIdentifier() == queuedStruct.getIdentifier()) {
+					return;
+				}
+				// Search for where the insertion point would be if a non zero priority were specified
+				// Entries will be in decreasing priority order. Stop moving index forward when entry priority  is less than
+				// the requested priority
+				if (entry.getLockPriority() >= queuedStruct.getLockPriority()) {
+					priorityQueueIndex++;
+				}
 			}
-			// Search for where the insertion point would be if a non zero priority were specified
-			// Entries will be in decreasing priority order. Stop moving index forward when entry priority  is less than
-			// the requested priority
-			if (entry.getLockPriority() >= lockPriority) {
-				priorityQueueIndex++;
-			}
-		}
 
-		if (lockPriority == 0)
-			// Priority of 0 is the lowest priority, so can safely add to the end of the queue
-			this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription, resourceVariableName, lockPriority));
-		else
-			// add into the queue to maintain priority ordering
-			this.queuedContexts.add(priorityQueueIndex, new QueuedContextStruct(context, requiredResources, resourceDescription, resourceVariableName, lockPriority));
-		LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
-		save();
+			if (queuedStruct.getLockPriority() == 0)
+				// Priority of 0 is the lowest priority, so can safely add to the end of the queue
+				this.queuedContexts.add(queuedStruct);
+			else
+				// add into the queue to maintain priority ordering
+				this.queuedContexts.add(priorityQueueIndex, queuedStruct);
+			LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
+			save();
+		} finally {
+			accessLock.unlock();
+		}
 	}
 
-	public synchronized boolean unqueueContext(StepContext context) {
-		for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
-			if (iter.next().getContext() == context) {
-				iter.remove();
-				LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
-				save();
-				return true;
+	public boolean unqueueContext(StepContext context) {
+		Lock accessLock = stateLock.writeLock();
+		accessLock.lock();
+		try {
+			for (Iterator<QueuedStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
+				QueuedStruct queuedStruct = iter.next();
+				if (queuedStruct.getIdentifier() == context) {
+					LOGGER.log(Level.INFO, "Unqueueing {} from the queuedContexts ",
+							new Object[]{queuedStruct});
+					iter.remove();
+					LOGGER.log(Level.INFO, "Queued Contexts " + this.queuedContexts);
+					save();
+					return true;
+				}
 			}
+			return false;
+		} finally {
+			accessLock.unlock();
 		}
-		return false;
 	}
 
 	public static LockableResourcesManager get() {
@@ -650,24 +690,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				.getDescriptorOrDie(LockableResourcesManager.class);
 	}
 
-	public synchronized int getQueuedContextsSize() {
-		return this.queuedContexts.size();
+	public int getQueuedContextsSize() {
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			return this.queuedContexts.size();
+		} finally {
+			accessLock.unlock();
+		}
 	}
 
-	public synchronized ArrayList<QueuedContextStruct> getQueuedContexts() {
-		return new ArrayList<>(this.queuedContexts);
+	public ArrayList<QueuedStruct> getQueuedContexts() {
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			return new ArrayList<>(this.queuedContexts);
+		} finally {
+			accessLock.unlock();
+		}
 	}
 
-	public synchronized void save() {
-                if(BulkChange.contains(this))
-                    return;
+	public void save() {
+		Lock accessLock = stateLock.readLock();
+		accessLock.lock();
+		try {
+			if (BulkChange.contains(this))
+				return;
 
-                try {
-                    getConfigFile().write(this);
-                } catch (IOException e) {
-                    LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(),e);
-                }
-        }
+			try {
+				getConfigFile().write(this);
+			} catch (IOException e) {
+				LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
+			}
+		} finally {
+			accessLock.unlock();
+		}
+	}
 
 	private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 

@@ -74,7 +74,7 @@ function reset_resource_${i}() {
 	</j:if>
 	<j:if test="${resource.reservedBy == null}">
 		<j:if test="${resource.queued}">
-						<td class="pane" style="color: yellow;">
+						<td class="pane" style="color: blue;">
 							QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
 						</td>
 						<td class="pane">${resource.labels}</td>
@@ -142,10 +142,10 @@ function reset_resource_${i}() {
                 </tr>
                 <j:forEach var="context" items="${it.getQueuedContexts()}">
                     <tr>
-                        <td class="pane" >${context.resourceDescription}</td>
+                        <td class="pane" >${context.getResourceDescription()}</td>
                         <td class="pane" >
-                            <a href="${rootURL}/${context.build.url}">
-                                ${context.build.fullDisplayName}
+                            <a href="${rootURL}/${context.getBuildUrl()}">
+                                ${context.getBuildName()}
                             </a>
                         </td>
                     </tr>

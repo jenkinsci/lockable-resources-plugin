@@ -29,6 +29,7 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.queue.QueuedStruct;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -89,7 +90,7 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getAllLabels().size();
 	}
 
-	public ArrayList<QueuedContextStruct> getQueuedContexts() {
+	public ArrayList<QueuedStruct> getQueuedContexts() {
 		return LockableResourcesManager.get().getQueuedContexts();
 	}
 
@@ -110,7 +111,7 @@ public class LockableResourcesRootAction implements RootAction {
 
 		List<LockableResource> resources = new ArrayList<LockableResource>();
 		resources.add(r);
-		LockableResourcesManager.get().unlock(resources, null);
+		LockableResourcesManager.get().releaseResources(resources, null);
 
 		rsp.forwardToPreviousPage(req);
 	}

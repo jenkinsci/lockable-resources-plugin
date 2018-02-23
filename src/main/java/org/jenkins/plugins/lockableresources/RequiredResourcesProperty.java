@@ -77,6 +77,29 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return this;
 	}
 
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		if (resourceNames != null) {
+			sb.append("Names:").append(resourceNames);
+		}
+		if (resourceNamesVar != null) {
+			sb.append("NamesVar:").append(resourceNamesVar).append(",");
+		}
+		if (labelName != null) {
+			sb.append("label:").append(labelName);
+			if (resourceNumber != null) {
+				sb.append(",").append(resourceNumber);
+			} else {
+				sb.append(",All");
+			}
+		}
+		if (resourceMatchScript != null) {
+			sb.append(resourceMatchScript);
+		}
+		return sb.toString();
+	}
+
 	public String[] getResources() {
 		String names = Util.fixEmptyAndTrim(resourceNames);
 		if (names != null)

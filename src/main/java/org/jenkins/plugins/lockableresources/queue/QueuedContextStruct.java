@@ -8,15 +8,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import hudson.model.AbstractBuild;
+import hudson.model.Queue;
 import hudson.model.Run;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
@@ -26,37 +25,15 @@ import org.kohsuke.stapler.export.ExportedBean;
  * resources are free'd.
  */
 @ExportedBean(defaultVisibility = 999)
-public class QueuedContextStruct implements Serializable {
-
+public class QueuedContextStruct extends QueuedStruct implements Serializable {
 	/*
 	 * Reference to the pipeline step context.
 	 */
 	private StepContext context;
-	
-	/*
-	 * Reference to the resources required by the step context.
-	 */
-	private LockableResourcesStruct lockableResourcesStruct;
-	
-	/*
-	 * Description of the required resources used within logging messages.
-	 */
-	private String resourceDescription;
-
-	/*
-	 * Priority this context should have in the queue. Lowest priority being 0.
-	 */
-	private int lockPriority = 0;
 
 	// build information in the requesting context. Useful for displaying on the ui and logging
 	private transient volatile Run<?, ?> build = null;
 	private transient volatile String buildExternalizableId = null;
-
-
-	/* 
-	 * Name of the environment variable holding the resource name
-	 */
-	private String resourceVariableName;
 
 	/*
 	 * Constructor for the QueuedContextStruct class.
@@ -75,6 +52,8 @@ public class QueuedContextStruct implements Serializable {
 	public StepContext getContext() {
 		return this.context;
 	}
+	@Override
+	public Object getIdentifier() { return getContext(); }
 
 	@Exported
 	public String getBuildExternalizableId() {
@@ -97,7 +76,23 @@ public class QueuedContextStruct implements Serializable {
 		return build;
 	}
 
+	/*
+	 * Call this to check if the queued build that's waiting for resources hasn't gone away
+	 */
+	public boolean isBuildStatusGood() {
+		try {
+			Run run = this.context.get(Run.class);
+			return run != null;
+		} catch (Exception e) {
+			// Any exception means the run has gone bad
+			// TODO Sue there are problems during a restart of jenkins where an exception
+			// here might mean that things aren't fully initialised. Need to fix that case.
+		}
+		return false;
+	}
+
 	@Exported
+	@Override
 	public String getBuildName() {
 		if (getBuild() != null)
 			return getBuild().getFullDisplayName();
@@ -105,30 +100,11 @@ public class QueuedContextStruct implements Serializable {
 			return null;
 	}
 
-	/*
-	 * Gets the required resources.
-	 */
-	public LockableResourcesStruct getResources() {
-		return this.lockableResourcesStruct;
-	}
-
-	/*
-	 * Gets the resource description for logging messages.
-	 */
 	@Exported
-	public String getResourceDescription() {
-		return this.resourceDescription;
+	@Override
+	public String getBuildUrl() {
+		return getBuild().getUrl();
 	}
-
-	public int getLockPriority() {
-		return this.lockPriority;
-	}
-
-	public String getResourceVariableName() {
-		return resourceVariableName;
-	}
-
-	private static final long serialVersionUID = 1L;
 
 	@Override
 	public String toString() {

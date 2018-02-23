@@ -2,12 +2,14 @@ package org.jenkins.plugins.lockableresources;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
 
 import hudson.Functions;
-import hudson.model.Executor;
+import hudson.model.*;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -24,13 +26,10 @@ import org.jvnet.hudson.test.TestBuilder;
 import org.jvnet.hudson.test.recipes.WithPlugin;
 
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.FreeStyleBuild;
-import hudson.model.FreeStyleProject;
-import hudson.model.Result;
 
+import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 
 public class LockStepTest {
@@ -67,22 +66,16 @@ public class LockStepTest {
 			@Override
 			public void evaluate() throws Throwable {
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition(
-						"lock(label: 'label1') {\n" +
-						"	echo 'Resource locked'\n" +
-						"}\n" +
-						"echo 'Finish'"
-				));
-				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-				story.j.waitForCompletion(b1);
-				story.j.assertBuildStatus(Result.SUCCESS, b1);
-				story.j.assertLogContains("Lock released on resource [Label: label1]", b1);
+				int stepIndex = 1;
+				WorkflowJob job = UtilFn.createWaitingForResourcesJob(story,
+            "label: 'label1', quantity: 1", "p");
+				WorkflowRun build = job.scheduleBuild2(0).waitForStart();
+				UtilFn.acquireLockAndFinishBuild(story, build, "Label: label1, Quantity: 1", stepIndex);
 			}
 		});
 	}
 
-	@Test
+  @Test
 	public void lockOrderLabel() {
 		story.addStep(new Statement() {
 			@Override
@@ -90,68 +83,25 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition(
-						"lock(label: 'label1', quantity: 2) {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
-				));
+				int stepIndex = 1;
+				WorkflowJob p = UtilFn.createWaitingForResourcesJob(story, "label: 'label1', quantity: 2", "p");
 				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", b1);
 
-				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+				String lockMessage = "Label: label1, Quantity: 2";
 				// Ensure that b2 reaches the lock before b3
-				story.j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b2);
-				story.j.waitForMessage("Found 1 available resource(s). Waiting for correct amount: 2.", b2);
-				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
+				WorkflowRun b2 = UtilFn.scheduleBuildAndCheckWaiting(story, p, lockMessage, 2, 1);
+				WorkflowRun b3 = UtilFn.scheduleBuildAndCheckWaiting(story, p, lockMessage, 2, 1);;
 				// Both 2 and 3 are waiting for locking Label: label1, Quantity: 2
-				story.j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b3);
-				story.j.waitForMessage("Found 1 available resource(s). Waiting for correct amount: 2.", b3);
 
 				// Unlock Label: label1, Quantity: 2
-				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resource [Label: label1, Quantity: 2]", b1);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, b1, lockMessage, stepIndex);
 
 				// #2 gets the lock before #3 (in the order as they requested the lock)
-				story.j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
-				SemaphoreStep.success("wait-inside/2", null);
-				story.j.waitForMessage("Finish", b2);
-				story.j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b3);
-				SemaphoreStep.success("wait-inside/3", null);
-				story.j.waitForMessage("Finish", b3);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, b2, lockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, b3, lockMessage, stepIndex);
 			}
 		});
-	}
-
-	// Below are utility functions to help with some of the repetitive setup and running of the tests
-	private WorkflowJob createWaitingForResourcesJob(String lockParameters, String jobName) throws Throwable {
-		// Create job definition that tries to acquire a lock and then wait on a semaphore
-		WorkflowJob resourceJob = story.j.jenkins.createProject(WorkflowJob.class, jobName);
-		resourceJob.setDefinition(new CpsFlowDefinition(
-				"lock(" + lockParameters + ") {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
-		));
-		return resourceJob;
-	}
-
-	private WorkflowRun scheduleBuildAndCheckWaiting(WorkflowJob job, String lockMessage, int correctAmount, int available) throws Throwable {
-		// schedule a build for which it is expected there aren't enough resources to start and the build will wait
-		WorkflowRun build = job.scheduleBuild2(0).waitForStart();
-		story.j.waitForMessage("Trying to acquire lock on [" + lockMessage + "]", build);
-		story.j.waitForMessage("Found " + available + " available resource(s). Waiting for correct amount: " + correctAmount + ".", build);
-		return build;
-	}
-
-	private int acquireLockAndFinishBuild(WorkflowRun build, String lockMessage, int stepIndex) throws Throwable{
-		// the build should be able to acquire the lock it needs, signal its semaphore and finish successfully
-		story.j.waitForMessage("Lock acquired on [" + lockMessage + "]", build);
-		SemaphoreStep.success("wait-inside/" + stepIndex++, null);
-		story.j.waitForMessage("Lock released on resource [" + lockMessage + "]", build);
-		story.j.waitForMessage("Finish", build);
-		return stepIndex;
 	}
 
 	@Test
@@ -163,24 +113,27 @@ public class LockStepTest {
 				int stepIndex = 1;
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
-				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "labelJob");
+				WorkflowJob labelJob = UtilFn.createWaitingForResourcesJob(story, "label: 'label1', quantity: 2", "labelJob");
 				String labelLockMessage = "Label: label1, Quantity: 2";
-				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1'", "resource1Job");
+				WorkflowJob resource1Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1'", "resource1Job");
 				String resource1LockMessage = "resource1";
-				WorkflowJob resource2Job = createWaitingForResourcesJob("resource: 'resource2'", "resource2Job");
+				WorkflowJob resource2Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource2'", "resource2Job");
 				String resource2LockMessage = "resource2";
 				// Label build runs first and acquires resource 1 and 2
 				WorkflowRun labelBuild1 = labelJob.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", labelBuild1);
 
 				// Specific resource lock build will both wait on the label build
-				WorkflowRun resource1Build = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
-				WorkflowRun resource2Build = scheduleBuildAndCheckWaiting(resource2Job, resource2LockMessage, 1, 0);
+				WorkflowRun resource1Build = UtilFn.scheduleBuildAndCheckWaiting(story, resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource2Build = UtilFn.scheduleBuildAndCheckWaiting(story, resource2Job, resource2LockMessage, 1, 0);
 
-				stepIndex = acquireLockAndFinishBuild(labelBuild1, labelLockMessage, stepIndex);
-				// Once the label build has finished, the 2 specific lock builds should complete
-				stepIndex = acquireLockAndFinishBuild(resource1Build, resource1LockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(resource2Build, resource2LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, labelBuild1, labelLockMessage, stepIndex);
+				// Once the label build has finished, the 2 specific lock builds should complete, in any order, so
+				// release them both
+				SemaphoreStep.success("wait-inside/" + stepIndex++, null);
+				SemaphoreStep.success("wait-inside/" + stepIndex++, null);
+				story.j.waitForMessage("Finish", resource1Build);
+				story.j.waitForMessage("Finish", resource2Build);
 			}
 		});
 	}
@@ -194,28 +147,28 @@ public class LockStepTest {
 				int stepIndex = 1;
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
-				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "label");
+				WorkflowJob labelJob = UtilFn.createWaitingForResourcesJob(story, "label: 'label1', quantity: 2", "label");
 				String labelLockMessage = "Label: label1, Quantity: 2";
-				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1'", "resource1");
+				WorkflowJob resource1Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1'", "resource1");
 				String resource1LockMessage = "resource1";
-				WorkflowJob resource2Job = createWaitingForResourcesJob("resource: 'resource2'", "resource2");
+				WorkflowJob resource2Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource2'", "resource2");
 				String resource2LockMessage = "resource2";
 				WorkflowRun resource1Build = resource1Job.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", resource1Build);
 
 				// labelBuild will wait as resource1 has been locked and it needs both resource[12]
-				WorkflowRun labelBuild = scheduleBuildAndCheckWaiting(labelJob, labelLockMessage, 2, 1);
+				WorkflowRun labelBuild = UtilFn.scheduleBuildAndCheckWaiting(story, labelJob, labelLockMessage, 2, 1);
 
 				// resource2Build is free to schedule and acquire lock as labelBuild hasn't locked resource2
 				WorkflowRun resource2Build = resource2Job.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/2", resource2Build);
 
 				// resource[12]Builds should complete and release their locks
-				stepIndex = acquireLockAndFinishBuild(resource1Build, resource1LockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(resource2Build, resource2LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1Build, resource1LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource2Build, resource2LockMessage, stepIndex);
 
 				// resource[12] are now free, so label build is free to finish
-				stepIndex = acquireLockAndFinishBuild(labelBuild, labelLockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, labelBuild, labelLockMessage, stepIndex);
 			}
 		});
 	}
@@ -233,7 +186,7 @@ public class LockStepTest {
 				LockableResourcesManager.get().createResourceWithLabel("resource4", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource5", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource6", "label1");
-				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "label");
+				WorkflowJob labelJob = UtilFn.createWaitingForResourcesJob(story, "label: 'label1', quantity: 2", "label");
 				String labelLockMessage = "Label: label1, Quantity: 2";
 
 				// Make sure all builds schedule and acquire all locks. No queueing.
@@ -269,11 +222,11 @@ public class LockStepTest {
 			public void evaluate() throws Throwable {
 				int stepIndex = 1;
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
-				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1'", "no-priority");
+				WorkflowJob resource1Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1'", "no-priority");
 				String resource1LockMessage = "resource1";
-				WorkflowJob resource1P10Job = createWaitingForResourcesJob("resource: 'resource1', lockPriority: 10", "priority10");
+				WorkflowJob resource1P10Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1', lockPriority: 10", "priority10");
 				String resource1P10LockMessage = "resource1, LockPriority: 10";
-				WorkflowJob resource1P20Job = createWaitingForResourcesJob("resource: 'resource1', lockPriority: 20", "priority20");
+				WorkflowJob resource1P20Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1', lockPriority: 20", "priority20");
 				String resource1P20LockMessage = "resource1, LockPriority: 20";
 
 				// First build to be scheduled takes lock, even though low priority
@@ -281,26 +234,26 @@ public class LockStepTest {
 				SemaphoreStep.waitForStart("wait-inside/1", resource1Build1);
 
 				// schedule 2 builds each for priorities 20, 10 and no priority, with priority order mixed up
-				WorkflowRun resource1Build2 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
-				WorkflowRun resource1Build3 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
-				WorkflowRun resource1P10Build1 = scheduleBuildAndCheckWaiting(resource1P10Job, resource1P10LockMessage, 1, 0);
-				WorkflowRun resource1P20Build1 = scheduleBuildAndCheckWaiting(resource1P20Job, resource1P20LockMessage, 1, 0);
-				WorkflowRun resource1P20Build2 = scheduleBuildAndCheckWaiting(resource1P20Job, resource1P20LockMessage, 1, 0);
-				WorkflowRun resource1P10Build2 = scheduleBuildAndCheckWaiting(resource1P10Job, resource1P10LockMessage, 1, 0);
+				WorkflowRun resource1Build2 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1Build3 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1P10Build1 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1P10Job, resource1P10LockMessage, 1, 0);
+				WorkflowRun resource1P20Build1 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1P20Job, resource1P20LockMessage, 1, 0);
+				WorkflowRun resource1P20Build2 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1P20Job, resource1P20LockMessage, 1, 0);
+				WorkflowRun resource1P10Build2 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1P10Job, resource1P10LockMessage, 1, 0);
 
 				// Finish the first build so the subsequent builds can complete
-				stepIndex = acquireLockAndFinishBuild(resource1Build1, resource1LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1Build1, resource1LockMessage, stepIndex);
 
 				// make sure the P20 builds complete first, then the P10, then the no-priority builds
 				// The order in the priority bands is preserved though
-				stepIndex = acquireLockAndFinishBuild(resource1P20Build1, resource1P20LockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(resource1P20Build2, resource1P20LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1P20Build1, resource1P20LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1P20Build2, resource1P20LockMessage, stepIndex);
 
-				stepIndex = acquireLockAndFinishBuild(resource1P10Build1, resource1P10LockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(resource1P10Build2, resource1P10LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1P10Build1, resource1P10LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1P10Build2, resource1P10LockMessage, stepIndex);
 
-				stepIndex = acquireLockAndFinishBuild(resource1Build2, resource1LockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(resource1Build3, resource1LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1Build2, resource1LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1Build3, resource1LockMessage, stepIndex);
 			}
 		});
 	}
@@ -314,41 +267,41 @@ public class LockStepTest {
 				int stepIndex = 1;
 				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
 				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
-				WorkflowJob labelJob = createWaitingForResourcesJob("label: 'label1', quantity: 2", "labelPriority0");
+				WorkflowJob labelJob = UtilFn.createWaitingForResourcesJob(story, "label: 'label1', quantity: 2", "labelPriority0");
 				String labelLockMessage = "Label: label1, Quantity: 2";
-				WorkflowJob resource1Job = createWaitingForResourcesJob("resource: 'resource1', lockPriority: 10", "priority10");
+				WorkflowJob resource1Job = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1', lockPriority: 10", "priority10");
 				String resource1LockMessage = "resource1, LockPriority: 10";
-				WorkflowJob resource2Job = createWaitingForResourcesJob("resource: 'resource2', lockPriority: 20", "priority20");
-				String resource2LockMessage = "resource2, LockPriority: 20";
+				WorkflowJob resource1JobP20 = UtilFn.createWaitingForResourcesJob(story, "resource: 'resource1', lockPriority: 20", "priority20");
+				String resource1P20LockMessage = "resource1, LockPriority: 20";
 				WorkflowRun labelBuild1 = labelJob.scheduleBuild2(0).waitForStart();
 				SemaphoreStep.waitForStart("wait-inside/1", labelBuild1);
 
-				WorkflowRun labelBuild2 = scheduleBuildAndCheckWaiting(labelJob, labelLockMessage, 2, 0);
-				WorkflowRun labelBuild3 = scheduleBuildAndCheckWaiting(labelJob, labelLockMessage, 2, 0);
+				WorkflowRun labelBuild2 = UtilFn.scheduleBuildAndCheckWaiting(story, labelJob, labelLockMessage, 2, 0);
+				WorkflowRun labelBuild3 = UtilFn.scheduleBuildAndCheckWaiting(story, labelJob, labelLockMessage, 2, 0);
 				// Both 2 and 3 are waiting for locking Label: label1, Quantity: 2
 
 				// These 2 builds waiting for resource1 have a priority of 10, so will jump the queue for labelBuild2 and labelBuild3 above
-				WorkflowRun resource1Build1 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
-				WorkflowRun resource1Build2 = scheduleBuildAndCheckWaiting(resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1Build1 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1Job, resource1LockMessage, 1, 0);
+				WorkflowRun resource1Build2 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1Job, resource1LockMessage, 1, 0);
 
-				// This build for resource2 has priority 20, though scheduled last, will run first once its resource is freed
-				WorkflowRun resource2Build = scheduleBuildAndCheckWaiting(resource2Job, resource2LockMessage, 1, 0);
+				// This build for resource1 has priority 20, though scheduled last, will run first once its resource is freed
+				WorkflowRun resource1BuildP20 = UtilFn.scheduleBuildAndCheckWaiting(story, resource1JobP20, resource1P20LockMessage, 1, 0);
 
 				// All other builds are now waiting for resources that labelBuild1 has locked
-				stepIndex = acquireLockAndFinishBuild(labelBuild1, labelLockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, labelBuild1, labelLockMessage, stepIndex);
 
-				// resource2Build had the highest priority, so proceeds first
-				stepIndex = acquireLockAndFinishBuild(resource2Build, resource2LockMessage, stepIndex);
+				// resource1BuildP20 had the highest priority, so proceeds first
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1BuildP20, resource1P20LockMessage, stepIndex);
 
 				// both #resource1Build[12] had a high priority (10) so get the lock before labelBuild2 and labelBuild3,
 				// but their order is still preserved
-				stepIndex = acquireLockAndFinishBuild(resource1Build1, resource1LockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(resource1Build2, resource1LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1Build1, resource1LockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, resource1Build2, resource1LockMessage, stepIndex);
 
 				// labelBuild2 and labelBuild3 were priority 0 and so get the locks last.
 				// #2 gets the lock before #3 (in the order as they requested the lock)
-				stepIndex = acquireLockAndFinishBuild(labelBuild2, labelLockMessage, stepIndex);
-				stepIndex = acquireLockAndFinishBuild(labelBuild3, labelLockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, labelBuild2, labelLockMessage, stepIndex);
+				stepIndex = UtilFn.acquireLockAndFinishBuild(story, labelBuild3, labelLockMessage, stepIndex);
 			}
 		});
 	}
@@ -458,20 +411,20 @@ public class LockStepTest {
 
 				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
 				// Ensure that b2 reaches the lock before b3
-				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
+				story.j.waitForMessage("[resource1, InversePrecedence: true] is locked, waiting...", b2);
 				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
 				// Both 2 and 3 are waiting for locking resource1
 
-				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
+				story.j.waitForMessage("[resource1, InversePrecedence: true] is locked, waiting...", b3);
 
 				// Unlock resource1
 				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resource [resource1]", b1);
+				story.j.waitForMessage("Lock released on resource [resource1, InversePrecedence: true]", b1);
 
 				// #3 gets the lock before #2 because of inversePrecedence
-				story.j.waitForMessage("Lock acquired on [resource1]", b3);
+				story.j.waitForMessage("Lock acquired on [resource1, InversePrecedence: true]", b3);
 				SemaphoreStep.success("wait-inside/2", null);
-				story.j.waitForMessage("Lock acquired on [resource1]", b2);
+				story.j.waitForMessage("Lock acquired on [resource1, InversePrecedence: true]", b2);
 				SemaphoreStep.success("wait-inside/3", null);
 				story.j.waitForMessage("Finish", b3);
 			}
@@ -507,54 +460,6 @@ public class LockStepTest {
 				SemaphoreStep.success("wait-b/1", null);
 
 				story.j.waitForMessage("[a] Lock acquired on [resource1]", b1);
-			}
-		});
-	}
-
-	@Test
-	public void lockOrderRestart() {
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResource("resource1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
-				));
-				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-				SemaphoreStep.waitForStart("wait-inside/1", b1);
-				WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
-				// Ensure that b2 reaches the lock before b3
-				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
-				WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
-				// Both 2 and 3 are waiting for locking resource1
-
-				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
-			}
-		});
-
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				WorkflowJob p = story.j.jenkins.getItemByFullName("p", WorkflowJob.class);
-				WorkflowRun b1 = p.getBuildByNumber(1);
-				WorkflowRun b2 = p.getBuildByNumber(2);
-				WorkflowRun b3 = p.getBuildByNumber(3);
-
-				// Unlock resource1
-				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resource [resource1]", b1);
-
-				story.j.waitForMessage("Lock acquired on [resource1]", b2);
-				story.j.assertLogContains("[resource1] is locked, waiting...", b3);
-				SemaphoreStep.success("wait-inside/2", null);
-				SemaphoreStep.waitForStart("wait-inside/3", b3);
-				story.j.assertLogContains("Lock acquired on [resource1]", b3);
-				SemaphoreStep.success("wait-inside/3", null);
-				story.j.waitForMessage("Finish", b3);
 			}
 		});
 	}
@@ -596,364 +501,6 @@ public class LockStepTest {
 				story.j.waitForMessage("Lock released on resource [resource1]", b1);
 			}
 		});
-	}
-
-	@Test
-	public void interoperabilityOnRestart() {
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResource("resource1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n" +
-						"	semaphore 'wait-inside'\n" +
-						"}\n" +
-						"echo 'Finish'"
-				));
-				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-				SemaphoreStep.waitForStart("wait-inside/1", b1);
-
-				FreeStyleProject f = story.j.createFreeStyleProject("f");
-				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
-
-				f.scheduleBuild2(0);
-
-				while(story.j.jenkins.getQueue().getItems().length != 1) {
-					System.out.println("Waiting for freestyle to be queued...");
-					Thread.sleep(1000);
-				}
-			}
-		});
-
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				WorkflowJob p = story.j.jenkins.getItemByFullName("p", WorkflowJob.class);
-				FreeStyleProject f = story.j.jenkins.getItemByFullName("f", FreeStyleProject.class);
-				WorkflowRun b1 = p.getBuildByNumber(1);
-
-
-				// Unlock resource1
-				SemaphoreStep.success("wait-inside/1", null);
-				story.j.waitForMessage("Lock released on resource [resource1]", b1);
-				FreeStyleBuild fb1 = null;
-				while((fb1 = f.getBuildByNumber(1)) == null) {
-					System.out.println("Waiting for freestyle #1 to start building...");
-					Thread.sleep(1000);
-				}
-
-				story.j.waitForMessage("acquired lock on [resource1]", fb1);
-			}
-		});
-	}
-
-	@Test
-	public void lockWithVariable() {
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResource("resource0");
-                LockableResourcesManager.get().createResourceWithLabel("resource1", "res");
-                LockableResourcesManager.get().createResourceWithLabel("resource2", "res");
-                LockableResourcesManager.get().createResourceWithLabel("resource3", "res");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition(
-						"lock(resource: 'resource0', variable: 'MY_VAR') {\n" +
-								"	echo 'Resource locked'\n" +
-								"	echo \"got resource:[ ${env.MY_VAR} ]\"\n" +
-								"}\n" +
-                                "lock(label: 'res', variable: 'MY_VAR') {\n" +
-                                "	echo 'multiple resources locked'\n" +
-                                "	echo \"got resources:[ ${env.MY_VAR} ]\"\n" +
-                                "}\n" +
-                                "echo 'Finish'"
-				));
-				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-				story.j.waitForCompletion(b1);
-				story.j.assertBuildStatus(Result.SUCCESS, b1);
-				story.j.assertLogContains("Lock released on resource [resource0, Variable: MY_VAR]", b1);
-				story.j.assertLogContains("got resource:[ resource0 ]", b1);
-
-                story.j.assertLogContains("Lock released on resource [Label: res, Variable: MY_VAR]", b1);
-                story.j.assertLogContains("got resources:[ resource1, resource2, resource3 ]", b1);
-			}
-		});
-	}
-
-    @Test
-    public void lockWithVariableNested() {
-        story.addStep(new Statement() {
-            @Override
-            public void evaluate() throws Throwable {
-                LockableResourcesManager.get().createResource("resource1");
-                LockableResourcesManager.get().createResource("resource2");
-                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-                p.setDefinition(new CpsFlowDefinition(
-                        "lock(resource: 'resource1', variable: 'MY_VAR1') {\n" +
-                                "	echo \"got resource#1.1:[ ${env.MY_VAR1} ]\"\n" +
-                                "   lock(resource: 'resource2', variable: 'MY_VAR2') {\n" +
-								"	   echo \"got resource#1.2:[ ${env.MY_VAR1} ]\"\n" +
-                                "	   echo \"got resource#2.1:[ ${env.MY_VAR2} ]\"\n" +
-                                "   }\n" +
-                                "	echo \"got resource#1.3:[ ${env.MY_VAR1} ]\"\n" +
-                                "	echo \"(unset after block) got no resource#:[ ${env.MY_VAR2} ]\"\n" +
-                                "   lock(resource: 'resource2', variable: 'MY_VAR1') {\n" +
-                                "	   echo \"(shadowing) got resource#2.2:[ ${env.MY_VAR1} ]\"\n" +
-                                "   }\n" +
-                                "	echo \"(is reset) got resource#1.4:[ ${env.MY_VAR1} ]\"\n" +
-                                "}\n" +
-                                "echo 'Finish'"
-                ));
-                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-                story.j.waitForCompletion(b1);
-                story.j.assertBuildStatus(Result.SUCCESS, b1);
-                story.j.assertLogContains("got resource#1.1:[ resource1 ]", b1);
-
-                story.j.assertLogContains("got resource#1.2:[ resource1 ]", b1);
-                story.j.assertLogContains("got resource#2.1:[ resource2 ]", b1);
-
-                story.j.assertLogContains("got resource#1.3:[ resource1 ]", b1);
-                // "null" is a bit strange but more of an echo problem
-                story.j.assertLogContains("got no resource#:[ null ]", b1);
-                story.j.assertLogContains("got resource#2.2:[ resource2 ]", b1);
-                story.j.assertLogContains("got resource#1.4:[ resource1 ]", b1);
-            }
-        });
-    }
-
-    @Test
-    public void lockWithVariableParallel() {
-        story.addStep(new Statement() {
-            @Override
-            public void evaluate() throws Throwable {
-                LockableResourcesManager.get().createResource("resource1");
-                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-                p.setDefinition(new CpsFlowDefinition(
-                        "parallel a: {\n" +
-                                "	sleep 5\n" +
-                                "	lock(resource: 'resource1', variable: 'MY_VAR') {\n" +
-                                "	    echo \"got resource#1:[ ${env.MY_VAR} ]\"\n" +
-                                "	}\n" +
-                                "}, b: {\n" +
-                                "	lock(resource: 'resource1', variable: 'MY_VAR') {\n" +
-                                "	   echo \"got resource#2:[ ${env.MY_VAR} ]\"\n" +
-                                "	   sleep 7\n" +
-                                "	}\n" +
-                                "}\n"
-                ));
-
-                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-                story.j.waitForCompletion(b1);
-
-                story.j.assertLogContains("[b] Lock acquired on [resource1, Variable: MY_VAR]", b1);
-                story.j.assertLogContains("[b] got resource#2:[ resource1 ]", b1);
-                story.j.assertLogContains("[a] [resource1, Variable: MY_VAR] is locked, waiting...", b1);
-
-                story.j.assertLogContains("[a] Lock acquired on [resource1, Variable: MY_VAR]", b1);
-                story.j.assertLogContains("[a] got resource#1:[ resource1 ]", b1);
-            }
-        });
-    }
-
-	@Issue("JENKINS-36479")
-	@Test public void hardKillNewBuildClearsLock() throws Exception {
-		story.addStep(new Statement() {
-			@Override public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResource("resource1");
-
-				WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p1.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
-				WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("locked!", b1);
-				SemaphoreStep.waitForStart("wait-inside/1", b1);
-
-				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
-				p2.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-						+ "  semaphore 'wait-inside'\n"
-						+ "}"));
-				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-
-				// Make sure that b2 is blocked on b1's lock.
-				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
-
-				// Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the lock.
-				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
-				p3.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-								+ "  semaphore 'wait-inside'\n"
-								+ "}"));
-				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
-
-				// Kill b1 hard.
-				b1.doKill();
-				story.j.waitForMessage("Hard kill!", b1);
-				story.j.waitForCompletion(b1);
-				story.j.assertBuildStatus(Result.ABORTED, b1);
-
-
-				// Verify that b2 gets the lock.
-				story.j.waitForMessage("Lock acquired on [resource1]", b2);
-				SemaphoreStep.success("wait-inside/2", b2);
-				// Verify that b2 releases the lock and finishes successfully.
-				story.j.waitForMessage("Lock released on resource [resource1]", b2);
-				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b2));
-
-				// Now b3 should get the lock and do its thing.
-				story.j.waitForMessage("Lock acquired on [resource1]", b3);
-				SemaphoreStep.success("wait-inside/3", b3);
-				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b3));
-			}
-		});
-	}
-
-	// TODO: Figure out what to do about the IOException thrown during clean up, since we don't care about it. It's just
-	// a result of the first build being deleted and is nothing but noise here.
-	@Issue("JENKINS-36479")
-	@Test public void deleteRunningBuildNewBuildClearsLock() throws Exception {
-		assumeFalse(Functions.isWindows()); // TODO: Investigate failure on Windows.
-		story.addStep(new Statement() {
-			@Override public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResource("resource1");
-
-				WorkflowJob p1 = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p1.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
-				WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
-				story.j.waitForMessage("locked!", b1);
-				SemaphoreStep.waitForStart("wait-inside/1", b1);
-
-				WorkflowJob p2 = story.j.jenkins.createProject(WorkflowJob.class, "p2");
-				p2.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-								+ "  semaphore 'wait-inside'\n"
-								+ "}"));
-				WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-
-				// Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the lock.
-				WorkflowJob p3 = story.j.jenkins.createProject(WorkflowJob.class, "p3");
-				p3.setDefinition(new CpsFlowDefinition(
-						"lock('resource1') {\n"
-								+ "  semaphore 'wait-inside'\n"
-								+ "}"));
-				WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-
-
-				// Make sure that b2 is blocked on b1's lock.
-				story.j.waitForMessage("[resource1] is locked, waiting...", b2);
-				story.j.waitForMessage("[resource1] is locked, waiting...", b3);
-
-				b1.delete();
-
-
-				// Verify that b2 gets the lock.
-				story.j.waitForMessage("Lock acquired on [resource1]", b2);
-				SemaphoreStep.success("wait-inside/2", b2);
-				// Verify that b2 releases the lock and finishes successfully.
-				story.j.waitForMessage("Lock released on resource [resource1]", b2);
-				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b2));
-
-				// Now b3 should get the lock and do its thing.
-				story.j.waitForMessage("Lock acquired on [resource1]", b3);
-				SemaphoreStep.success("wait-inside/3", b3);
-				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b3));
-			}
-		});
-	}
-
-	@Issue("JENKINS-40368")
-	@Test
-	public void hardKillWithWaitingRuns() throws Exception {
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResource("resource1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition("retry(99) {\n" +
-						"    lock('resource1') {\n" +
-						"        semaphore('wait-inside')\n" +
-						"     }\n" +
-						"}", true));
-
-				WorkflowRun prevBuild = null;
-				for (int i = 0; i < 3; i++) {
-					WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
-					if (prevBuild != null) {
-						story.j.waitForMessage("[resource1] is locked, waiting...", rNext);
-						interruptTermKill(prevBuild);
-					}
-
-					story.j.waitForMessage("Lock acquired on [resource1]", rNext);
-
-					SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
-					prevBuild = rNext;
-				}
-				SemaphoreStep.success("wait-inside/3", null);
-				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(prevBuild));
-			}
-		});
-	}
-
-	@Issue("JENKINS-40368")
-	@Test
-	public void hardKillWithWaitingRunsOnLabel() throws Exception {
-		story.addStep(new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
-				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
-				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-				p.setDefinition(new CpsFlowDefinition("retry(99) {\n" +
-						"    lock(label: 'label1', quantity: 1) {\n" +
-						"        semaphore('wait-inside')\n" +
-						"     }\n" +
-						"}", true));
-
-				WorkflowRun firstPrev = null;
-				WorkflowRun secondPrev = null;
-				for (int i = 0; i < 3; i++) {
-					WorkflowRun firstNext = p.scheduleBuild2(0).waitForStart();
-					story.j.waitForMessage("Trying to acquire lock on", firstNext);
-					WorkflowRun secondNext = p.scheduleBuild2(0).waitForStart();
-					story.j.waitForMessage("Trying to acquire lock on", secondNext);
-
-					if (firstPrev != null) {
-						story.j.waitForMessage("is locked, waiting...", firstNext);
-						story.j.waitForMessage("is locked, waiting...", secondNext);
-					}
-
-					interruptTermKill(firstPrev);
-					story.j.waitForMessage("Lock acquired on ", firstNext);
-					interruptTermKill(secondPrev);
-					story.j.waitForMessage("Lock acquired on ", secondNext);
-
-					SemaphoreStep.waitForStart("wait-inside/" + ((i * 2) + 1), firstNext);
-					SemaphoreStep.waitForStart("wait-inside/" + ((i * 2) + 2), secondNext);
-					firstPrev = firstNext;
-					secondPrev = secondNext;
-				}
-				SemaphoreStep.success("wait-inside/5", null);
-				SemaphoreStep.success("wait-inside/6", null);
-				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(firstPrev));
-				story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(secondPrev));
-			}
-		});
-	}
-
-	private void interruptTermKill(WorkflowRun b) throws Exception {
-		if (b != null) {
-			Executor ex = b.getExecutor();
-			assertNotNull(ex);
-			ex.interrupt();
-			story.j.waitForMessage("Click here to forcibly terminate running steps", b);
-			b.doTerm();
-			story.j.waitForMessage("Click here to forcibly kill entire build", b);
-			b.doKill();
-			story.j.waitForMessage("Hard kill!", b);
-			story.j.waitForCompletion(b);
-			story.j.assertBuildStatus(Result.ABORTED, b);
-		}
 	}
 
 	@Test
