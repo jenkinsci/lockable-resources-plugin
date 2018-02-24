@@ -389,7 +389,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			LOGGER.log(Level.INFO, "Locking queued resources " + resources + " for freestyle build " + build.getFullDisplayName());
 			for (LockableResource r : resources) {
 				// check that we are actually unqueueing resources that were queued for this build
-				if (r.getQueueItemProject().equals(((FreeStyleBuild)build).getProject().getFullName())) {
+				if (r.getQueueItemProject().equals(build.getParent().getFullName())) {
 					r.unqueue();
 					r.setBuild(build);
 				} else {
