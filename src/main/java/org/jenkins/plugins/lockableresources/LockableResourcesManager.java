@@ -600,9 +600,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
 		// groovy script specific to freestyle jobs
 		if (systemGroovyScript != null) {
-				candidates = getResourcesMatchingScript(systemGroovyScript, params);
+			candidates = getResourcesMatchingScript(systemGroovyScript, params);
 		} else if (requiredResources.label != null && requiredResources.label.isEmpty()) {
-			candidates.addAll(requiredResources.required);
+			for (LockableResource resource: requiredResources.required) {
+				// The way the resources are sometimes serialised, means that there might be a copy
+				// of the LockableResource, with old locked status, so make sure to use up to date
+				// information, by getting resource by name
+				LockableResource freshResource = LockableResourcesManager.get().fromName(resource.getName());
+				candidates.add(freshResource);
+			}
 		} else { // label is specified
 			for (LockableResource resource : this.resources) {
 				if (resource.isValidLabel(requiredResources.label))
