@@ -45,19 +45,19 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		super();
 		
 		if (resourceNames == null || resourceNames.trim().isEmpty()) {
-		    this.resourceNames = null;
+			this.resourceNames = null;
 		} else {
-		    this.resourceNames = resourceNames.trim();
+			this.resourceNames = resourceNames.trim();
 		}
 		if (resourceNamesVar == null || resourceNamesVar.trim().isEmpty()) {
-		    this.resourceNamesVar = null;
+			this.resourceNamesVar = null;
 		} else {
-		    this.resourceNamesVar = resourceNamesVar.trim();
+			this.resourceNamesVar = resourceNamesVar.trim();
 		}
 		if (resourceNumber == null || resourceNumber.trim().isEmpty()) {
-		    this.resourceNumber = null;
+			this.resourceNumber = null;
 		} else {
-		    this.resourceNumber = resourceNumber.trim();
+			this.resourceNumber = resourceNumber.trim();
 		}
 		String labelNamePreparation = (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
 		if (resourceMatchScript != null) {
