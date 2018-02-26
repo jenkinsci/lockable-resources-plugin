@@ -7,6 +7,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.BodyInvoker;
@@ -20,6 +21,7 @@ import com.google.inject.Inject;
 import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
 public class LockStepExecution extends AbstractStepExecutionImpl {
 
@@ -34,12 +36,16 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	@StepContextParameter
 	private transient TaskListener listener;
 
+	@StepContextParameter
+	private transient FlowNode node;
+
 	private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
 	@Override
 	public boolean start() throws Exception {
 		step.validate();
 
+		node.addAction(new PauseAction("Lock"));
 		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
 		List<String> resources = new ArrayList<String>();
 		if (step.resource != null) {
@@ -60,8 +66,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence) {
 		Run<?, ?> r = null;
+		FlowNode node = null;
 		try {
 			r = context.get(Run.class);
+			node = context.get(FlowNode.class);
 			context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
 		} catch (Exception e) {
 			context.onFailure(e);
@@ -70,6 +78,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
 		try {
+			PauseAction.endCurrentPause(node);
 			BodyInvoker bodyInvoker = context.newBodyInvoker().
 				withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
 				withDisplayName(null);
