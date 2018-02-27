@@ -43,7 +43,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String resourceNamesVar, String resourceNumber,
 			String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
 		super();
-		this.resourceNames = resourceNames;
+		if (resourceNames != null) {
+			this.resourceNames = resourceNames.trim();
+		} else {
+			this.resourceNames = null;
+		}
 		this.resourceNamesVar = resourceNamesVar;
 		this.resourceNumber = resourceNumber;
 		if (resourceMatchScript != null) {
@@ -101,13 +105,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return labelName;
 	}
 
-        /**
-         * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
-         * @return System Groovy Script if defined
-         * @since TODO
-         * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map) 
-         */
-        @CheckForNull
+	/**
+	 * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
+	 * @return System Groovy Script if defined
+	 * @since TODO
+	 * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
+	 */
+	@CheckForNull
 	public SecureGroovyScript getResourceMatchScript() {
 		return resourceMatchScript;
 	}

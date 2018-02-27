@@ -19,6 +19,8 @@ import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.QueueTaskDispatcher;
 import hudson.model.queue.CauseOfBlockage;
+import hudson.model.ParametersAction;
+import hudson.model.ParameterValue;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -72,11 +74,37 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
 			Map<String, Object> params = new HashMap<String, Object>();
-			if (item.task instanceof MatrixConfiguration) {
-			    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
-			    params.putAll(matrix.getCombination());
+
+			// Inject Build Parameters, if possible and applicable to the "item" type
+			try {
+				List<ParametersAction> itemparams = item.getActions(ParametersAction.class);
+				if (itemparams != null) {
+					for ( ParametersAction actparam : itemparams) {
+						if (actparam == null) continue;
+						for ( ParameterValue p : actparam.getParameters() ) {
+							if (p == null) continue;
+							params.put(p.getName(), p.getValue());
+						}
+					}
+				}
+			} catch(Exception ex) {
+				// Report the error and go on with the build -
+				// perhaps this item is not a build with args, etc.
+				// Note this is likely to fail a bit later in such case.
+				if (LOGGER.isLoggable(Level.WARNING)) {
+					if (lastLogged.getIfPresent(item.getId()) == null) {
+						lastLogged.put(item.getId(), new Date());
+					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
+					LOGGER.log(Level.WARNING, "Failed to get build params from item " + itemName, ex);
+					}
+				}
 			}
-                        
+
+			if (item.task instanceof MatrixConfiguration) {
+				MatrixConfiguration matrix = (MatrixConfiguration) item.task;
+				params.putAll(matrix.getCombination());
+			}
+
 			final List<LockableResource> selected ;
 			try {
 				selected = LockableResourcesManager.get().tryQueue(
@@ -90,7 +118,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				Throwable toReport = ex.getCause();
 				if (toReport == null) { // We care about the cause only
 					toReport = ex;
-				}	
+				}
 				if (LOGGER.isLoggable(Level.WARNING)) {
 					if (lastLogged.getIfPresent(item.getId()) == null) {
 						lastLogged.put(item.getId(), new Date());
@@ -99,7 +127,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 						LOGGER.log(Level.WARNING, "Failed to queue item " + itemName, toReport.getMessage());
 					}
 				}
-				
+
 				return new BecauseResourcesQueueFailed(resources, toReport);
 			}
 
@@ -112,7 +140,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 
 		} else {
-			if (LockableResourcesManager.get().queue(resources.required, item.getId())) {
+			if (LockableResourcesManager.get().queue(resources.required, item.getId(), project.getFullDisplayName())) {
 				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
 				return null;
 			} else {
@@ -139,7 +167,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				return "Waiting for resources with label " + rscStruct.label;
 		}
 	}
-        
+
 	// Only for UI
 	@Restricted(NoExternalUse.class)
 	public static class BecauseResourcesQueueFailed extends CauseOfBlockage {
@@ -148,7 +176,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		private final LockableResourcesStruct resources;
 		@NonNull
 		private final Throwable cause;
-		
+
 		public BecauseResourcesQueueFailed(@NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
 			this.cause = cause;
 			this.resources = resources;

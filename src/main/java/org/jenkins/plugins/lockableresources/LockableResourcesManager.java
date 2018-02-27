@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
+import hudson.BulkChange;
 import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
@@ -157,12 +158,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean queue(List<LockableResource> resources,
-			long queueItemId) {
+			long queueItemId, String queueProjectName) {
 		for (LockableResource r : resources)
 			if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked())
 				return false;
-		for (LockableResource r : resources)
-			r.setQueued(queueItemId);
+		for (LockableResource r : resources) {
+			r.setQueued(queueItemId, queueProjectName);
+		}
 		return true;
 	}
 
@@ -187,7 +189,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Try to acquire the resources required by the task.
 	 * @param number Number of resources to acquire. {@code 0} means all
@@ -273,16 +275,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 		return true;
 	}
-	
+
 	public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, false);
+		return lock(resources, build, context, null, null, false);
 	}
 
 	/**
 	 * Try to lock the resource and return true if locked.
 	 */
 	public synchronized boolean lock(List<LockableResource> resources,
-			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage, boolean inversePrecedence) {
+			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage,
+			final String variable, boolean inversePrecedence) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
@@ -303,13 +306,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, inversePrecedence);
+				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
 			}
 		}
 		save();
 		return !needToWait;
 	}
-	
+
 	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
 			for (LockableResource resource : this.resources) {
@@ -356,11 +359,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			save();
 			return;
 		}
-			
+
 		// remove context from queue and process it
 		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
 		this.queuedContexts.remove(nextContext);
-			
+
 		// resourceNamesToUnlock contains the names of the previous resources.
 		// requiredResourceForNextContext contains the resource objects which are required for the next context.
 		// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
@@ -417,7 +420,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			freeResources(freeResources, build);
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), inversePrecedence);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), nextContext.getResources().requiredVar, inversePrecedence);
 		}
 		save();
 	}
@@ -673,7 +676,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Adds the given context and the required resources to the queue if
 	 * this context is not yet queued.
 	 */
-	public void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
+	public synchronized void queueContext(StepContext context, LockableResourcesStruct requiredResources, String resourceDescription) {
 		for (QueuedContextStruct entry : this.queuedContexts) {
 			if (entry.getContext() == context) {
 				return;
@@ -684,7 +687,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 	}
 
-	public boolean unqueueContext(StepContext context) {
+	public synchronized boolean unqueueContext(StepContext context) {
 		for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
 			if (iter.next().getContext() == context) {
 				iter.remove();
@@ -699,6 +702,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
 	}
+
+	public synchronized void save() {
+                if(BulkChange.contains(this))
+                    return;
+
+                try {
+                    getConfigFile().write(this);
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(),e);
+                }
+        }
 
 	private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 

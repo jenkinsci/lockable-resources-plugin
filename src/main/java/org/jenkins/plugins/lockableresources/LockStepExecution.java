@@ -1,24 +1,33 @@
 package org.jenkins.plugins.lockableresources;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
+import org.jenkinsci.plugins.workflow.steps.BodyInvoker;
+import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
 
+import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 
+import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
 public class LockStepExecution extends AbstractStepExecutionImpl {
 
-	@Inject(optional = true)
+	private static final Joiner COMMA_JOINER = Joiner.on(',');
+
+    @Inject(optional = true)
 	private LockStep step;
 
 	@StepContextParameter
@@ -27,12 +36,16 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 	@StepContextParameter
 	private transient TaskListener listener;
 
+	@StepContextParameter
+	private transient FlowNode node;
+
 	private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
 	@Override
 	public boolean start() throws Exception {
 		step.validate();
 
+		node.addAction(new PauseAction("Lock"));
 		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
 		List<String> resources = new ArrayList<String>();
 		if (step.resource != null) {
@@ -44,17 +57,19 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
 		// determine if there are enough resources available to proceed
 		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
-		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.inversePrecedence)) {
+		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
 			listener.getLogger().println("[" + step + "] is locked, waiting...");
 			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString());
 		} // proceed is called inside lock if execution is possible
 		return false;
 	}
 
-	public static void proceed(List<String> resourcenames, StepContext context, String resourceDescription, boolean inversePrecedence) {
+	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence) {
 		Run<?, ?> r = null;
+		FlowNode node = null;
 		try {
 			r = context.get(Run.class);
+			node = context.get(FlowNode.class);
 			context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
 		} catch (Exception e) {
 			context.onFailure(e);
@@ -62,10 +77,27 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		}
 
 		LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
-		context.newBodyInvoker().
-			withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
-			withDisplayName(null).
-			start();
+		try {
+			PauseAction.endCurrentPause(node);
+			BodyInvoker bodyInvoker = context.newBodyInvoker().
+				withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
+				withDisplayName(null);
+			if(variable != null && variable.length()>0)
+				// set the variable for the duration of the block
+				bodyInvoker.withContext(EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
+					@Override
+					public void expand(EnvVars env) throws IOException, InterruptedException {
+						final String resources = COMMA_JOINER.join(resourcenames);
+								LOGGER.finest("Setting [" + variable + "] to [" + resources
+										+ "] for the duration of the block");
+						
+						env.override(variable, resources);
+					}
+				}));
+			bodyInvoker.start();
+		} catch (IOException | InterruptedException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	private static final class Callback extends BodyExecutionCallback.TailCall {

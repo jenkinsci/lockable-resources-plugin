@@ -2,7 +2,8 @@
     <p>
         You can specify a groovy expression to be evaluated each time a resource is checked
         to be appropriate for a build. The expression must result into a boolean value. The
-        following variables are available:
+        following variables are available, in addition to optional arguments of the currently
+        evaluated build:
     </p>
     <dl>
         <dt>resourceName</dt>
@@ -20,7 +21,7 @@
         <li><code>resourceLabels.contains(axisName)</code></li>
         <li><code>resourceName == axisName</code></li>
     </ul>
-    
+
     <p>
       The script's contents need to pass approval by the <a href="https://plugins.jenkins.io/script-security">Script Security Plugin</a>.
     </p>
