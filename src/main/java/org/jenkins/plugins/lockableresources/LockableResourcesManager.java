@@ -26,11 +26,13 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import hudson.model.TaskListener;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
+import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
@@ -362,7 +364,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		// remove context from queue and process it
 		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
-		this.queuedContexts.remove(nextContext);
+		unqueueContext(nextContext.getContext());
 
 		// resourceNamesToUnlock contains the names of the previous resources.
 		// requiredResourceForNextContext contains the resource objects which are required for the next context.
@@ -526,12 +528,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		// no context is queued which can be started once these resources are free'd.
 		if (nextContext == null) {
+			LOGGER.log(Level.FINER, "No context queued for resources " + StringUtils.join(resourceNamesToUnreserve, ", ") + " so unreserving and proceeding.");
 			unreserveResources(resources);
 			return;
 		}
 
+		PrintStream nextContextLogger = null;
+		try {
+			TaskListener nextContextTaskListener = nextContext.getContext().get(TaskListener.class);
+			if (nextContextTaskListener != null) {
+				nextContextLogger = nextContextTaskListener.getLogger();
+			}
+		} catch (IOException | InterruptedException e) {
+			LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
+		}
+
 		// remove context from queue and process it
-		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnreserve);
+		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(),
+				nextContextLogger,
+				resourceNamesToUnreserve);
 		this.queuedContexts.remove(nextContext);
 
 		// resourceNamesToUnreserve contains the names of the previous resources.
@@ -570,7 +585,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), false);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), null, false);
 		}
 		save();
 	}
