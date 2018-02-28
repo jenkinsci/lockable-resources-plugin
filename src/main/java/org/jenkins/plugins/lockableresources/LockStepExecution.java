@@ -48,9 +48,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		node.addAction(new PauseAction("Lock"));
 		listener.getLogger().println("Trying to acquire lock on [" + step + "]");
-		
+
 		List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
-		
+
 		for (LockStepResource resource : step.getResources()) {
 			List<String> resources = new ArrayList<String>();
 			if (resource.resource != null) {
@@ -61,7 +61,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			}
 			resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
 		}
-		
+
 		// determine if there are enough resources available to proceed
 		Set<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolderList, listener.getLogger(), null);
 		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
@@ -87,7 +87,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		try {
 			PauseAction.endCurrentPause(node);
 			BodyInvoker bodyInvoker = context.newBodyInvoker().
-				withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
+				withCallback(new Callback(resourcenames, resourceDescription, variable, inversePrecedence)).
 				withDisplayName(null);
 			if(variable != null && variable.length()>0)
 				// set the variable for the duration of the block
@@ -97,7 +97,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 						final String resources = COMMA_JOINER.join(resourcenames);
 								LOGGER.finest("Setting [" + variable + "] to [" + resources
 										+ "] for the duration of the block");
-						
+
 						env.override(variable, resources);
 					}
 				}));
@@ -111,16 +111,18 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		private final List<String> resourceNames;
 		private final String resourceDescription;
+		private final String variable;
 		private final boolean inversePrecedence;
 
-		Callback(List<String> resourceNames, String resourceDescription, boolean inversePrecedence) {
+		Callback(List<String> resourceNames, String resourceDescription, String variable, boolean inversePrecedence) {
 			this.resourceNames = resourceNames;
 			this.resourceDescription = resourceDescription;
+			this.variable = variable;
 			this.inversePrecedence = inversePrecedence;
 		}
 
 		protected void finished(StepContext context) throws Exception {
-			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
+			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.variable, this.inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceDescription + "]");
 			LOGGER.finest("Lock released on [" + resourceDescription + "]");
 		}

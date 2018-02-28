@@ -332,11 +332,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-		unlock(resourcesToUnLock, build, false);
+		unlock(resourcesToUnLock, build, null, false);
 	}
 
 	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
-									@Nullable Run<?, ?> build, boolean inversePrecedence) {
+									@Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence) {
 		List<String> resourceNamesToUnLock = new ArrayList<String>();
 		if (resourcesToUnLock != null) {
 			for (LockableResource r : resourcesToUnLock) {
@@ -344,15 +344,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 
-		this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+		this.unlockNames(resourceNamesToUnLock, build, requiredVar, inversePrecedence);
 	}
 
-	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence) {
 		// make sure there is a list of resource names to unlock
 		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.size() == 0)) {
 			return;
 		}
-		
+
 		// process as many contexts as possible
 		List<String> remainingResourceNamesToUnLock = new ArrayList<>(resourceNamesToUnLock);
 
@@ -361,16 +361,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			// check if there are resources which can be unlocked (and shall not be unlocked)
 			Set<LockableResource> requiredResourceForNextContext = null;
 			nextContext = this.getNextQueuedContext(remainingResourceNamesToUnLock, inversePrecedence, nextContext);
-	
+
 			// no context is queued which can be started once these resources are free'd.
 			if (nextContext == null) {
 				this.freeResources(remainingResourceNamesToUnLock, build);
 				save();
 				return;
 			}
-	
+
 			requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, remainingResourceNamesToUnLock);
-	
+
 			// resourceNamesToUnlock contains the names of the previous resources.
 			// requiredResourceForNextContext contains the resource objects which are required for the next context.
 			// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
@@ -383,13 +383,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					}
 				}
 			}
-	
+
 			if (!needToWait) {
 				// remove context from queue and process it
 				unqueueContext(nextContext.getContext());
-	
+
 				List<String> resourceNamesToLock = new ArrayList<String>();
-	
+
 				// lock all (old and new resources)
 				for (LockableResource requiredResource : requiredResourceForNextContext) {
 					try {
@@ -401,11 +401,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 								"this could be a legitimate status if the build waiting for the lock was deleted or" +
 								" hard killed. More information at Level.FINE if debug is needed.");
 						LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
-						unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
+						unlockNames(remainingResourceNamesToUnLock, build, requiredVar, inversePrecedence);
 						return;
 					}
 				}
-	
+
 				// determine old resources no longer needed
 				List<String> freeResources = new ArrayList<String>();
 				for (String resourceNameToUnlock : remainingResourceNamesToUnLock) {
@@ -416,17 +416,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 							break;
 						}
 					}
-	
+
 					if (!resourceStillNeeded) {
 						freeResources.add(resourceNameToUnlock);
 					}
 				}
-	
+
 				// keep unused resources
 				remainingResourceNamesToUnLock.retainAll(freeResources);
-	
+
 				// continue with next context
-				LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), nextContext.getResources().requiredVar, inversePrecedence);
+				LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), requiredVar, inversePrecedence);
 			}
 		}
 		save();
@@ -638,9 +638,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 */
 	public synchronized Set<LockableResource> checkResourcesAvailability(List<LockableResourcesStruct> requiredResourcesList,
 			@Nullable PrintStream logger, @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
-		
+
 		List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
-		
+
 		// Build possible resources for each requirement
 		for (LockableResourcesStruct requiredResources : requiredResourcesList) {
 			// get possible resources
@@ -658,21 +658,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					}
 				}
 			}
-	
+
 			if (requiredAmount == 0) {
 				requiredAmount = candidates.size();
 			}
-			
+
 			requiredResourcesCandidatesList.add(new LockableResourcesCandidatesStruct(candidates, requiredAmount));
 		}
-		
+
 		// Process freed resources
 		int totalSelected = 0;
-		
+
 		for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
 			// start with an empty set of selected resources
 			List<LockableResource> selected = new ArrayList<LockableResource>();
-			
+
 			// some resources might be already locked, but will be freed.
 			// Determine if these resources can be reused
 			if (lockedResourcesAboutToBeUnlocked != null) {
@@ -685,25 +685,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					}
 				}
 			}
-			
+
 			totalSelected += selected.size();
 			requiredResources.selected = selected;
 		}
-		
+
 		// if none of the currently locked resources can be reused,
 		// this context is not suitable to be continued with
 		if (lockedResourcesAboutToBeUnlocked != null && totalSelected == 0) {
 			return null;
 		}
-	
+
 		// Find remaining resources
 		Set<LockableResource> allSelected = new HashSet<>();
-		
+
 		for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
 			List<LockableResource> candidates = requiredResources.candidates;
 			List<LockableResource> selected = requiredResources.selected;
 			int requiredAmount = requiredResources.requiredAmount;
-			
+
 			// Try and re-use as many previously selected resources first
 			List<LockableResource> alreadySelectedCandidates = new ArrayList<>(candidates);
 			alreadySelectedCandidates.retainAll(allSelected);
@@ -715,7 +715,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					selected.add(rs);
 				}
 			}
-			
+
 			candidates.removeAll(alreadySelectedCandidates);
 			for (LockableResource rs : candidates) {
 				if (selected.size() >= requiredAmount) {
@@ -725,14 +725,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					selected.add(rs);
 				}
 			}
-	
+
 			if (selected.size() < requiredAmount) {
 				if (logger != null) {
 					logger.println("Found " + selected.size() + " available resource(s). Waiting for correct amount: " + requiredAmount + ".");
 				}
 				return null;
 			}
-			
+
 			allSelected.addAll(selected);
 		}
 

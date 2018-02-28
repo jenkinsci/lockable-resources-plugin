@@ -10,6 +10,9 @@
 	<f:entry title="${%Quantity}" field="quantity">
 		<f:number/>
 	</f:entry>
+	<f:entry title="${%Result variable}" field="variable">
+		<f:textbox/>
+	</f:entry>
 	<f:entry title="${%Inverse precedence}" field="inversePrecedence">
 		<f:checkbox/>
 	</f:entry>
