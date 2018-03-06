@@ -109,8 +109,8 @@ public class BasicIntegrationTest {
 		assertNotNull(withResourceProp);
 		assertEquals("resource1", withResourceProp.getResourceNames());
 		assertEquals("resourceNameVar", withResourceProp.getResourceNamesVar());
-		assertEquals("", withResourceProp.getResourceNumber());
-		assertEquals("", withResourceProp.getLabelName());
+		assertNull(withResourceProp.getResourceNumber());
+		assertNull(withResourceProp.getLabelName());
 		assertNull(withResourceProp.getResourceMatchScript());
 
 		FreeStyleProject withLabel = j.createFreeStyleProject("withLabel");
@@ -119,9 +119,9 @@ public class BasicIntegrationTest {
 
 		RequiredResourcesProperty withLabelProp = withLabelRoundTrip.getProperty(RequiredResourcesProperty.class);
 		assertNotNull(withLabelProp);
-		assertEquals("", withLabelProp.getResourceNames());
-		assertEquals("", withLabelProp.getResourceNamesVar());
-		assertEquals("", withLabelProp.getResourceNumber());
+		assertNull(withLabelProp.getResourceNames());
+		assertNull(withLabelProp.getResourceNamesVar());
+		assertNull(withLabelProp.getResourceNumber());
 		assertEquals("some-label", withLabelProp.getLabelName());
 		assertNull(withLabelProp.getResourceMatchScript());
 
@@ -132,10 +132,10 @@ public class BasicIntegrationTest {
 
 		RequiredResourcesProperty withScriptProp = withScriptRoundTrip.getProperty(RequiredResourcesProperty.class);
 		assertNotNull(withScriptProp);
-		assertEquals("", withScriptProp.getResourceNames());
-		assertEquals("", withScriptProp.getResourceNamesVar());
-		assertEquals("", withScriptProp.getResourceNumber());
-		assertEquals("", withScriptProp.getLabelName());
+		assertNull(withScriptProp.getResourceNames());
+		assertNull(withScriptProp.getResourceNamesVar());
+		assertNull(withScriptProp.getResourceNumber());
+		assertNull(withScriptProp.getLabelName());
 		assertNotNull(withScriptProp.getResourceMatchScript());
 		assertEquals("return true", withScriptProp.getResourceMatchScript().getScript());
 		assertEquals(false, withScriptProp.getResourceMatchScript().isSandbox());
