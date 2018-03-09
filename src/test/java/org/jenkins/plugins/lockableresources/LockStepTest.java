@@ -35,6 +35,7 @@ import hudson.model.Result;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 
 public class LockStepTest {
@@ -746,6 +747,39 @@ public class LockStepTest {
 				}
 				SemaphoreStep.success("wait-inside-1/" + nextRuns.size(), null);
 				waitAndClear(1, nextRuns);
+			}
+		});
+	}
+
+	@Issue("JENKINS-34433")
+	@Test
+	public void manualUnreserveUnblocksJob() throws Exception {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResource("resource1");
+				JenkinsRule.WebClient wc = story.j.createWebClient();
+
+				wc.goTo("lockable-resources/reserve?resource=resource1");
+				LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
+				assertNotNull(resource1);
+				resource1.setReservedBy("someone");
+				assertTrue(resource1.isReserved());
+
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition("retry(99) {\n" +
+						"    lock('resource1') {\n" +
+						"        semaphore('wait-inside')\n" +
+						"     }\n" +
+						"}", true));
+
+
+				WorkflowRun r = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForMessage("[resource1] is locked, waiting...", r);
+				wc.goTo("lockable-resources/unreserve?resource=resource1");
+				SemaphoreStep.waitForStart("wait-inside/1", r);
+				SemaphoreStep.success("wait-inside/1", null);
+				story.j.assertBuildStatusSuccess(story.j.waitForCompletion(r));
 			}
 		});
 	}

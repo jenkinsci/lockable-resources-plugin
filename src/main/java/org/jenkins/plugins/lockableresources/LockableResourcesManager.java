@@ -26,11 +26,13 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import hudson.model.TaskListener;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
+import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
@@ -362,7 +364,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		// remove context from queue and process it
 		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(), null, resourceNamesToUnLock);
-		this.queuedContexts.remove(nextContext);
+		unqueueContext(nextContext.getContext());
 
 		// resourceNamesToUnlock contains the names of the previous resources.
 		// requiredResourceForNextContext contains the resource objects which are required for the next context.
@@ -504,9 +506,86 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		return true;
 	}
 
+	private void unreserveResources(@Nonnull List<LockableResource> resources) {
+		for (LockableResource l : resources) {
+			l.unReserve();
+		}
+		save();
+	}
 	public synchronized void unreserve(List<LockableResource> resources) {
+		// make sure there is a list of resources to unreserve
+		if (resources == null || (resources.size() == 0)) {
+			return;
+		}
+		List<String> resourceNamesToUnreserve = new ArrayList<>();
 		for (LockableResource r : resources) {
-			r.unReserve();
+			resourceNamesToUnreserve.add(r.getName());
+		}
+
+		// check if there are resources which can be unlocked (and shall not be unlocked)
+		List<LockableResource> requiredResourceForNextContext = null;
+		QueuedContextStruct nextContext = this.getNextQueuedContext(resourceNamesToUnreserve, false);
+
+		// no context is queued which can be started once these resources are free'd.
+		if (nextContext == null) {
+			LOGGER.log(Level.FINER, "No context queued for resources " + StringUtils.join(resourceNamesToUnreserve, ", ") + " so unreserving and proceeding.");
+			unreserveResources(resources);
+			return;
+		}
+
+		PrintStream nextContextLogger = null;
+		try {
+			TaskListener nextContextTaskListener = nextContext.getContext().get(TaskListener.class);
+			if (nextContextTaskListener != null) {
+				nextContextLogger = nextContextTaskListener.getLogger();
+			}
+		} catch (IOException | InterruptedException e) {
+			LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
+		}
+
+		// remove context from queue and process it
+		requiredResourceForNextContext = checkResourcesAvailability(nextContext.getResources(),
+				nextContextLogger,
+				resourceNamesToUnreserve);
+		this.queuedContexts.remove(nextContext);
+
+		// resourceNamesToUnreserve contains the names of the previous resources.
+		// requiredResourceForNextContext contains the resource objects which are required for the next context.
+		// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
+		boolean needToWait = false;
+		for (LockableResource requiredResource : requiredResourceForNextContext) {
+			if (!resourceNamesToUnreserve.contains(requiredResource.getName())) {
+				if (requiredResource.isReserved() || requiredResource.isLocked()) {
+					needToWait = true;
+					break;
+				}
+			}
+		}
+
+		if (needToWait) {
+			unreserveResources(resources);
+			return;
+		} else {
+			unreserveResources(resources);
+			List<String> resourceNamesToLock = new ArrayList<String>();
+
+			// lock all (old and new resources)
+			for (LockableResource requiredResource : requiredResourceForNextContext) {
+				try {
+					requiredResource.setBuild(nextContext.getContext().get(Run.class));
+					resourceNamesToLock.add(requiredResource.getName());
+				} catch (Exception e) {
+					// skip this context, as the build cannot be retrieved (maybe it was deleted while running?)
+					LOGGER.log(Level.WARNING, "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, " +
+							"this could be a legitimate status if the build waiting for the lock was deleted or" +
+							" hard killed. More information at Level.FINE if debug is needed.");
+					LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+					return;
+				}
+			}
+
+			// continue with next context
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), null, false);
 		}
 		save();
 	}
