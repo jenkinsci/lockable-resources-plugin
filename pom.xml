@@ -66,6 +66,15 @@
 			</roles>
 			<timezone>CET</timezone>
 		</developer>
+		<developer>
+			<id>McFoggy</id>
+			<name>Matthieu Brouillard</name>
+			<email>matthieu@brouillard.fr</email>
+			<roles>
+				<role>contributor</role>
+			</roles>
+			<timezone>CET</timezone>
+		</developer>
 	</developers>
 
 	<dependencies>

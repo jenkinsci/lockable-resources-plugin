@@ -3,6 +3,8 @@ package org.jenkins.plugins.lockableresources;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -55,16 +57,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			resources.add(step.resource);
 		}
 		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
+		resourceHolder.injectResourcesProperties = step.injectProperties;
+		resourceHolder.prefixResourcesProperties = step.prefixProperties;
+		resourceHolder.upperCaseResourcesProperties = step.uppercaseProperties;
+
 		// determine if there are enough resources available to proceed
 		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
-		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
+		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence, step.injectProperties, step.prefixProperties, step.uppercaseProperties)) {
 			listener.getLogger().println("[" + step + "] is locked, waiting...");
 			LockableResourcesManager.get().queueContext(getContext(), resourceHolder, step.toString());
 		} // proceed is called inside lock if execution is possible
 		return false;
 	}
 
-	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence) {
+	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence, final List<LockStepData> stepData, final boolean injectProperties, final boolean prefixProperties, final boolean uppercaseProperties) {
 		Run<?, ?> r = null;
 		FlowNode node = null;
 		try {
@@ -82,16 +88,33 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			BodyInvoker bodyInvoker = context.newBodyInvoker().
 				withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence)).
 				withDisplayName(null);
-			if(variable != null && variable.length()>0)
 				// set the variable for the duration of the block
 				bodyInvoker.withContext(EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
 					@Override
 					public void expand(EnvVars env) throws IOException, InterruptedException {
-						final String resources = COMMA_JOINER.join(resourcenames);
-								LOGGER.finest("Setting [" + variable + "] to [" + resources
-										+ "] for the duration of the block");
-						
-						env.override(variable, resources);
+                        if(variable != null && variable.length()>0) {
+                            final String resources = COMMA_JOINER.join(resourcenames);
+                            LOGGER.finest("Setting [" + variable + "] to [" + resources
+                                    + "] for the duration of the block");
+
+                            env.override(variable, resources);
+                        }
+
+						if (injectProperties) {
+                            for (LockStepData lsd : stepData) {
+                                Map<String, String> properties = lsd.getProperties();
+                                for (String pKey : properties.keySet()) {
+                                    String envKey = pKey;
+                                    if (prefixProperties && (variable != null && variable.length()>0)) {
+                                        envKey = variable + "_" + envKey;
+                                    }
+                                    if (uppercaseProperties) {
+                                        envKey = envKey.toUpperCase(Locale.ENGLISH);
+                                    }
+                                    env.override(envKey, properties.get(pKey));
+                                }
+                            }
+                        }
 					}
 				}));
 			bodyInvoker.start();

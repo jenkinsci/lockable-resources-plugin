@@ -36,12 +36,15 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	private final String resourceNamesVar;
 	private final String resourceNumber;
 	private final String labelName;
+	private final boolean injectResourcesProperties;
+    private final boolean prefixResourcesProperties;
+    private final boolean upperCaseResourcesProperties;
 	private final @CheckForNull SecureGroovyScript resourceMatchScript;
 
 	@DataBoundConstructor
 	public RequiredResourcesProperty(String resourceNames,
 			String resourceNamesVar, String resourceNumber,
-			String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
+			String labelName, boolean injectResourcesProperties, boolean prefixResourcesProperties, boolean upperCaseResourcesProperties, @CheckForNull SecureGroovyScript resourceMatchScript) {
 		super();
 		
 		if (resourceNames == null || resourceNames.trim().isEmpty()) {
@@ -71,19 +74,30 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			this.resourceMatchScript = null;
 			this.labelName = labelNamePreparation;
 		}
+		this.injectResourcesProperties = injectResourcesProperties;
+		this.prefixResourcesProperties = prefixResourcesProperties;
+		this.upperCaseResourcesProperties = upperCaseResourcesProperties;
+	}
+
+    @Deprecated
+    public RequiredResourcesProperty(String resourceNames,
+                                     String resourceNamesVar, String resourceNumber,
+                                     String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
+        this(resourceNames, resourceNamesVar, resourceNumber, labelName, false, false, false, resourceMatchScript);
 	}
 
 	@Deprecated
 	public RequiredResourcesProperty(String resourceNames,
 									 String resourceNamesVar, String resourceNumber,
 									 String labelName) {
-		this(resourceNames, resourceNamesVar, resourceNumber, labelName, null);
+		this(resourceNames, resourceNamesVar, resourceNumber, labelName, false, false, false, null);
 	}
 
 	private Object readResolve() {
 		// SECURITY-368 migration logic
 		if (resourceMatchScript == null && labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
 			return new RequiredResourcesProperty(resourceNames, resourceNamesVar, resourceNumber, null,
+                    false, false, false,
 					new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
 							.configuring(ApprovalContext.create()));
 		}
@@ -115,7 +129,19 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		return labelName;
 	}
 
-	/**
+    public boolean isInjectResourcesProperties() {
+        return injectResourcesProperties;
+    }
+
+    public boolean isPrefixResourcesProperties() {
+        return prefixResourcesProperties;
+    }
+
+    public boolean isUpperCaseResourcesProperties() {
+        return upperCaseResourcesProperties;
+    }
+
+    /**
 	 * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
 	 * @return System Groovy Script if defined
 	 * @since TODO

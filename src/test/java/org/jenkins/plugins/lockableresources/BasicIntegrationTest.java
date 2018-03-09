@@ -21,8 +21,14 @@ import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDis
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runners.model.Statement;
+import org.jvnet.hudson.test.CaptureEnvironmentBuilder;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
@@ -37,11 +43,7 @@ import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Result;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class BasicIntegrationTest {
 
@@ -226,5 +228,23 @@ public class BasicIntegrationTest {
 		j.assertBuildStatusSuccess(futureBuild);
 	}
 
+	@Issue("JENKINS-31437")
+	@Test
+	public void canUseDefinedProperties()throws Exception {
+        String resourceName = "resource1";
+        String resourcePropertyKey = "id";
+        String resourcePropertyValue = "1";
+        LockableResourcesManager.get().createResource(resourceName, resourcePropertyKey, resourcePropertyValue);
 
+		FreeStyleProject p = j.createFreeStyleProject("p");
+		p.addProperty(new RequiredResourcesProperty(resourceName, "resourceNameVar", null, null, true, false, false, null));
+		CaptureEnvironmentBuilder envBuilder = new CaptureEnvironmentBuilder();
+		p.getBuildersList().add(envBuilder);
+
+		FreeStyleBuild b1 = p.scheduleBuild2(0).get();
+		j.assertBuildStatus(Result.SUCCESS, b1);
+
+        assertTrue("build env should have been injected resource property", envBuilder.getEnvVars().containsKey(resourcePropertyKey));
+        assertEquals("bad injected resource property value", envBuilder.getEnvVars().get(resourcePropertyKey), resourcePropertyValue);
+	}
 }

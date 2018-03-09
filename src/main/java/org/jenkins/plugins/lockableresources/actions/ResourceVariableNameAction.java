@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -32,12 +33,12 @@ public class ResourceVariableNameAction extends InvisibleAction {
 		@Override
 		public void buildEnvironmentFor(Run r, EnvVars envs, TaskListener listener)
 				throws IOException, InterruptedException {
-			ResourceVariableNameAction a = r.getAction(ResourceVariableNameAction.class);
-			if (a != null && a.getParameter() != null && a.getParameter().getValue() != null) {
-				envs.put(a.getParameter().getName(), String.valueOf(a.getParameter().getValue()));
+			List<ResourceVariableNameAction> actions = r.getActions(ResourceVariableNameAction.class);
+			for (ResourceVariableNameAction a : actions) {
+				if (a != null && a.getParameter() != null && a.getParameter().getValue() != null) {
+					envs.put(a.getParameter().getName(), String.valueOf(a.getParameter().getValue()));
+				}
 			}
 		}
-
 	}
-
 }

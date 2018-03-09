@@ -13,7 +13,6 @@ import hudson.model.AutoCompletionCandidates;
 import hudson.util.FormValidation;
 import hudson.Util;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 public class LockStep extends AbstractStepImpl implements Serializable {
@@ -29,6 +28,10 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	/** name of environment variable to store locked resources in */
 	@CheckForNull
 	public String variable = null;
+
+	public boolean injectProperties;
+	public boolean prefixProperties;
+	public boolean uppercaseProperties;
 
 	public boolean inversePrecedence = false;
 
@@ -46,7 +49,22 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		this.inversePrecedence = inversePrecedence;
 	}
 
-	@DataBoundSetter
+    @DataBoundSetter
+    public void setInjectProperties(boolean injectProperties) {
+        this.injectProperties = injectProperties;
+    }
+
+    @DataBoundSetter
+    public void setPrefixProperties(boolean prefixProperties) {
+        this.prefixProperties = prefixProperties;
+    }
+
+    @DataBoundSetter
+    public void setUppercaseProperties(boolean uppercaseProperties) {
+        this.uppercaseProperties = uppercaseProperties;
+    }
+
+    @DataBoundSetter
 	public void setLabel(String label) {
 		if (label != null && !label.isEmpty()) {
 			this.label = label;
