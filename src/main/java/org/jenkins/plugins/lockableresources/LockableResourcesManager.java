@@ -653,7 +653,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		// start with an empty set of selected resources
 		List<LockableResource> selected = new ArrayList<LockableResource>();
 
-		// some resources might be already locked, but will be freeed.
+		// some resources might be already locked, but will be freed.
 		// Determine if these resources can be reused
 		if (lockedResourcesAboutToBeUnlocked != null) {
 			for (LockableResource candidate : candidates) {
@@ -661,7 +661,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 					selected.add(candidate);
 				}
 			}
-			// if none of the currently locked resources can be reussed,
+			// if none of the currently locked resources can be reused,
 			// this context is not suitable to be continued with
 			if (selected.size() == 0) {
 				return null;
@@ -670,6 +670,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 		for (LockableResource rs : candidates) {
 			if (selected.size() >= requiredAmount) {
+				if (requiredAmount != 0 && selected.size() > requiredAmount) {
+					selected = selected.subList(0, requiredAmount);
+				}
 				break;
 			}
 			if (!rs.isReserved() && !rs.isLocked()) {
