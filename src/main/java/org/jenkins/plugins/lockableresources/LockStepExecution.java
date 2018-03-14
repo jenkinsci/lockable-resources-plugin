@@ -54,7 +54,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			}
 			resources.add(step.resource);
 		}
-		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity);
+		LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resources, step.label, step.quantity, step.variable);
 		// determine if there are enough resources available to proceed
 		List<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolder, listener.getLogger(), null);
 		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
