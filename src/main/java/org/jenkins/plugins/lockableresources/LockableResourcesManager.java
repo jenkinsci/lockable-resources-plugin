@@ -531,8 +531,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// check if there are resources which can be unlocked (and shall not be unlocked)
-		List<LockableResource> requiredResourceForNextContext = null;
-		QueuedContextStruct nextContext = this.getNextQueuedContext(resourceNamesToUnreserve, false);
+		Set<LockableResource> requiredResourceForNextContext = null;
+		QueuedContextStruct nextContext = this.getNextQueuedContext(resourceNamesToUnreserve, false, null);
 
 		// no context is queued which can be started once these resources are free'd.
 		if (nextContext == null) {
