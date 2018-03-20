@@ -125,6 +125,18 @@ public class BasicIntegrationTest {
 		assertEquals("some-label", withLabelProp.getLabelName());
 		assertNull(withLabelProp.getResourceMatchScript());
 
+		FreeStyleProject withSpace = j.createFreeStyleProject("withSpace");
+		withSpace.addProperty(new RequiredResourcesProperty(null, null, null, "some-label ", null));
+		FreeStyleProject withSpaceRoundTrip = j.configRoundtrip(withSpace);
+
+		RequiredResourcesProperty withSpaceProp = withSpaceRoundTrip.getProperty(RequiredResourcesProperty.class);
+		assertNotNull(withSpaceProp);
+		assertEquals("", withSpaceProp.getResourceNames());
+		assertEquals("", withSpaceProp.getResourceNamesVar());
+		assertEquals("", withSpaceProp.getResourceNumber());
+		assertEquals("some-label", withSpaceProp.getLabelName());
+		assertNull(withSpaceProp.getResourceMatchScript());
+
 		FreeStyleProject withScript = j.createFreeStyleProject("withScript");
 		SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
 		withScript.addProperty(new RequiredResourcesProperty(null, null, null, null, origScript));

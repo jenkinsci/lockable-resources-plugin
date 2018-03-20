@@ -121,7 +121,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	}
 
 	public String getLabelName() {
-		return labelName;
+        if (labelName == null) {
+		    return labelName;
+        } else {
+            // Ignore leading and trailing spaces, which are likely to result of browser
+            // auto-completion trying to be helpful
+            return labelName.trim();
+        }
 	}
 
         /**
