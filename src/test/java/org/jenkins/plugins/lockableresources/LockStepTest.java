@@ -823,4 +823,21 @@ public class LockStepTest extends LockStepTestBase {
     assertNotNull(LockableResourcesManager.get().fromName("resource3"));
     assertNotNull(LockableResourcesManager.get().fromName("resource4"));
   }
+
+  @Test
+  public void lockWithInvalidLabel() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'invalidLabel', variable: 'var', quantity: 1) {\n" +
+          "	echo \"Resource locked: ${env.var}\"\n" +
+          "}\n" +
+          "echo 'Finish'"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.FAILURE, b1);
+    j.assertLogContains("The label does not exist: invalidLabel", b1);
+    isPaused(b1, 0, 0);
+  }
 }
