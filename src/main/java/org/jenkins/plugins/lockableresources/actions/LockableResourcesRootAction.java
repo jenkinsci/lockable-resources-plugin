@@ -28,6 +28,7 @@ import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -86,6 +87,14 @@ public class LockableResourcesRootAction implements RootAction {
 
 	public int getNumberOfAllLabels() {
 		return LockableResourcesManager.get().getAllLabels().size();
+	}
+
+	public ArrayList<QueuedContextStruct> getQueuedContexts() {
+		return LockableResourcesManager.get().getQueuedContexts();
+	}
+
+	public int getNumberQueuedContexts() {
+		return LockableResourcesManager.get().getQueuedContextsSize();
 	}
 
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)

@@ -556,6 +556,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				nextContextLogger,
 				resourceNamesToUnreserve);
 		this.queuedContexts.remove(nextContext);
+		if (LOGGER.isLoggable(Level.FINE)) {
+			LOGGER.log(Level.FINE, "Queued Contexts " + this.queuedContexts);
+		}
 
 		// resourceNamesToUnreserve contains the names of the previous resources.
 		// requiredResourceForNextContext contains the resource objects which are required for the next context.
@@ -751,6 +754,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		this.queuedContexts.add(new QueuedContextStruct(context, requiredResources, resourceDescription));
+		if (LOGGER.isLoggable(Level.FINE)) {
+			LOGGER.log(Level.FINE, "Queued Contexts " + this.queuedContexts);
+		}
 		save();
 	}
 
@@ -758,6 +764,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
 			if (iter.next().getContext() == context) {
 				iter.remove();
+				if (LOGGER.isLoggable(Level.FINE)) {
+					LOGGER.log(Level.FINE, "Queued Contexts " + this.queuedContexts);
+				}
 				save();
 				return true;
 			}
@@ -768,6 +777,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public static LockableResourcesManager get() {
 		return (LockableResourcesManager) Jenkins.getInstance()
 				.getDescriptorOrDie(LockableResourcesManager.class);
+	}
+
+	public synchronized int getQueuedContextsSize() {
+		return this.queuedContexts.size();
+	}
+
+	public synchronized ArrayList<QueuedContextStruct> getQueuedContexts() {
+		return new ArrayList<>(this.queuedContexts);
 	}
 
 	public synchronized void save() {
