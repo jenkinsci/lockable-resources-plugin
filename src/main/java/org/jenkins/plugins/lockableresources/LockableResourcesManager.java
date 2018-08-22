@@ -16,14 +16,7 @@ import hudson.model.Run;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -649,7 +642,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			if (requiredResources.label != null && requiredResources.label.isEmpty()) {
 				candidates.addAll(requiredResources.required);
 			} else {
-				candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
+				List<LockableResource> labelMatchedResources = getResourcesWithLabel(requiredResources.label, null);
+				//add resource only when resource.name not in exclude list
+				for (LockableResource resource : labelMatchedResources) {
+					if(requiredResources.excludedResources == null || !requiredResources.excludedResources.contains(resource.getName())){
+						candidates.add(resource);
+					}
+				}
 				if (requiredResources.requiredNumber != null) {
 					try {
 						requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
@@ -657,12 +656,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 						requiredAmount = 0;
 					}
 				}
+				if (candidates.size() == 0){
+					throw new NoSuchElementException("There is no resource able to be lock: [Label: " +
+							requiredResources.label + ", " + "excludedSources: " + requiredResources.excludedResources +"]");
+				}
 			}
 
 			if (requiredAmount == 0) {
 				requiredAmount = candidates.size();
 			}
-
 			requiredResourcesCandidatesList.add(new LockableResourcesCandidatesStruct(candidates, requiredAmount));
 		}
 

@@ -38,6 +38,8 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	@CheckForNull
 	public List<LockStepResource> extra = null;
 
+	public List<String> exclude = null;
+
 	// it should be LockStep() - without params. But keeping this for backward compatibility
 	// so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource is not required)
 	@DataBoundConstructor
@@ -75,6 +77,12 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	public void setExtra(List<LockStepResource> extra) {
 		this.extra = extra;
 	}
+
+	@DataBoundSetter
+	public void setExclude(List<String> exclude) {
+		this.exclude = exclude;
+	}
+
 
 	@Extension
 	public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
@@ -119,7 +127,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 			}
 			return builder.toString();
 		} else {
-			return LockStepResource.toString(resource, label, quantity);
+			return LockStepResource.toString(resource, label, quantity, exclude);
 		}
 	}
 
@@ -132,7 +140,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public List<LockStepResource> getResources() {
 		List<LockStepResource> resources = new ArrayList<>();
-		resources.add(new LockStepResource(resource, label, quantity));
+		resources.add(new LockStepResource(resource, label, quantity, exclude));
 
 		if (extra != null) {
 			resources.addAll(extra);

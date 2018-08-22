@@ -59,7 +59,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 				}
 				resources.add(resource.resource);
 			}
-			resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
+			resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity, resource.exclude));
 		}
 
 		// determine if there are enough resources available to proceed

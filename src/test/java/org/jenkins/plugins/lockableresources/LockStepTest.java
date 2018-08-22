@@ -1170,4 +1170,49 @@ public class LockStepTest {
 			}
 		});
 	}
+
+	@Test
+	public void lockWithExcludeResource() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock(label: 'label1', variable: 'var', exclude:['resource1']) {\n" +
+								"	echo \"Resource locked: ${env.var}\"\n" +
+								"}\n" +
+								"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForCompletion(b1);
+				story.j.assertBuildStatus(Result.SUCCESS, b1);
+				story.j.assertLogContains("Lock released on resource [Label: label1, excludedSources: [resource1]]", b1);
+				story.j.assertLogContains("Resource locked: resource2", b1);
+				isPaused(b1, 1, 0);
+			}
+		});
+	}
+
+	@Test
+	public void lockWithExcludeResourceNoResourcesLeft() {
+		story.addStep(new Statement() {
+			@Override
+			public void evaluate() throws Throwable {
+				LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+				WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+				p.setDefinition(new CpsFlowDefinition(
+						"lock(label: 'label1', variable: 'var', exclude:['resource1']) {\n" +
+								"	echo \"Resource locked: ${env.var}\"\n" +
+								"}\n" +
+								"echo 'Finish'"
+				));
+				WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+				story.j.waitForCompletion(b1);
+				story.j.assertBuildStatus(Result.FAILURE, b1);
+				story.j.assertLogContains("NoSuchElementException: There is no resource able to be lock: [Label: label1, excludedSources: [resource1]]", b1);
+			}
+		});
+	}
 }
