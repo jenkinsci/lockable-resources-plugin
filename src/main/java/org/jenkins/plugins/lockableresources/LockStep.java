@@ -38,6 +38,7 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 	@CheckForNull
 	public List<LockStepResource> extra = null;
 
+	/** list of resoureces name to not use when get resource by label */
 	public List<String> exclude = null;
 
 	// it should be LockStep() - without params. But keeping this for backward compatibility
