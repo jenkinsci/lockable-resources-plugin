@@ -36,7 +36,7 @@ public final class BackwardCompatibility {
 					List<String> resourcesNames = new ArrayList<>();
 					resourcesNames.add(resource.getName());
 					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-					LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName());
+					LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName(), null);
 				}
 				queuedContexts.clear();
 			}

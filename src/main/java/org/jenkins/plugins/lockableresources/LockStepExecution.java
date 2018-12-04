@@ -81,7 +81,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         listener.getLogger().println("[" + step + "] is locked, waiting...");
       }
       LockableResourcesManager.get()
-          .queueContext(getContext(), resourceHolderList, step.toString());
+          .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
     } // proceed is called inside lock if execution is possible
     return false;
   }
@@ -113,7 +113,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
           context
               .newBodyInvoker()
               .withCallback(
-                  new Callback(resourcenames, resourceDescription, variable, inversePrecedence));
+                  new Callback(resourcenames, resourceDescription, inversePrecedence));
       if (variable != null && variable.length() > 0)
         // set the variable for the duration of the block
         bodyInvoker.withContext(
@@ -143,24 +143,21 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
     private final List<String> resourceNames;
     private final String resourceDescription;
-    private final String variable;
     private final boolean inversePrecedence;
 
     Callback(
         List<String> resourceNames,
         String resourceDescription,
-        String variable,
         boolean inversePrecedence) {
       this.resourceNames = resourceNames;
       this.resourceDescription = resourceDescription;
-      this.variable = variable;
       this.inversePrecedence = inversePrecedence;
     }
 
     protected void finished(StepContext context) throws Exception {
       LockableResourcesManager.get()
           .unlockNames(
-              this.resourceNames, context.get(Run.class), this.variable, this.inversePrecedence);
+              this.resourceNames, context.get(Run.class), this.inversePrecedence);
       context
           .get(TaskListener.class)
           .getLogger()
