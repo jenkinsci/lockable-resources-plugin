@@ -320,7 +320,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
 			for (LockableResource resource : this.resources) {
-				if (resource.getName().equals(unlockResourceName)) {
+				if (resource != null && resource.getName() != null && resource.getName().equals(unlockResourceName)) {
 					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
 						// No more contexts, unlock resource
 						resource.unqueue();
@@ -481,21 +481,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Creates the resource if it does not exist.
 	 */
 	public synchronized boolean createResource(String name) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name));
-			save();
-			return true;
+		if (name != null) {
+			LockableResource existent = fromName(name);
+			if (existent == null) {
+				getResources().add(new LockableResource(name));
+				save();
+				return true;
+			}
 		}
 		return false;
 	}
 
 	public synchronized boolean createResourceWithLabel(String name, String label) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name, "", label, null));
-			save();
-			return true;
+		if (name !=null && label !=null) {
+			LockableResource existent = fromName(name);
+			if (existent == null) {
+				getResources().add(new LockableResource(name, "", label, null));
+				save();
+				return true;
+			}
 		}
 		return false;
 	}
