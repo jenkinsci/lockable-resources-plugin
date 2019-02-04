@@ -39,6 +39,7 @@ import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -629,22 +630,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	@Override
 	public boolean configure(StaplerRequest req, JSONObject json)
 			throws FormException {
+		BulkChange bc = new BulkChange(this);
 		try {
-			List<LockableResource> newResouces = req.bindJSONToList(
-					LockableResource.class, json.get("resources"));
-			for (LockableResource r : newResouces) {
-				LockableResource old = fromName(r.getName());
-				if (old != null) {
-					r.setBuild(old.getBuild());
-					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
-				}
-			}
-			resources = newResouces;
-			save();
-			return true;
-		} catch (JSONException e) {
+			req.bindJSON(this, json);
+			bc.commit();
+		} catch (IOException exception) {
+			LOGGER.log(Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
 			return false;
 		}
+		return true;
+	}
+
+	@DataBoundSetter
+	public void setResources(List<LockableResource> newResouces) {
+		for (LockableResource r : newResouces) {
+			LockableResource old = fromName(r.getName());
+			if (old != null) {
+				r.setBuild(old.getBuild());
+				r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
+			}
+		}
+		resources = newResouces;
+		save();
 	}
 
 	/**
