@@ -14,4 +14,12 @@ public class LockableResourcesCandidatesStruct {
 		this.candidates = candidates;
 		this.requiredAmount = requiredAmount;
 	}
+
+    @Override
+    public String toString()
+    {
+        return "LockableResourcesCandidatesStruct [candidates=" + candidates + ", requiredAmount=" + requiredAmount
+                + ", selected=" + selected + "]";
+    }
+
 }

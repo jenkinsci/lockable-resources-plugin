@@ -216,6 +216,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
+		boolean candidatesByScript=false;
 		List<LockableResource> candidates = new ArrayList<LockableResource>();
                 final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
 		if (requiredResources.label != null && requiredResources.label.isEmpty() && systemGroovyScript == null) {
@@ -224,6 +225,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			candidates = getResourcesWithLabel(requiredResources.label, params);
 		} else {
 			candidates = getResourcesMatchingScript(systemGroovyScript, params);
+			candidatesByScript = true;
 		}
 
 		for (LockableResource rs : candidates) {
@@ -234,7 +236,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// if did not get wanted amount or did not get all
-		int required_amount = number == 0 ? candidates.size() : number;
+		final int required_amount;
+		if (candidatesByScript && candidates.size() == 0) {
+		/**
+		  * If the groovy script does not return any candidates, it means nothing is needed, even
+		  * if a higher amount is specified. A valid use case is a Matrix job, when not all
+		  * configurations need resources.
+		  */
+			required_amount = 0;
+		} else {
+			required_amount = number == 0 ? candidates.size() : number;
+		}
 
 		if (selected.size() != required_amount) {
 			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
