@@ -64,14 +64,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
 		// determine if there are enough resources available to proceed
 		Set<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolderList, listener.getLogger(), null);
-		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
+		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence, step.ephemeral)) {
 			listener.getLogger().println("[" + step + "] is locked, waiting...");
 			LockableResourcesManager.get().queueContext(getContext(), resourceHolderList, step.toString());
 		} // proceed is called inside lock if execution is possible
 		return false;
 	}
 
-	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence) {
+	public static void proceed(final List<String> resourcenames, StepContext context, String resourceDescription, final String variable, boolean inversePrecedence, boolean ephemeral) {
 		Run<?, ?> r = null;
 		FlowNode node = null;
 		try {
@@ -87,7 +87,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		try {
 			PauseAction.endCurrentPause(node);
 			BodyInvoker bodyInvoker = context.newBodyInvoker().
-				withCallback(new Callback(resourcenames, resourceDescription, variable, inversePrecedence));
+				withCallback(new Callback(resourcenames, resourceDescription, variable, inversePrecedence, ephemeral));
 			if(variable != null && variable.length()>0)
 				// set the variable for the duration of the block
 				bodyInvoker.withContext(EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
@@ -112,16 +112,18 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		private final String resourceDescription;
 		private final String variable;
 		private final boolean inversePrecedence;
+		private final boolean ephemeral;
 
-		Callback(List<String> resourceNames, String resourceDescription, String variable, boolean inversePrecedence) {
+		Callback(List<String> resourceNames, String resourceDescription, String variable, boolean inversePrecedence, boolean ephemeral) {
 			this.resourceNames = resourceNames;
 			this.resourceDescription = resourceDescription;
 			this.variable = variable;
 			this.inversePrecedence = inversePrecedence;
+			this.ephemeral = ephemeral;
 		}
 
 		protected void finished(StepContext context) throws Exception {
-			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.variable, this.inversePrecedence);
+			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.variable, this.inversePrecedence, this.ephemeral);
 			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceDescription + "]");
 			LOGGER.finest("Lock released on [" + resourceDescription + "]");
 		}

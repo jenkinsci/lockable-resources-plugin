@@ -291,7 +291,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized boolean lock(Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-		return lock(resources, build, context, null, null, false);
+		return lock(resources, build, context, null, null, false, false);
 	}
 
 	/**
@@ -299,7 +299,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 */
 	public synchronized boolean lock(Set<LockableResource> resources,
 			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage,
-			final String variable, boolean inversePrecedence) {
+			final String variable, boolean inversePrecedence, boolean ephemeral) {
 		boolean needToWait = false;
 
 		for (LockableResource r : resources) {
@@ -320,21 +320,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				for (LockableResource resource : resources) {
 					resourceNames.add(resource.getName());
 				}
-				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
+				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence, ephemeral);
 			}
 		}
 		save();
 		return !needToWait;
 	}
 
-	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build, boolean ephemeral) {
 		for (String unlockResourceName : unlockResourceNames) {
-			for (LockableResource resource : this.resources) {
+			Iterator<LockableResource> resourceIterator = this.resources.iterator();
+			while (resourceIterator.hasNext()) {
+				LockableResource resource = resourceIterator.next();
 				if (resource != null && resource.getName() != null && resource.getName().equals(unlockResourceName)) {
 					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
 						// No more contexts, unlock resource
 						resource.unqueue();
 						resource.setBuild(null);
+						if (ephemeral) {
+							resourceIterator.remove();
+						}
 					}
 				}
 			}
@@ -342,11 +347,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-		unlock(resourcesToUnLock, build, null, false);
+		unlock(resourcesToUnLock, build, null, false, false);
 	}
 
 	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
-									@Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence) {
+									@Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence,
+									boolean ephemeral) {
 		List<String> resourceNamesToUnLock = new ArrayList<>();
 		if (resourcesToUnLock != null) {
 			for (LockableResource r : resourcesToUnLock) {
@@ -354,10 +360,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 
-		this.unlockNames(resourceNamesToUnLock, build, requiredVar, inversePrecedence);
+		this.unlockNames(resourceNamesToUnLock, build, requiredVar, inversePrecedence, ephemeral);
 	}
 
-	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence) {
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence, boolean ephemeral) {
 		// make sure there is a list of resource names to unlock
 		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
 			return;
@@ -374,7 +380,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 			// no context is queued which can be started once these resources are free'd.
 			if (nextContext == null) {
-				this.freeResources(remainingResourceNamesToUnLock, build);
+				this.freeResources(remainingResourceNamesToUnLock, build, ephemeral);
 				save();
 				return;
 			}
@@ -411,7 +417,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 								"this could be a legitimate status if the build waiting for the lock was deleted or" +
 								" hard killed. More information at Level.FINE if debug is needed.");
 						LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
-						unlockNames(remainingResourceNamesToUnLock, build, requiredVar, inversePrecedence);
+						unlockNames(remainingResourceNamesToUnLock, build, requiredVar, inversePrecedence, ephemeral);
 						return;
 					}
 				}
@@ -436,7 +442,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				remainingResourceNamesToUnLock.retainAll(freeResources);
 
 				// continue with next context
-				LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), requiredVar, inversePrecedence);
+				LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), requiredVar, inversePrecedence, ephemeral);
 			}
 		}
 		save();
@@ -606,7 +612,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 
 			// continue with next context
-			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), null, false);
+			LockStepExecution.proceed(resourceNamesToLock, nextContext.getContext(), nextContext.getResourceDescription(), null, false, false);
 		}
 		save();
 	}

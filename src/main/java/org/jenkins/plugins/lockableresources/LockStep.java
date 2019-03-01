@@ -32,6 +32,8 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
 	public boolean inversePrecedence = false;
 
+	public boolean ephemeral = false;
+
 	@CheckForNull
 	public List<LockStepResource> extra = null;
 
@@ -42,6 +44,12 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 		if (resource != null && !resource.isEmpty()) {
 			this.resource = resource;
 		}
+	}
+
+
+	@DataBoundSetter
+	public void setEphemeral(boolean ephemeral) {
+		this.ephemeral = ephemeral;
 	}
 
 	@DataBoundSetter
