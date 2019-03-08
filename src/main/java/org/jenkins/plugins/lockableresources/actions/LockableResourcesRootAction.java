@@ -99,7 +99,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		LockableResourcesManager.get().unlock(resources, null);
 
@@ -117,7 +117,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		String userName = getUserName();
 		if (userName != null)
@@ -143,7 +143,7 @@ public class LockableResourcesRootAction implements RootAction {
 			throw new AccessDeniedException2(Jenkins.getAuthentication(),
 					RESERVE);
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		LockableResourcesManager.get().unreserve(resources);
 
@@ -161,7 +161,7 @@ public class LockableResourcesRootAction implements RootAction {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<LockableResource>();
+		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		LockableResourcesManager.get().reset(resources);
 

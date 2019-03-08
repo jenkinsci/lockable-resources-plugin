@@ -17,7 +17,6 @@ import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.model.StringParameterValue;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,7 +43,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
 		if (build instanceof AbstractBuild) {
 			Job<?, ?> proj = Utils.getProject(build);
-			Set<LockableResource> required = new HashSet<LockableResource>();
+			Set<LockableResource> required = new HashSet<>();
 			if (proj != null) {
 				LockableResourcesStruct resources = Utils.requiredResources(proj);
 
@@ -77,8 +76,6 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 				}
 			}
 		}
-
-		return;
 	}
 
 	@Override
@@ -91,7 +88,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 		// obviously project name cannot be obtained here
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
-		if (required.size() > 0) {
+		if (!required.isEmpty()) {
 			LockableResourcesManager.get().unlock(required, build);
 			listener.getLogger().printf("%s released lock on %s%n",
 					LOG_PREFIX, required);
@@ -110,7 +107,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
-		if (required.size() > 0) {
+		if (!required.isEmpty()) {
 			LockableResourcesManager.get().unlock(required, build);
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);

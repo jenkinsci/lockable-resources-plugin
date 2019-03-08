@@ -52,7 +52,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
 		for (LockStepResource resource : step.getResources()) {
-			List<String> resources = new ArrayList<String>();
+			List<String> resources = new ArrayList<>();
 			if (resource.resource != null) {
 				if (LockableResourcesManager.get().createResource(resource.resource)) {
 					listener.getLogger().println("Resource [" + resource + "] did not exist. Created.");
@@ -87,8 +87,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		try {
 			PauseAction.endCurrentPause(node);
 			BodyInvoker bodyInvoker = context.newBodyInvoker().
-				withCallback(new Callback(resourcenames, resourceDescription, variable, inversePrecedence)).
-				withDisplayName(null);
+				withCallback(new Callback(resourcenames, resourceDescription, variable, inversePrecedence));
 			if(variable != null && variable.length()>0)
 				// set the variable for the duration of the block
 				bodyInvoker.withContext(EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {

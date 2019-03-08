@@ -2,8 +2,6 @@ package org.jenkins.plugins.lockableresources;
 
 import java.io.Serializable;
 
-import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
-import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
@@ -15,7 +13,6 @@ import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 import hudson.Util;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {

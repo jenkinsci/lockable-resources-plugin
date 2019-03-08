@@ -18,9 +18,6 @@ import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
-import org.jenkins.plugins.lockableresources.LockableResource;
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,9 +31,9 @@ public final class BackwardCompatibility {
 		List<LockableResource> resources = LockableResourcesManager.get().getResources();
 		for (LockableResource resource : resources) {
 			List<StepContext> queuedContexts = resource.getQueuedContexts();
-			if (queuedContexts.size() > 0) {
+			if (!queuedContexts.isEmpty()) {
 				for (StepContext queuedContext : queuedContexts) {
-					List<String> resourcesNames = new ArrayList<String>();
+					List<String> resourcesNames = new ArrayList<>();
 					resourcesNames.add(resource.getName());
 					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
 					LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName());

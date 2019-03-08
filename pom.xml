@@ -13,7 +13,7 @@
 	<parent>
 		<groupId>org.jenkins-ci.plugins</groupId>
 		<artifactId>plugin</artifactId>
-		<version>2.24</version>
+		<version>3.37</version>
 		<relativePath />
 	</parent>
 
@@ -27,15 +27,12 @@
 		computers) that can be used by builds. If a build requires an external
 		resource which is already locked, it will wait for the resource to be free.
 	</description>
-	<url>https://wiki.jenkins-ci.org/display/JENKINS/Lockable+Resources+Plugin</url>
+	<url>https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin</url>
 
 	<properties>
-		<!-- First version including TailCall is 1.9, and the same baseline is maintained
-		until 1.14, so let's pick up the greatest -->
-		<workflow.version>1.14</workflow.version>
-		<jenkins.version>1.609.1</jenkins.version>
-		<!-- TODO activate this and fix findbugs errors -->
-		<findbugs.failOnError>false</findbugs.failOnError>
+		<java.level>8</java.level>
+		<workflow-support.version>2.12</workflow-support.version>
+		<jenkins.version>2.60.3</jenkins.version>
 	</properties>
 
 	<licenses>
@@ -72,17 +69,12 @@
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>mailer</artifactId>
-			<version>1.5</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-step-api</artifactId>
-			<version>${workflow.version}</version>
+			<version>1.13</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
 			<artifactId>workflow-support</artifactId>
-			<version>${workflow.version}</version>
+			<version>${workflow-support.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
@@ -92,39 +84,45 @@
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>script-security</artifactId>
-			<version>1.26</version>
+			<version>1.33</version>
 		</dependency>
 		<dependency>
 			<groupId>com.infradna.tool</groupId>
 			<artifactId>bridge-method-annotation</artifactId>
 			<version>1.14</version>
-			<optional>true</optional>
+			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.jenkins-ci</groupId>
+					<artifactId>annotation-indexer</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<!-- Testing scope -->
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-aggregator</artifactId>
-			<version>${workflow.version}</version>
+			<artifactId>workflow-support</artifactId>
+			<version>${workflow-support.version}</version>
+			<classifier>tests</classifier>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-support</artifactId>
-			<version>${workflow.version}</version>
-			<classifier>tests</classifier>
+			<artifactId>workflow-basic-steps</artifactId>
+			<version>2.2</version>
 			<scope>test</scope>
 		</dependency>
-		<dependency> <!-- Required by workflow-cps-global-lib (transitive of git-server) -->
-			<groupId>org.jenkins-ci.modules</groupId>
-			<artifactId>sshd</artifactId>
-			<version>1.6</version>
+		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-cps</artifactId>
+			<version>2.10</version>
 			<scope>test</scope>
 		</dependency>
-		<dependency><!-- Required when testing against core > 1.575 -->
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>junit</artifactId>
-			<version>1.13</version>
+		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-job</artifactId>
+			<version>2.0</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -143,7 +141,6 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-release-plugin</artifactId>
-				<version>2.5.2</version>
 				<configuration>
 					<updateDependencies>false</updateDependencies>
 				</configuration>
@@ -154,14 +151,14 @@
 	<repositories>
 		<repository>
 			<id>repo.jenkins-ci.org</id>
-			<url>http://repo.jenkins-ci.org/public/</url>
+			<url>https://repo.jenkins-ci.org/public/</url>
 		</repository>
 	</repositories>
 
 	<pluginRepositories>
 		<pluginRepository>
 			<id>repo.jenkins-ci.org</id>
-			<url>http://repo.jenkins-ci.org/public/</url>
+			<url>https://repo.jenkins-ci.org/public/</url>
 		</pluginRepository>
 	</pluginRepositories>
 
@@ -169,7 +166,7 @@
 		<connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
 		<developerConnection>scm:git:git@github.com:jenkinsci/lockable-resources-plugin.git</developerConnection>
 		<url>https://github.com/jenkinsci/lockable-resources-plugin</url>
-	  <tag>HEAD</tag>
-  </scm>
+		<tag>HEAD</tag>
+	</scm>
 
 </project>

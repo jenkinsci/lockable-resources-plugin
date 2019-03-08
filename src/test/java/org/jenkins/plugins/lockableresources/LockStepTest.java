@@ -442,7 +442,7 @@ public class LockStepTest {
 				));
 
 				FreeStyleProject f = story.j.createFreeStyleProject("f");
-				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
+				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 				f.getBuildersList().add(new TestBuilder() {
 
 					@Override
@@ -485,7 +485,7 @@ public class LockStepTest {
 				isPaused(b1, 1, 0);
 
 				FreeStyleProject f = story.j.createFreeStyleProject("f");
-				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null));
+				f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 
 				f.scheduleBuild2(0);
 
@@ -895,7 +895,7 @@ public class LockStepTest {
 						public void run() {
 							try {
 								barrier.await();
-								WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+								p.scheduleBuild2(0).waitForStart();
 							} catch (Exception e) {
 								System.err.println("Failed to start pipeline job");
 							}

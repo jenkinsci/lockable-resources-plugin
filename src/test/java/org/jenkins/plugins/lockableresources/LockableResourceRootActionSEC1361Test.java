@@ -26,7 +26,7 @@ package org.jenkins.plugins.lockableresources;
 import com.gargoylesoftware.htmlunit.AlertHandler;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.html.HtmlButton;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlElementUtil;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
@@ -81,11 +81,11 @@ public class LockableResourceRootActionSEC1361Test {
         
         // currently only one button but perhaps in future version of the core/plugin, 
         // other buttons will be added to the layout
-        List<HtmlButton> allButtons = htmlPage.getDocumentElement().getHtmlElementsByTagName("button");
+        List<HtmlElement> allButtons = htmlPage.getDocumentElement().getElementsByTagName("button");
         assertThat(allButtons.size(), greaterThanOrEqualTo(1));
         
-        HtmlButton reserveButton = null;
-        for (HtmlButton b : allButtons) {
+        HtmlElement reserveButton = null;
+        for (HtmlElement b : allButtons) {
             String onClick = b.getAttribute("onClick");
             if (onClick != null && onClick.contains("reserve_resource")) {
                 reserveButton = b;
