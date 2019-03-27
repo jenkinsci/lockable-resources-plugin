@@ -31,6 +31,7 @@ public class LockableResourcesStruct implements Serializable {
 	public String label;
 	public String requiredVar;
 	public String requiredNumber;
+	public List<String> excludedResources;
 
 	@CheckForNull
 	private final SerializableSecureGroovyScript serializableResourceMatchScript;
@@ -76,6 +77,10 @@ public class LockableResourcesStruct implements Serializable {
 		requiredVar = variable;
 	}
 
+	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity, List<String> exclude) {
+		this(resources, label, quantity);
+		excludedResources = exclude;
+	}
 	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
 		required = new ArrayList<LockableResource>();
 		if (resources != null) {

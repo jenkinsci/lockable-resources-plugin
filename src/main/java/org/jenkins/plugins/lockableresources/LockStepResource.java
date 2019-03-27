@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.io.Serializable;
+import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
@@ -27,11 +28,13 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	public String label = null;
 
 	public int quantity = 0;
+	public List<String> exclude = null;
 
-	LockStepResource(String resource, String label, int quantity) {
+	LockStepResource(String resource, String label, int quantity, List<String> exclude) {
 		this.resource = resource;
 		this.label = label;
 		this.quantity = quantity;
+		this.exclude = exclude;
 	}
 
 	@DataBoundConstructor
@@ -54,16 +57,20 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	}
 
 	public String toString() {
-		return toString(resource, label, quantity);
+		return toString(resource, label, quantity, exclude);
 	}
 	
-	public static String toString(String resource, String label, int quantity) {
+	public static String toString(String resource, String label, int quantity, List<String> exclude) {
 		// a label takes always priority
 		if (label != null) {
-			if (quantity > 0) {
-				return "Label: " + label + ", Quantity: " + quantity;
+			String suffix = "";
+			if (exclude != null) {
+				suffix = ", excludedSources: " + exclude.toString();
 			}
-			return "Label: " + label;
+			if (quantity > 0) {
+				return "Label: " + label + ", Quantity: " + quantity + suffix;
+			}
+			return "Label: " + label + suffix;
 		}
 		// make sure there is an actual resource specified
 		if (resource != null) {
