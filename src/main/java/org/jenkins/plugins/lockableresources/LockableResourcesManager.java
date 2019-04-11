@@ -216,6 +216,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			return null;
 		}
 
+		boolean candidatesByScript=false;
 		List<LockableResource> candidates = new ArrayList<LockableResource>();
                 final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
 		if (requiredResources.label != null && requiredResources.label.isEmpty() && systemGroovyScript == null) {
@@ -224,6 +225,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			candidates = getResourcesWithLabel(requiredResources.label, params);
 		} else {
 			candidates = getResourcesMatchingScript(systemGroovyScript, params);
+			candidatesByScript = true;
 		}
 
 		for (LockableResource rs : candidates) {
@@ -234,7 +236,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		}
 
 		// if did not get wanted amount or did not get all
-		int required_amount = number == 0 ? candidates.size() : number;
+		final int required_amount;
+		if (candidatesByScript && candidates.size() == 0) {
+		/**
+		  * If the groovy script does not return any candidates, it means nothing is needed, even
+		  * if a higher amount is specified. A valid use case is a Matrix job, when not all
+		  * configurations need resources.
+		  */
+			required_amount = 0;
+		} else {
+			required_amount = number == 0 ? candidates.size() : number;
+		}
 
 		if (selected.size() != required_amount) {
 			log.log(Level.FINEST, "{0} found {1} resource(s) to queue." +
@@ -320,7 +332,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
 			for (LockableResource resource : this.resources) {
-				if (resource.getName().equals(unlockResourceName)) {
+				if (resource != null && resource.getName() != null && resource.getName().equals(unlockResourceName)) {
 					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
 						// No more contexts, unlock resource
 						resource.unqueue();
@@ -481,21 +493,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	 * Creates the resource if it does not exist.
 	 */
 	public synchronized boolean createResource(String name) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name));
-			save();
-			return true;
+		if (name != null) {
+			LockableResource existent = fromName(name);
+			if (existent == null) {
+				getResources().add(new LockableResource(name));
+				save();
+				return true;
+			}
 		}
 		return false;
 	}
 
 	public synchronized boolean createResourceWithLabel(String name, String label) {
-		LockableResource existent = fromName(name);
-		if (existent == null) {
-			getResources().add(new LockableResource(name, "", label, null));
-			save();
-			return true;
+		if (name !=null && label !=null) {
+			LockableResource existent = fromName(name);
+			if (existent == null) {
+				getResources().add(new LockableResource(name, "", label, null));
+				save();
+				return true;
+			}
 		}
 		return false;
 	}

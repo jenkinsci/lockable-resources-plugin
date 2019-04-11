@@ -206,11 +206,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 		public FormValidation doCheckResourceNumber(@QueryParameter String value,
 				@QueryParameter String resourceNames,
-				@QueryParameter String labelName) {
+                @QueryParameter String labelName,
+                @QueryParameter String resourceMatchScript)
+        {
 
 			String number = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
 			String label = Util.fixEmptyAndTrim(labelName);
+            String script = Util.fixEmptyAndTrim(resourceMatchScript);
 
 			if (number == null || number.equals("") || number.trim().equals("0")) {
 				return FormValidation.ok();
@@ -226,9 +229,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			int numResources = 0;
 			if (names != null) {
 				numResources = names.split("\\s+").length;
-			} else if (label != null) {
-				numResources = Integer.MAX_VALUE;
-			}
+            } else if (label != null || script != null) {
+                	numResources = Integer.MAX_VALUE;
+            }
 
 			if (numResources < numAsInt) {
 				return FormValidation.error(String.format(
