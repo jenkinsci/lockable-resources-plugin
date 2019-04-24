@@ -14,6 +14,8 @@ import hudson.model.AbstractBuild;
 import hudson.model.Run;
 
 import java.io.PrintStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -34,6 +36,13 @@ import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
+import com.seastreet.client.api.ClientFactory;
+import com.seastreet.client.api.StratOSControllerAPI;
+import com.seastreet.client.config.Builders;
+import com.seastreet.client.config.StratOSClientConfiguration;
+import com.seastreet.client.exception.StratOSRESTClientConfigurationException;
+import com.seastreet.stratos.dto.Objective;
+
 import edu.umd.cs.findbugs.annotations.Nullable;
 
 @Extension
@@ -45,6 +54,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private transient String priorityParameterName;
 	private List<LockableResource> resources;
 
+	private StratOSControllerAPI controllerAPI;
 
 	/**
 	 * Only used when this lockable resource is tried to be locked by {@link LockStep},
@@ -53,12 +63,39 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	private List<QueuedContextStruct> queuedContexts = new ArrayList<QueuedContextStruct>();
 
 	public LockableResourcesManager() {
+		StratOSClientConfiguration config;
+		try {
+			config = Builders.config().url(new URL("http://localhost:8880"))
+			                                                    .username("admin")
+			                                                    .password("admin")
+			                                                    .build();
+			try {
+				controllerAPI = ClientFactory.getControllerAPI(config);
+			} catch (StratOSRESTClientConfigurationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 		resources = new ArrayList<LockableResource>();
 		load();
 	}
 
 	public List<LockableResource> getResources() {
-		return resources;
+		//return resources;
+		List<LockableResource> result = new ArrayList<LockableResource>();
+		List<Objective> objectives = controllerAPI.objectives().getByType("SUDS/1.0/lab");
+		for (Objective objective : objectives) {
+			LockableResource lab = new LockableResource(objective.getName());
+			lab.setDescription(objective.getDescription());
+			lab.setLabels(String.join(",", objective.getTags()));
+			result.add(lab);
+		}
+		return result;
 	}
 
 	public List<LockableResource> getResourcesFromProject(String fullName) {
