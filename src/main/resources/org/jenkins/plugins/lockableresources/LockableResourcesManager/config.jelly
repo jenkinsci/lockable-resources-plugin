@@ -12,8 +12,35 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
 	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 	<f:section title="${%Lockable Resources Manager}">
-		<f:entry title="${%Lockable Resources}">
-			<f:repeatable field="resources" header="${%Resource}" minimum="0" add="${%Add Lockable Resource}">
+		
+		<!-- get the stratos values -->
+		
+		<f:advanced>
+				<f:entry title="${%Stratos URL}" field="stratosURL">
+					<f:textbox default="http://localhost:8080"/>
+				</f:entry>
+				<f:entry title="${%Username}" field="username">
+					<f:textbox default="admin"/>
+				</f:entry>
+				<f:entry title="${%Password}" field="password">
+					<f:password default="admin"/>
+				</f:entry>
+		</f:advanced>
+   
+		<!-- This displays what is in stratosResources -->
+		
+		<f:entry title="${%Lockable Resources From stratOS}">
+			<f:repeatable field="stratosResources" header="${%Stratos Resource}" minimum="0" noAddButton="true">
+				<table width="100%">
+					<st:include page="stratosConfig.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>
+				</table>
+			</f:repeatable>
+		</f:entry>
+		
+		<!-- This is used to display the values in localResources -->
+		
+		<f:entry title="${%Lockable Resources entered in by hand}">
+			<f:repeatable field="localResources" header="${%Local Resource}" minimum="0" add="${%Add Lockable Resource}">
 				<table width="100%">
 					<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>
 					<f:entry title="">

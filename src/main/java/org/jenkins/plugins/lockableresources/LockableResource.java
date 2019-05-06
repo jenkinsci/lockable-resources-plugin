@@ -42,6 +42,8 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import com.seastreet.client.api.StratOSControllerAPI;
+import com.seastreet.stratos.dto.Objective;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
@@ -57,6 +59,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String description = "";
 	private String labels = "";
 	private String reservedBy = null;
+	private String uid = null;
+
 
 	private long queueItemId = NOT_QUEUED;
 	private String queueItemProject = null;
@@ -85,7 +89,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@DataBoundConstructor
 	public LockableResource(String name) {
 		this.name = name;
+
 	}
+	
 
 	private Object readResolve() {
 		if (queuedContexts == null) { // this field was added after the initial version if this class
@@ -108,6 +114,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	public void setLabels(String labels) {
 		this.labels = labels;
 	}
+	
+	@DataBoundSetter
+	public void setUid(String uid) {
+		this.uid = uid;
+	}
 
 	@Exported
 	public String getName() {
@@ -122,6 +133,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	@Exported
 	public String getLabels() {
 		return labels;
+	}
+	
+	@Exported
+	public String getUid() {
+		return uid;
 	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
@@ -168,7 +184,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	@Exported
-	public boolean isReserved() {
+	public boolean isReserved() {	
+		
+		StratOSControllerAPI stratosAPI = LockableResourcesManager.get().getControllerAPI();
+		List<Objective> reservationObjectives = stratosAPI.objectives().getByType("SUDS/1.0/reservation");
+		String selfUid = getUid();
+		
+		if(reservationObjectives.isEmpty()){
+			return reservedBy != null;
+		}else{			
+			for(Objective current : reservationObjectives){
+				List<String> governors = current.getGovernors();
+				for (String currentGov : governors){
+					String currentGovUid = LockableResourcesManager.getUidFromSelfLink(currentGov);
+					if(currentGovUid.equals(selfUid)){
+						return true;
+					}
+				}
+			}
+		}
 		return reservedBy != null;
 	}
 
@@ -304,6 +338,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	}
 
 	public void unReserve() {
+		// Unreserver the lab from stratos
 		this.reservedBy = null;
 	}
 

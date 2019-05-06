@@ -15,12 +15,14 @@
 		<f:textbox/>
 	</f:entry>
 	<f:entry title="${%Description}" field="description">
-		<f:textbox/>
+		<f:textbox default="Local Resource"/>
 	</f:entry>
 	<f:entry title="${%Labels}" field="labels">
+		<f:textbox/>	</f:entry>
+	<f:entry title="${%Reserved by}" field="reservedBy">
 		<f:textbox/>
 	</f:entry>
-	<f:entry title="${%Reserved by}" field="reservedBy">
+	<f:entry title="${%UID}" field="uid">
 		<f:textbox/>
 	</f:entry>
 </j:jelly>
