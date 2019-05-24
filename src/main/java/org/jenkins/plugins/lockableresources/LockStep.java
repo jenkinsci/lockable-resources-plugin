@@ -2,7 +2,6 @@ package org.jenkins.plugins.lockableresources;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
@@ -14,9 +13,7 @@ import org.kohsuke.stapler.QueryParameter;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 import hudson.util.FormValidation;
-import hudson.Util;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 public class LockStep extends AbstractStepImpl implements Serializable {

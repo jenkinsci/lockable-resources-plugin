@@ -159,7 +159,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				return FormValidation.error(
 						"Only label, groovy expression, or resources can be defined, not more than one.");
 			} else {
-				List<String> wrongNames = new ArrayList<String>();
+				List<String> wrongNames = new ArrayList<>();
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
 					for (LockableResource r : LockableResourcesManager.get()

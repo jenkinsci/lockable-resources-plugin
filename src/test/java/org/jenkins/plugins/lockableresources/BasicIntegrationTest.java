@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import hudson.model.Item;
-import hudson.model.ItemGroup;
 import hudson.model.Queue;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;

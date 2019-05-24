@@ -12,9 +12,6 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 
 /*
  * This class is used to queue pipeline contexts

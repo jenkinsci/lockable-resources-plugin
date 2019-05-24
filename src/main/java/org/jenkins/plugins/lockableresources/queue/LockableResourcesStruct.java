@@ -9,9 +9,6 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import hudson.EnvVars;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +37,7 @@ public class LockableResourcesStruct implements Serializable {
 
 	public LockableResourcesStruct(RequiredResourcesProperty property,
 			EnvVars env) {
-		required = new ArrayList<LockableResource>();
+		required = new ArrayList<>();
 		for (String name : property.getResources()) {
 			LockableResource r = LockableResourcesManager.get().fromName(
 				env.expand(name));
@@ -77,7 +74,7 @@ public class LockableResourcesStruct implements Serializable {
 	}
 
 	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
-		required = new ArrayList<LockableResource>();
+		required = new ArrayList<>();
 		if (resources != null) {
 			for (String resource : resources) {
 				LockableResource r = LockableResourcesManager.get().fromName(resource);

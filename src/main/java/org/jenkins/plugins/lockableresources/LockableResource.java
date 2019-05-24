@@ -9,9 +9,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import groovy.lang.Binding;
-import groovy.lang.GroovyShell;
 import hudson.Extension;
-import hudson.PluginManager;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AbstractBuild;
@@ -23,11 +21,9 @@ import hudson.model.Queue.Task;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -37,7 +33,6 @@ import jenkins.model.Jenkins;
 
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jinterop.winreg.IJIWinReg.saveFile;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
@@ -78,7 +73,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	 * could be locked at once. See queuedContexts in {@link LockableResourcesManager}.
 	 */
 	@Deprecated
-	private List<StepContext> queuedContexts = new ArrayList<StepContext>();
+	private List<StepContext> queuedContexts = new ArrayList<>();
 
 	@Deprecated
 	public LockableResource(
@@ -96,7 +91,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
 	private Object readResolve() {
 		if (queuedContexts == null) { // this field was added after the initial version if this class
-			queuedContexts = new ArrayList<StepContext>();
+			queuedContexts = new ArrayList<>();
 		}
 		return this;
 	}
