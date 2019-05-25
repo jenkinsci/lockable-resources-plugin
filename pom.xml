@@ -53,6 +53,8 @@
     <java.level>8</java.level>
     <workflow-support.version>2.12</workflow-support.version>
     <jenkins.version>2.60.3</jenkins.version>
+    <!-- Run tests in parallel -->
+    <forkCount>1C</forkCount>
   </properties>
 
   <dependencies>
