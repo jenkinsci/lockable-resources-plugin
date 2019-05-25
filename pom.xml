@@ -1,172 +1,156 @@
-<!--
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.jenkins-ci.plugins</groupId>
-		<artifactId>plugin</artifactId>
-		<version>3.37</version>
-		<relativePath />
-	</parent>
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.6wind.jenkins</groupId>
-	<artifactId>lockable-resources</artifactId>
-	<version>2.6-SNAPSHOT</version>
-	<packaging>hpi</packaging>
-	<name>Lockable Resources plugin</name>
-	<description>
-		This plugin allows to define lockable resources (such as printers, phones,
-		computers) that can be used by builds. If a build requires an external
-		resource which is already locked, it will wait for the resource to be free.
-	</description>
-	<url>https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin</url>
+  <parent>
+    <groupId>org.jenkins-ci.plugins</groupId>
+    <artifactId>plugin</artifactId>
+    <version>3.37</version>
+    <relativePath/>
+  </parent>
 
-	<properties>
-		<java.level>8</java.level>
-		<workflow-support.version>2.12</workflow-support.version>
-		<jenkins.version>2.60.3</jenkins.version>
-	</properties>
+  <groupId>org.6wind.jenkins</groupId>
+  <artifactId>lockable-resources</artifactId>
+  <version>2.6-SNAPSHOT</version>
+  <packaging>hpi</packaging>
 
-	<licenses>
-		<license>
-			<name>MIT</name>
-			<url>http://www.opensource.org/licenses/mit-license.php</url>
-		</license>
-	</licenses>
+  <name>Lockable Resources plugin</name>
+  <description>
+    This plugin allows to define lockable resources (such as printers, phones,
+    computers) that can be used by builds. If a build requires an external
+    resource which is already locked, it will wait for the resource to be free.
+  </description>
+  <url>https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin</url>
+  <inceptionYear>2013</inceptionYear>
+  <licenses>
+    <license>
+      <name>MIT</name>
+      <url>https://opensource.org/licenses/MIT</url>
+    </license>
+  </licenses>
 
-	<developers>
-		<developer>
-			<id>robin-jarry</id>
-			<name>Robin Jarry</name>
-			<email>robin.jarry@6wind.com</email>
-			<roles>
-				<role>developer</role>
-				<role>maintainer</role>
-			</roles>
-			<timezone>CET</timezone>
-		</developer>
-		<developer>
-			<id>amuniz</id>
-			<name>Antonio Muñiz</name>
-			<email>amuniz@cloudbees.com</email>
-			<roles>
-				<role>developer</role>
-				<role>maintainer</role>
-			</roles>
-			<timezone>CET</timezone>
-		</developer>
-	</developers>
+  <developers>
+    <developer>
+      <id>TobiX</id>
+      <name>Tobias Gruetzmacher</name>
+      <email>tobias-git@23.gs</email>
+    </developer>
+    <developer>
+      <id>amuniz</id>
+      <name>Antonio Muñiz</name>
+      <email>amuniz@cloudbees.com</email>
+    </developer>
+  </developers>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>mailer</artifactId>
-			<version>1.13</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-support</artifactId>
-			<version>${workflow-support.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>matrix-project</artifactId>
-			<version>1.4</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins</groupId>
-			<artifactId>script-security</artifactId>
-			<version>1.33</version>
-		</dependency>
-		<dependency>
-			<groupId>com.infradna.tool</groupId>
-			<artifactId>bridge-method-annotation</artifactId>
-			<version>1.14</version>
-			<scope>provided</scope>
-			<exclusions>
-				<exclusion>
-					<groupId>org.jenkins-ci</groupId>
-					<artifactId>annotation-indexer</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
+  <scm>
+    <connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/lockable-resources-plugin.git</developerConnection>
+    <url>https://github.com/jenkinsci/lockable-resources-plugin</url>
+    <tag>HEAD</tag>
+  </scm>
 
-		<!-- Testing scope -->
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-support</artifactId>
-			<version>${workflow-support.version}</version>
-			<classifier>tests</classifier>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-basic-steps</artifactId>
-			<version>2.2</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-cps</artifactId>
-			<version>2.10</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.jenkins-ci.plugins.workflow</groupId>
-			<artifactId>workflow-job</artifactId>
-			<version>2.0</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+  <properties>
+    <java.level>8</java.level>
+    <workflow-support.version>2.12</workflow-support.version>
+    <jenkins.version>2.60.3</jenkins.version>
+  </properties>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.jenkins-ci.tools</groupId>
-				<artifactId>maven-hpi-plugin</artifactId>
-				<configuration>
-					<loggers>
-						<org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
-					</loggers>
-					<compatibleSinceVersion>2.0</compatibleSinceVersion>
-				</configuration>
-			</plugin>
-			<plugin>
-				<artifactId>maven-release-plugin</artifactId>
-				<configuration>
-					<updateDependencies>false</updateDependencies>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
+  <dependencies>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>mailer</artifactId>
+      <version>1.13</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-support</artifactId>
+      <version>${workflow-support.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>matrix-project</artifactId>
+      <version>1.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>script-security</artifactId>
+      <version>1.33</version>
+    </dependency>
+    <dependency>
+      <groupId>com.infradna.tool</groupId>
+      <artifactId>bridge-method-annotation</artifactId>
+      <version>1.14</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jenkins-ci</groupId>
+          <artifactId>annotation-indexer</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
 
-	<repositories>
-		<repository>
-			<id>repo.jenkins-ci.org</id>
-			<url>https://repo.jenkins-ci.org/public/</url>
-		</repository>
-	</repositories>
+    <!-- Testing scope -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-support</artifactId>
+      <version>${workflow-support.version}</version>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-basic-steps</artifactId>
+      <version>2.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps</artifactId>
+      <version>2.10</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-job</artifactId>
+      <version>2.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
-	<pluginRepositories>
-		<pluginRepository>
-			<id>repo.jenkins-ci.org</id>
-			<url>https://repo.jenkins-ci.org/public/</url>
-		</pluginRepository>
-	</pluginRepositories>
+  <repositories>
+    <repository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
 
-	<scm>
-		<connection>scm:git:https://github.com/jenkinsci/lockable-resources-plugin.git</connection>
-		<developerConnection>scm:git:git@github.com:jenkinsci/lockable-resources-plugin.git</developerConnection>
-		<url>https://github.com/jenkinsci/lockable-resources-plugin</url>
-		<tag>HEAD</tag>
-	</scm>
-
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.coveo</groupId>
+          <artifactId>fmt-maven-plugin</artifactId>
+          <version>2.9</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.jenkins-ci.tools</groupId>
+        <artifactId>maven-hpi-plugin</artifactId>
+        <configuration>
+          <loggers>
+            <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
+          </loggers>
+          <compatibleSinceVersion>2.0</compatibleSinceVersion>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>
