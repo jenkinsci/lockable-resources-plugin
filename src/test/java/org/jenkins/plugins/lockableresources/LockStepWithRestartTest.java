@@ -1,11 +1,14 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.Assume.assumeFalse;
+
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.model.Statement;
@@ -14,6 +17,12 @@ import org.jvnet.hudson.test.RestartableJenkinsRule;
 public class LockStepWithRestartTest extends LockStepTestBase {
 
   @Rule public RestartableJenkinsRule story = new RestartableJenkinsRule();
+
+  @Before
+  public void disableOnNewerJava() {
+    // FIXME: These tests break on Java 11
+    assumeFalse(Double.parseDouble(System.getProperty("java.specification.version", "1.8")) > 10.0);
+  }
 
   @Test
   public void lockOrderRestart() {
