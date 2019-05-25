@@ -23,6 +23,11 @@
  */
 package org.jenkins.plugins.lockableresources;
 
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.junit.Assert.assertThat;
+
 import com.gargoylesoftware.htmlunit.AlertHandler;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.Page;
@@ -30,18 +35,12 @@ import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlElementUtil;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.junit.Assert.assertThat;
 
 public class LockableResourceRootActionSEC1361Test {
     
@@ -87,7 +86,7 @@ public class LockableResourceRootActionSEC1361Test {
         HtmlElement reserveButton = null;
         for (HtmlElement b : allButtons) {
             String onClick = b.getAttribute("onClick");
-            if (onClick != null && onClick.contains("reserve_resource")) {
+            if (onClick != null && onClick.contains("reserve")) {
                 reserveButton = b;
             }
         }
