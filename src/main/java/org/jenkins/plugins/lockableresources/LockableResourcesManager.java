@@ -322,8 +322,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				}
 				LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
 			}
+      save();
 		}
-		save();
 		return !needToWait;
 	}
 
