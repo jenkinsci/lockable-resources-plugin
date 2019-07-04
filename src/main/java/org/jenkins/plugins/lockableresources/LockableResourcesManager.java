@@ -15,6 +15,7 @@ import hudson.model.Run;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.concurrent.ExecutionException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -67,6 +68,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public List<LockableResource> getResources() {
 		return resources;
 	}
+
+  public List<LockableResource> getDeclaredResources() {
+    ArrayList<LockableResource> declaredResources = new ArrayList<>();
+    for (LockableResource r : resources) {
+      if (!r.isEphemeral()) {
+        declaredResources.add(r);
+      }
+    }
+    return declaredResources;
+  }
+
+  public void setDeclaredResources(List<LockableResource> resources) {
+    this.resources = resources;
+  }
 
 	public List<LockableResource> getResourcesFromProject(String fullName) {
 		List<LockableResource> matching = new ArrayList<>();
