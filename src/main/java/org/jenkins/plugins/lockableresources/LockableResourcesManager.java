@@ -329,12 +329,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
-			for (LockableResource resource : this.resources) {
-				if (resource != null && resource.getName() != null && resource.getName().equals(unlockResourceName)) {
-					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
+      Iterator<LockableResource> resourceIterator = this.resources.iterator();
+      while (resourceIterator.hasNext()) {
+        LockableResource resource = resourceIterator.next();
+        if (resource != null
+          && resource.getName() != null
+          && resource.getName().equals(unlockResourceName)) {
+          if (build == null
+            || (resource.getBuild() != null
+            && build
+            .getExternalizableId()
+            .equals(resource.getBuild().getExternalizableId()))) {
 						// No more contexts, unlock resource
 						resource.unqueue();
 						resource.setBuild(null);
+            if (resource.isEphemeral()) {
+              resourceIterator.remove();
+            }
 					}
 				}
 			}
@@ -493,7 +504,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		if (name != null) {
 			LockableResource existent = fromName(name);
 			if (existent == null) {
-				getResources().add(new LockableResource(name));
+        LockableResource resource = new LockableResource(name);
+        resource.setEphemeral(true);
+        getResources().add(resource);
 				save();
 				return true;
 			}
