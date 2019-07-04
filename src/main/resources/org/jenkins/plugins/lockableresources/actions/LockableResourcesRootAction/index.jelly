@@ -29,6 +29,7 @@
             <td class="pane-header">Resource</td>
             <td class="pane-header">Status</td>
             <td class="pane-header">Labels</td>
+            <td class="pane-header">Ephemeral</td>
             <td class="pane-header">Action</td>
           </tr>
           <j:forEach var="resource" items="${it.resources}" indexVar="i">
@@ -49,6 +50,7 @@
                   </a>
                 </td>
                 <td class="pane">${resource.labels}</td>
+                <td class="pane">${resource.ephemeral}</td>
                 <td class="pane">
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
                     <button onClick="resource_action(this, 'unlock');">Unlock</button>
@@ -63,6 +65,7 @@
                     <strong>${resource.reservedBy}</strong>
                   </td>
                   <td class="pane">${resource.labels}</td>
+                  <td class="pane">${resource.ephemeral}</td>
                   <td class="pane">
                     <j:if test="${h.hasPermission(it.RESERVE)}">
                       <j:if
@@ -78,6 +81,7 @@
                       QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
                     </td>
                     <td class="pane">${resource.labels}</td>
+                    <td class="pane">${resource.ephemeral}</td>
                     <td class="pane">
                       <j:if test="${h.hasPermission(it.UNLOCK)}">
                         <button onClick="resource_action(this, 'reset');">ResetResource</button>
@@ -89,6 +93,7 @@
                       <strong>FREE</strong>
                     </td>
                     <td class="pane">${resource.labels}</td>
+                    <td class="pane">${resource.ephemeral}</td>
                     <td class="pane">
                       <j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
                         <button onClick="resource_action(this, 'reserve');">Reserve</button>
