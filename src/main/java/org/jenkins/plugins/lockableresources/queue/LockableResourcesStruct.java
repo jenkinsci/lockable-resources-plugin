@@ -33,11 +33,16 @@ public class LockableResourcesStruct implements Serializable {
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
     required = new ArrayList<>();
+
+    LockableResourcesManager resourcesManager = LockableResourcesManager.get();
     for (String name : property.getResources()) {
-      LockableResource r = LockableResourcesManager.get().fromName(env.expand(name));
-      if (r != null) {
-        this.required.add(r);
+      String resourceName = env.expand(name);
+      if (resourceName == null) {
+        continue;
       }
+      resourcesManager.createResource(resourceName);
+      LockableResource r = resourcesManager.fromName(resourceName);
+      this.required.add(r);
     }
 
     label = env.expand(property.getLabelName());
@@ -99,10 +104,10 @@ public class LockableResourcesStruct implements Serializable {
    * LockableResource} matches the condition.
    *
    * @return System Groovy Script if defined
-   * @since TODO
    * @see
    *     LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript,
    *     java.util.Map)
+   * @since TODO
    */
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {
