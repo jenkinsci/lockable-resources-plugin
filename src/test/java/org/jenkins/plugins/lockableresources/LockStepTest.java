@@ -6,10 +6,7 @@ import static org.junit.Assume.assumeFalse;
 
 import hudson.Functions;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.FreeStyleProject;
-import hudson.model.Result;
+import hudson.model.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +37,27 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
     j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
+  }
+
+  @Test
+  public void autoCreateResourceFreeStyle() throws IOException, InterruptedException {
+    FreeStyleProject f = j.createFreeStyleProject("f");
+    f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
+
+    f.scheduleBuild2(0);
+
+    while (j.jenkins.getQueue().getItems().length != 1) {
+      System.out.println("Waiting for freestyle to be queued...");
+      Thread.sleep(1000);
+    }
+
+    FreeStyleBuild fb1 = null;
+    while ((fb1 = f.getBuildByNumber(1)) == null) {
+      System.out.println("Waiting for freestyle #1 to start building...");
+      Thread.sleep(1000);
+    }
+
+    j.waitForMessage("acquired lock on [resource1]", fb1);
   }
 
   @Test
