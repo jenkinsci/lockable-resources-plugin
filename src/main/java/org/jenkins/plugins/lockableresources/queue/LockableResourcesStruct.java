@@ -8,118 +8,127 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.CheckForNull;
-
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
-
 public class LockableResourcesStruct implements Serializable {
 
-	public List<LockableResource> required;
-	public String label;
-	public String requiredVar;
-	public String requiredNumber;
+  public List<LockableResource> required;
+  public String label;
+  public String requiredVar;
+  public String requiredNumber;
 
-	@CheckForNull
-	private final SerializableSecureGroovyScript serializableResourceMatchScript;
+  @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
-	@CheckForNull
-	private transient SecureGroovyScript resourceMatchScript;
+  @CheckForNull private transient SecureGroovyScript resourceMatchScript;
 
-	public LockableResourcesStruct(RequiredResourcesProperty property,
-			EnvVars env) {
-		required = new ArrayList<>();
-		for (String name : property.getResources()) {
-			LockableResource r = LockableResourcesManager.get().fromName(
-				env.expand(name));
-			if (r != null) {
-				this.required.add(r);
-			}
-		}
+  public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
+    required = new ArrayList<>();
 
-		label = env.expand(property.getLabelName());
-		if (label == null)
-			label = "";
+    LockableResourcesManager resourcesManager = LockableResourcesManager.get();
+    for (String name : property.getResources()) {
+      String resourceName = env.expand(name);
+      if (resourceName == null) {
+        continue;
+      }
+      resourcesManager.createResource(resourceName);
+      LockableResource r = resourcesManager.fromName(resourceName);
+      this.required.add(r);
+    }
 
-		resourceMatchScript = property.getResourceMatchScript();
-		serializableResourceMatchScript = new SerializableSecureGroovyScript(resourceMatchScript);
+    label = env.expand(property.getLabelName());
+    if (label == null) label = "";
 
-		requiredVar = property.getResourceNamesVar();
+    resourceMatchScript = property.getResourceMatchScript();
+    serializableResourceMatchScript = new SerializableSecureGroovyScript(resourceMatchScript);
 
-		requiredNumber = property.getResourceNumber();
-		if (requiredNumber != null && requiredNumber.equals("0"))
-			requiredNumber = null;
-	}
+    requiredVar = property.getResourceNamesVar();
 
-	/**
-	 * Light-weight constructor for declaring a resource only.
-	 * @param resources Resources to be required
-	 */
-	public LockableResourcesStruct(@Nullable List<String> resources) {
-		this(resources, null, 0);
-	}
+    requiredNumber = property.getResourceNumber();
+    if (requiredNumber != null && requiredNumber.equals("0")) requiredNumber = null;
+  }
 
-	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
-		this(resources, label, quantity);
-		requiredVar = variable;
-	}
+  /**
+   * Light-weight constructor for declaring a resource only.
+   *
+   * @param resources Resources to be required
+   */
+  public LockableResourcesStruct(@Nullable List<String> resources) {
+    this(resources, null, 0);
+  }
 
-	public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
-		required = new ArrayList<>();
-		if (resources != null) {
-			for (String resource : resources) {
-				LockableResource r = LockableResourcesManager.get().fromName(resource);
-				if (r != null) {
-					this.required.add(r);
-				}
-			}
-		}
+  public LockableResourcesStruct(
+      @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
+    this(resources, label, quantity);
+    requiredVar = variable;
+  }
 
-		this.label = label;
-		if (this.label == null) {
-		    this.label = "";
-		}
+  public LockableResourcesStruct(
+      @Nullable List<String> resources, @Nullable String label, int quantity) {
+    required = new ArrayList<>();
+    if (resources != null) {
+      for (String resource : resources) {
+        LockableResource r = LockableResourcesManager.get().fromName(resource);
+        if (r != null) {
+          this.required.add(r);
+        }
+      }
+    }
 
-		this.requiredNumber = null;
-		if (quantity > 0) {
-			this.requiredNumber = String.valueOf(quantity);
-		}
+    this.label = label;
+    if (this.label == null) {
+      this.label = "";
+    }
 
-		// We do not support
-		this.serializableResourceMatchScript = null;
-		this.resourceMatchScript = null;
-	}
+    this.requiredNumber = null;
+    if (quantity > 0) {
+      this.requiredNumber = String.valueOf(quantity);
+    }
 
-	/**
-	 * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
-	 * @return System Groovy Script if defined
-	 * @since TODO
-	 * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
-	 */
-	@CheckForNull
-	public SecureGroovyScript getResourceMatchScript() {
-		if (resourceMatchScript == null && serializableResourceMatchScript != null) {
-			resourceMatchScript = serializableResourceMatchScript.rehydrate();
-		}
-		return resourceMatchScript;
-	}
+    // We do not support
+    this.serializableResourceMatchScript = null;
+    this.resourceMatchScript = null;
+  }
 
-	public String toString() {
-		return "Required resources: " + this.required +
-			", Required label: " + this.label +
-			", Required label script: " + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "") +
-			", Variable name: " + this.requiredVar +
-			", Number of resources: " + this.requiredNumber;
-	}
+  /**
+   * Gets a system Groovy script to be executed in order to determine if the {@link
+   * LockableResource} matches the condition.
+   *
+   * @return System Groovy Script if defined
+   * @see
+   *     LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript,
+   *     java.util.Map)
+   * @since TODO
+   */
+  @CheckForNull
+  public SecureGroovyScript getResourceMatchScript() {
+    if (resourceMatchScript == null && serializableResourceMatchScript != null) {
+      resourceMatchScript = serializableResourceMatchScript.rehydrate();
+    }
+    return resourceMatchScript;
+  }
 
-	private static final long serialVersionUID = 1L;
+  public String toString() {
+    return "Required resources: "
+        + this.required
+        + ", Required label: "
+        + this.label
+        + ", Required label script: "
+        + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
+        + ", Variable name: "
+        + this.requiredVar
+        + ", Number of resources: "
+        + this.requiredNumber;
+  }
+
+  private static final long serialVersionUID = 1L;
 }
