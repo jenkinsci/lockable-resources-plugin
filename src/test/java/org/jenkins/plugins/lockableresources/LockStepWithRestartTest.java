@@ -128,8 +128,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
         (JenkinsRule j) -> {
           LockableResourcesManager manager = LockableResourcesManager.get();
           manager.createResource("resource1");
-          manager.fromName("resource1").setReservedBy("user");
-          manager.save();
+          manager.reserve(Collections.singletonList(manager.fromName("resource1")), "user");
 
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
@@ -138,11 +137,22 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           j.waitForMessage("[resource1] is locked, waiting...", b1);
           isPaused(b1, 1, 1);
+
+          FreeStyleProject f = j.createFreeStyleProject("f");
+          f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
+
+          f.scheduleBuild2(0);
+
+          while (j.jenkins.getQueue().getItems().length != 1) {
+            System.out.println("Waiting for freestyle to be queued...");
+            Thread.sleep(1000);
+          }
         });
 
     story.then(
         (JenkinsRule j) -> {
           WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
+          FreeStyleProject f = j.jenkins.getItemByFullName("f", FreeStyleProject.class);
           WorkflowRun b1 = p.getBuildByNumber(1);
 
           LockableResourcesManager manager = LockableResourcesManager.get();
@@ -153,6 +163,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           isPaused(b1, 1, 0);
           j.waitForMessage("Finish", b1);
           isPaused(b1, 1, 0);
+
+          j.waitUntilNoActivity();
         });
   }
 }
