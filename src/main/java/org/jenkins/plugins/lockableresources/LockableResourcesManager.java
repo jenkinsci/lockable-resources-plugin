@@ -15,13 +15,8 @@ import hudson.model.Run;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,7 +35,6 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
-import java.util.concurrent.ExecutionException;
 import javax.annotation.Nonnull;
 
 @Extension
@@ -67,6 +61,53 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public List<LockableResource> getResources() {
 		return resources;
 	}
+
+  public synchronized List<LockableResource> getDeclaredResources() {
+    ArrayList<LockableResource> declaredResources = new ArrayList<>();
+    for (LockableResource r : resources) {
+      if (!r.isEphemeral()) {
+        declaredResources.add(r);
+      }
+    }
+    return declaredResources;
+  }
+
+  public synchronized void setDeclaredResources(List<LockableResource> declaredResources) {
+    Map<String, LockableResource> lockedResources = new HashMap<>();
+    for (LockableResource r : this.resources) {
+      if (!r.isLocked()) continue;
+      lockedResources.put(r.getName(), r);
+    }
+
+    // Removed from configuration locks became ephemeral.
+    ArrayList<LockableResource> mergedResources = new ArrayList<>();
+    Set<String> addedLocks = new HashSet<>();
+    for (LockableResource r : declaredResources) {
+      if (!addedLocks.add(r.getName())) {
+        continue;
+      }
+      LockableResource locked = lockedResources.remove(r.getName());
+      if (locked != null) {
+        // Merge already locked lock.
+        locked.setDescription(r.getDescription());
+        locked.setLabels(r.getLabels());
+        locked.setEphemeral(false);
+        mergedResources.add(locked);
+        continue;
+      }
+      mergedResources.add(r);
+    }
+
+    for (LockableResource r : lockedResources.values()) {
+      // Removed locks became ephemeral.
+      r.setDescription("");
+      r.setLabels("");
+      r.setEphemeral(true);
+      mergedResources.add(r);
+    }
+
+    this.resources = mergedResources;
+  }
 
 	public List<LockableResource> getResourcesFromProject(String fullName) {
 		List<LockableResource> matching = new ArrayList<>();
@@ -329,12 +370,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
 	private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 		for (String unlockResourceName : unlockResourceNames) {
-			for (LockableResource resource : this.resources) {
-				if (resource != null && resource.getName() != null && resource.getName().equals(unlockResourceName)) {
-					if (build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))) {
+      Iterator<LockableResource> resourceIterator = this.resources.iterator();
+      while (resourceIterator.hasNext()) {
+        LockableResource resource = resourceIterator.next();
+        if (resource != null
+          && resource.getName() != null
+          && resource.getName().equals(unlockResourceName)) {
+          if (build == null
+            || (resource.getBuild() != null
+            && build
+            .getExternalizableId()
+            .equals(resource.getBuild().getExternalizableId()))) {
 						// No more contexts, unlock resource
 						resource.unqueue();
 						resource.setBuild(null);
+            if (resource.isEphemeral()) {
+              resourceIterator.remove();
+            }
 					}
 				}
 			}
@@ -493,7 +545,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		if (name != null) {
 			LockableResource existent = fromName(name);
 			if (existent == null) {
-				getResources().add(new LockableResource(name));
+        LockableResource resource = new LockableResource(name);
+        resource.setEphemeral(true);
+        getResources().add(resource);
 				save();
 				return true;
 			}
@@ -627,16 +681,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public boolean configure(StaplerRequest req, JSONObject json)
 			throws FormException {
 		try {
-			List<LockableResource> newResouces = req.bindJSONToList(
-					LockableResource.class, json.get("resources"));
-			for (LockableResource r : newResouces) {
-				LockableResource old = fromName(r.getName());
-				if (old != null) {
-					r.setBuild(old.getBuild());
-					r.setQueued(r.getQueueItemId(), r.getQueueItemProject());
-				}
-			}
-			resources = newResouces;
+      List<LockableResource> newResouces =
+          req.bindJSONToList(LockableResource.class, json.get("declaredResources"));
+      setDeclaredResources(newResouces);
 			save();
 			return true;
 		} catch (JSONException e) {

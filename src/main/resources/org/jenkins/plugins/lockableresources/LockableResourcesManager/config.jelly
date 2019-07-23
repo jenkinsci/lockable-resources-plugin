@@ -13,7 +13,7 @@
 	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 	<f:section title="${%Lockable Resources Manager}">
 		<f:entry title="${%Lockable Resources}">
-			<f:repeatable field="resources" header="${%Resource}" minimum="0" add="${%Add Lockable Resource}">
+			<f:repeatable field="declaredResources" header="${%Resource}" minimum="0" add="${%Add Lockable Resource}">
 				<table width="100%">
 					<st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>
 					<f:entry title="">
