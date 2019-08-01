@@ -68,10 +68,10 @@
                           <j:choose>
                               <j:when
                                 test="${resource.reservedBy.contains('#')}">
-                                <br/><button onClick="resource_action(this, 'unreserve');resource_action(this, 'reserve');">Steal from a job</button>
+                                <br/><button onClick="resource_action(this, 'reassign');">Reassign from a job</button>
                               </j:when>
-                              <j:otherwise>
-                                <br/><button onClick="resource_action(this, 'unreserve');resource_action(this, 'reserve');">Steal from a user</button>
+                              <j:otherwise> <!-- TODO: Want to need any rights here vs. for jobs? -->
+                                <br/><button onClick="resource_action(this, 'reassign');">Reassign from a user</button>
                               </j:otherwise>
                           </j:choose>
                       </j:if>

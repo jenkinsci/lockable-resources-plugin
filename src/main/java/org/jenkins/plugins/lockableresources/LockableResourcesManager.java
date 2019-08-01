@@ -608,6 +608,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
+  public synchronized void reassign(List<LockableResource> resources,
+      String userName) {
+    for (LockableResource r : resources) {
+      if (r.isReserved() || r.isLocked() || r.isQueued()) {
+        r.unReserve();
+      }
+      r.setReservedBy(userName);
+    }
+    save();
+  }
+
   private void unreserveResources(@Nonnull List<LockableResource> resources) {
     for (LockableResource l : resources) {
       l.unReserve();
