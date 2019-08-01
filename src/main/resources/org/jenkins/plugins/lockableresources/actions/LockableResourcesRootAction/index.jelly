@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <!--
   Copyright 2013, 6WIND S.A. All rights reserved.
   Copyright 2019-2020, TobiX
@@ -7,7 +8,6 @@
 
   See the "LICENSE.txt" file for more information.
  -->
-<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
   <l:layout title="${it.displayName}" type="one-column">
     <script type="text/javascript"
