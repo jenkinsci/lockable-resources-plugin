@@ -63,6 +63,18 @@
                         test="${it.UserName == resource.reservedBy or h.hasPermission(app.ADMINISTER)}">
                         <button onClick="resource_action(this, 'unreserve');">UnReserve</button>
                       </j:if>
+                      <j:if
+                        test="${it.UserName != null and it.UserName != resource.reservedBy and ( h.hasPermission(it.RESERVE) or h.hasPermission(app.ADMINISTER) )}">
+                          <j:choose>
+                              <j:when
+                                test="${resource.reservedBy.contains('#')}">
+                                <br/><button onClick="resource_action(this, 'unreserve');resource_action(this, 'reserve');">Steal from a job</button>
+                              </j:when>
+                              <j:otherwise>
+                                <br/><button onClick="resource_action(this, 'unreserve');resource_action(this, 'reserve');">Steal from a user</button>
+                              </j:otherwise>
+                          </j:choose>
+                      </j:if>
                     </j:if>
                   </td>
                 </j:if>
