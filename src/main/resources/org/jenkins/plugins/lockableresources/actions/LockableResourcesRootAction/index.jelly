@@ -54,6 +54,7 @@
                 <td class="pane">
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
                     <button onClick="resource_action(this, 'unlock');">Unlock</button>
+                    <button onClick="resource_action(this, 'steal');">Steal Lock</button>
                   </j:if>
                 </td>
               </j:if>

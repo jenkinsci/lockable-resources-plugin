@@ -126,6 +126,26 @@ public class LockableResourcesRootAction implements RootAction {
 		rsp.forwardToPreviousPage(req);
 	}
 
+	public void doSteal(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+		Jenkins.getInstance().checkPermission(RESERVE);
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<>();
+		resources.add(r);
+		String userName = getUserName();
+		if (userName != null)
+			LockableResourcesManager.get().steal(resources, userName);
+
+		rsp.forwardToPreviousPage(req);
+	}
+
 	public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 		Jenkins.getInstance().checkPermission(RESERVE);
