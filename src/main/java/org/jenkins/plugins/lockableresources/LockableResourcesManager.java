@@ -32,6 +32,7 @@ import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -72,6 +73,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return declaredResources;
   }
 
+  @DataBoundSetter
   public synchronized void setDeclaredResources(List<LockableResource> declaredResources) {
     Map<String, LockableResource> lockedResources = new HashMap<>();
     for (LockableResource r : this.resources) {
@@ -677,19 +679,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		save();
 	}
 
-	@Override
-	public boolean configure(StaplerRequest req, JSONObject json)
-			throws FormException {
-		try {
-      List<LockableResource> newResouces =
-          req.bindJSONToList(LockableResource.class, json.get("declaredResources"));
-      setDeclaredResources(newResouces);
-			save();
-			return true;
-		} catch (JSONException e) {
-			return false;
-		}
-	}
+  @Override
+  public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+    BulkChange bc = new BulkChange(this);
+    try {
+      req.bindJSON(this, json);
+      bc.commit();
+    } catch (IOException exception) {
+      LOGGER.log(
+        Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
+      return false;
+    }
+    return true;
+  }
 
 	/**
 	 * Checks if there are enough resources available to satisfy the requirements specified
