@@ -59,6 +59,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String description = "";
 	private String labels = "";
 	private String reservedBy = null;
+	private boolean stolen = false;
   private boolean ephemeral;
 
 	private long queueItemId = NOT_QUEUED;
@@ -316,8 +317,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		this.reservedBy = Util.fixEmptyAndTrim(userName);
 	}
 
+	public void setStolen() {
+		this.stolen = true;
+	}
+
+	@Exported
+	public boolean isStolen() {
+		return this.stolen;
+	}
+
 	public void unReserve() {
 		this.reservedBy = null;
+		this.stolen = false;
 	}
 
 	public void reset() {

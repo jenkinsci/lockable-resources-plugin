@@ -394,10 +394,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	}
 
 	public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-		unlock(resourcesToUnLock, build, null, false, false);
+		unlock(resourcesToUnLock, build, null, false);
 	}
 	public synchronized void unlock(@Nullable List<LockableResource> resourcesToUnLock,
-									@Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence, boolean stealLock) {
+									@Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence) {
 		List<String> resourceNamesToUnLock = new ArrayList<>();
 		if (resourcesToUnLock != null) {
 			for (LockableResource r : resourcesToUnLock) {
@@ -405,10 +405,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			}
 		}
 
-		this.unlockNames(resourceNamesToUnLock, build, requiredVar, inversePrecedence, stealLock);
+		this.unlockNames(resourceNamesToUnLock, build, requiredVar, inversePrecedence);
 	}
 
-	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence, boolean stealLock) {
+	public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, String requiredVar, boolean inversePrecedence) {
 		// make sure there is a list of resource names to unlock
 		if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
 			return;
@@ -437,6 +437,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			// It is guaranteed that there is an overlap between the two - the resources which are to be reused.
 			boolean needToWait = false;
 			for (LockableResource requiredResource : requiredResourceForNextContext) {
+				if(requiredResource.isStolen()) {
+					needToWait = true;
+					break;
+				}
 				if (!remainingResourceNamesToUnLock.contains(requiredResource.getName())) {
 					if (requiredResource.isReserved() || requiredResource.isLocked()) {
 						needToWait = true;
@@ -445,7 +449,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 				}
 			}
 
-			if (!needToWait && !stealLock) {
+			if (!needToWait) {
 				// remove context from queue and process it
 				unqueueContext(nextContext.getContext());
 
@@ -462,7 +466,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 								"this could be a legitimate status if the build waiting for the lock was deleted or" +
 								" hard killed. More information at Level.FINE if debug is needed.");
 						LOGGER.log(Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
-						unlockNames(remainingResourceNamesToUnLock, build, requiredVar, inversePrecedence, false);
+						unlockNames(remainingResourceNamesToUnLock, build, requiredVar, inversePrecedence);
 						return;
 					}
 				}
@@ -584,8 +588,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 			String userName) {
 		for (LockableResource r : resources) {
 			r.setReservedBy(userName);
+			r.setStolen();
 		}
-		unlock(resources, null, null, false, true);
+		unlock(resources, null, null, false);
 		save();
 		return true;
 	}
