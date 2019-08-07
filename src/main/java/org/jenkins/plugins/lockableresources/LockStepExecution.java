@@ -165,7 +165,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     @Override
     protected void finished(StepContext context) throws Exception {
       LockableResourcesManager.get()
-          .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence, false);
+          .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
       context
           .get(TaskListener.class)
           .getLogger()
