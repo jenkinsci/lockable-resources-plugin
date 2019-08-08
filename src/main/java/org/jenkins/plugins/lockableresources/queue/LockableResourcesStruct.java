@@ -22,6 +22,9 @@ import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 
 public class LockableResourcesStruct implements Serializable {
 
+  // Note to developers: if the set of selection criteria variables evolves,
+  // do not forget to update LockableResourcesQueueTaskDispatcher.java with
+  // class BecauseResourcesLocked method getShortDescription() for user info.
   public List<LockableResource> required;
   public String label;
   public String requiredVar;

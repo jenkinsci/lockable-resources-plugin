@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -159,10 +160,28 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		@Override
 		public String getShortDescription() {
-			if (this.rscStruct.label.isEmpty())
-				return "Waiting for resources " + rscStruct.required.toString();
-			else
+			if (this.rscStruct.label.isEmpty()) {
+				if (this.rscStruct.required.size() > 0) {
+					return "Waiting for resource instances " + rscStruct.required.toString();
+				} else {
+					final SecureGroovyScript systemGroovyScript = this.rscStruct.getResourceMatchScript();
+					if (systemGroovyScript != null) {
+						// Empty or not... just keep the logic in sync
+						// with tryQueue() in LockableResourcesManager
+						if (systemGroovyScript.getScript().isEmpty()) {
+							return "Waiting for resources identified by custom script (which is empty)";
+						} else {
+							return "Waiting for resources identified by custom script";
+						}
+					}
+					// TODO: Developers should extend here if LockableResourcesStruct is extended
+					LOGGER.log(Level.WARNING, "Failed to classify reason of waiting for resource: "
+						+ this.rscStruct.toString());
+					return "Waiting for lockable resources";
+				}
+			} else {
 				return "Waiting for resources with label " + rscStruct.label;
+			}
 		}
 	}
 
