@@ -65,7 +65,16 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		// determine if there are enough resources available to proceed
 		Set<LockableResource> available = LockableResourcesManager.get().checkResourcesAvailability(resourceHolderList, listener.getLogger(), null);
 		if (available == null || !LockableResourcesManager.get().lock(available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
-			listener.getLogger().println("[" + step + "] is locked, waiting...");
+      // if the resource is known, we could output the active/blocking job/build
+      LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
+      if (resource != null && resource.getBuildName() != null) {
+        listener
+            .getLogger()
+            .println("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
+
+      } else {
+        listener.getLogger().println("[" + step + "] is locked, waiting...");
+      }
 			LockableResourcesManager.get().queueContext(getContext(), resourceHolderList, step.toString());
 		} // proceed is called inside lock if execution is possible
 		return false;
