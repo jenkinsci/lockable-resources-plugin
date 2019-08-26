@@ -829,10 +829,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n"
-                + "echo 'Resource locked'\n"
-                + "}\n"
-                + "echo 'Finish'"));
+            "lock(label: 'label1') {\n" + "echo 'Resource locked'\n" + "}\n" + "echo 'Finish'"));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("Trying to acquire lock on [Label: label1]", b1);
     j.waitForMessage("[Label: label1] does not exist, waiting...", b1);
@@ -847,5 +844,4 @@ public class LockStepTest extends LockStepTestBase {
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
   }
-
 }
