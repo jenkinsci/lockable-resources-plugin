@@ -341,13 +341,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 	public synchronized boolean lock(Set<LockableResource> resources,
 			Run<?, ?> build, @Nullable StepContext context, @Nullable String logmessage,
 			final String variable, boolean inversePrecedence) {
-		boolean needToWait = false;
+		boolean needToWait = true;
 
 		for (LockableResource r : resources) {
 			if (r.isReserved() || r.isLocked()) {
 				needToWait = true;
 				break;
-			}
+			} else {
+        needToWait = false;
+      }
 		}
 		if (!needToWait) {
 			for (LockableResource r : resources) {
@@ -548,7 +550,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         LockableResource resource = new LockableResource(name);
         resource.setEphemeral(true);
         getResources().add(resource);
-				save();
+        save();
 				return true;
 			}
 		}
@@ -559,8 +561,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 		if (name !=null && label !=null) {
 			LockableResource existent = fromName(name);
 			if (existent == null) {
-				getResources().add(new LockableResource(name, "", label, null));
+        LockableResource resource = new LockableResource(name);
+        resource.setLabels(label);
+				getResources().add(resource);
 				save();
+        // also unlock the new created resource to trigger jobs waiting on labels
+        unlock(Arrays.asList(resource), null);
 				return true;
 			}
 		}
