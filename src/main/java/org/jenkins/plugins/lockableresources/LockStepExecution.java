@@ -78,12 +78,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 			r = context.get(Run.class);
 			node = context.get(FlowNode.class);
 			context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
+			context.get(TaskListener.class).getLogger().println("[lockable-resources] acquired lock on " + resourcenames);
 		} catch (Exception e) {
 			context.onFailure(e);
 			return;
 		}
 
 		LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
+		LOGGER.finest("[lockable-resources] acquired lock on " + resourcenames + " by " + r.getExternalizableId());
 		try {
 			PauseAction.endCurrentPause(node);
 			BodyInvoker bodyInvoker = context.newBodyInvoker().
@@ -123,7 +125,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 		protected void finished(StepContext context) throws Exception {
 			LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class), this.variable, this.inversePrecedence);
 			context.get(TaskListener.class).getLogger().println("Lock released on resource [" + resourceDescription + "]");
+			context.get(TaskListener.class).getLogger().println("[lockable-resources] released lock on " + resourceNames);
 			LOGGER.finest("Lock released on [" + resourceDescription + "]");
+			LOGGER.finest("[lockable-resources] released lock on " + resourceNames);
 		}
 
 		private static final long serialVersionUID = 1L;
