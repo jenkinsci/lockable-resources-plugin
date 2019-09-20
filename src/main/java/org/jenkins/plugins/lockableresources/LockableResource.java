@@ -59,7 +59,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 	private String description = "";
 	private String labels = "";
 	private String reservedBy = null;
-  private boolean ephemeral;
+	private boolean ephemeral;
 
 	private long queueItemId = NOT_QUEUED;
 	private String queueItemProject = null;
@@ -127,15 +127,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 		return labels;
 	}
 
-  @DataBoundSetter
-  public void setEphemeral(boolean ephemeral) {
-    this.ephemeral = ephemeral;
-  }
+	@DataBoundSetter
+	public void setEphemeral(boolean ephemeral) {
+		this.ephemeral = ephemeral;
+	}
 
-  @Exported
-  public boolean isEphemeral() {
-    return ephemeral;
-  }
+	@Exported
+	public boolean isEphemeral() {
+		return ephemeral;
+	}
 
 	public boolean isValidLabel(String candidate, Map<String, Object> params) {
 		return labelsContain(candidate);
