@@ -7,6 +7,7 @@ import hudson.util.FormValidation;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -108,11 +109,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
   public String toString() {
     if (extra != null && !extra.isEmpty()) {
-      StringBuilder builder = new StringBuilder();
-      for (LockStepResource resource : getResources()) {
-        builder.append("{" + resource.toString() + "},");
-      }
-      return builder.toString();
+      return getResources().stream()
+          .map(resource -> "{" + resource.toString() + "}")
+          .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
       return LockStepResource.toString(resource, label, quantity);
     } else {

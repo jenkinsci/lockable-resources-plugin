@@ -644,7 +644,7 @@ public class LockStepTest extends LockStepTestBase {
 
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
-    j.waitForMessage("Lock released on resource [{resource1},{resource2},]", b1);
+    j.waitForMessage("Lock released on resource [{resource1},{resource2}]", b1);
     isPaused(b1, 1, 0);
 
     // Both get their lock
@@ -695,7 +695,7 @@ public class LockStepTest extends LockStepTestBase {
 
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
-    j.waitForMessage("Lock released on resource [{Label: label1},{resource1},]", b1);
+    j.waitForMessage("Lock released on resource [{Label: label1},{resource1}]", b1);
     isPaused(b2, 1, 0);
 
     // Both get their lock
@@ -746,7 +746,7 @@ public class LockStepTest extends LockStepTestBase {
 
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
-    j.waitForMessage("Lock released on resource [{Label: label1},{resource1},]", b1);
+    j.waitForMessage("Lock released on resource [{Label: label1},{resource1}]", b1);
     isPaused(b1, 1, 0);
 
     // #2 gets the lock before #3 (in the order as they requested the lock)
@@ -821,7 +821,7 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage(
-        "Lock released on resource [{resource4},{resource2},{Label: label1, Quantity: 2},]", b1);
+        "Lock released on resource [{resource4},{resource2},{Label: label1, Quantity: 2}]", b1);
     j.assertLogContains("Resources locked: [resource2, resource4]", b1);
     isPaused(b1, 1, 0);
 
