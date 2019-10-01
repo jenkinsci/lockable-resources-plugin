@@ -67,6 +67,18 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  public void lockNothing() throws Exception {
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "lock() {\n" + "  echo 'Nothing locked.'\n" + "}\n" + "echo 'Finish'"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("Lock acquired on [nothing]", b1);
+  }
+
+  @Test
   public void lockWithLabel() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -761,11 +773,11 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(resource: 'resource4', variable: 'var', extra: [[resource: 'resource2'], [label: 'label1', quantity: 2]]) {\n"
-                + "	def lockedResources = env.var.split(',')\n"
-                + "	Arrays.sort(lockedResources)\n"
-                + "	echo \"Resources locked: ${lockedResources}\"\n"
-                + "	semaphore 'wait-inside'\n"
+            "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], [label: 'label1', quantity: 2]]) {\n"
+                + "  def lockedResources = env.var.split(',')\n"
+                + "  Arrays.sort(lockedResources)\n"
+                + "  echo \"Resources locked: ${lockedResources}\"\n"
+                + "  semaphore 'wait-inside'\n"
                 + "}\n"
                 + "echo 'Finish'"));
     // #1 should lock as few resources as possible

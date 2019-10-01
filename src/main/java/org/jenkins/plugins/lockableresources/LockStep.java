@@ -113,8 +113,10 @@ public class LockStep extends AbstractStepImpl implements Serializable {
         builder.append("{" + resource.toString() + "},");
       }
       return builder.toString();
-    } else {
+    } else if (resource != null || label != null) {
       return LockStepResource.toString(resource, label, quantity);
+    } else {
+      return "nothing";
     }
   }
 
@@ -125,7 +127,9 @@ public class LockStep extends AbstractStepImpl implements Serializable {
 
   public List<LockStepResource> getResources() {
     List<LockStepResource> resources = new ArrayList<>();
-    resources.add(new LockStepResource(resource, label, quantity));
+    if (resource != null || label != null) {
+      resources.add(new LockStepResource(resource, label, quantity));
+    }
 
     if (extra != null) {
       resources.addAll(extra);
