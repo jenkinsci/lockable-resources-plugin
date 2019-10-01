@@ -76,6 +76,20 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 * See the [plugin's Wiki page](https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin#LockableResourcesPlugin-Changelog)
   for versions 2.5 and older
 
+## Configuration as Code
+This plugin can be configured via [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin).
+
+### Example configuration
+```
+unclassified:
+  lockableResourcesManager:
+    declaredResources:
+      - name: "Resource_A"
+        description: "Description_A"
+        labels: "Label_A"
+        reservedBy: "Reserved_A"
+```
+
 ## Contributing
 
 If you want to contribute to this plugin, you probably will need a Jenkins plugin developement
