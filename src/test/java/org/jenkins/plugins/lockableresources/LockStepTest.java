@@ -337,7 +337,8 @@ public class LockStepTest extends LockStepTestBase {
     // both messages are in the log because branch b acquired the lock and branch a is waiting to
     // lock
     j.waitForMessage("[b] Lock acquired on [resource1]", b1);
-    j.waitForMessage("[a] [resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b1);
+    j.waitForMessage(
+        "[a] [resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b1);
     isPaused(b1, 2, 1);
 
     SemaphoreStep.success("wait-b/1", null);
@@ -454,7 +455,8 @@ public class LockStepTest extends LockStepTestBase {
     for (int i = 0; i < 3; i++) {
       WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
       if (prevBuild != null) {
-        j.waitForMessage("[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
+        j.waitForMessage(
+            "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
         wc.goTo("lockable-resources/unlock?resource=resource1");
       }
@@ -496,7 +498,8 @@ public class LockStepTest extends LockStepTestBase {
     for (int i = 0; i < 5; i++) {
       WorkflowRun rNext = job.scheduleBuild2(0).waitForStart();
       if (toUnlock != null) {
-        j.waitForMessage("[resource1] is locked by " + toUnlock.getFullDisplayName() + ", waiting...", rNext);
+        j.waitForMessage(
+            "[resource1] is locked by " + toUnlock.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
         SemaphoreStep.success("wait-inside-1/" + i, null);
       }
@@ -829,11 +832,11 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(
-        "lock(label: 'invalidLabel', variable: 'var', quantity: 1) {\n" +
-          "	echo \"Resource locked: ${env.var}\"\n" +
-          "}\n" +
-          "echo 'Finish'"));
+        new CpsFlowDefinition(
+            "lock(label: 'invalidLabel', variable: 'var', quantity: 1) {\n"
+                + "	echo \"Resource locked: ${env.var}\"\n"
+                + "}\n"
+                + "echo 'Finish'"));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
