@@ -20,7 +20,7 @@
     computers) that can be used by builds. If a build requires an external
     resource which is already locked, it will wait for the resource to be free.
   </description>
-  <url>https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin</url>
+  <url>https://github.com/jenkinsci/lockable-resources-plugin</url>
   <inceptionYear>2013</inceptionYear>
   <licenses>
     <license>
