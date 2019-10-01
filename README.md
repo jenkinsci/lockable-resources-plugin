@@ -22,7 +22,7 @@ which is already locked, it will wait for the resource to be free.
 Each lockable resource has the following properties:
 
 - **Name** - A name (not containing spaces!) for this particular resource, i.e.
-  `DK_Printers`
+  `DK_Printer_ColorA3_2342`
 - **Description** - A verbose description of this particular resource,
   i.e. ` Printers in the Danish Office`
 - **Labels** - Space-delimited list of Labels (Not containing spaces) used to
