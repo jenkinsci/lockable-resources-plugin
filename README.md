@@ -69,17 +69,13 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 }
 ```
 
-## Changelog
-
-* See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
-  for recent versions
-* See the [plugin's Wiki page](https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin#LockableResourcesPlugin-Changelog)
-  for versions 2.5 and older
-
 ## Configuration as Code
-This plugin can be configured via [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin).
+
+This plugin can be configured via
+[Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin).
 
 ### Example configuration
+
 ```
 unclassified:
   lockableResourcesManager:
@@ -89,6 +85,13 @@ unclassified:
         labels: "Label_A"
         reservedBy: "Reserved_A"
 ```
+
+## Changelog
+
+* See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
+  for recent versions
+* See the [plugin's Wiki page](https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin#LockableResourcesPlugin-Changelog)
+  for versions 2.5 and older
 
 ## Contributing
 
