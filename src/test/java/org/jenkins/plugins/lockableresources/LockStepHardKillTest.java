@@ -86,7 +86,8 @@ public class LockStepHardKillTest extends LockStepTestBase {
     for (int i = 0; i < 3; i++) {
       WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
       if (prevBuild != null) {
-        j.waitForMessage("[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
+        j.waitForMessage(
+            "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
         interruptTermKill(prevBuild);
       }
