@@ -63,13 +63,34 @@ public class BasicIntegrationTest {
   @Issue("JENKINS-30308")
   public void testResourceNameFromParameter() throws Exception {
     LockableResourcesManager.get().createResource("resource1");
+
     FreeStyleProject p = j.createFreeStyleProject("p");
     p.addProperty(new RequiredResourcesProperty("$resource", null, null, null));
     p.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("resource", "resource1")));
+    p.getBuildersList().add(new SleepBuilder(10000));
 
-    FreeStyleBuild b1 = p.scheduleBuild2(0).get();
-    j.assertLogContains("acquired lock on [resource1]", b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
+    final QueueTaskFuture<FreeStyleBuild> taskA =
+        p.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
+    Thread.sleep(2500);
+    final QueueTaskFuture<FreeStyleBuild> taskB =
+        p.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
+
+    final FreeStyleBuild buildA = taskA.get(60, TimeUnit.SECONDS);
+    final FreeStyleBuild buildB = taskB.get(60, TimeUnit.SECONDS);
+
+    long buildAEndTime = buildA.getStartTimeInMillis() + buildA.getDuration();
+    assertTrue(
+        "Build A should be finished before the build B starts. "
+            + "A finished at "
+            + buildAEndTime
+            + ", B started at "
+            + buildB.getStartTimeInMillis(),
+        buildB.getStartTimeInMillis() >= buildAEndTime);
+
+    j.assertLogContains("acquired lock on [resource1]", buildA);
+    j.assertBuildStatus(Result.SUCCESS, buildA);
+    j.assertLogContains("acquired lock on [resource1]", buildB);
+    j.assertBuildStatus(Result.SUCCESS, buildB);
   }
 
   @Test
