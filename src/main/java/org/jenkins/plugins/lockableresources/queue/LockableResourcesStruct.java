@@ -37,7 +37,7 @@ public class LockableResourcesStruct implements Serializable {
     LockableResourcesManager resourcesManager = LockableResourcesManager.get();
     for (String name : property.getResources()) {
       String resourceName = env.expand(name);
-      if (resourceName == null) {
+      if (resourceName == null || resourceName.startsWith("$")) {
         continue;
       }
       resourcesManager.createResource(resourceName);
