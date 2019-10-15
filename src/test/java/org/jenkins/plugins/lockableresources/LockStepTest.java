@@ -10,6 +10,7 @@ import hudson.Launcher;
 import hudson.model.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
@@ -840,15 +841,113 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
-  public void lockWithInvalidLabel() throws Exception {
+  @Issue("JENKINS-50176")
+  public void lockWithLabelFillsVariable() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'invalidLabel', variable: 'var', quantity: 1) {\n"
-                + "	echo \"Resource locked: ${env.var}\"\n"
-                + "}\n"
-                + "echo 'Finish'"));
+            "lock(label: 'label1', variable: 'someVar') {\n"
+                + "  semaphore 'wait-inside'\n"
+                + "  echo \"VAR IS $env.someVar\"\n"
+                + "}"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+    WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
+    p2.setDefinition(
+        new CpsFlowDefinition(
+            "lock(label: 'label1', variable: 'someVar2') {\n"
+                + "  echo \"VAR2 IS $env.someVar2\"\n"
+                + "}"));
+    WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+    j.waitForMessage("is locked, waiting...", b2);
+    isPaused(b2, 1, 1);
+
+    // Unlock resources
+    SemaphoreStep.success("wait-inside/1", null);
+    j.waitForMessage("Lock released on resource", b1);
+    isPaused(b1, 1, 0);
+
+    // Now job 2 should get and release the lock...
+    j.waitForCompletion(b1);
+    j.waitForCompletion(b2);
+    isPaused(b2, 1, 0);
+
+    // Variable should have been filled in both cases
+    j.assertLogContains("VAR IS resource1", b1);
+    j.assertLogContains("VAR2 IS resource1", b2);
+  }
+
+  @Test
+  @Issue("JENKINS-50176")
+  public void paralleLockWithLabelFillsVariable() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "parallel p1: {\n"
+                + "  lock(label: 'label1', variable: 'someVar') {\n"
+                + "    semaphore 'wait-inside'\n"
+                + "    echo \"VAR IS $env.someVar\"\n"
+                + "  }\n"
+                + "},\n"
+                + "p2: {\n"
+                + "  semaphore 'wait-outside'\n"
+                + "  lock(label: 'label1', variable: 'someVar2') {\n"
+                + "    echo \"VAR2 IS $env.someVar2\"\n"
+                + "  }\n"
+                + "}"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    SemaphoreStep.waitForStart("wait-outside/1", b1);
+    SemaphoreStep.waitForStart("wait-inside/1", b1);
+    SemaphoreStep.success("wait-outside/1", null);
+
+    j.waitForMessage("is locked, waiting...", b1);
+    isPaused(b1, 2, 1);
+
+    // Unlock resources
+    SemaphoreStep.success("wait-inside/1", null);
+    j.waitForMessage("Lock released on resource", b1);
+    isPaused(b1, 2, 0);
+
+    // Now the second parallel branch should get and release the lock...
+    j.waitForCompletion(b1);
+    isPaused(b1, 2, 0);
+
+    // Variable should have been filled in both cases
+    j.assertLogContains("VAR IS resource1", b1);
+    j.assertLogContains("VAR2 IS resource1", b1);
+  }
+
+  @Test
+  @Issue("JENKINS-54541")
+  public void unreserveSetsVariable() throws Exception {
+    LockableResourcesManager lm = LockableResourcesManager.get();
+    lm.createResourceWithLabel("resource1", "label1");
+    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "lock(label: 'label1', variable: 'someVar') {\n"
+                + "  echo \"VAR IS $env.someVar\"\n"
+                + "}"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+
+    j.waitForMessage("is locked, waiting...", b1);
+    lm.unreserve(Arrays.asList(lm.fromName("resource1")));
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+
+    // Variable should have been filled
+    j.assertLogContains("VAR IS resource1", b1);
+  }
+
+  @Test
+  public void lockWithInvalidLabel() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(new CpsFlowDefinition("lock(label: 'invalidLabel') {\n" + "}\n"));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
