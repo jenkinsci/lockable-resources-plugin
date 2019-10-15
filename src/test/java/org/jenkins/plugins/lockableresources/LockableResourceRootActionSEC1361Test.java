@@ -43,61 +43,61 @@ import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class LockableResourceRootActionSEC1361Test {
-    
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
-    
-    @Test
-    public void regularCase() throws Exception {
-        checkXssWithResourceName("resource1");
-    }
-    
-    @Test
-    @Issue("SECURITY-1361")
-    public void noXssOnClick() throws Exception {
-        checkXssWithResourceName("\"); alert(123);//");
-    }
-    
-    private void checkXssWithResourceName(String resourceName) throws Exception {
-        LockableResourcesManager.get().createResource(resourceName);
-        
-        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
-        j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
-        
-        JenkinsRule.WebClient wc = j.createWebClient();
-        wc.login("user");
-        
-        final AtomicReference<String> lastAlertReceived = new AtomicReference<>();
-        wc.setAlertHandler(new AlertHandler() {
-            @Override
-            public void handleAlert(Page page, String s) {
-                lastAlertReceived.set(s);
-            }
+
+  @Rule public JenkinsRule j = new JenkinsRule();
+
+  @Test
+  public void regularCase() throws Exception {
+    checkXssWithResourceName("resource1");
+  }
+
+  @Test
+  @Issue("SECURITY-1361")
+  public void noXssOnClick() throws Exception {
+    checkXssWithResourceName("\"); alert(123);//");
+  }
+
+  private void checkXssWithResourceName(String resourceName) throws Exception {
+    LockableResourcesManager.get().createResource(resourceName);
+
+    j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+    j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
+
+    JenkinsRule.WebClient wc = j.createWebClient();
+    wc.login("user");
+
+    final AtomicReference<String> lastAlertReceived = new AtomicReference<>();
+    wc.setAlertHandler(
+        new AlertHandler() {
+          @Override
+          public void handleAlert(Page page, String s) {
+            lastAlertReceived.set(s);
+          }
         });
-        
-        HtmlPage htmlPage = wc.goTo("lockable-resources");
-        assertThat(lastAlertReceived.get(), nullValue());
-        
-        // currently only one button but perhaps in future version of the core/plugin, 
-        // other buttons will be added to the layout
-        List<HtmlElement> allButtons = htmlPage.getDocumentElement().getElementsByTagName("button");
-        assertThat(allButtons.size(), greaterThanOrEqualTo(1));
-        
-        HtmlElement reserveButton = null;
-        for (HtmlElement b : allButtons) {
-            String onClick = b.getAttribute("onClick");
-            if (onClick != null && onClick.contains("reserve")) {
-                reserveButton = b;
-            }
-        }
-        assertThat(reserveButton, not(nullValue()));
-        
-        try {
-            HtmlElementUtil.click(reserveButton);
-        } catch (FailingHttpStatusCodeException e) {
-            // only happen if we have a XSS, but it's managed using the AlertHandler to ensure it's a XSS
-            // and not just an invalid page
-        }
-        assertThat(lastAlertReceived.get(), nullValue());
+
+    HtmlPage htmlPage = wc.goTo("lockable-resources");
+    assertThat(lastAlertReceived.get(), nullValue());
+
+    // currently only one button but perhaps in future version of the core/plugin,
+    // other buttons will be added to the layout
+    List<HtmlElement> allButtons = htmlPage.getDocumentElement().getElementsByTagName("button");
+    assertThat(allButtons.size(), greaterThanOrEqualTo(1));
+
+    HtmlElement reserveButton = null;
+    for (HtmlElement b : allButtons) {
+      String onClick = b.getAttribute("onClick");
+      if (onClick != null && onClick.contains("reserve")) {
+        reserveButton = b;
+      }
     }
+    assertThat(reserveButton, not(nullValue()));
+
+    try {
+      HtmlElementUtil.click(reserveButton);
+    } catch (FailingHttpStatusCodeException e) {
+      // only happen if we have a XSS, but it's managed using the AlertHandler to ensure it's a XSS
+      // and not just an invalid page
+    }
+    assertThat(lastAlertReceived.get(), nullValue());
+  }
 }

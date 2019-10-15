@@ -1,12 +1,97 @@
 # Jenkins Lockable Resources Plugin
 
+[![Jenkins Plugin](https://img.shields.io/jenkins/plugin/v/lockable-resources.svg)](https://plugins.jenkins.io/lockable-resources)
+[![GitHub release](https://img.shields.io/github/release/jenkinsci/lockable-resources-plugin.svg?label=release)](https://github.com/jenkinsci/lockable-resources-plugin/releases/latest)
+[![Jenkins Plugin Installs](https://img.shields.io/jenkins/plugin/i/lockable-resources.svg?color=blue)](https://plugins.jenkins.io/lockable-resources)
 [![Build Status](https://ci.jenkins.io/buildStatus/icon?job=Plugins%2Flockable-resources-plugin%2Fmaster)](https://ci.jenkins.io/job/Plugins/job/lockable-resources-plugin/job/master/)
 [![GitHub license](https://img.shields.io/github/license/jenkinsci/lockable-resources-plugin.svg)](https://github.com/jenkinsci/lockable-resources-plugin/blob/master/LICENSE.txt)
 [![Maintenance](https://img.shields.io/maintenance/yes/2019.svg)]()
 
-This plugins allows to define "lockable resources" in the global configuration.
-These resources can then be "required" by jobs. If a job requires a resource
-which is already locked, it will be put in queue until the resource is released.
+This plugin allows defining lockable resources (such as printers, phones,
+computers, etc.) that can be used by builds. If a build requires a resource
+which is already locked, it will wait for the resource to be free.
+
+## Usage
+
+### Adding lockable resources
+
+1. In *Manage Jenkins* > *Configure System* go to **Lockable Resources
+   Manager**
+2. Select *Add Lockable Resource*
+
+Each lockable resource has the following properties:
+
+- **Name** - A name (not containing spaces!) for this particular resource, i.e.
+  `DK_Printer_ColorA3_2342`
+- **Description** - A verbose description of this particular resource,
+  i.e. ` Printers in the Danish Office`
+- **Labels** - Space-delimited list of Labels (Not containing spaces) used to
+  identify a pool of resources. i.e. `DK_Printers_Office`,
+  `DK_Printer_Production`, `DK_Printer_Engineering`
+- **Reserved by** - If non-empty, the resource will be unavailable for jobs.
+  i.e. `All printers are currently not available due to maintenance.`
+
+### Using a resource in a freestyle job
+
+When configuring the job, select **This build requires lockable resources**.
+Please see the help item for each field for details.
+
+### Using a resource in a pipeline job
+
+When the `lock` step is used in a Pipeline, if the resource to be locked isn't
+already defined in the Jenkins global configuration, an ephermal resource is
+used: These resources only exist as long as any running build is referencing
+them.
+
+Examples:
+
+```groovy
+echo 'Starting'
+lock('my-resource-name') {
+  echo 'Do something here that requires unique access to the resource'
+  // any other build will wait until the one locking the resource leaves this block
+}
+echo 'Finish'
+```
+
+```groovy
+lock(resource: 'staging-server', inversePrecedence: true) {
+    node {
+        servers.deploy 'staging'
+    }
+    input message: "Does ${jettyUrl}staging/ look good?"
+}
+```
+
+```groovy
+lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
+  echo env.LOCKED_RESOURCE
+}
+```
+
+## Configuration as Code
+
+This plugin can be configured via
+[Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin).
+
+### Example configuration
+
+```
+unclassified:
+  lockableResourcesManager:
+    declaredResources:
+      - name: "Resource_A"
+        description: "Description_A"
+        labels: "Label_A"
+        reservedBy: "Reserved_A"
+```
+
+## Changelog
+
+* See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
+  for recent versions
+* See the [plugin's Wiki page](https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin#LockableResourcesPlugin-Changelog)
+  for versions 2.5 and older
 
 ## Contributing
 
