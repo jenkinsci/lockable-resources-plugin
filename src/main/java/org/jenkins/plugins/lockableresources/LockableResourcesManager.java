@@ -397,13 +397,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public synchronized void unlock(
       List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-    unlock(resourcesToUnLock, build, null, false);
+    unlock(resourcesToUnLock, build, false);
   }
 
   public synchronized void unlock(
       @Nullable List<LockableResource> resourcesToUnLock,
       @Nullable Run<?, ?> build,
-      String requiredVar,
       boolean inversePrecedence) {
     List<String> resourceNamesToUnLock = new ArrayList<>();
     if (resourcesToUnLock != null) {
@@ -412,13 +411,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
 
-    this.unlockNames(resourceNamesToUnLock, build, requiredVar, inversePrecedence);
+        this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
   }
 
   public synchronized void unlockNames(
       @Nullable List<String> resourceNamesToUnLock,
       @Nullable Run<?, ?> build,
-      String requiredVar,
       boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
     if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
@@ -482,7 +480,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     + " hard killed. More information at Level.FINE if debug is needed.");
             LOGGER.log(
                 Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
-            unlockNames(remainingResourceNamesToUnLock, build, requiredVar, inversePrecedence);
+            unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
             return;
           }
         }
@@ -512,7 +510,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resourceNamesToLock,
             nextContext.getContext(),
             nextContext.getResourceDescription(),
-            requiredVar,
+            nextContext.getVariableName(),
             inversePrecedence);
       }
     }
@@ -701,7 +699,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           resourceNamesToLock,
           nextContext.getContext(),
           nextContext.getResourceDescription(),
-          null,
+          nextContext.getVariableName(),
           false);
     }
     save();
@@ -856,7 +854,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized void queueContext(
       StepContext context,
       List<LockableResourcesStruct> requiredResources,
-      String resourceDescription) {
+      String resourceDescription,
+      String variableName) {
     for (QueuedContextStruct entry : this.queuedContexts) {
       if (entry.getContext() == context) {
         return;
@@ -864,7 +863,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     this.queuedContexts.add(
-        new QueuedContextStruct(context, requiredResources, resourceDescription));
+        new QueuedContextStruct(context, requiredResources, resourceDescription, variableName));
     save();
   }
 
