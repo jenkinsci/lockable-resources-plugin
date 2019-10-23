@@ -80,15 +80,10 @@ mavenJob('build.lrp.with.tests') {
                 localBranch('$GIT_BRANCH')
                 pruneBranches()
             }
-            configure { git ->
-                git / 'extensions' / 'hudson.plugins.git.extensions.impl.SparseCheckoutPaths' / 'sparseCheckoutPaths' {
-                    'hudson.plugins.git.extensions.impl.SparseCheckoutPath' { path('/lockable-resource-plugin') }
-                }
-            }
         }
     }
 
-    rootPOM('lockable-resource-plugin/pom.xml')
+    rootPOM('pom.xml')
     goals('clean install')
 }
 
@@ -121,14 +116,9 @@ mavenJob('build.lrp.without.tests') {
                 localBranch('$GIT_BRANCH')
                 pruneBranches()
             }
-            configure { git ->
-                git / 'extensions' / 'hudson.plugins.git.extensions.impl.SparseCheckoutPaths' / 'sparseCheckoutPaths' {
-                    'hudson.plugins.git.extensions.impl.SparseCheckoutPath' { path('/lockable-resource-plugin') }
-                }
-            }
         }
     }
 
-    rootPOM('lockable-resource-plugin/pom.xml')
+    rootPOM('pom.xml')
     goals('clean install -DskipTests')
 }
