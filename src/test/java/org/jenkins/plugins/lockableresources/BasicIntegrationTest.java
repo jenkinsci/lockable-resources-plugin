@@ -75,8 +75,8 @@ public class BasicIntegrationTest {
     final QueueTaskFuture<FreeStyleBuild> taskB =
         p.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
 
-    final FreeStyleBuild buildA = taskA.get(60, TimeUnit.SECONDS);
-    final FreeStyleBuild buildB = taskB.get(60, TimeUnit.SECONDS);
+    final FreeStyleBuild buildA = taskA.get(120, TimeUnit.SECONDS);
+    final FreeStyleBuild buildB = taskB.get(120, TimeUnit.SECONDS);
 
     long buildAEndTime = buildA.getStartTimeInMillis() + buildA.getDuration();
     assertTrue(
@@ -88,9 +88,33 @@ public class BasicIntegrationTest {
         buildB.getStartTimeInMillis() >= buildAEndTime);
 
     j.assertLogContains("acquired lock on [resource1]", buildA);
+    j.assertLogContains("released lock on [resource1]", buildA);
     j.assertBuildStatus(Result.SUCCESS, buildA);
     j.assertLogContains("acquired lock on [resource1]", buildB);
+    j.assertLogContains("released lock on [resource1]", buildB);
     j.assertBuildStatus(Result.SUCCESS, buildB);
+  }
+
+  @Test
+  @Issue("JENKINS-30308")
+  public void testDeclaredResourceContainingDollar() throws Exception {
+    LockableResourcesManager resourcesManager = LockableResourcesManager.get();
+
+    resourcesManager.createResource("$resource");
+    LockableResource r = resourcesManager.fromName("$resource");
+    r.setEphemeral(false);
+    resourcesManager.createResource("re$ource");
+    r = resourcesManager.fromName("re$ource");
+    r.setEphemeral(false);
+
+    FreeStyleProject p = j.createFreeStyleProject("p");
+    p.addProperty(new RequiredResourcesProperty("$resource re$ource", null, null, null));
+    p.getBuildersList().add(new PrinterBuilder());
+
+    FreeStyleBuild b = p.scheduleBuild2(0).get();
+    j.assertLogContains("acquired lock on [re$ource, $resource]", b);
+    j.assertLogContains("released lock on [$resource, re$ource]", b);
+    j.assertBuildStatus(Result.SUCCESS, b);
   }
 
   @Test

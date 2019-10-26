@@ -162,10 +162,6 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				List<String> wrongNames = new ArrayList<>();
 				List<String> varNames = new ArrayList<>();
 				for (String name : names.split("\\s+")) {
-					if (name.startsWith("$")) {
-						varNames.add(name);
-						continue;
-					}
 					boolean found = false;
 					for (LockableResource r : LockableResourcesManager.get()
 							.getResources()) {
@@ -174,8 +170,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 							break;
 						}
 					}
-					if (!found)
-						wrongNames.add(name);
+					if (!found) {
+						if (name.contains("$")) {
+							varNames.add(name);
+						} else {
+							wrongNames.add(name);
+						}
+					}
 				}
 				if (wrongNames.isEmpty() && varNames.isEmpty()) {
 					return FormValidation.ok();
