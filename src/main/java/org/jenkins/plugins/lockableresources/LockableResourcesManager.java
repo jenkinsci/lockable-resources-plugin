@@ -36,8 +36,20 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-  @Deprecated private transient int defaultPriority;
-  @Deprecated private transient String priorityParameterName;
+  private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
+
+  /***
+   * @deprecated
+   */
+  @Deprecated
+  private transient int defaultPriority;
+
+  /***
+   * @deprecated
+   */
+  @Deprecated
+  private transient String priorityParameterName;
+
   private List<LockableResource> resources;
 
   /**
@@ -220,7 +232,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             "Failed to queue item " + itemName,
             ex.getCause() != null ? ex.getCause() : ex);
       }
-      return null;
+      return new ArrayList<>();
     }
   }
 
@@ -235,34 +247,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * @since TODO
    */
   @CheckForNull
-  public synchronized List<LockableResource> tryQueue(
-      LockableResourcesStruct requiredResources,
-      long queueItemId,
-      String queueItemProject,
-      int number,
-      Map<String, Object> params,
-      Logger log)
-      throws ExecutionException {
+  public synchronized List<LockableResource> tryQueue(LockableResourcesStruct requiredResources, long queueItemId,
+    String queueItemProject, int number, Map<String, Object> params, Logger log) throws ExecutionException {
+
     List<LockableResource> selected = new ArrayList<>();
 
     if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
       // The project has another buildable item waiting -> bail out
-      log.log(
-          Level.FINEST,
-          "{0} has another build waiting resources." + " Waiting for it to proceed first.",
-          new Object[] {queueItemProject});
+      LOGGER.log(Level.FINEST,"{0} has another build waiting resources." + " Waiting for it to proceed first.", new Object[] {queueItemProject});
       return null;
     }
 
     boolean candidatesByScript = false;
     List<LockableResource> candidates = new ArrayList<>();
     final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
-    if (requiredResources.label != null
-        && requiredResources.label.isEmpty()
+    if (requiredResources.getLabel() != null
+        && requiredResources.getLabel().isEmpty()
         && systemGroovyScript == null) {
-      candidates = requiredResources.required;
+      candidates = requiredResources.getRequired();
     } else if (systemGroovyScript == null) {
-      candidates = getResourcesWithLabel(requiredResources.label, params);
+      candidates = getResourcesWithLabel(requiredResources.getLabel(), params);
     } else {
       candidates = getResourcesMatchingScript(systemGroovyScript, params);
       candidatesByScript = true;
@@ -296,7 +300,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject))
           x.unqueue();
       }
-      return null;
+      return new ArrayList<>();
     }
 
     for (LockableResource rsc : selected) {
@@ -369,34 +373,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return !needToWait;
   }
 
-  private synchronized void freeResources(
-      List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+  private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
     for (String unlockResourceName : unlockResourceNames) {
-      Iterator<LockableResource> resourceIterator = this.resources.iterator();
-      while (resourceIterator.hasNext()) {
-        LockableResource resource = resourceIterator.next();
-        if (resource != null
-            && resource.getName() != null
-            && resource.getName().equals(unlockResourceName)) {
-          if (build == null
-              || (resource.getBuild() != null
-                  && build
-                      .getExternalizableId()
-                      .equals(resource.getBuild().getExternalizableId()))) {
-            // No more contexts, unlock resource
-            resource.unqueue();
-            resource.setBuild(null);
-            if (resource.isEphemeral()) {
-              resourceIterator.remove();
+      for (LockableResource resource : resources) {
+        if(resource.getName() != null && resource.getName().equals(unlockResourceName)){
+          if(build == null || (resource.getBuild() != null && build.getExternalizableId().equals(resource.getBuild().getExternalizableId()))){
+              // No more contexts, unlock resource
+              resource.unqueue();
+              resource.setBuild(null);
+            if(resource.isEphemeral()){
+              resources.remove(resource);
             }
           }
         }
       }
     }
-  }
+}
 
-  public synchronized void unlock(
-      List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
+  public synchronized void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
     unlock(resourcesToUnLock, build, false);
   }
 
@@ -414,10 +408,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
   }
 
-  public synchronized void unlockNames(
-      @Nullable List<String> resourceNamesToUnLock,
-      @Nullable Run<?, ?> build,
-      boolean inversePrecedence) {
+  public synchronized void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build,
+                                       boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
     if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
       return;
@@ -736,10 +728,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * requiredResources and returns the necessary available resources. If not enough resources are
    * available, returns null.
    */
-  public synchronized Set<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+  public synchronized Set<LockableResource> checkResourcesAvailability(List<LockableResourcesStruct> requiredResourcesList,
+      @Nullable PrintStream logger, @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
@@ -748,14 +738,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // get possible resources
       int requiredAmount = 0; // 0 means all
       List<LockableResource> candidates = new ArrayList<>();
-      if (requiredResources.label != null && requiredResources.label.isEmpty()) {
-        candidates.addAll(requiredResources.required);
-      } else {
-        candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
-        if (requiredResources.requiredNumber != null) {
+      if (requiredResources.getLabel() != null && requiredResources.getLabel().isEmpty()) {
+        candidates.addAll(requiredResources.getRequired());
+      }
+      else {
+        candidates.addAll(getResourcesWithLabel(requiredResources.getLabel(), null));
+        if (requiredResources.getRequiredNumber()!= null) {
           try {
-            requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
-          } catch (NumberFormatException e) {
+            requiredAmount = Integer.parseInt(requiredResources.getRequiredNumber());
+          }
+          catch (NumberFormatException e) {
             requiredAmount = 0;
           }
         }
@@ -779,8 +771,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // some resources might be already locked, but will be freed.
       // Determine if these resources can be reused
       if (lockedResourcesAboutToBeUnlocked != null) {
-        for (LockableResource candidate : requiredResources.candidates) {
-          if (selected.size() >= requiredResources.requiredAmount) {
+        for (LockableResource candidate : requiredResources.getCandidates()) {
+          if (selected.size() >= requiredResources.getRequiredAmount()) {
             break;
           }
           if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
@@ -790,7 +782,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       totalSelected += selected.size();
-      requiredResources.selected = selected;
+      requiredResources.setSelected(selected);
     }
 
     // if none of the currently locked resources can be reused,
@@ -803,9 +795,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     Set<LockableResource> allSelected = new HashSet<>();
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
-      List<LockableResource> candidates = requiredResources.candidates;
-      List<LockableResource> selected = requiredResources.selected;
-      int requiredAmount = requiredResources.requiredAmount;
+      List<LockableResource> candidates = requiredResources.getCandidates();
+      List<LockableResource> selected = requiredResources.getSelected();
+      int requiredAmount = requiredResources.getRequiredAmount();
 
       // Try and re-use as many previously selected resources first
       List<LockableResource> alreadySelectedCandidates = new ArrayList<>(candidates);
@@ -831,14 +823,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       if (selected.size() < requiredAmount) {
         if (logger != null) {
-          logger.println(
-              "Found "
-                  + selected.size()
-                  + " available resource(s). Waiting for correct amount: "
-                  + requiredAmount
-                  + ".");
+          logger.println(String.format("Found %s available resource(s). Waiting for correct amount: %s.",selected.size(), requiredAmount));
         }
-        return null;
+        return new HashSet<>();
       }
 
       allSelected.addAll(selected);
@@ -894,6 +881,4 @@ public class LockableResourcesManager extends GlobalConfiguration {
       LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
     }
   }
-
-  private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 }
