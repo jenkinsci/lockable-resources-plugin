@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import javax.servlet.ServletException;
 
@@ -88,83 +89,93 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getAllLabels().size();
 	}
 
+	private static final String ERROR_MESSAGE = "Resource not found %s";
+
+	private static final String QUERY_PROPERTY = "resource";
+
+	private List<LockableResource> getResource(StaplerResponse rsp, Permission permission, String name) throws IOException {
+
+	  Jenkins.getInstance().checkPermission(permission);
+    LockableResource r = LockableResourcesManager.get().fromName(name);
+
+    if(r == null) {
+      rsp.sendError(404, String.format(ERROR_MESSAGE, name));
+      return new ArrayList<>();
+    }
+
+    List<LockableResource> resources = new ArrayList<>();
+    resources.add(r);
+
+    return resources;
+
+  }
+
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)
 			throws IOException, ServletException {
-		Jenkins.getInstance().checkPermission(UNLOCK);
 
-		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
-		}
+    String name = req.getParameter(QUERY_PROPERTY);
+    List<LockableResource> resources = getResource(rsp,UNLOCK, name);
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
+    if(resources.isEmpty()) {
+      return;
+    }
+
 		LockableResourcesManager.get().unlock(resources, null);
-
 		rsp.forwardToPreviousPage(req);
+
 	}
 
 	public void doReserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
-		Jenkins.getInstance().checkPermission(RESERVE);
 
-		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
+    String name = req.getParameter(QUERY_PROPERTY);
+    List<LockableResource> resources = getResource(rsp, RESERVE, name);
+
+		if (resources.isEmpty()) {
 			return;
 		}
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
 		String userName = getUserName();
-		if (userName != null)
-			LockableResourcesManager.get().reserve(resources, userName);
-
+		if (userName != null) {
+      LockableResourcesManager.get().reserve(resources, userName);
+    }
 		rsp.forwardToPreviousPage(req);
+
 	}
 
 	public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
-		Jenkins.getInstance().checkPermission(RESERVE);
 
-		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
-		}
+		String name = req.getParameter(QUERY_PROPERTY);
+		List<LockableResource> resources = getResource(rsp, RESERVE, name);
+
+		if(resources.isEmpty()){
+		  return;
+    }
 
 		String userName = getUserName();
-		if ((userName == null || !userName.equals(r.getReservedBy()))
+		if ((userName == null || !userName.equals(resources.get(0).getReservedBy()))
 				&& !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER))
 			throw new AccessDeniedException2(Jenkins.getAuthentication(),
 					RESERVE);
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
 		LockableResourcesManager.get().unreserve(resources);
-
 		rsp.forwardToPreviousPage(req);
+
 	}
 
 	public void doReset(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
-		Jenkins.getInstance().checkPermission(UNLOCK);
 
-		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
-		}
+		String name = req.getParameter(QUERY_PROPERTY);
+		List<LockableResource> resources = getResource(rsp, UNLOCK, name);
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
+		if(resources.isEmpty()) {
+		  return;
+    }
+
 		LockableResourcesManager.get().reset(resources);
-
 		rsp.forwardToPreviousPage(req);
+
 	}
 }

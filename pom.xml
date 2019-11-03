@@ -131,6 +131,12 @@
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <version>17.0.0</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <repositories>
@@ -165,6 +171,7 @@
             <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
           </loggers>
           <compatibleSinceVersion>2.0</compatibleSinceVersion>
+          <minimumJavaVersion/>
         </configuration>
       </plugin>
     </plugins>
