@@ -25,14 +25,18 @@ public class LockableResourcesStruct implements Serializable {
   // Note to developers: if the set of selection criteria variables evolves,
   // do not forget to update LockableResourcesQueueTaskDispatcher.java with
   // class BecauseResourcesLocked method getShortDescription() for user info.
-  public List<LockableResource> required;
-  public String label;
-  public String requiredVar;
-  public String requiredNumber;
+  private List<LockableResource> required;
+  private String label;
+  private String requiredVar;
+  private String requiredNumber;
 
-  @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
+  private static final long serialVersionUID = 1L;
 
-  @CheckForNull private transient SecureGroovyScript resourceMatchScript;
+  @CheckForNull
+  private final SerializableSecureGroovyScript serializableResourceMatchScript;
+
+  @CheckForNull
+  private transient SecureGroovyScript resourceMatchScript;
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
     required = new ArrayList<>();
@@ -121,17 +125,24 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   public String toString() {
-    return "Required resources: "
-        + this.required
-        + ", Required label: "
-        + this.label
-        + ", Required label script: "
-        + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
-        + ", Variable name: "
-        + this.requiredVar
-        + ", Number of resources: "
-        + this.requiredNumber;
+    return String.format("Required resources: %s, Required label: %s, Required label script: %s, Variable name: %s , Number of resources: %s",
+                          required, label,(resourceMatchScript != null ? resourceMatchScript.getScript() : ""), requiredVar, requiredNumber);
   }
 
-  private static final long serialVersionUID = 1L;
+  public List<LockableResource> getRequired() {
+    return required;
+  }
+
+  public String getLabel() {
+    return label;
+  }
+
+  public String getRequiredVar() {
+    return requiredVar;
+  }
+
+  public String getRequiredNumber() {
+    return requiredNumber;
+  }
+
 }

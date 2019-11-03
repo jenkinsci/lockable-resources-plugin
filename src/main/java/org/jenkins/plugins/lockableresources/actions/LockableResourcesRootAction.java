@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 
 import javax.servlet.ServletException;
 
@@ -34,6 +33,9 @@ import org.kohsuke.stapler.StaplerResponse;
 
 @Extension
 public class LockableResourcesRootAction implements RootAction {
+
+  private static final String QUERY_PROPERTY = "resource";
+  private static final String ERROR_MESSAGE = "Resource not found %s";
 
 	public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
 			LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
@@ -89,10 +91,6 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getAllLabels().size();
 	}
 
-	private static final String ERROR_MESSAGE = "Resource not found %s";
-
-	private static final String QUERY_PROPERTY = "resource";
-
 	private List<LockableResource> getResource(StaplerResponse rsp, Permission permission, String name) throws IOException {
 
 	  Jenkins.getInstance().checkPermission(permission);
@@ -139,6 +137,7 @@ public class LockableResourcesRootAction implements RootAction {
 		if (userName != null) {
       LockableResourcesManager.get().reserve(resources, userName);
     }
+
 		rsp.forwardToPreviousPage(req);
 
 	}

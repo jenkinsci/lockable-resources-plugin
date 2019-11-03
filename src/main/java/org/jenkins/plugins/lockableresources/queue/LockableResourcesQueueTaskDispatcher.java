@@ -57,13 +57,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		LockableResourcesStruct resources = Utils.requiredResources(project);
 		if (resources == null ||
-			(resources.required.isEmpty() && resources.label.isEmpty() && resources.getResourceMatchScript() == null)) {
+			(resources.getRequired().isEmpty() && resources.getLabel().isEmpty() && resources.getResourceMatchScript() == null)) {
 			return null;
 		}
 
 		int resourceNumber;
 		try {
-			resourceNumber = Integer.parseInt(resources.requiredNumber);
+			resourceNumber = Integer.parseInt(resources.getRequiredNumber());
 		} catch (NumberFormatException e) {
 			resourceNumber = 0;
 		}
@@ -71,7 +71,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		LOGGER.finest(project.getName() +
 			" trying to get resources with these details: " + resources);
 
-		if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
+		if (resourceNumber > 0 || !resources.getLabel().isEmpty() || resources.getResourceMatchScript() != null) {
 			Map<String, Object> params = new HashMap<>();
 
 			// Inject Build Parameters, if possible and applicable to the "item" type
@@ -93,7 +93,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 				if (LOGGER.isLoggable(Level.WARNING)) {
 					if (lastLogged.getIfPresent(item.getId()) == null) {
 						lastLogged.put(item.getId(), new Date());
-					String itemName = project.getFullName() + " (id=" + item.getId() + ")";
+					String itemName = String.format("%s (id=%s)", project.getFullName(), item.getId());
 					LOGGER.log(Level.WARNING, "Failed to get build params from item " + itemName, ex);
 					}
 				}
@@ -139,12 +139,12 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 			}
 
 		} else {
-			if (LockableResourcesManager.get().queue(resources.required, item.getId(), project.getFullDisplayName())) {
-				LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+			if (LockableResourcesManager.get().queue(resources.getRequired(), item.getId(), project.getFullDisplayName())) {
+				LOGGER.finest(project.getName() + " reserved resources " + resources.getRequired());
 				return null;
 			} else {
 				LOGGER.finest(project.getName() + " waiting for resources "
-					+ resources.required);
+					+ resources.getRequired());
 				return new BecauseResourcesLocked(resources);
 			}
 		}
@@ -160,9 +160,9 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
 		@Override
 		public String getShortDescription() {
-			if (this.rscStruct.label.isEmpty()) {
-				if (this.rscStruct.required.size() > 0) {
-					return "Waiting for resource instances " + rscStruct.required.toString();
+			if (this.rscStruct.getLabel().isEmpty()) {
+				if (this.rscStruct.getRequired().size() > 0) {
+					return "Waiting for resource instances " + rscStruct.getRequired().toString();
 				} else {
 					final SecureGroovyScript systemGroovyScript = this.rscStruct.getResourceMatchScript();
 					if (systemGroovyScript != null) {
@@ -180,7 +180,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 					return "Waiting for lockable resources";
 				}
 			} else {
-				return "Waiting for resources with label " + rscStruct.label;
+				return "Waiting for resources with label " + rscStruct.getLabel();
 			}
 		}
 	}
@@ -202,7 +202,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		@Override
 		public String getShortDescription() {
 			//TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
-			String resourceInfo = (resources.label.isEmpty()) ? resources.required.toString() : "with label " + resources.label;
+			String resourceInfo = (resources.getLabel().isEmpty()) ? resources.getRequired().toString() : "with label " + resources.getLabel();
 			return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
 		}
 	}
