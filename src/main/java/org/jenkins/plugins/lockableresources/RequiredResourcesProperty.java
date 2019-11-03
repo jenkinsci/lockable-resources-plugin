@@ -73,6 +73,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 	}
 
+  /***
+   * @deprecated
+   */
 	@Deprecated
 	public RequiredResourcesProperty(String resourceNames,
 									 String resourceNamesVar, String resourceNumber,

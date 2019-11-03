@@ -67,9 +67,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
    * but became deprecated once several resources could be locked at once. See queuedContexts in
    * {@link LockableResourcesManager}.
+   * @deprecated
    */
-  @Deprecated private List<StepContext> queuedContexts = new ArrayList<>();
+  @Deprecated
+  private List<StepContext> queuedContexts = new ArrayList<>();
 
+  /***
+   * @deprecated
+   * @param name
+   * @param description
+   * @param labels
+   * @param reservedBy
+   */
   @Deprecated
   public LockableResource(String name, String description, String labels, String reservedBy) {
     this.name = name;
@@ -90,6 +99,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return this;
   }
 
+  /***
+   * @deprecated
+   * @return
+   */
   @Deprecated
   public List<StepContext> getQueuedContexts() {
     return this.queuedContexts;
@@ -252,7 +265,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return build;
   }
 
-  /** @see {@link WithBridgeMethods} */
+  /*** @see {@link WithBridgeMethods}
+   * @deprecated
+   **/
   @Deprecated
   private Object getAbstractBuild(final Run owner, final Class targetClass) {
     return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
