@@ -46,31 +46,41 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		
 		if (resourceNames == null || resourceNames.trim().isEmpty()) {
 			this.resourceNames = null;
-		} else {
+		}
+		else {
 			this.resourceNames = resourceNames.trim();
 		}
+
 		if (resourceNamesVar == null || resourceNamesVar.trim().isEmpty()) {
 			this.resourceNamesVar = null;
-		} else {
+		}
+		else {
 			this.resourceNamesVar = resourceNamesVar.trim();
 		}
+
 		if (resourceNumber == null || resourceNumber.trim().isEmpty()) {
 			this.resourceNumber = null;
-		} else {
+		}
+		else {
 			this.resourceNumber = resourceNumber.trim();
 		}
+
 		String labelNamePreparation = (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
+
 		if (resourceMatchScript != null) {
 			this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
 			this.labelName = labelNamePreparation;
-		} else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+		}
+		else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
 			this.resourceMatchScript = new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()),
 					false, null).configuring(ApprovalContext.create());
 			this.labelName = null;
-		} else {
+		}
+		else {
 			this.resourceMatchScript = null;
 			this.labelName = labelNamePreparation;
 		}
+
 	}
 
   /***
@@ -150,23 +160,22 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			return null;
 		}
 
-		public FormValidation doCheckResourceNames(@QueryParameter String value,
-												   @QueryParameter String labelName,
-												   @QueryParameter boolean script) {
-			String labelVal = Util.fixEmptyAndTrim(labelName);
+		public FormValidation doCheckResourceNames(@QueryParameter String value, @QueryParameter String labelName,
+												                       @QueryParameter boolean script) {
+
+		  String labelVal = Util.fixEmptyAndTrim(labelName);
 			String names = Util.fixEmptyAndTrim(value);
 
 			if (names == null) {
 				return FormValidation.ok();
 			} else if (labelVal != null || script) {
-				return FormValidation.error(
-						"Only label, groovy expression, or resources can be defined, not more than one.");
-			} else {
+				return FormValidation.error("Only label, groovy expression, or resources can be defined, not more than one.");
+			}
+			else {
 				List<String> wrongNames = new ArrayList<>();
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
-					for (LockableResource r : LockableResourcesManager.get()
-							.getResources()) {
+					for (LockableResource r : LockableResourcesManager.get().getResources()) {
 						if (r.getName().equals(name)) {
 							found = true;
 							break;
@@ -178,45 +187,39 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				if (wrongNames.isEmpty()) {
 					return FormValidation.ok();
 				} else {
-					return FormValidation
-							.error("The following resources do not exist: "
-									+ wrongNames);
+					return FormValidation.error(String.format("The following resources do not exist: ", wrongNames));
 				}
 			}
 		}
 
-		public FormValidation doCheckLabelName(
-				@QueryParameter String value,
-				@QueryParameter String resourceNames,
-				@QueryParameter boolean script) {
+		public FormValidation doCheckLabelName(@QueryParameter String value, @QueryParameter String resourceNames,
+                                           @QueryParameter boolean script) {
+
 			String label = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
 
 			if (label == null) {
 				return FormValidation.ok();
 			} else if (names != null || script) {
-				return FormValidation.error(
-						"Only label, groovy expression, or resources can be defined, not more than one.");
-			} else {
+				return FormValidation.error("Only label, groovy expression, or resources can be defined, not more than one.");
+			}
+			else {
 				if (LockableResourcesManager.get().isValidLabel(label)) {
 					return FormValidation.ok();
-				} else {
-					return FormValidation.error(
-							"The label does not exist: " + label);
+				}
+				else {
+					return FormValidation.error(String.format("The label %s does not exist: ", label));
 				}
 			}
 		}
 
-		public FormValidation doCheckResourceNumber(@QueryParameter String value,
-				@QueryParameter String resourceNames,
-                @QueryParameter String labelName,
-                @QueryParameter String resourceMatchScript)
-        {
+		public FormValidation doCheckResourceNumber(@QueryParameter String value, @QueryParameter String resourceNames,
+                @QueryParameter String labelName, @QueryParameter String resourceMatchScript) {
 
 			String number = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
 			String label = Util.fixEmptyAndTrim(labelName);
-            String script = Util.fixEmptyAndTrim(resourceMatchScript);
+			String script = Util.fixEmptyAndTrim(resourceMatchScript);
 
 			if (number == null || number.equals("") || number.trim().equals("0")) {
 				return FormValidation.ok();
@@ -225,10 +228,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			int numAsInt;
 			try {
 				numAsInt = Integer.parseInt(number);
-			} catch(NumberFormatException e)  {
-				return FormValidation.error(
-					"Could not parse the given value as integer.");
 			}
+			catch(NumberFormatException e)  {
+				return FormValidation.error(String.format("Could not parse the given value %s as integer.", number));
+			}
+
 			int numResources = 0;
 			if (names != null) {
 				numResources = names.split("\\s+").length;
@@ -237,16 +241,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             }
 
 			if (numResources < numAsInt) {
-				return FormValidation.error(String.format(
-					"Given amount %d is greater than amount of resources: %d.",
-					numAsInt,
-					numResources));
+				return FormValidation.error(String.format("Given amount %d is greater than amount of resources: %d.",
+          numAsInt, numResources));
 			}
 			return FormValidation.ok();
 		}
 
-		public AutoCompletionCandidates doAutoCompleteLabelName(
-				@QueryParameter String value) {
+		public AutoCompletionCandidates doAutoCompleteLabelName(@QueryParameter String value) {
+
 			AutoCompletionCandidates c = new AutoCompletionCandidates();
 
 			value = Util.fixEmptyAndTrim(value);
@@ -258,9 +260,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			return c;
 		}
 
-		public static AutoCompletionCandidates doAutoCompleteResourceNames(
-				@QueryParameter String value) {
-			AutoCompletionCandidates c = new AutoCompletionCandidates();
+		public static AutoCompletionCandidates doAutoCompleteResourceNames(@QueryParameter String value) {
+
+		  AutoCompletionCandidates c = new AutoCompletionCandidates();
 
 			value = Util.fixEmptyAndTrim(value);
 

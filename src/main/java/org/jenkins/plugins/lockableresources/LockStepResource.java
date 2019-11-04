@@ -23,7 +23,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	@CheckForNull
 	public String label = null;
 
-	public int quantity = 0;
+	private int quantity = 0;
 
 	LockStepResource(String resource, String label, int quantity) {
 		this.resource = resource;
@@ -31,7 +31,11 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 		this.quantity = quantity;
 	}
 
-	@DataBoundConstructor
+  public int getQuantity() {
+    return quantity;
+  }
+
+  @DataBoundConstructor
 	public LockStepResource(String resource) {
 		if (resource != null && !resource.isEmpty()) {
 			this.resource = resource;
@@ -80,7 +84,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	 * Label and resource are mutual exclusive.
 	 * The label, if provided, must be configured (at least one resource must have this label).
 	 */
-	public static void validate(String resource, String label, int quantity) throws Exception {
+	public static void validate(String resource, String label, int quantity) throws IllegalArgumentException {
 		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
 			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
 		}
@@ -113,7 +117,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 				return FormValidation.error("Either label or resource name must be specified.");
 			}
 			if (resourceLabel != null && !LockableResourcesManager.get().isValidLabel(resourceLabel)) {
-				return FormValidation.error("The label does not exist: " + resourceLabel);
+				return FormValidation.error(String.format("The label does not exist: ", resourceLabel));
 			}
 			return FormValidation.ok();
 		}

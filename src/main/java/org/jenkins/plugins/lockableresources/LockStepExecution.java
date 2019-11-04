@@ -6,6 +6,7 @@ import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -23,6 +24,7 @@ import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
 public class LockStepExecution extends AbstractStepExecutionImpl {
 
+  private static final long serialVersionUID = 1L;
   private static final Joiner COMMA_JOINER = Joiner.on(',');
 
   @Inject(optional = true)
@@ -41,7 +43,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     step.validate();
 
     node.addAction(new PauseAction("Lock"));
-    listener.getLogger().println("Trying to acquire lock on [" + step + "]");
+    listener.getLogger().println(String.format("Trying to acquire lock on [%s]",step));
 
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
@@ -54,7 +56,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         resources.add(resource.resource);
       }
       resourceHolderList.add(
-          new LockableResourcesStruct(resources, resource.label, resource.quantity));
+          new LockableResourcesStruct(resources, resource.label, resource.getQuantity()));
     }
 
     // determine if there are enough resources available to proceed
@@ -106,7 +108,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
       return;
     }
 
-    LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
+    LOGGER.finest(MessageFormat.format("Lock acquired on [{0}] by {1}", resourceDescription, r.getExternalizableId()));
     try {
       PauseAction.endCurrentPause(node);
       BodyInvoker bodyInvoker =
@@ -162,7 +164,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
           .get(TaskListener.class)
           .getLogger()
           .println("Lock released on resource [" + resourceDescription + "]");
-      LOGGER.finest("Lock released on [" + resourceDescription + "]");
+      LOGGER.finest(MessageFormat.format("Lock released on [{0}]", resourceDescription));
     }
 
     private static final long serialVersionUID = 1L;
@@ -179,5 +181,5 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     getContext().onFailure(cause);
   }
 
-  private static final long serialVersionUID = 1L;
+
 }

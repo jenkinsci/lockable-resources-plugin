@@ -18,7 +18,9 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public class Utils {
 
-	public static Job<?, ?> getProject(Queue.Item item) {
+  private Utils() { }
+
+  public static Job<?, ?> getProject(Queue.Item item) {
 		if (item.task instanceof Job)
 			return (Job<?, ?>) item.task;
 		return null;

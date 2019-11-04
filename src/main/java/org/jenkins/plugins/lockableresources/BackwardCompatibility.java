@@ -23,7 +23,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class BackwardCompatibility {
-	private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
+
+  private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
+
+  private BackwardCompatibility(){}
 
 	@Initializer(after = InitMilestone.JOB_LOADED)
 	public static void compatibilityMigration() {
