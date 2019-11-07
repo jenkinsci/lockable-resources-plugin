@@ -21,15 +21,16 @@ which is already locked, it will wait for the resource to be free.
 
 Each lockable resource has the following properties:
 
-- **Name** - A name (not containing spaces!) for this particular resource, i.e.
+- **Name** - A name (not containing spaces) for this particular resource, i.e.
   `DK_Printer_ColorA3_2342`
 - **Description** - A verbose description of this particular resource,
-  i.e. ` Printers in the Danish Office`
-- **Labels** - Space-delimited list of Labels (Not containing spaces) used to
+  i.e. `DIN A3 color laser printer, office building, room 2.342`
+- **Labels** - Space-delimited list of labels (not containing spaces) used to
   identify a pool of resources. i.e. `DK_Printers_Office`,
-  `DK_Printer_Production`, `DK_Printer_Engineering`
+  `DK_Printers_Production`, `DK_Printers_Engineering`, each label specifies
+  a single pool
 - **Reserved by** - If non-empty, the resource will be unavailable for jobs.
-  i.e. `All printers are currently not available due to maintenance.`
+  e.g. `Printer is currently not available due to maintenance.`
 
 ### Using a resource in a freestyle job
 
@@ -43,7 +44,13 @@ already defined in the Jenkins global configuration, an ephermal resource is
 used: These resources only exist as long as any running build is referencing
 them.
 
-Examples:
+- **resource** - The resource name to lock as defined in Global settings. If inversePrecedence isn't also specified, the step can be called as lock('some-resource') without the named argument. Set to `null` if locking on a label in a declarative pipeline is desired.
+- **label** - Can be used to require locks on multiple resources concurrently. The build will wait until all resources tagged with the given label are available. Only this or resource can be used simultaneously.
+- **quantity** - (optional) Specifies the number of resources required within the selected label. If not set, all resources from the label will be required.
+- **inversePrecedence** - (optional) By default waiting builds are given the lock in the same order they requested to acquire it. If inversePrecedence is set to true, this will be done in reverse order instead, so that the newest build to request the lock will be granted it first.
+- **variable** - (optional) When locking a resource via a label you can use variable to set an environment variable with the name of the locked resource.
+
+#### Single resource examples
 
 ```groovy
 echo 'Starting'
@@ -62,10 +69,13 @@ lock(resource: 'staging-server', inversePrecedence: true) {
     input message: "Does ${jettyUrl}staging/ look good?"
 }
 ```
+#### Pooled resource example
 
 ```groovy
-lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
-  echo env.LOCKED_RESOURCE
+lock(label: 'DK_Printers_Office', quantity: 1, variable: 'LOCKED_RESOURCE') {
+  echo "Printing on ${env.LOCKED_RESOURCE}"
+  // might output "Printing on DK_Printer_ColorA3_2342" if the resource
+  // "DK_Printer_ColorA3_2342" has the label "DK_Printers_Office" attached
 }
 ```
 
