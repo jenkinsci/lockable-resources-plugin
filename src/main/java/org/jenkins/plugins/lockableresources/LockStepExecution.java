@@ -174,7 +174,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
     if (!cleaned) {
       LOGGER.log(
           Level.WARNING,
-          "Cannot remove context from lockable resource witing list. The context is not in the waiting list.");
+          "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
     }
     getContext().onFailure(cause);
   }
