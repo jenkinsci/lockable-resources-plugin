@@ -881,7 +881,7 @@ public class LockStepTest extends LockStepTestBase {
 
   @Test
   @Issue("JENKINS-50176")
-  public void paralleLockWithLabelFillsVariable() throws Exception {
+  public void parallelLockWithLabelFillsVariable() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(

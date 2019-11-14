@@ -252,7 +252,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return build;
   }
 
-  /** @see {@link WithBridgeMethods} */
+  /** @see WithBridgeMethods */
   @Deprecated
   private Object getAbstractBuild(final Run owner, final Class targetClass) {
     return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
