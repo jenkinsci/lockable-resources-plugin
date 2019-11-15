@@ -280,7 +280,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // if did not get wanted amount or did not get all
     final int required_amount;
     if (candidatesByScript && candidates.isEmpty()) {
-      /**
+      /*
        * If the groovy script does not return any candidates, it means nothing is needed, even if a
        * higher amount is specified. A valid use case is a Matrix job, when not all configurations
        * need resources.

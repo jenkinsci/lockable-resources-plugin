@@ -39,7 +39,7 @@ Please see the help item for each field for details.
 ### Using a resource in a pipeline job
 
 When the `lock` step is used in a Pipeline, if the resource to be locked isn't
-already defined in the Jenkins global configuration, an ephermal resource is
+already defined in the Jenkins global configuration, an ephemeral resource is
 used: These resources only exist as long as any running build is referencing
 them.
 
@@ -95,7 +95,7 @@ unclassified:
 
 ## Contributing
 
-If you want to contribute to this plugin, you probably will need a Jenkins plugin developement
+If you want to contribute to this plugin, you probably will need a Jenkins plugin development
 environment. This basically means a current version of Java (Java 8 should probably be okay for now)
 and [Apache Maven]. See the [Jenkins Plugin Tutorial] for details.
 
@@ -108,7 +108,7 @@ should create a plugin as `target/*.hpi`, which you can install in your Jenkins 
     $ mvn hpi:run -Djenkins.version=2.164.1
 
 allows you to spin up a test Jenkins instance on [localhost] to test your
-local changes before commiting.
+local changes before committing.
 
 [Apache Maven]: https://maven.apache.org/
 [Jenkins Plugin Tutorial]: https://jenkins.io/doc/developer/tutorial/prepare/

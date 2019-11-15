@@ -29,11 +29,11 @@ public class ConfigurationAsCodeTest {
         1,
         declaredResources.size());
 
-    LockableResource declaredResouce = declaredResources.get(0);
-    assertEquals("Resource_A", declaredResouce.getName());
-    assertEquals("Description_A", declaredResouce.getDescription());
-    assertEquals("Label_A", declaredResouce.getLabels());
-    assertEquals("Reserved_A", declaredResouce.getReservedBy());
+    LockableResource declaredResource = declaredResources.get(0);
+    assertEquals("Resource_A", declaredResource.getName());
+    assertEquals("Description_A", declaredResource.getDescription());
+    assertEquals("Label_A", declaredResource.getLabels());
+    assertEquals("Reserved_A", declaredResource.getReservedBy());
 
     List<LockableResource> resources = LockableResourcesManager.get().getResources();
     assertEquals(
