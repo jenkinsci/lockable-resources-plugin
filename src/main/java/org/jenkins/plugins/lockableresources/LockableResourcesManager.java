@@ -103,7 +103,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     this.resources = mergedResources;
   }
 
-  public List<LockableResource> getResourcesFromProject(String fullName) {
+  public synchronized List<LockableResource> getResourcesFromProject(String fullName) {
     List<LockableResource> matching = new ArrayList<>();
     for (LockableResource r : resources) {
       String rName = r.getQueueItemProject();
@@ -114,7 +114,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return matching;
   }
 
-  public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
+  public synchronized List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
     List<LockableResource> matching = new ArrayList<>();
     for (LockableResource r : resources) {
       Run<?, ?> rBuild = r.getBuild();
@@ -125,11 +125,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return matching;
   }
 
-  public Boolean isValidLabel(String label) {
+  public synchronized Boolean isValidLabel(String label) {
     return this.getAllLabels().contains(label);
   }
 
-  public Set<String> getAllLabels() {
+  public synchronized Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
     for (LockableResource r : this.resources) {
       String rl = r.getLabels();
@@ -139,7 +139,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return labels;
   }
 
-  public int getFreeResourceAmount(String label) {
+  public synchronized int getFreeResourceAmount(String label) {
     int free = 0;
     for (LockableResource r : this.resources) {
       if (r.isLocked() || r.isQueued() || r.isReserved()) continue;
@@ -148,7 +148,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return free;
   }
 
-  public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
+  public synchronized List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
     List<LockableResource> found = new ArrayList<>();
     for (LockableResource r : this.resources) {
       if (r.isValidLabel(label, params)) found.add(r);
@@ -167,7 +167,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * @since TODO
    */
   @Nonnull
-  public List<LockableResource> getResourcesMatchingScript(
+  public synchronized List<LockableResource> getResourcesMatchingScript(
       @Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
       throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
@@ -177,7 +177,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return found;
   }
 
-  public LockableResource fromName(String resourceName) {
+  public synchronized LockableResource fromName(String resourceName) {
     if (resourceName != null) {
       for (LockableResource r : resources) {
         if (resourceName.equals(r.getName())) return r;

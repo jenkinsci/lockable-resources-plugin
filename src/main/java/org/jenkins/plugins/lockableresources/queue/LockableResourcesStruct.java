@@ -43,9 +43,11 @@ public class LockableResourcesStruct implements Serializable {
       if (resourceName == null) {
         continue;
       }
-      resourcesManager.createResource(resourceName);
-      LockableResource r = resourcesManager.fromName(resourceName);
-      this.required.add(r);
+      synchronized(LockableResourcesManager.get()) {
+        resourcesManager.createResource(resourceName);
+        LockableResource r = resourcesManager.fromName(resourceName);
+        this.required.add(r);
+      }
     }
 
     label = env.expand(property.getLabelName());

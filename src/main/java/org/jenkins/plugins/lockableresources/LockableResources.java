@@ -26,8 +26,11 @@ public class LockableResources extends Plugin {
 
 	@Exported
 	public List<LockableResource> getResources() {
-		return Collections.unmodifiableList(LockableResourcesManager.get()
+		List<LockableResource> returnList;
+		synchronized(LockableResourcesManager.get()) {
+			returnList = Collections.unmodifiableList(LockableResourcesManager.get()
 				.getResources());
+		}
+		return returnList;
 	}
-
 }

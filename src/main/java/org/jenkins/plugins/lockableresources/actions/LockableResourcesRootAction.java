@@ -93,15 +93,17 @@ public class LockableResourcesRootAction implements RootAction {
 		Jenkins.getInstance().checkPermission(UNLOCK);
 
 		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
-		}
+		synchronized(LockableResourcesManager.get()) {
+			LockableResource r = LockableResourcesManager.get().fromName(name);
+			if (r == null) {
+				rsp.sendError(404, "Resource not found " + name);
+				return;
+			}
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
-		LockableResourcesManager.get().unlock(resources, null);
+			List<LockableResource> resources = new ArrayList<>();
+			resources.add(r);
+			LockableResourcesManager.get().unlock(resources, null);
+		}
 
 		rsp.forwardToPreviousPage(req);
 	}
@@ -111,17 +113,19 @@ public class LockableResourcesRootAction implements RootAction {
 		Jenkins.getInstance().checkPermission(RESERVE);
 
 		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
-		}
+		synchronized(LockableResourcesManager.get()) {
+			LockableResource r = LockableResourcesManager.get().fromName(name);
+			if (r == null) {
+				rsp.sendError(404, "Resource not found " + name);
+				return;
+			}
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
-		String userName = getUserName();
-		if (userName != null)
-			LockableResourcesManager.get().reserve(resources, userName);
+			List<LockableResource> resources = new ArrayList<>();
+			resources.add(r);
+			String userName = getUserName();
+			if (userName != null)
+				LockableResourcesManager.get().reserve(resources, userName);
+		}
 
 		rsp.forwardToPreviousPage(req);
 	}
@@ -131,21 +135,23 @@ public class LockableResourcesRootAction implements RootAction {
 		Jenkins.getInstance().checkPermission(RESERVE);
 
 		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
+		synchronized(LockableResourcesManager.get()) {
+			LockableResource r = LockableResourcesManager.get().fromName(name);
+			if (r == null) {
+				rsp.sendError(404, "Resource not found " + name);
+				return;
+			}
+
+			String userName = getUserName();
+			if ((userName == null || !userName.equals(r.getReservedBy()))
+					&& !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER))
+				throw new AccessDeniedException2(Jenkins.getAuthentication(),
+						RESERVE);
+
+			List<LockableResource> resources = new ArrayList<>();
+			resources.add(r);
+			LockableResourcesManager.get().unreserve(resources);
 		}
-
-		String userName = getUserName();
-		if ((userName == null || !userName.equals(r.getReservedBy()))
-				&& !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER))
-			throw new AccessDeniedException2(Jenkins.getAuthentication(),
-					RESERVE);
-
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
-		LockableResourcesManager.get().unreserve(resources);
 
 		rsp.forwardToPreviousPage(req);
 	}
@@ -155,15 +161,17 @@ public class LockableResourcesRootAction implements RootAction {
 		Jenkins.getInstance().checkPermission(UNLOCK);
 
 		String name = req.getParameter("resource");
-		LockableResource r = LockableResourcesManager.get().fromName(name);
-		if (r == null) {
-			rsp.sendError(404, "Resource not found " + name);
-			return;
-		}
+		synchronized(LockableResourcesManager.get()) {
+			LockableResource r = LockableResourcesManager.get().fromName(name);
+			if (r == null) {
+				rsp.sendError(404, "Resource not found " + name);
+				return;
+			}
 
-		List<LockableResource> resources = new ArrayList<>();
-		resources.add(r);
-		LockableResourcesManager.get().reset(resources);
+			List<LockableResource> resources = new ArrayList<>();
+			resources.add(r);
+			LockableResourcesManager.get().reset(resources);
+		}
 
 		rsp.forwardToPreviousPage(req);
 	}
