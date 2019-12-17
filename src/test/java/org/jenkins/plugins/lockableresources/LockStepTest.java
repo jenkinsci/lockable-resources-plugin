@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
+
+import hudson.model.queue.QueueTaskFuture;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -345,7 +347,8 @@ public class LockStepTest extends LockStepTestBase {
                 + "	}\n"
                 + "}\n"));
 
-    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    QueueTaskFuture<WorkflowRun> r1 = p.scheduleBuild2(0);
+    WorkflowRun b1 = r1.waitForStart();
     SemaphoreStep.waitForStart("wait-b/1", b1);
     // both messages are in the log because branch b acquired the lock and branch a is waiting to
     // lock
@@ -360,6 +363,7 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b1, 2, 0);
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+    j.assertBuildStatusSuccess(r1);
   }
 
   @Test
