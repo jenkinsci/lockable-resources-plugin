@@ -36,12 +36,18 @@ public class QueuedContextStruct implements Serializable {
 	private String resourceDescription;
 
 	/*
+	 * Name of the variable to save the locks taken.
+	 */
+	private String variableName;
+
+	/*
 	 * Constructor for the QueuedContextStruct class.
 	 */
-	public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription) {
+	public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription, String variableName) {
 		this.context = context;
 		this.lockableResourcesStruct = lockableResourcesStruct;
 		this.resourceDescription = resourceDescription;
+		this.variableName = variableName;
 	}
 
 	/*
@@ -63,6 +69,13 @@ public class QueuedContextStruct implements Serializable {
 	 */
 	public String getResourceDescription() {
 		return this.resourceDescription;
+	}
+
+	/*
+	 * Gets the variable name to save the locks taken.
+	 */
+	public String getVariableName() {
+		return this.variableName;
 	}
 
 	private static final long serialVersionUID = 1L;

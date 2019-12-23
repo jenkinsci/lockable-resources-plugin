@@ -1,0 +1,13 @@
+---
+####################################################
+# Configuration as Code config file for unit tests #
+####################################################
+jenkins:
+  systemMessage: "Welcome to the Lockable Resource Jenkins Server"
+unclassified:
+  lockableResourcesManager:
+    declaredResources:
+      - description: "Description_A"
+        labels: "Label_A"
+        name: "Resource_A"
+        reservedBy: "Reserved_A"
