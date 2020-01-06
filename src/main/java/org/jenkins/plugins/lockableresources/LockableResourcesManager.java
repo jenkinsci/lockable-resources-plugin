@@ -722,7 +722,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     BulkChange bc = new BulkChange(this);
     try {
       // reset resources to default before data-binding
-      this.resources = new ArrayList<>();
+      this.resources.removeIf(resource -> !resource.isLocked());
       req.bindJSON(this, json);
       bc.commit();
     } catch (IOException exception) {
