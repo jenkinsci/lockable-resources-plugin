@@ -177,7 +177,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return found;
   }
 
-  public LockableResource fromName(String resourceName) {
+  public synchronized LockableResource fromName(String resourceName) {
     if (resourceName != null) {
       for (LockableResource r : resources) {
         if (resourceName.equals(r.getName())) return r;
