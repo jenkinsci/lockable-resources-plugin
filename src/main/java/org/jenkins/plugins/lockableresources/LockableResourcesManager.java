@@ -604,6 +604,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
+  public synchronized boolean forceReserve(List<LockableResource> resources, String userName) {
+    for (LockableResource r : resources) {
+      if (r.isReserved()) {
+        return false;
+      }
+    }
+    for (LockableResource r : resources) {
+      r.setReservedBy(userName);
+    }
+    save();
+    return true;
+  }
+
   private void unreserveResources(@Nonnull List<LockableResource> resources) {
     for (LockableResource l : resources) {
       l.unReserve();
