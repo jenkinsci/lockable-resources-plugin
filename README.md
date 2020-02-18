@@ -45,6 +45,7 @@ them.
 
 Examples:
 
+*Lock a resource*
 ```groovy
 echo 'Starting'
 lock('my-resource-name') {
@@ -54,6 +55,7 @@ lock('my-resource-name') {
 echo 'Finish'
 ```
 
+*Lock a resource using inverse precedence*
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
     node {
@@ -63,9 +65,61 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 }
 ```
 
+*Lock a resource by label*
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
   echo env.LOCKED_RESOURCE
+}
+```
+
+*Do the locking in its own stage*
+```groovy
+stage("Locking resource") {
+  lock(resource: 'the-resource')
+}
+
+stage("Using resource") {
+  println "Using the resource..."
+}
+
+stage("Releasing resource") {
+  releaseLock(resource: 'the-resource')
+}
+```
+
+*Try to lock the resource*
+```groovy
+if (tryLock(resource: 'staging-server')) {
+  try {
+    println "Resource acquired :)"
+  } finally {
+    releaseLock(resource: 'staging-server')
+  }
+} else {
+    println "Was unable to acquire lock :("
+}
+```
+
+*Release any acquired locks*
+```groovy
+try {
+  if (tryLock(resource: 'staging-server-1') && tryLock(resource: 'staging-server-2')) {
+    println "Resources acquired =)"
+  }
+} finally {
+  // Release any acquired resources
+  releaseLock()
+}
+```
+
+*Check if a resource is locked or not*
+```
+boolean isAvailable(resource) {
+  def isAvailable = tryLock(resource: resource)
+  if (isAvailable) {
+    releaseLock(resource: resource)
+  }
+  return isAvailable
 }
 ```
 

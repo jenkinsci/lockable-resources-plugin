@@ -44,6 +44,20 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  public void noBodyRequired() throws Exception {
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "lock(resource: 'resource1')\n"
+            + "echo 'Resource locked'\n"
+            + "releaseLock(resource: 'resource1')\n"
+            + "echo 'Finish'"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+  }
+
+  @Test
   public void autoCreateResourceFreeStyle() throws IOException, InterruptedException {
     FreeStyleProject f = j.createFreeStyleProject("f");
     f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));

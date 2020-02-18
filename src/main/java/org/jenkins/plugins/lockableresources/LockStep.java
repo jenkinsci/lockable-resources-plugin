@@ -108,31 +108,10 @@ public class LockStep extends AbstractStepImpl implements Serializable {
   }
 
   public String toString() {
-    if (extra != null && !extra.isEmpty()) {
-      return getResources().stream()
-          .map(resource -> "{" + resource.toString() + "}")
-          .collect(Collectors.joining(","));
-    } else if (resource != null || label != null) {
-      return LockStepResource.toString(resource, label, quantity);
-    } else {
-      return "nothing";
-    }
+    return LockHelper.toString(toLockAttributes());
   }
-
-  /** Label and resource are mutual exclusive. */
-  public void validate() throws Exception {
-    LockStepResource.validate(resource, label, quantity);
-  }
-
-  public List<LockStepResource> getResources() {
-    List<LockStepResource> resources = new ArrayList<>();
-    if (resource != null || label != null) {
-      resources.add(new LockStepResource(resource, label, quantity));
-    }
-
-    if (extra != null) {
-      resources.addAll(extra);
-    }
-    return resources;
+  
+  public LockAttributes toLockAttributes() {
+	  return new LockAttributes(extra, resource, label, quantity, variable,inversePrecedence);
   }
 }
