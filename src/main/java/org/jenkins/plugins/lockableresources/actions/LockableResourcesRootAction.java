@@ -49,7 +49,7 @@ public class LockableResourcesRootAction implements RootAction {
 			Messages.LockableResourcesRootAction_ViewPermission(),
 			Messages._LockableResourcesRootAction_ViewPermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
-	
+
 	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
 	public String getIconFileName() {
@@ -123,6 +123,28 @@ public class LockableResourcesRootAction implements RootAction {
 		if (userName != null)
 			LockableResourcesManager.get().reserve(resources, userName);
 
+		rsp.forwardToPreviousPage(req);
+	}
+
+	public void doForceReserve(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+		Jenkins.getInstance().checkPermission(RESERVE);
+		Jenkins.getInstance().checkPermission(UNLOCK);
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<>();
+		resources.add(r);
+		String userName = getUserName();
+		if (userName != null) {
+			LockableResourcesManager.get().unlock(resources, null);
+			LockableResourcesManager.get().reserve(resources, userName);
+		}
 		rsp.forwardToPreviousPage(req);
 	}
 
