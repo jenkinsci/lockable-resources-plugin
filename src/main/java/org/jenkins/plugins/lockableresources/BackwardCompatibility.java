@@ -28,17 +28,19 @@ public final class BackwardCompatibility {
 	@Initializer(after = InitMilestone.JOB_LOADED)
 	public static void compatibilityMigration() {
 		LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run");
-		List<LockableResource> resources = LockableResourcesManager.get().getResources();
-		for (LockableResource resource : resources) {
-			List<StepContext> queuedContexts = resource.getQueuedContexts();
-			if (!queuedContexts.isEmpty()) {
-				for (StepContext queuedContext : queuedContexts) {
-					List<String> resourcesNames = new ArrayList<>();
-					resourcesNames.add(resource.getName());
-					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-					LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName(), null);
+		synchronized(LockableResourcesManager.get()) {
+			List<LockableResource> resources = LockableResourcesManager.get().getResources();
+			for (LockableResource resource : resources) {
+				List<StepContext> queuedContexts = resource.getQueuedContexts();
+				if (!queuedContexts.isEmpty()) {
+					for (StepContext queuedContext : queuedContexts) {
+						List<String> resourcesNames = new ArrayList<>();
+						resourcesNames.add(resource.getName());
+						LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
+						LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName(), null);
+					}
+					queuedContexts.clear();
 				}
-				queuedContexts.clear();
 			}
 		}
 	}

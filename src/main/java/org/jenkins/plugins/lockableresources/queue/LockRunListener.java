@@ -48,30 +48,33 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 				LockableResourcesStruct resources = Utils.requiredResources(proj);
 
 				if (resources != null) {
-					if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
-						required.addAll(LockableResourcesManager.get().
-								getResourcesFromProject(proj.getFullName()));
-					} else {
-						required.addAll(resources.required);
-					}
-
-					if (LockableResourcesManager.get().lock(required, build, null)) {
-						build.addAction(LockedResourcesBuildAction
-								.fromResources(required));
-						listener.getLogger().printf("%s acquired lock on %s%n",
-								LOG_PREFIX, required);
-						LOGGER.fine(build.getFullDisplayName()
-								+ " acquired lock on " + required);
-						if (resources.requiredVar != null) {
-							build.addAction(new ResourceVariableNameAction(new StringParameterValue(
-									resources.requiredVar,
-									required.toString().replaceAll("[\\]\\[]", ""))));
+					// TODO: scope of synchronized could be decreased
+					synchronized(LockableResourcesManager.get()) {
+						if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
+							required.addAll(LockableResourcesManager.get().
+									getResourcesFromProject(proj.getFullName()));
+						} else {
+							required.addAll(resources.required);
 						}
-					} else {
-						listener.getLogger().printf("%s failed to lock %s%n",
-								LOG_PREFIX, required);
-						LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-								+ required);
+
+						if (LockableResourcesManager.get().lock(required, build, null)) {
+							build.addAction(LockedResourcesBuildAction
+									.fromResources(required));
+							listener.getLogger().printf("%s acquired lock on %s%n",
+									LOG_PREFIX, required);
+							LOGGER.fine(build.getFullDisplayName()
+									+ " acquired lock on " + required);
+							if (resources.requiredVar != null) {
+								build.addAction(new ResourceVariableNameAction(new StringParameterValue(
+										resources.requiredVar,
+										required.toString().replaceAll("[\\]\\[]", ""))));
+							}
+						} else {
+							listener.getLogger().printf("%s failed to lock %s%n",
+									LOG_PREFIX, required);
+							LOGGER.fine(build.getFullDisplayName() + " failed to lock "
+									+ required);
+						}
 					}
 				}
 			}
@@ -85,17 +88,18 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 		if (build instanceof MatrixBuild)
 			return;
 
-		// obviously project name cannot be obtained here
-		List<LockableResource> required = LockableResourcesManager.get()
-				.getResourcesFromBuild(build);
-		if (!required.isEmpty()) {
-			LockableResourcesManager.get().unlock(required, build);
-			listener.getLogger().printf("%s released lock on %s%n",
-					LOG_PREFIX, required);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
+		synchronized(LockableResourcesManager.get()) {
+			// obviously project name cannot be obtained here
+			List<LockableResource> required = LockableResourcesManager.get()
+					.getResourcesFromBuild(build);
+			if (!required.isEmpty()) {
+				LockableResourcesManager.get().unlock(required, build);
+				listener.getLogger().printf("%s released lock on %s%n",
+						LOG_PREFIX, required);
+				LOGGER.fine(build.getFullDisplayName() + " released lock on "
+						+ required);
+			}
 		}
-
 	}
 
 	@Override
@@ -105,12 +109,14 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 		if (build instanceof MatrixBuild)
 			return;
 
-		List<LockableResource> required = LockableResourcesManager.get()
-				.getResourcesFromBuild(build);
-		if (!required.isEmpty()) {
-			LockableResourcesManager.get().unlock(required, build);
-			LOGGER.fine(build.getFullDisplayName() + " released lock on "
-					+ required);
+		synchronized(LockableResourcesManager.get()) {
+			List<LockableResource> required = LockableResourcesManager.get()
+					.getResourcesFromBuild(build);
+			if (!required.isEmpty()) {
+				LockableResourcesManager.get().unlock(required, build);
+				LOGGER.fine(build.getFullDisplayName() + " released lock on "
+						+ required);
+			}
 		}
 	}
 

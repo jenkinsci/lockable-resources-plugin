@@ -162,11 +162,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				List<String> wrongNames = new ArrayList<>();
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
-					for (LockableResource r : LockableResourcesManager.get()
-							.getResources()) {
-						if (r.getName().equals(name)) {
-							found = true;
-							break;
+					synchronized(LockableResourcesManager.get()) {
+						for (LockableResource r : LockableResourcesManager.get()
+								.getResources()) {
+							if (r.getName().equals(name)) {
+								found = true;
+								break;
+							}
 						}
 					}
 					if (!found)
@@ -206,14 +208,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 		public FormValidation doCheckResourceNumber(@QueryParameter String value,
 				@QueryParameter String resourceNames,
-                @QueryParameter String labelName,
-                @QueryParameter String resourceMatchScript)
-        {
+				@QueryParameter String labelName,
+				@QueryParameter String resourceMatchScript) {
 
 			String number = Util.fixEmptyAndTrim(value);
 			String names = Util.fixEmptyAndTrim(resourceNames);
 			String label = Util.fixEmptyAndTrim(labelName);
-            String script = Util.fixEmptyAndTrim(resourceMatchScript);
+			String script = Util.fixEmptyAndTrim(resourceMatchScript);
 
 			if (number == null || number.equals("") || number.trim().equals("0")) {
 				return FormValidation.ok();
@@ -229,9 +230,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			int numResources = 0;
 			if (names != null) {
 				numResources = names.split("\\s+").length;
-            } else if (label != null || script != null) {
-                	numResources = Integer.MAX_VALUE;
-            }
+			} else if (label != null || script != null) {
+				numResources = Integer.MAX_VALUE;
+			}
 
 			if (numResources < numAsInt) {
 				return FormValidation.error(String.format(
@@ -248,9 +249,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 			value = Util.fixEmptyAndTrim(value);
 
-			for (String l : LockableResourcesManager.get().getAllLabels())
-				if (value != null && l.startsWith(value))
-					c.add(l);
+			synchronized(LockableResourcesManager.get()) {
+				for (String l : LockableResourcesManager.get().getAllLabels())
+					if (value != null && l.startsWith(value))
+						c.add(l);
+			}
 
 			return c;
 		}
@@ -262,10 +265,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			value = Util.fixEmptyAndTrim(value);
 
 			if (value != null) {
-				for (LockableResource r : LockableResourcesManager.get()
-						.getResources()) {
-					if (r.getName().startsWith(value))
-						c.add(r.getName());
+				synchronized(LockableResourcesManager.get()) {
+					for (LockableResource r : LockableResourcesManager.get()
+							.getResources()) {
+						if (r.getName().startsWith(value))
+							c.add(r.getName());
+					}
 				}
 			}
 
