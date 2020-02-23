@@ -721,8 +721,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
     BulkChange bc = new BulkChange(this);
     try {
-      // reset resources to default before data-binding
-      this.resources = new ArrayList<>();
+      // reset resources to default which are not currently locked
+      this.resources.removeIf(resource -> !resource.isLocked());
       req.bindJSON(this, json);
       bc.commit();
     } catch (IOException exception) {
