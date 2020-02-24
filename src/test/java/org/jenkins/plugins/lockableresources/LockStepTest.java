@@ -7,7 +7,11 @@ import static org.junit.Assume.assumeFalse;
 
 import hudson.Functions;
 import hudson.Launcher;
-import hudson.model.*;
+import hudson.model.AbstractBuild;
+import hudson.model.BuildListener;
+import hudson.model.FreeStyleBuild;
+import hudson.model.FreeStyleProject;
+import hudson.model.Result;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -599,6 +603,7 @@ public class LockStepTest extends LockStepTestBase {
     for (int i = 0; i < 50; i++) {
       Thread thread =
           new Thread() {
+            @Override
             public void run() {
               try {
                 barrier.await();
@@ -953,5 +958,22 @@ public class LockStepTest extends LockStepTestBase {
     j.assertBuildStatus(Result.FAILURE, b1);
     j.assertLogContains("The label does not exist: invalidLabel", b1);
     isPaused(b1, 0, 0);
+  }
+
+  @Test
+  public void skipIfLocked() throws Exception {
+    LockableResourcesManager lm = LockableResourcesManager.get();
+    lm.createResourceWithLabel("resource1", "label1");
+    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "lock(resource: 'resource1', skipIfLocked: true) {\n" + "  echo 'Running body'\n" + "}"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("[resource1] is locked, skipping execution...", b1);
+    j.assertLogNotContains("Running body", b1);
   }
 }

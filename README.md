@@ -45,6 +45,8 @@ them.
 
 Examples:
 
+*Acquire lock*
+
 ```groovy
 echo 'Starting'
 lock('my-resource-name') {
@@ -53,6 +55,8 @@ lock('my-resource-name') {
 }
 echo 'Finish'
 ```
+
+*Take first position in queue*
 
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
@@ -63,9 +67,19 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 }
 ```
 
+*Resolve a variable configured with the resource*
+
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
   echo env.LOCKED_RESOURCE
+}
+```
+
+*Skip executing the block if there is a queue*
+
+```groovy
+lock(resource: 'some_resource', skipIfLocked: true) {
+  echo 'Do something now or never!'
 }
 ```
 

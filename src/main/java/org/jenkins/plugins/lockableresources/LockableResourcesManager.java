@@ -440,9 +440,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return;
       }
 
+      boolean skipIfLocked = false;
       requiredResourceForNextContext =
           checkResourcesAvailability(
-              nextContext.getResources(), null, remainingResourceNamesToUnLock);
+              nextContext.getResources(), null, remainingResourceNamesToUnLock, skipIfLocked);
 
       // resourceNamesToUnlock contains the names of the previous resources.
       // requiredResourceForNextContext contains the resource objects which are required for the
@@ -534,7 +535,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (!inversePrecedence) {
       for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
-        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
+        boolean skipIfLocked = false;
+        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock, skipIfLocked) != null) {
           return entry;
         }
       }
@@ -543,7 +545,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       List<QueuedContextStruct> orphan = new ArrayList<>();
       for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
-        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
+        boolean skipIfLocked = false;
+        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock, skipIfLocked) != null) {
           try {
             Run<?, ?> run = entry.getContext().get(Run.class);
             if (run != null && run.getStartTimeInMillis() > newest) {
@@ -647,10 +650,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
     }
 
+    boolean skipIfLocked = false;
     // remove context from queue and process it
     requiredResourceForNextContext =
         checkResourcesAvailability(
-            nextContext.getResources(), nextContextLogger, resourceNamesToUnreserve);
+            nextContext.getResources(), nextContextLogger, resourceNamesToUnreserve, skipIfLocked);
     this.queuedContexts.remove(nextContext);
 
     // resourceNamesToUnreserve contains the names of the previous resources.
@@ -741,7 +745,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized Set<LockableResource> checkResourcesAvailability(
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+      boolean skipIfLocked) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
@@ -832,7 +837,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       if (selected.size() < requiredAmount) {
-        if (logger != null) {
+        if (logger != null && !skipIfLocked) {
           logger.println(
               "Found "
                   + selected.size()
