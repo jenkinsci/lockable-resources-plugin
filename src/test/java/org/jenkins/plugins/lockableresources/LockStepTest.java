@@ -976,4 +976,35 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("[resource1] is locked, skipping execution...", b1);
     j.assertLogNotContains("Running body", b1);
   }
+
+  @Test
+  public void lockWithoutUsingBody() throws Exception {
+    LockableResourcesManager lm = LockableResourcesManager.get();
+    lm.createResourceWithLabel("resource1", "label1");
+    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "def lockObject = lock(resource: 'resource1')\n"
+                + "try  {\n"
+                + "  println \"Locked: \" + lockObject\n"
+                + "} finally {\n"
+                + "  lockObject.release()\n"
+                + "}\n"
+                + "println \"Lock is now released\"\n"
+                + "def lockObject2 = lock(resource: 'resource1')\n"
+                + "try  {\n"
+                + "  println \"Locked2: \" + lockObject2\n"
+                + "} finally {\n"
+                + "  lockObject2.release()\n"
+                + "}\n"));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+
+    j.waitForMessage("[resource1] is locked, waiting...", b1);
+    lm.unreserve(Arrays.asList(lm.fromName("resource1")));
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+    j.assertLogContains("Locked: LockObject [resourceNames=[resource1]]", b1);
+    j.assertLogContains("Locked2: LockObject [resourceNames=[resource1]]", b1);
+  }
 }

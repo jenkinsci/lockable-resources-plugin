@@ -83,8 +83,20 @@ lock(resource: 'some_resource', skipIfLocked: true) {
 }
 ```
 
-Detailed documentation can be found as part of the
-[Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
+*Lock without body, and release later*
+
+```groovy
+def lockObject = lock(resource: 'staging-server')
+try  {
+  print "Locked: " + lockObject
+} finally {
+  lockObject.release()
+}
+```
+
+
+Detailed documentation can be found as part of the 
+[Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/) 
 documentation.
 
 ## Configuration as Code

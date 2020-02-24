@@ -1,5 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
+import com.google.common.base.Joiner;
+import hudson.EnvVars;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
@@ -8,7 +12,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
@@ -17,12 +20,6 @@ import org.jenkinsci.plugins.workflow.steps.BodyInvoker;
 import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
-
-import com.google.common.base.Joiner;
-
-import hudson.EnvVars;
-import hudson.model.Run;
-import hudson.model.TaskListener;
 
 public class LockStepExecution extends AbstractStepExecutionImpl implements Serializable {
 
@@ -47,19 +44,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     PrintStream logger = getContext().get(TaskListener.class).getLogger();
     logger.println("Trying to acquire lock on [" + step + "]");
 
-    List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
-
-    for (LockStepResource resource : step.getResources()) {
-      List<String> resources = new ArrayList<>();
-      if (resource.resource != null) {
-        if (LockableResourcesManager.get().createResource(resource.resource)) {
-          logger.println("Resource [" + resource + "] did not exist. Created.");
-        }
-        resources.add(resource.resource);
-      }
-      resourceHolderList.add(
-          new LockableResourcesStruct(resources, resource.label, resource.quantity));
-    }
+    List<String> resourceNames = getResourceNames();
+    List<LockableResourcesStruct> resourceHolderList = getResourceHolderList(resourceNames);
 
     // determine if there are enough resources available to proceed
     Set<LockableResource> available =
@@ -85,7 +71,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         } else {
           logger.println("[" + step + "] is locked, skipping execution...");
         }
-        getContext().onSuccess(null);
+        getContext().onSuccess(new LockObject(getContext(), resourceNames));
         return true;
       } else {
         if (buildNameKnown) {
@@ -95,9 +81,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         }
         LockableResourcesManager.get()
             .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
+        return false;
       }
     } // proceed is called inside lock if execution is possible
-    return false;
+    return !getContext().hasBody();
   }
 
   public static void proceed(
@@ -123,6 +110,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
     try {
       PauseAction.endCurrentPause(node);
+      if (!context.hasBody()) {
+        context.onSuccess(new LockObject(context, resourcenames));
+        return;
+      }
       BodyInvoker bodyInvoker =
           context
               .newBodyInvoker()
@@ -153,6 +144,42 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private List<String> getResourceNames() throws IOException, InterruptedException {
+    List<String> resources = new ArrayList<>();
+    for (LockStepResource resource : step.getResources()) {
+      if (resource.resource != null) {
+        if (LockableResourcesManager.get().createResource(resource.resource)) {
+          getContext()
+              .get(TaskListener.class)
+              .getLogger()
+              .println("Resource [" + resource + "] did not exist. Created.");
+        }
+        resources.add(resource.resource);
+      }
+    }
+    return resources;
+  }
+
+  private List<LockableResourcesStruct> getResourceHolderList(List<String> resourceNames)
+      throws IOException, InterruptedException {
+    List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
+    for (LockStepResource resource : step.getResources()) {
+      List<String> resources = new ArrayList<>();
+      if (resource.resource != null) {
+        if (LockableResourcesManager.get().createResource(resource.resource)) {
+          getContext()
+              .get(TaskListener.class)
+              .getLogger()
+              .println("Resource [" + resource + "] did not exist. Created.");
+        }
+        resources.add(resource.resource);
+      }
+      resourceHolderList.add(
+          new LockableResourcesStruct(resources, resource.label, resource.quantity));
+    }
+    return resourceHolderList;
   }
 
   private static final class Callback extends BodyExecutionCallback.TailCall {
