@@ -69,8 +69,8 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 }
 ```
 
-Detailed documentation can be found as part of the 
-[Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/) 
+Detailed documentation can be found as part of the
+[Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
 documentation.
 
 ## Configuration as Code
@@ -93,9 +93,8 @@ unclassified:
 ## Changelog
 
 * See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
-  for recent versions
-* See the [plugin's Wiki page](https://wiki.jenkins.io/display/JENKINS/Lockable+Resources+Plugin#LockableResourcesPlugin-Changelog)
-  for versions 2.5 and older
+  for recent versions.
+* See the [old changelog](CHANGELOG.old.md) for versions 2.5 and older.
 
 ## Contributing
 
