@@ -948,10 +948,12 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(new CpsFlowDefinition("lock(label: 'invalidLabel') {\n" + "}\n"));
-    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.FAILURE, b1);
-    j.assertLogContains("The label does not exist: invalidLabel", b1);
-    isPaused(b1, 0, 0);
+    for (int i = 0; i < 100; ++i) {
+      WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+      j.waitForCompletion(b1);
+      j.assertBuildStatus(Result.FAILURE, b1);
+      j.assertLogContains("The label does not exist: invalidLabel", b1);
+      isPaused(b1, 0, 0);
+    }
   }
 }
