@@ -71,7 +71,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         } else {
           logger.println("[" + step + "] is locked, skipping execution...");
         }
-        getContext().onSuccess(new LockObject(getContext(), resourceNames));
+        String buildExternalizableId = run.getExternalizableId();
+        final List<LockableResource> lockableResources =
+            LockableResourcesManager.get().getResourcesFromBuild(run);
+        getContext().onSuccess(new LockObject(buildExternalizableId, lockableResources));
         return true;
       } else {
         if (buildNameKnown) {
@@ -98,9 +101,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     try {
       r = context.get(Run.class);
       node = context.get(FlowNode.class);
-      context
-          .get(TaskListener.class)
-          .getLogger()
+      context.get(TaskListener.class).getLogger()
           .println("Lock acquired on [" + resourceDescription + "]");
     } catch (Exception e) {
       context.onFailure(e);
@@ -111,7 +112,15 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     try {
       PauseAction.endCurrentPause(node);
       if (!context.hasBody()) {
-        context.onSuccess(new LockObject(context, resourcenames));
+        Run<?, ?> run = context.get(Run.class);
+        String buildExternalizableId = run.getExternalizableId();
+        final List<LockableResource> lockableResources =
+            LockableResourcesManager.get().getResourcesFromBuild(run);
+
+        context.onSuccess(
+            new LockObject(
+                buildExternalizableId,
+                lockableResources));
         return;
       }
       BodyInvoker bodyInvoker =
@@ -197,8 +206,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     protected void finished(StepContext context) throws Exception {
+      String externalizableId = context.get(Run.class).getExternalizableId();
       LockableResourcesManager.get()
-          .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
+          .unlockNames(this.resourceNames, externalizableId, this.inversePrecedence);
       context
           .get(TaskListener.class)
           .getLogger()

@@ -370,7 +370,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   private synchronized void freeResources(
-      List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+      List<String> unlockResourceNames, @Nullable String buildExternalizableId) {
+    if (buildExternalizableId == null) {
+      return;
+    }
     for (String unlockResourceName : unlockResourceNames) {
       Iterator<LockableResource> resourceIterator = this.resources.iterator();
       while (resourceIterator.hasNext()) {
@@ -378,11 +381,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (resource != null
             && resource.getName() != null
             && resource.getName().equals(unlockResourceName)) {
-          if (build == null
-              || (resource.getBuild() != null
-                  && build
-                      .getExternalizableId()
-                      .equals(resource.getBuild().getExternalizableId()))) {
+          if (resource.getBuild() != null
+              && buildExternalizableId.equals(resource.getBuild().getExternalizableId())) {
             // No more contexts, unlock resource
             resource.unqueue();
             resource.setBuild(null);
@@ -396,13 +396,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized void unlock(
-      List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-    unlock(resourcesToUnLock, build, false);
+      List<LockableResource> resourcesToUnLock, @Nullable String buildExternalizableId) {
+    unlock(resourcesToUnLock, buildExternalizableId, false);
   }
 
   public synchronized void unlock(
       @Nullable List<LockableResource> resourcesToUnLock,
-      @Nullable Run<?, ?> build,
+      @Nullable String buildExternalizableId,
       boolean inversePrecedence) {
     List<String> resourceNamesToUnLock = new ArrayList<>();
     if (resourcesToUnLock != null) {
@@ -411,12 +411,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
 
-        this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+    this.unlockNames(resourceNamesToUnLock, buildExternalizableId, inversePrecedence);
   }
 
   public synchronized void unlockNames(
       @Nullable List<String> resourceNamesToUnLock,
-      @Nullable Run<?, ?> build,
+      @Nullable String buildExternalizableId,
       boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
     if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
@@ -435,7 +435,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       // no context is queued which can be started once these resources are free'd.
       if (nextContext == null) {
-        this.freeResources(remainingResourceNamesToUnLock, build);
+        this.freeResources(remainingResourceNamesToUnLock, buildExternalizableId);
         save();
         return;
       }
@@ -481,7 +481,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     + " hard killed. More information at Level.FINE if debug is needed.");
             LOGGER.log(
                 Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
-            unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
+            unlockNames(remainingResourceNamesToUnLock, buildExternalizableId, inversePrecedence);
             return;
           }
         }

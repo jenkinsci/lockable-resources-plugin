@@ -89,7 +89,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (!required.isEmpty()) {
-			LockableResourcesManager.get().unlock(required, build);
+			LockableResourcesManager.get().unlock(required, build.getExternalizableId());
 			listener.getLogger().printf("%s released lock on %s%n",
 					LOG_PREFIX, required);
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
@@ -108,7 +108,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 		List<LockableResource> required = LockableResourcesManager.get()
 				.getResourcesFromBuild(build);
 		if (!required.isEmpty()) {
-			LockableResourcesManager.get().unlock(required, build);
+			LockableResourcesManager.get().unlock(required, build.getExternalizableId());
 			LOGGER.fine(build.getFullDisplayName() + " released lock on "
 					+ required);
 		}

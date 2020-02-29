@@ -1004,7 +1004,7 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForMessage("[resource1] is locked, waiting...", b1);
     lm.unreserve(Arrays.asList(lm.fromName("resource1")));
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-    j.assertLogContains("Locked: LockObject [resourceNames=[resource1]]", b1);
-    j.assertLogContains("Locked2: LockObject [resourceNames=[resource1]]", b1);
+    j.assertLogContains("Locked: LockObject [buildExternalizableId=p#1, lockableResources=[resource1]]", b1);
+    j.assertLogContains("Locked2: LockObject [buildExternalizableId=p#1, lockableResources=[resource1]]", b1);
   }
 }
