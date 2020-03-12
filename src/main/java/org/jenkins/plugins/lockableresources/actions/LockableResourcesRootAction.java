@@ -49,7 +49,7 @@ public class LockableResourcesRootAction implements RootAction {
 			Messages.LockableResourcesRootAction_ViewPermission(),
 			Messages._LockableResourcesRootAction_ViewPermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
-	
+
 	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
 	public String getIconFileName() {
@@ -65,7 +65,7 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
 	public String getDisplayName() {
-		return "Lockable Resources";
+	  return Messages.LockableResourcesRootAction_PermissionGroup();
 	}
 
 	public String getUrlName() {
