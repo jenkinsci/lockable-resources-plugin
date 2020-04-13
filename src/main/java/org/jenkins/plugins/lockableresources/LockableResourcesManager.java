@@ -177,7 +177,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return found;
   }
 
-  public LockableResource fromName(String resourceName) {
+  public synchronized LockableResource fromName(String resourceName) {
     if (resourceName != null) {
       for (LockableResource r : resources) {
         if (resourceName.equals(r.getName())) return r;
@@ -735,6 +735,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return false;
     }
     return true;
+  }
+
+  /** @see #checkResourcesAvailability(List, PrintStream, List, boolean) */
+  public synchronized Set<LockableResource> checkResourcesAvailability(
+      List<LockableResourcesStruct> requiredResourcesList,
+      @Nullable PrintStream logger,
+      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+    boolean skipIfLocked = false;
+    return this.checkResourcesAvailability(
+        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, skipIfLocked);
   }
 
   /**
