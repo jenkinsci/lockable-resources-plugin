@@ -160,6 +160,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 						"Only label, groovy expression, or resources can be defined, not more than one.");
 			} else {
 				List<String> wrongNames = new ArrayList<>();
+				List<String> varNames = new ArrayList<>();
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
 					for (LockableResource r : LockableResourcesManager.get()
@@ -169,11 +170,20 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 							break;
 						}
 					}
-					if (!found)
-						wrongNames.add(name);
+					if (!found) {
+						if (name.contains("$")) {
+							varNames.add(name);
+						} else {
+							wrongNames.add(name);
+						}
+					}
 				}
-				if (wrongNames.isEmpty()) {
+				if (wrongNames.isEmpty() && varNames.isEmpty()) {
 					return FormValidation.ok();
+				} else if (wrongNames.isEmpty()) {
+					return FormValidation
+							.warning("The following resources cannot be validated as they are the environment variables: "
+									+ varNames);
 				} else {
 					return FormValidation
 							.error("The following resources do not exist: "
