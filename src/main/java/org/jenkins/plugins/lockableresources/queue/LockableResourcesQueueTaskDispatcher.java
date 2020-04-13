@@ -15,12 +15,11 @@ import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
 import hudson.model.Job;
-import hudson.model.Queue;
-import hudson.model.queue.QueueTaskDispatcher;
-import hudson.model.queue.CauseOfBlockage;
-import hudson.model.ParametersAction;
 import hudson.model.ParameterValue;
-
+import hudson.model.ParametersAction;
+import hudson.model.Queue;
+import hudson.model.queue.CauseOfBlockage;
+import hudson.model.queue.QueueTaskDispatcher;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
@@ -161,7 +159,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		@Override
 		public String getShortDescription() {
 			if (this.rscStruct.label.isEmpty()) {
-				if (this.rscStruct.required.size() > 0) {
+				if (!this.rscStruct.required.isEmpty()) {
 					return "Waiting for resource instances " + rscStruct.required.toString();
 				} else {
 					final SecureGroovyScript systemGroovyScript = this.rscStruct.getResourceMatchScript();
@@ -188,7 +186,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 	// Only for UI
 	@Restricted(NoExternalUse.class)
 	public static class BecauseResourcesQueueFailed extends CauseOfBlockage {
-		
+
 		@NonNull
 		private final LockableResourcesStruct resources;
 		@NonNull

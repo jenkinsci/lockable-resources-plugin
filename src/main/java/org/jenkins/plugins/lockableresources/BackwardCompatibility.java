@@ -11,19 +11,24 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
 
+/**
+ * This class migrates "active" queuedContexts from LockableResource to LockableResourcesManager
+ *
+ * @deprecated Migration code for field introduced in 1.8 (since 1.11)
+ */
+@Deprecated
 public final class BackwardCompatibility {
 	private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
+
+	private BackwardCompatibility() {}
 
 	@Initializer(after = InitMilestone.JOB_LOADED)
 	public static void compatibilityMigration() {
