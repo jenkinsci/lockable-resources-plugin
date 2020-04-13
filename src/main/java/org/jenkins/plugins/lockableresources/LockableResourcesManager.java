@@ -411,7 +411,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
 
-        this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+    this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
   }
 
   public synchronized void unlockNames(
@@ -733,6 +733,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
+  /** @see #checkResourcesAvailability(List, PrintStream, List, boolean) */
+  public synchronized Set<LockableResource> checkResourcesAvailability(
+      List<LockableResourcesStruct> requiredResourcesList,
+      @Nullable PrintStream logger,
+      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+    boolean skipIfLocked = false;
+    return this.checkResourcesAvailability(
+        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, skipIfLocked);
+  }
+
   /**
    * Checks if there are enough resources available to satisfy the requirements specified within
    * requiredResources and returns the necessary available resources. If not enough resources are
@@ -741,7 +751,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized Set<LockableResource> checkResourcesAvailability(
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+      boolean skipIfLocked) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
@@ -832,7 +843,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       if (selected.size() < requiredAmount) {
-        if (logger != null) {
+        if (logger != null && !skipIfLocked) {
           logger.println(
               "Found "
                   + selected.size()

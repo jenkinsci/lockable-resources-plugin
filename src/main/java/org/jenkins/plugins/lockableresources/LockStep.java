@@ -34,6 +34,8 @@ public class LockStep extends Step implements Serializable {
 
   public boolean inversePrecedence = false;
 
+  public boolean skipIfLocked = false;
+
   @CheckForNull public List<LockStepResource> extra = null;
 
   // it should be LockStep() - without params. But keeping this for backward compatibility
@@ -49,6 +51,11 @@ public class LockStep extends Step implements Serializable {
   @DataBoundSetter
   public void setInversePrecedence(boolean inversePrecedence) {
     this.inversePrecedence = inversePrecedence;
+  }
+
+  @DataBoundSetter
+  public void setSkipIfLocked(boolean skipIfLocked) {
+    this.skipIfLocked = skipIfLocked;
   }
 
   @DataBoundSetter
