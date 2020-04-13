@@ -6,18 +6,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 
 import hudson.Functions;
-import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.FreeStyleBuild;
-import hudson.model.FreeStyleProject;
 import hudson.model.Result;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -26,7 +19,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.TestBuilder;
 import org.jvnet.hudson.test.recipes.WithPlugin;
 
 public class LockStepTest extends LockStepTestBase {
@@ -43,30 +35,6 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
     j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
-
-    assertNull(LockableResourcesManager.get().fromName("resource1"));
-  }
-
-  @Test
-  public void autoCreateResourceFreeStyle() throws IOException, InterruptedException {
-    FreeStyleProject f = j.createFreeStyleProject("f");
-    f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
-
-    f.scheduleBuild2(0);
-
-    while (j.jenkins.getQueue().getItems().length != 1) {
-      System.out.println("Waiting for freestyle to be queued...");
-      Thread.sleep(1000);
-    }
-
-    FreeStyleBuild fb1 = null;
-    while ((fb1 = f.getBuildByNumber(1)) == null) {
-      System.out.println("Waiting for freestyle #1 to start building...");
-      Thread.sleep(1000);
-    }
-
-    j.waitForMessage("acquired lock on [resource1]", fb1);
-    j.waitForCompletion(fb1);
 
     assertNull(LockableResourcesManager.get().fromName("resource1"));
   }
@@ -366,45 +334,8 @@ public class LockStepTest extends LockStepTestBase {
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
   }
 
-  @Test
-  public void interoperability() throws Exception {
-    final Semaphore semaphore = new Semaphore(1);
-    LockableResourcesManager.get().createResource("resource1");
-    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-    p.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	echo 'Locked'\n" + "}\n" + "echo 'Finish'"));
-
-    FreeStyleProject f = j.createFreeStyleProject("f");
-    f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
-    f.getBuildersList()
-        .add(
-            new TestBuilder() {
-
-              @Override
-              public boolean perform(
-                  AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-                  throws InterruptedException, IOException {
-                semaphore.acquire();
-                return true;
-              }
-            });
-    semaphore.acquire();
-    FreeStyleBuild f1 = f.scheduleBuild2(0).waitForStart();
-
-    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[resource1] is locked by " + f1.getFullDisplayName() + ", waiting...", b1);
-    isPaused(b1, 1, 1);
-    semaphore.release();
-
-    // Wait for lock after the freestyle finishes
-    j.waitForMessage("Lock released on resource [resource1]", b1);
-    isPaused(b1, 1, 0);
-  }
-
   // TODO: Figure out what to do about the IOException thrown during clean up, since we don't care
-  // about it. It's just
-  // a result of the first build being deleted and is nothing but noise here.
+  // about it. It's just a result of the first build being deleted and is nothing but noise here.
   @Issue("JENKINS-36479")
   @Test
   public void deleteRunningBuildNewBuildClearsLock() throws Exception {
@@ -969,7 +900,9 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(resource: 'resource1', skipIfLocked: true) {\n" + "  echo 'Running body'\n" + "}"));
+            "lock(resource: 'resource1', skipIfLocked: true) {\n"
+                + "  echo 'Running body'\n"
+                + "}"));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);

@@ -18,10 +18,10 @@ import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.security.ACL;
 import hudson.triggers.TimerTrigger;
-import hudson.util.FormValidation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
@@ -40,7 +40,7 @@ import org.jvnet.hudson.test.MockBuilder;
 import org.jvnet.hudson.test.SleepBuilder;
 import org.jvnet.hudson.test.TestExtension;
 
-public class BasicIntegrationTest {
+public class FreeStyleProjectTest {
 
   @Rule public JenkinsRule j = new JenkinsRule();
 
@@ -146,37 +146,7 @@ public class BasicIntegrationTest {
     assertNull(withScriptProp.getLabelName());
     assertNotNull(withScriptProp.getResourceMatchScript());
     assertEquals("return true", withScriptProp.getResourceMatchScript().getScript());
-    assertEquals(false, withScriptProp.getResourceMatchScript().isSandbox());
-  }
-
-  @Test
-  public void validationFailure() throws Exception {
-    RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
-    LockableResourcesManager.get().createResource("resource1");
-    LockableResource r = LockableResourcesManager.get().getResources().get(0);
-    r.setLabels("some-label");
-
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckResourceNames("resource1", null, true).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckResourceNames("resource1", "some-label", false).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckResourceNames("resource1", "some-label", true).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckLabelName("some-label", "resource1", false).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckLabelName("some-label", null, true).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckLabelName("some-label", "resource1", true).getMessage());
-
-    assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false));
-    assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false));
+    assertFalse(withScriptProp.getResourceMatchScript().isSandbox());
   }
 
   @Test
@@ -241,6 +211,18 @@ public class BasicIntegrationTest {
     approval.approveSignature(firstPending.signature);
 
     j.assertBuildStatusSuccess(futureBuild);
+  }
+
+  @Test
+  public void autoCreateResource() throws IOException, InterruptedException, ExecutionException {
+    FreeStyleProject f = j.createFreeStyleProject("f");
+    f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
+
+    FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+    j.waitForMessage("acquired lock on [resource1]", fb1);
+    j.waitForCompletion(fb1);
+
+    assertNull(LockableResourcesManager.get().fromName("resource1"));
   }
 
   @TestExtension
