@@ -107,8 +107,10 @@ public class LockableResourcesStruct implements Serializable {
    * LockableResource} matches the condition.
    *
    * @return System Groovy Script if defined
-   * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
-   * @since TODO
+   * @see
+   *     LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript,
+   *     java.util.Map)
+   * @since 2.1
    */
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {

@@ -12,23 +12,19 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
-import hudson.model.Job;
 import hudson.util.FormValidation;
-
 import java.util.ArrayList;
 import java.util.List;
-
+import javax.annotation.CheckForNull;
 import net.sf.json.JSONObject;
-
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-
-import javax.annotation.CheckForNull;
 
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
@@ -43,7 +39,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 			String resourceNamesVar, String resourceNumber,
 			String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
 		super();
-		
+
 		if (resourceNames == null || resourceNames.trim().isEmpty()) {
 			this.resourceNames = null;
 		} else {
@@ -73,6 +69,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 	}
 
+  /**
+   * @deprecated groovy script was added (since 2.0)
+   */
 	@Deprecated
 	public RequiredResourcesProperty(String resourceNames,
 									 String resourceNamesVar, String resourceNumber,
@@ -118,7 +117,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	/**
 	 * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
 	 * @return System Groovy Script if defined
-	 * @since TODO
+	 * @since 2.0
 	 * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
 	 */
 	@CheckForNull
@@ -273,4 +272,3 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 		}
 	}
 }
-

@@ -124,7 +124,7 @@ public class LockStep extends Step implements Serializable {
   public String toString() {
     if (extra != null && !extra.isEmpty()) {
       return getResources().stream()
-          .map(resource -> "{" + resource.toString() + "}")
+          .map(res -> "{" + res.toString() + "}")
           .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
       return LockStepResource.toString(resource, label, quantity);

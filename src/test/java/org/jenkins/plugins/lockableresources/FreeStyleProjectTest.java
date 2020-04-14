@@ -16,7 +16,6 @@ import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
-import hudson.security.ACL;
 import hudson.triggers.TimerTrigger;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,8 +23,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
-import org.acegisecurity.context.SecurityContext;
-import org.acegisecurity.context.SecurityContextHolder;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDispatcher;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
@@ -171,13 +168,12 @@ public class FreeStyleProjectTest {
         "resourceName == org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
 
     FreeStyleProject p = j.createFreeStyleProject();
-    SecurityContext orig = ACL.impersonate(User.get("alice").impersonate());
-    SecurityContextHolder.setContext(orig);
     SecureGroovyScript groovyScript =
         new SecureGroovyScript(SCRIPT, true, null).configuring(ApprovalContext.create());
 
     p.addProperty(new RequiredResourcesProperty(null, null, null, null, groovyScript));
 
+    User.getOrCreateByIdOrFullName("alice");
     JenkinsRule.WebClient wc = j.createWebClient();
     wc.login("alice");
 

@@ -1,5 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
+import hudson.EnvVars;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
@@ -8,7 +11,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
@@ -18,19 +20,11 @@ import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
-import com.google.common.base.Joiner;
-
-import hudson.EnvVars;
-import hudson.model.Run;
-import hudson.model.TaskListener;
-
 public class LockStepExecution extends AbstractStepExecutionImpl implements Serializable {
 
   private static final long serialVersionUID = 1391734561272059623L;
 
-  private static Joiner COMMA_JOINER = Joiner.on(',');
-
-  private static Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
+  private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
   private final LockStep step;
 
@@ -137,7 +131,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
                   @Override
                   public void expand(EnvVars env) throws IOException, InterruptedException {
-                    final String resources = COMMA_JOINER.join(resourcenames);
+                    final String resources = String.join(",", resourcenames);
                     LOGGER.finest(
                         "Setting ["
                             + variable
