@@ -8,6 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.BulkChange;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
@@ -39,6 +42,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @Deprecated private transient int defaultPriority;
   @Deprecated private transient String priorityParameterName;
   private List<LockableResource> resources;
+  private transient Cache<Long,List<LockableResource>> cachedCandidates = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
 
   /**
    * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
@@ -254,18 +258,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return null;
     }
 
-    boolean candidatesByScript = false;
-    List<LockableResource> candidates = new ArrayList<>();
     final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
-    if (requiredResources.label != null
-        && requiredResources.label.isEmpty()
-        && systemGroovyScript == null) {
-      candidates = requiredResources.required;
-    } else if (systemGroovyScript == null) {
-      candidates = getResourcesWithLabel(requiredResources.label, params);
-    } else {
-      candidates = getResourcesMatchingScript(systemGroovyScript, params);
-      candidatesByScript = true;
+    boolean candidatesByScript = (systemGroovyScript != null);
+    List<LockableResource> candidates = requiredResources.required; // default canditates
+
+    if (candidatesByScript ||
+        (requiredResources.label != null && !requiredResources.label.isEmpty())) {
+      candidates = cachedCandidates.getIfPresent(queueItemId);
+      if (candidates != null) {
+        candidates.retainAll(resources);
+      } else {
+        candidates = (systemGroovyScript == null)
+						? getResourcesWithLabel(requiredResources.label, params)
+						: getResourcesMatchingScript(systemGroovyScript, params);
+        cachedCandidates.put(queueItemId, candidates);
+      }
     }
 
     for (LockableResource rs : candidates) {
