@@ -26,7 +26,7 @@ public class InteroperabilityTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	echo 'Locked'\n" + "}\n" + "echo 'Finish'"));
+            "lock('resource1') {\n" + "	echo 'Locked'\n" + "}\n" + "echo 'Finish'", true));
 
     FreeStyleProject f = j.createFreeStyleProject("f");
     f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));

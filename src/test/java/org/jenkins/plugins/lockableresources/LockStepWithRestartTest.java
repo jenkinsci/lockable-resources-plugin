@@ -1,7 +1,5 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assume.assumeFalse;
-
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import java.util.Collections;
@@ -9,7 +7,6 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -19,12 +16,6 @@ public class LockStepWithRestartTest extends LockStepTestBase {
 
   @Rule public RestartableJenkinsRule story = new RestartableJenkinsRule();
 
-  @Before
-  public void disableOnNewerJava() {
-    // FIXME: These tests break on Java 11
-    assumeFalse(Double.parseDouble(System.getProperty("java.specification.version", "1.8")) > 10.0);
-  }
-
   @Test
   public void lockOrderRestart() {
     story.then(
@@ -33,10 +24,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
               new CpsFlowDefinition(
-                  "lock('resource1') {\n"
-                      + "  semaphore 'wait-inside'\n"
-                      + "}\n"
-                      + "echo 'Finish'"));
+                  "lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+                  true));
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           SemaphoreStep.waitForStart("wait-inside/1", b1);
           WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -86,10 +75,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
               new CpsFlowDefinition(
-                  "lock('resource1') {\n"
-                      + "  semaphore 'wait-inside'\n"
-                      + "}\n"
-                      + "echo 'Finish'"));
+                  "lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+                  true));
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           SemaphoreStep.waitForStart("wait-inside/1", b1);
           isPaused(b1, 1, 0);
@@ -98,11 +85,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 
           f.scheduleBuild2(0);
-
-          while (j.jenkins.getQueue().getItems().length != 1) {
-            System.out.println("Waiting for freestyle to be queued...");
-            Thread.sleep(1000);
-          }
+          TestHelpers.waitForQueue(j.jenkins, f);
         });
 
     story.then(
@@ -115,11 +98,14 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           SemaphoreStep.success("wait-inside/1", null);
           j.waitForMessage("Lock released on resource [resource1]", b1);
           isPaused(b1, 1, 0);
+
           FreeStyleBuild fb1 = null;
+          System.out.print("Waiting for freestyle #1 to start building");
           while ((fb1 = f.getBuildByNumber(1)) == null) {
-            System.out.println("Waiting for freestyle #1 to start building...");
-            Thread.sleep(1000);
+            Thread.sleep(250);
+            System.out.print('.');
           }
+          System.out.println();
 
           j.waitForMessage("acquired lock on [resource1]", fb1);
         });
@@ -136,7 +122,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
               new CpsFlowDefinition(
-                  "lock('resource1') {\n" + "  echo 'inside'\n" + "}\n" + "echo 'Finish'"));
+                  "lock('resource1') {\n" + "  echo 'inside'\n" + "}\n" + "echo 'Finish'", true));
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           j.waitForMessage("[resource1] is locked, waiting...", b1);
           isPaused(b1, 1, 1);
@@ -145,11 +131,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 
           f.scheduleBuild2(0);
-
-          while (j.jenkins.getQueue().getItems().length != 1) {
-            System.out.println("Waiting for freestyle to be queued...");
-            Thread.sleep(1000);
-          }
+          TestHelpers.waitForQueue(j.jenkins, f);
         });
 
     story.then(
