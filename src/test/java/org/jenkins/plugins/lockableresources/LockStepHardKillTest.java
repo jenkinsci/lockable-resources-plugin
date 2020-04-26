@@ -155,11 +155,6 @@ public class LockStepHardKillTest extends LockStepTestBase {
       Executor ex = b.getExecutor();
       assertNotNull(ex);
       ex.interrupt();
-      j.waitForMessage("Click here to forcibly terminate running steps", b);
-      b.doTerm();
-      j.waitForMessage("Click here to forcibly kill entire build", b);
-      b.doKill();
-      j.waitForMessage("Hard kill!", b);
       j.waitForCompletion(b);
       j.assertBuildStatus(Result.ABORTED, b);
     }

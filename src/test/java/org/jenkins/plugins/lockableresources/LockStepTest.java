@@ -302,14 +302,13 @@ public class LockStepTest extends LockStepTestBase {
 
   @Test
   public void parallelLock() throws Exception {
-    LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
             "parallel a: {\n"
                 + "	sleep 5\n"
                 + "	lock('resource1') {\n"
-                + "		sleep 5\n"
+                + "		semaphore 'inside-a'\n"
                 + "	}\n"
                 + "}, b: {\n"
                 + "	lock('resource1') {\n"
@@ -321,17 +320,19 @@ public class LockStepTest extends LockStepTestBase {
     SemaphoreStep.waitForStart("wait-b/1", b1);
     // both messages are in the log because branch b acquired the lock and branch a is waiting to
     // lock
-    j.waitForMessage("[b] Lock acquired on [resource1]", b1);
-    j.waitForMessage(
-        "[a] [resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b1);
+    j.waitForMessage("Lock acquired on [resource1]", b1);
+    j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b1);
     isPaused(b1, 2, 1);
 
     SemaphoreStep.success("wait-b/1", null);
 
-    j.waitForMessage("[a] Lock acquired on [resource1]", b1);
+    j.waitForMessage("Lock acquired on [resource1]", b1);
+    SemaphoreStep.waitForStart("inside-a/1", b1);
     isPaused(b1, 2, 0);
+    SemaphoreStep.success("inside-a/1", null);
 
-    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+    j.waitForCompletion(b1);
+    assertNull(LockableResourcesManager.get().fromName("resource1"));
   }
 
   // TODO: Figure out what to do about the IOException thrown during clean up, since we don't care
