@@ -1,5 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
+import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -185,6 +188,9 @@ public class LockStepTest extends LockStepTestBase {
             true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+    JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", true);
+    assertThat(apiRes, hasEntry("labels", "label1"));
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
@@ -493,6 +499,10 @@ public class LockStepTest extends LockStepTestBase {
     assertNotNull(resource1);
     resource1.setReservedBy("someone");
     assertTrue(resource1.isReserved());
+
+    JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
+    assertThat(apiRes, hasEntry("reserved", true));
+    assertThat(apiRes, hasEntry("reservedBy", "someone"));
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
