@@ -347,12 +347,20 @@ public class LockStepTest extends LockStepTestBase {
     assertNull(LockableResourcesManager.get().fromName("resource1"));
   }
 
-  // TODO: Figure out what to do about the IOException thrown during clean up, since we don't care
-  // about it. It's just a result of the first build being deleted and is nothing but noise here.
+  /* TODO: This test does not run on Windows. Before wasting another afternoon trying to fix this, I'd suggest watching
+   * a good movie instead. If you really want to try your luck, here are some pointers:
+   * - Windows doesn't like to delete files that are currently in use
+   * - When deleting a running pipeline job, the listener keeps its logfile open
+   * This has the potential to fail at two points:
+   * - Right when deleting the run: Jenkins tries to remove the run directory, which contains the open log file
+   * - After the test, on cleanup, the jenkins test harness tries to remove the complete Jenkins data directory
+   * Things already tried: Getting a handle on the listener and closing its logfile.
+   * Stupid idea: Implement a JEP-210 extension, which keeps log files in memory...
+   */
   @Issue("JENKINS-36479")
   @Test
   public void deleteRunningBuildNewBuildClearsLock() throws Exception {
-    assumeFalse(Functions.isWindows()); // TODO: Investigate failure on Windows.
+    assumeFalse(Functions.isWindows());
 
     LockableResourcesManager.get().createResource("resource1");
 
