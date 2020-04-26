@@ -94,11 +94,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 
           f.scheduleBuild2(0);
-
-          while (j.jenkins.getQueue().getItems().length != 1) {
-            System.out.println("Waiting for freestyle to be queued...");
-            Thread.sleep(1000);
-          }
+          TestHelpers.waitForQueue(j.jenkins, f);
         });
 
     story.then(
@@ -111,11 +107,14 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           SemaphoreStep.success("wait-inside/1", null);
           j.waitForMessage("Lock released on resource [resource1]", b1);
           isPaused(b1, 1, 0);
+
           FreeStyleBuild fb1 = null;
+          System.out.print("Waiting for freestyle #1 to start building");
           while ((fb1 = f.getBuildByNumber(1)) == null) {
-            System.out.println("Waiting for freestyle #1 to start building...");
-            Thread.sleep(1000);
+            Thread.sleep(250);
+            System.out.print('.');
           }
+          System.out.println();
 
           j.waitForMessage("acquired lock on [resource1]", fb1);
         });
@@ -141,11 +140,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 
           f.scheduleBuild2(0);
-
-          while (j.jenkins.getQueue().getItems().length != 1) {
-            System.out.println("Waiting for freestyle to be queued...");
-            Thread.sleep(1000);
-          }
+          TestHelpers.waitForQueue(j.jenkins, f);
         });
 
     story.then(

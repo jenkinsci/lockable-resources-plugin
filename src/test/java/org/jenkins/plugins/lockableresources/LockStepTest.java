@@ -315,7 +315,7 @@ public class LockStepTest extends LockStepTestBase {
     p.setDefinition(
         new CpsFlowDefinition(
             "parallel a: {\n"
-                + "	sleep 5\n"
+                + "	semaphore 'before-a'\n"
                 + "	lock('resource1') {\n"
                 + "		semaphore 'inside-a'\n"
                 + "	}\n"
@@ -328,9 +328,11 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-b/1", b1);
+    SemaphoreStep.waitForStart("before-a/1", b1);
     // both messages are in the log because branch b acquired the lock and branch a is waiting to
     // lock
     j.waitForMessage("Lock acquired on [resource1]", b1);
+    SemaphoreStep.success("before-a/1", null);
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b1);
     isPaused(b1, 2, 1);
 

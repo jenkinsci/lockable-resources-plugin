@@ -1,5 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -17,6 +20,7 @@ import hudson.model.Result;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.triggers.TimerTrigger;
+import hudson.util.OneShotEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,12 +34,7 @@ import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.Issue;
-import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.MockAuthorizationStrategy;
-import org.jvnet.hudson.test.MockBuilder;
-import org.jvnet.hudson.test.SleepBuilder;
-import org.jvnet.hudson.test.TestExtension;
+import org.jvnet.hudson.test.*;
 
 public class FreeStyleProjectTest {
 
@@ -73,19 +72,23 @@ public class FreeStyleProjectTest {
     assertNotNull(newProp.getResourceMatchScript());
     assertEquals("resourceName == 'resource1'", newProp.getResourceMatchScript().getScript());
 
-    p2.getBuildersList().add(new SleepBuilder(5000));
+    SemaphoreBuilder p2Builder = new SemaphoreBuilder();
+    p2.getBuildersList().add(p2Builder);
 
     FreeStyleProject p3 = j.createFreeStyleProject("p3");
     p3.addProperty(new RequiredResourcesProperty("resource1", null, "1", null, null));
-    p3.getBuildersList().add(new SleepBuilder(10000));
+    SemaphoreBuilder p3Builder = new SemaphoreBuilder();
+    p3.getBuildersList().add(p3Builder);
 
     final QueueTaskFuture<FreeStyleBuild> taskA =
         p3.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
-    Thread.sleep(2500);
+    TestHelpers.waitForQueue(j.jenkins, p3);
     final QueueTaskFuture<FreeStyleBuild> taskB =
         p2.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
 
+    p3Builder.release();
     final FreeStyleBuild buildA = taskA.get(60, TimeUnit.SECONDS);
+    p2Builder.release();
     final FreeStyleBuild buildB = taskB.get(60, TimeUnit.SECONDS);
 
     long buildAEndTime = buildA.getStartTimeInMillis() + buildA.getDuration();
@@ -99,7 +102,7 @@ public class FreeStyleProjectTest {
   }
 
   @Test
-  public void configRoundTrip() throws Exception {
+  public void configRoundTripPlain() throws Exception {
     LockableResourcesManager.get().createResource("resource1");
 
     FreeStyleProject withResource = j.createFreeStyleProject("withResource");
@@ -115,7 +118,10 @@ public class FreeStyleProjectTest {
     assertNull(withResourceProp.getResourceNumber());
     assertNull(withResourceProp.getLabelName());
     assertNull(withResourceProp.getResourceMatchScript());
+  }
 
+  @Test
+  public void configRoundTripWithLabel() throws Exception {
     FreeStyleProject withLabel = j.createFreeStyleProject("withLabel");
     withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "some-label", null));
     FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
@@ -128,7 +134,10 @@ public class FreeStyleProjectTest {
     assertNull(withLabelProp.getResourceNumber());
     assertEquals("some-label", withLabelProp.getLabelName());
     assertNull(withLabelProp.getResourceMatchScript());
+  }
 
+  @Test
+  public void configRoundTripWithScript() throws Exception {
     FreeStyleProject withScript = j.createFreeStyleProject("withScript");
     SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
     withScript.addProperty(new RequiredResourcesProperty(null, null, null, null, origScript));
@@ -178,20 +187,12 @@ public class FreeStyleProjectTest {
     wc.login("alice");
 
     QueueTaskFuture<FreeStyleBuild> futureBuild = p.scheduleBuild2(0);
+    TestHelpers.waitForQueue(j.jenkins, p, Queue.BlockedItem.class);
 
-    // Sleeping briefly to make sure the queue gets updated.
-    Thread.sleep(2000);
-
-    List<Queue.Item> items = j.jenkins.getQueue().getItems(p);
-    assertNotNull(items);
-    assertEquals(1, items.size());
-
-    assertTrue(items.get(0) instanceof Queue.BlockedItem);
-
-    Queue.BlockedItem blockedItem = (Queue.BlockedItem) items.get(0);
-    assertTrue(
-        blockedItem.getCauseOfBlockage()
-            instanceof LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed);
+    Queue.BlockedItem blockedItem = (Queue.BlockedItem) j.jenkins.getQueue().getItem(p);
+    assertThat(
+        blockedItem.getCauseOfBlockage(),
+        is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed.class)));
 
     ScriptApproval approval = ScriptApproval.get();
     List<ScriptApproval.PendingSignature> pending = new ArrayList<>();
@@ -221,12 +222,7 @@ public class FreeStyleProjectTest {
     assertNull(LockableResourcesManager.get().fromName("resource1"));
   }
 
-  @TestExtension
-  public static class PrinterBuilder extends MockBuilder {
-
-    public PrinterBuilder() {
-      super(Result.SUCCESS);
-    }
+  public static class PrinterBuilder extends TestBuilder {
 
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
@@ -235,6 +231,22 @@ public class FreeStyleProjectTest {
           .getLogger()
           .println("resourceNameVar: " + build.getEnvironment(listener).get("resourceNameVar"));
       return true;
+    }
+  }
+
+  private static class SemaphoreBuilder extends TestBuilder {
+
+    private final OneShotEvent event = new OneShotEvent();
+
+    @Override
+    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+        throws InterruptedException {
+      event.block();
+      return true;
+    }
+
+    void release() {
+      event.signal();
     }
   }
 }
