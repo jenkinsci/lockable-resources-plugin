@@ -24,14 +24,15 @@ public class LockStepHardKillTest extends LockStepTestBase {
 
     WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p");
     p1.setDefinition(
-        new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }"));
+        new CpsFlowDefinition(
+            "lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }", true));
     WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
     j.waitForMessage("locked!", b1);
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}"));
+        new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
     // Make sure that b2 is blocked on b1's lock.
@@ -42,7 +43,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     // lock.
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}"));
+        new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b3);
     isPaused(b3, 1, 1);

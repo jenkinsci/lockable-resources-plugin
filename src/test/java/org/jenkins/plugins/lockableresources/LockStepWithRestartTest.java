@@ -33,10 +33,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
               new CpsFlowDefinition(
-                  "lock('resource1') {\n"
-                      + "  semaphore 'wait-inside'\n"
-                      + "}\n"
-                      + "echo 'Finish'"));
+                  "lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+                  true));
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           SemaphoreStep.waitForStart("wait-inside/1", b1);
           WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -86,10 +84,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
               new CpsFlowDefinition(
-                  "lock('resource1') {\n"
-                      + "  semaphore 'wait-inside'\n"
-                      + "}\n"
-                      + "echo 'Finish'"));
+                  "lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+                  true));
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           SemaphoreStep.waitForStart("wait-inside/1", b1);
           isPaused(b1, 1, 0);
@@ -136,7 +132,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
               new CpsFlowDefinition(
-                  "lock('resource1') {\n" + "  echo 'inside'\n" + "}\n" + "echo 'Finish'"));
+                  "lock('resource1') {\n" + "  echo 'inside'\n" + "}\n" + "echo 'Finish'", true));
           WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
           j.waitForMessage("[resource1] is locked, waiting...", b1);
           isPaused(b1, 1, 1);
