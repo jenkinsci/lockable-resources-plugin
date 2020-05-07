@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import com.iwombat.util.GUIDUtil;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.BulkChange;
@@ -20,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
@@ -372,7 +374,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   private synchronized void freeResources(
-      List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+    List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+
     for (String unlockResourceName : unlockResourceNames) {
       Iterator<LockableResource> resourceIterator = this.resources.iterator();
       while (resourceIterator.hasNext()) {
@@ -388,9 +391,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // No more contexts, unlock resource
             resource.unqueue();
             resource.setBuild(null);
-            if (resource.isEphemeral()) {
-              resourceIterator.remove();
-            }
           }
         }
       }
@@ -435,9 +435,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
       nextContext =
           this.getNextQueuedContext(remainingResourceNamesToUnLock, inversePrecedence, nextContext);
 
-      // no context is queued which can be started once these resources are free'd.
+      /*
+       * If nextContent == null and remainingResourceNamesToUnlock is not empty,
+       * it means there are no ctx that can be started immediately after freeing remainingResourceNamesToUnlock.
+       *
+       * However, this does not mean that any _ephemeral_ resources can be freely deleted; there might
+       * be contexts that get their needed resources freed only when any of the next runs release their resources
+       * Example: Assume ctxA, ctxB and ctxC start in succession and the following events occur:
+       * (1) ctxA: creates label X with 8 resources and immediately locks 5 of them: X(5/8). ctxA starts to run.
+       * (2) ctxB: Starts and needs two more resources of X: the state of X changes to X(7/8).  ctxB starts to run.
+       * (3) ctxC wants 7 resources, but cannot start, because only 1/8 if available -> ctxC cannot start yet
+       * (4) ctxA finishes, the state of X changes to X(2/8). However, this is still not enough to start ctxC.
+       * If we use the classic implementation of freeResources now, and X contains ephemeral resources,
+       * the 5 resources of X formerly used by ctxA will be deleted. We get X(2/3), and ctxC will never start.
+       * To prevent this, we need to split freeResources into a "real" freeResources and one deleteUnusedEphemeralResources.
+       */
       if (nextContext == null) {
         this.freeResources(remainingResourceNamesToUnLock, build);
+        deleteUnusedEphemeralResourcesAndLabels(remainingResourceNamesToUnLock);
         save();
         return;
       }
@@ -519,6 +534,60 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  /** Determines which resources and/or labels are not in use freeing the resources
+   * in remainingResourceNamesToUnLock and deletes them if they are ephemeral.
+    * @param freedResourceNames names of the resources that have just been freed and are now candidates for deletion
+   */
+  private synchronized void deleteUnusedEphemeralResourcesAndLabels(List<String> freedResourceNames) {
+    Set<String> labelsUsedByQueueContexts = new HashSet<>();
+    Set<String> resourcesUsedByQueueContexts = new HashSet<>();
+    final Set<String> labelDeletionCandidates = new HashSet<>();
+    final Set<String> resourceDeletionCandidates = new HashSet<>(freedResourceNames);
+
+    /*
+     * We need to build two pairs of lists: Labels & resources used by the remaining, active queuedContext on the one hand,
+     * and the labels & resources who are candidates for deletion.
+     */
+    queuedContexts.forEach(
+      qc -> qc.getResources().forEach(
+        rs -> {
+          if (rs.label != null) {
+            labelsUsedByQueueContexts.add(rs.label);
+            resources.stream().filter(r -> r.getLabelsAsList().contains(rs.label)).forEach(
+              r2 -> {
+                resourcesUsedByQueueContexts.add(r2.getName());
+              }
+            );
+          }
+
+          rs.required.stream().forEach(
+            r -> {
+              labelsUsedByQueueContexts.addAll(r.getLabelsAsList());
+              resourcesUsedByQueueContexts.add(r.getName());
+            }
+          );
+        }
+      )
+    );
+
+    resources.stream()
+      .filter(r -> freedResourceNames.contains(r.getName()))
+      .forEach(
+        r -> {
+          labelDeletionCandidates.addAll(
+            r.getLabelsAsList().stream().filter( l -> l.length()>0 ).collect(Collectors.toSet())
+          );
+        });
+
+    // Subtract the "in use" sets from the candidate sets
+    labelDeletionCandidates.removeAll(labelsUsedByQueueContexts);
+    resourceDeletionCandidates.removeAll(resourcesUsedByQueueContexts);
+
+    // Now we know the items we can safely delete.
+    resources.removeIf(r -> r.isEphemeral() && resourceDeletionCandidates.contains(r.getName()));
+    resources.removeIf(r -> r.isEphemeral() && labelDeletionCandidates.contains(r.getLabels()));
+  }
+
   /**
    * Returns the next queued context with all its requirements satisfied.
    *
@@ -566,13 +635,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return newestEntry;
   }
 
-  /** Creates the resource if it does not exist. */
-  public synchronized boolean createResource(String name) {
+  /** Creates the resource */
+  public boolean createResource(String name) {
+    return createResource(name, false);
+  }
+
+    /** Creates the resource */
+  public synchronized boolean createResource(String name, boolean autoCreateEphemeral) {
     if (name != null) {
       LockableResource existent = fromName(name);
       if (existent == null) {
         LockableResource resource = new LockableResource(name);
-        resource.setEphemeral(true);
+        resource.setEphemeral(autoCreateEphemeral);
         getResources().add(resource);
         save();
         return true;
@@ -581,17 +655,65 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return false;
   }
 
-  public synchronized boolean createResourceWithLabel(String name, String label) {
+  /**
+   * Creates a permanent resource and assigns a label to the resource.
+   * @param name the name of the resource
+   * @param label the label to be assigned to the new resource
+   * @return true if the resource was created, false if it does not need to be created because it already exists
+   * note that in the case of already existing resources, no check is performed if the label of the existing resource
+   * matches the desired label.
+   */
+  public boolean createResourceWithLabel(String name, String label) {
+    return createResourceWithLabel(name, label, false);
+  }
+
+  /**
+   * Creates a resource and assigns a label to the resource.
+   * @param name the name of the resource
+   * @param label the label to be assigned to the new resource
+   * @param ephemeral true if the resource should be deleted when the last reference to it disappears
+   * @return true if the resource was created, false if it does not need to be created because it already exists
+   * note that in the case of already existing resources, no check is performed if the label of the existing resource
+   * matches the desired label.
+   */
+  public synchronized boolean createResourceWithLabel(String name, String label, boolean ephemeral) {
     if (name != null && label != null) {
       LockableResource existent = fromName(name);
       if (existent == null) {
         LockableResource resource = new LockableResource(name);
+        resource.setEphemeral(ephemeral);
         resource.setLabels(label);
         getResources().add(resource);
         save();
         return true;
       }
     }
+    return false;
+  }
+
+  /* Create an ephemeral label with a specified amount of ephemeral resources  */
+  public synchronized boolean createEphemeralLabel(String label, int createLabelWithQuantity) throws InternalException {
+    /* We create a new label if and only if:
+       1. There is no resource with the specified label yet
+       2. The label name is neither null nor the empty string
+       3. createLabelWithQuantity is at least 1.
+     */
+    if (label != null && label.length() > 0 && createLabelWithQuantity > 0 && (! isValidLabel(label))) {
+        for (int i=1; i<=createLabelWithQuantity; i++) {
+          String resourceName = label + "-" + UUID.randomUUID().toString();
+          if ( ! createResourceWithLabel(resourceName, label, true)) {
+            throw new InternalException(
+              String.format("Creation of ephemeral resource '%1$s' for new ephemeral label '%2$s' has failed.",
+                resourceName, label));
+          }  else {
+            LOGGER.log(Level.FINE,
+              String.format("Successfully created ephemeral resource '%1$s' for new ephemeral label '%2$s'", resourceName, label));
+          }
+        }
+        // At this point, all resources (and, by implication, the new label) have been created successfully.
+        return true;
+    }
+    // Fall-through if any pre-conditions are not fulfilled.
     return false;
   }
 
@@ -731,7 +853,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       bc.commit();
     } catch (IOException exception) {
       LOGGER.log(
-          Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
+          Level.WARNING, "Exception occurred while committing bulk change operation.", exception);
       return false;
     }
     return true;
@@ -826,6 +948,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       // Try and re-use as many previously selected resources first
       List<LockableResource> alreadySelectedCandidates = new ArrayList<>(candidates);
+
       alreadySelectedCandidates.retainAll(allSelected);
       for (LockableResource rs : alreadySelectedCandidates) {
         if (selected.size() >= requiredAmount) {

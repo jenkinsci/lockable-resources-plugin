@@ -139,10 +139,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   private boolean labelsContain(String candidate) {
-    return makeLabelsList().contains(candidate);
+    return getLabelsAsList().contains(candidate);
   }
 
-  private List<String> makeLabelsList() {
+  public List<String> getLabelsAsList() {
     return Arrays.asList(labels.split("\\s+"));
   }
 
@@ -162,7 +162,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     Binding binding = new Binding(params);
     binding.setVariable("resourceName", name);
     binding.setVariable("resourceDescription", description);
-    binding.setVariable("resourceLabels", makeLabelsList());
+    binding.setVariable("resourceLabels", getLabelsAsList());
     try {
       Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding);
       if (LOGGER.isLoggable(Level.FINE)) {

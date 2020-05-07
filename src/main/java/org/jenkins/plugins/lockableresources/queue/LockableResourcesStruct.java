@@ -43,7 +43,7 @@ public class LockableResourcesStruct implements Serializable {
       if (resourceName == null) {
         continue;
       }
-      resourcesManager.createResource(resourceName);
+      resourcesManager.createResource(resourceName, true);
       LockableResource r = resourcesManager.fromName(resourceName);
       this.required.add(r);
     }

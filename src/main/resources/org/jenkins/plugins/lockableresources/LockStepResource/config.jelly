@@ -10,4 +10,7 @@
 	<f:entry title="${%Quantity}" field="quantity">
 		<f:number/>
 	</f:entry>
+	<f:entry title="${%CreateLabelWithQuantity}" field="createLabelWithQuantity">
+		<f:number/>
+	</f:entry>
 </j:jelly>

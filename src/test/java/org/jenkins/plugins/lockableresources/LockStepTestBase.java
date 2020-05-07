@@ -25,5 +25,6 @@ public class LockStepTestBase {
     }
     assertEquals(count, pauseActions);
     assertEquals(effectivePauses, pausedActions);
+
   }
 }

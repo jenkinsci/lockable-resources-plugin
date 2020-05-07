@@ -27,6 +27,8 @@ public class LockStep extends Step implements Serializable {
 
   @CheckForNull public String label = null;
 
+  public int createLabelWithQuantity = 0;
+
   public int quantity = 0;
 
   /** name of environment variable to store locked resources in */
@@ -75,6 +77,11 @@ public class LockStep extends Step implements Serializable {
   @DataBoundSetter
   public void setQuantity(int quantity) {
     this.quantity = quantity;
+  }
+
+  @DataBoundSetter
+  public void setCreateLabelWithQuantity(int createLabelWithQuantity) {
+    this.createLabelWithQuantity = createLabelWithQuantity;
   }
 
   @DataBoundSetter
@@ -127,7 +134,7 @@ public class LockStep extends Step implements Serializable {
           .map(res -> "{" + res.toString() + "}")
           .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
-      return LockStepResource.toString(resource, label, quantity);
+      return LockStepResource.toString(resource, label, quantity, createLabelWithQuantity);
     } else {
       return "nothing";
     }
@@ -135,13 +142,13 @@ public class LockStep extends Step implements Serializable {
 
   /** Label and resource are mutual exclusive. */
   public void validate() throws Exception {
-    LockStepResource.validate(resource, label, quantity);
+    LockStepResource.validate(resource, label, quantity, createLabelWithQuantity);
   }
 
   public List<LockStepResource> getResources() {
     List<LockStepResource> resources = new ArrayList<>();
     if (resource != null || label != null) {
-      resources.add(new LockStepResource(resource, label, quantity));
+      resources.add(new LockStepResource(resource, label, quantity, createLabelWithQuantity));
     }
 
     if (extra != null) {

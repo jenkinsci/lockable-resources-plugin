@@ -2,9 +2,7 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.junit.Assume.assumeFalse;
 
 import hudson.Functions;
@@ -13,7 +11,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
+
 import net.sf.json.JSONObject;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -23,6 +24,7 @@ import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.WithPlugin;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 public class LockStepTest extends LockStepTestBase {
 
@@ -73,6 +75,27 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b1, 1, 0);
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
+  public void lockWithNonExistentLabel() throws Exception {
+    // Should fail because createLabelWithQuantity needs to be specified in order to create
+    // resources automatically by label
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.FAILURE, b1);
+    j.assertLogContains("The label does not exist, and createLabelWithQuantity is 0: label1", b1);
+    isPaused(b1, 0, 0);
+
+    assertFalse(LockableResourcesManager.get().isValidLabel("label1"));
   }
 
   @Test
@@ -549,8 +572,13 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  @WithTimeout(180)
   @WithPlugin("jobConfigHistory.hpi")
   public void lockWithLabelConcurrent() throws Exception {
+    /* This test does not work on Windows, due to similar problems as described in deleteRunningBuildNewBuildClearsLock. */
+    assumeFalse(Functions.isWindows());
+
+    final int numberOfThreads = 50;
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     final WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
@@ -559,19 +587,24 @@ public class LockStepTest extends LockStepTestBase {
                 + "Random random = new Random(0);\n"
                 + "lock(label: 'label1') {\n"
                 + "  echo 'Resource locked'\n"
-                + "  sleep random.nextInt(10)*100\n"
+                + "  sleep time: 1000+random.nextInt(2000), unit: 'MILLISECONDS'\n"
                 + "}\n"
                 + "echo 'Finish'",
             true));
-    final CyclicBarrier barrier = new CyclicBarrier(51);
-    for (int i = 0; i < 50; i++) {
+    final CyclicBarrier barrier = new CyclicBarrier(numberOfThreads);
+
+    for (int i = 0; i < numberOfThreads; i++) {
+      System.out.println(String.format("Starting build #%d", i));
       Thread thread =
           new Thread() {
             @Override
             public void run() {
+              final ThreadLocal<WorkflowRun> r;
               try {
                 barrier.await();
                 p.scheduleBuild2(0).waitForStart();
+
+                //j.assertBuildStatusSuccess(j.waitForCompletion(r));
               } catch (Exception e) {
                 System.err.println("Failed to start pipeline job");
               }
@@ -580,7 +613,6 @@ public class LockStepTest extends LockStepTestBase {
       thread.start();
     }
     barrier.await();
-    j.waitUntilNoActivity();
   }
 
   @Test
@@ -854,6 +886,102 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  public void lockWithEphemeralLabelAndResourceQuantity() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "someOtherLabel");
+    LockableResourcesManager.get().createResourceWithLabel("resource2", "someOtherLabel");
+
+    WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
+    p1.setDefinition(
+      new CpsFlowDefinition(
+        "lock(variable: 'var', label: 'label2', createLabelWithQuantity: '2', extra: [[resource: 'resource4'], [resource: 'resource2'], [label: 'label1', quantity: 2, createLabelWithQuantity: 4]]) {\n"
+          + "  def lockedResources = env.var.split(',').sort()\n"
+          + "  echo \"Resources locked: ${lockedResources}\"\n"
+          + "  semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    // #1 should lock as few resources as possible
+    WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+    SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+    WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
+    p2.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var', quantity: 3, createLabelWithQuantity: 14) {\n"
+          + "	def lockedResources = env.var.split(',').sort()\n"
+          + "	echo \"Resources locked: ${lockedResources}\"\n"
+          + "	semaphore 'wait-inside-quantity3'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+    j.waitForMessage("[Label: label1, Quantity: 3, CreateLabelWithQuantity: 14] is locked, waiting...", b2);
+    j.waitForMessage("Found 2 available resource(s). Waiting for correct amount: 3.", b2);
+    isPaused(b2, 1, 1);
+
+    WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
+    p3.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var', quantity: 2) {\n"
+          + "	def lockedResources = env.var.split(',').sort()\n"
+          + "	echo \"Resources locked: ${lockedResources}\"\n"
+          + "	semaphore 'wait-inside-quantity2'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
+
+    // Build 4 is for testing that ephemeral labels created in the main clause (not in the extras clause)
+    // also work.
+    WorkflowJob p4 = j.jenkins.createProject(WorkflowJob.class, "p4");
+    p4.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label2', variable: 'var', quantity: 2, createLabelWithQuantity: 3) {\n"
+          + "	def lockedResources = env.var.split(',').sort()\n"
+          + "	echo \"Resources locked: ${lockedResources}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+     WorkflowRun b4 = p4.scheduleBuild2(0).waitForStart();
+
+    // While 2 continues waiting, 3&4 can continue directly
+    SemaphoreStep.waitForStart("wait-inside-quantity2/1", b3);
+    SemaphoreStep.success("wait-inside-quantity2/1", null);
+    j.waitForMessage("Finish", b3);
+    j.assertLogContains("Resources locked: [", b3);
+    isPaused(b3, 1, 0);
+
+    // Unlock resources
+    SemaphoreStep.success("wait-inside/1", null);
+    j.waitForMessage(
+      "Lock released on resource [{Label: label2, CreateLabelWithQuantity: 2},{resource4},{resource2},{Label: label1, Quantity: 2, CreateLabelWithQuantity: 4}]", b1);
+    j.assertLogContains("Resources locked: [", b1);
+    isPaused(b1, 1, 0);
+
+    // #2 gets the lock
+    j.waitForMessage("Lock acquired on [Label: label1, Quantity: 3, CreateLabelWithQuantity: 14]", b2);
+    SemaphoreStep.success("wait-inside-quantity3/1", null);
+    j.waitForMessage("Finish", b2);
+
+    // Could be any 3 resources, so just check the beginning of the message
+    j.assertLogContains("Resources locked: [label1-", b2);
+    isPaused(b2, 1, 0);
+
+    // Let 4 finish
+    j.waitForMessage("Finish", b4);
+    j.assertLogContains("Resources locked: [label2", b4);
+    isPaused(b4, 1, 0);
+
+    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+    assertNotNull(LockableResourcesManager.get().fromName("resource2"));
+    assertNull(LockableResourcesManager.get().fromName("resource4"));
+
+    assertFalse(LockableResourcesManager.get().isValidLabel("label1"));
+    assertFalse(LockableResourcesManager.get().isValidLabel("label2"));
+
+  }
+
+  @Test
   @Issue("JENKINS-50176")
   public void parallelLockWithLabelFillsVariable() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
@@ -927,7 +1055,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
-    j.assertLogContains("The label does not exist: invalidLabel", b1);
+    j.assertLogContains("The label does not exist, and createLabelWithQuantity is 0: invalidLabel", b1);
     isPaused(b1, 0, 0);
   }
 
