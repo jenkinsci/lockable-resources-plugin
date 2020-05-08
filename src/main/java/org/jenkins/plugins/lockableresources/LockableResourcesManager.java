@@ -8,7 +8,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
-import com.iwombat.util.GUIDUtil;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.BulkChange;
