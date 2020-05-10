@@ -56,6 +56,8 @@
     <workflow-support.version>3.4</workflow-support.version>
     <jenkins.version>2.138.4</jenkins.version>
     <configuration-as-code.version>1.25</configuration-as-code.version>
+    <!-- For compatibility with modern Jenkins LTS -->
+    <slf4jVersion>1.7.26</slf4jVersion>
   </properties>
 
   <dependencies>
