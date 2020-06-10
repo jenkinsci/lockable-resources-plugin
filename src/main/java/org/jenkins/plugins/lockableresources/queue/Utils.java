@@ -15,10 +15,16 @@ import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.Run;
+import java.util.regex.Pattern;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public final class Utils {
     private Utils() {}
+
+    /**
+     * Pattern for capturing variables. Either $xyz, ${xyz} or ${a.b} but not $a.b
+     */
+    private static final Pattern VARIABLE = Pattern.compile("\\$([A-Za-z0-9_]+|\\{[A-Za-z0-9_.]+\\})");
 
     @CheckForNull
     public static Job<?, ?> getProject(@NonNull Queue.Item item) {
@@ -32,8 +38,8 @@ public final class Utils {
     }
 
     @CheckForNull
-    public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project) {
-        EnvVars env = new EnvVars();
+    public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project,
+                                                            EnvVars env) {
 
         if (project instanceof MatrixConfiguration) {
             env.putAll(((MatrixConfiguration) project).getCombination());
@@ -44,5 +50,9 @@ public final class Utils {
         if (property != null) return new LockableResourcesStruct(property, env);
 
         return null;
+    }
+
+    public static boolean isVariable(String name) {
+        return VARIABLE.matcher(name).matches();
     }
 }

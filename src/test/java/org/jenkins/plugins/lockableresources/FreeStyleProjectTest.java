@@ -15,14 +15,17 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Item;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.Result;
+import hudson.model.StringParameterDefinition;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.triggers.TimerTrigger;
 import hudson.util.OneShotEvent;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
@@ -227,6 +230,44 @@ public class FreeStyleProjectTest {
         j.waitForCompletion(fb1);
 
         assertNull(LockableResourcesManager.get().fromName("resource1"));
+    }
+
+    @Test
+    public void autoCreateResourceFromParameter() throws Exception {
+        ParametersDefinitionProperty params = new ParametersDefinitionProperty(
+                new StringParameterDefinition("param1", "resource1", "parameter 1"));
+
+        FreeStyleProject f = j.createFreeStyleProject("f");
+        f.addProperty(params);
+        f.addProperty(new RequiredResourcesProperty("${param1}", null, null, null, null));
+
+        FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(fb1);
+        assertEquals("resource1", fb1.getBuildVariableResolver().resolve("param1"));
+        j.assertLogContains("acquired lock on [resource1]", fb1);
+        j.waitUntilNoActivity();
+
+        assertNull(LockableResourcesManager.get().fromName("resource1"));
+    }
+
+    @Test
+    public void resourceNumberFromParameter() throws IOException, InterruptedException, ExecutionException {
+        LockableResourcesManager lm = LockableResourcesManager.get();
+        lm.createResourceWithLabel("resource1", "resource");
+        lm.createResourceWithLabel("resource2", "resource");
+        lm.reserve(Arrays.asList(lm.fromName("resource1")), "user1");
+
+        ParametersDefinitionProperty params = new ParametersDefinitionProperty(
+                new StringParameterDefinition("numParam", "1", "parameter 1"));
+
+        FreeStyleProject f = j.createFreeStyleProject("f");
+        f.addProperty(params);
+        f.addProperty(new RequiredResourcesProperty(null, null, "${numParam}", "resource", null));
+
+        FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(fb1);
+        assertEquals("1", fb1.getBuildVariableResolver().resolve("numParam"));
+        j.assertLogContains("acquired lock on [resource2]", fb1);
     }
 
     @Test

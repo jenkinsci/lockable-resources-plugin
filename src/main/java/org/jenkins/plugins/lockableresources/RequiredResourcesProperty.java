@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.queue.Utils;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.AncestorInPath;
@@ -48,25 +49,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             @CheckForNull SecureGroovyScript resourceMatchScript) {
         super();
 
-        if (resourceNames == null || resourceNames.trim().isEmpty()) {
-            this.resourceNames = null;
-        } else {
-            this.resourceNames = resourceNames.trim();
-        }
-        if (resourceNamesVar == null || resourceNamesVar.trim().isEmpty()) {
-            this.resourceNamesVar = null;
-        } else {
-            this.resourceNamesVar = resourceNamesVar.trim();
-        }
-        if (resourceNumber == null || resourceNumber.trim().isEmpty()) {
-            this.resourceNumber = null;
-        } else {
-            this.resourceNumber = resourceNumber.trim();
-        }
-        String labelNamePreparation = (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
+        this.resourceNames = Util.fixEmptyAndTrim(resourceNames);
+        this.resourceNamesVar = Util.fixEmptyAndTrim(resourceNamesVar);
+        this.resourceNumber = Util.fixEmptyAndTrim(resourceNumber);
         if (resourceMatchScript != null) {
             this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
-            this.labelName = labelNamePreparation;
+            this.labelName = Util.fixEmptyAndTrim(labelName);
         } else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
             this.resourceMatchScript = new SecureGroovyScript(
                             labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
@@ -74,7 +62,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             this.labelName = null;
         } else {
             this.resourceMatchScript = null;
-            this.labelName = labelNamePreparation;
+            this.labelName = Util.fixEmptyAndTrim(labelName);
         }
     }
 
@@ -184,12 +172,23 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 return FormValidation.error(Messages.error_labelAndNameOrGroovySpecified());
             } else {
                 List<String> wrongNames = new ArrayList<>();
+                List<String> varNames = new ArrayList<>();
                 for (String name : names.split("\\s+")) {
                     boolean found = LockableResourcesManager.get().resourceExist(name);
-                    if (!found) wrongNames.add(name);
+                    if (!found) {
+                        if (Utils.isVariable(name)) {
+                            varNames.add(name);
+                        } else {
+                            wrongNames.add(name);
+                        }
+                    }
                 }
-                if (wrongNames.isEmpty()) {
+                if (wrongNames.isEmpty() && varNames.isEmpty()) {
                     return FormValidation.ok();
+                } else if (wrongNames.isEmpty()) {
+                    return FormValidation
+              .warning("The following resources cannot be validated as they are the environment variables: "
+                       + varNames);
                 } else {
                     return FormValidation.error(Messages.error_resourceDoesNotExist(wrongNames));
                 }

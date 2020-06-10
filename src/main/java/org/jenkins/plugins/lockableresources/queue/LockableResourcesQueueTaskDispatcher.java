@@ -11,6 +11,7 @@ package org.jenkins.plugins.lockableresources.queue;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.matrix.MatrixProject;
@@ -51,7 +52,21 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         Job<?, ?> project = Utils.getProject(item);
         if (project == null) return null;
 
-        LockableResourcesStruct resources = Utils.requiredResources(project);
+        EnvVars env = new EnvVars();
+        for (ParametersAction pa : item.getActions(ParametersAction.class)) {
+            for (ParameterValue p : pa.getParameters()) {
+                try {
+                    String value = p.createVariableResolver(null).resolve(p.getName());
+                    if (value != null)
+                        env.put(p.getName(), value);
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Unable to resolve parameter, " + p.getName(), e);
+                }
+            }
+        }
+
+        LockableResourcesStruct resources = Utils.requiredResources(project, env);
+
         if (resources == null
                 || (resources.required.isEmpty()
                         && resources.label.isEmpty()
@@ -59,11 +74,14 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             return null;
         }
 
-        int resourceNumber;
-        try {
-            resourceNumber = Integer.parseInt(resources.requiredNumber);
-        } catch (NumberFormatException e) {
-            resourceNumber = 0;
+        int resourceNumber = 0;
+        if (resources.requiredNumber != null) {
+            try {
+                resourceNumber = Integer.parseInt(resources.requiredNumber);
+            } catch (NumberFormatException e) {
+                LOGGER.log(Level.WARNING, "Failed to convert the required number to an integer, " + resources.requiredNumber, e);
+                resourceNumber = 0;
+            }
         }
 
         LOGGER.finest(project.getName() + " trying to get resources with these details: " + resources);

@@ -68,7 +68,7 @@ public class LockableResourcesStruct implements Serializable {
 
         requiredVar = property.getResourceNamesVar();
 
-        requiredNumber = property.getResourceNumber();
+        requiredNumber = env.expand(property.getResourceNumber());
         if (requiredNumber != null && requiredNumber.equals("0")) requiredNumber = null;
     }
 
