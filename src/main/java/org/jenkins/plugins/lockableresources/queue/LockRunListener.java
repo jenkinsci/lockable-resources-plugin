@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
@@ -45,7 +46,8 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 			Job<?, ?> proj = Utils.getProject(build);
 			Set<LockableResource> required = new HashSet<>();
 			if (proj != null) {
-				LockableResourcesStruct resources = Utils.requiredResources(proj);
+				EnvVars env = new EnvVars(((AbstractBuild)build).getBuildVariables());
+				LockableResourcesStruct resources = Utils.requiredResources(proj, env);
 
 				if (resources != null) {
 					if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
