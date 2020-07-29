@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.Extension;
+import hudson.model.Api;
 import hudson.model.RootAction;
 import hudson.model.User;
 import hudson.security.AccessDeniedException2;
@@ -27,8 +28,11 @@ import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 @Extension
+@ExportedBean
 public class LockableResourcesRootAction implements RootAction {
 
 	public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
@@ -54,6 +58,10 @@ public class LockableResourcesRootAction implements RootAction {
 		return Jenkins.get().hasPermission(VIEW) ? ICON : null;
 	}
 
+	public Api getApi() {
+		return new Api(this);
+	}
+
 	public String getUserName() {
 		User current = User.current();
 		if (current != null)
@@ -72,6 +80,7 @@ public class LockableResourcesRootAction implements RootAction {
 		return Jenkins.get().hasPermission(VIEW) ? "lockable-resources" : "";
 	}
 
+	@Exported
 	public List<LockableResource> getResources() {
 		return LockableResourcesManager.get().getResources();
 	}
