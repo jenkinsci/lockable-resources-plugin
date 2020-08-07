@@ -25,10 +25,13 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
 	public int quantity = 0;
 
-	LockStepResource(String resource, String label, int quantity) {
+	public int createLabelWithQuantity = 0;
+
+	LockStepResource(String resource, String label, int quantity, int createLabelWithQuantity) {
 		this.resource = resource;
 		this.label = label;
 		this.quantity = quantity;
+		this.createLabelWithQuantity = createLabelWithQuantity;
 	}
 
 	@DataBoundConstructor
@@ -50,17 +53,27 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 		this.quantity = quantity;
 	}
 
-	public String toString() {
-		return toString(resource, label, quantity);
+  @DataBoundSetter
+  public void setCreateLabelWithQuantity(int quantity) {
+    this.createLabelWithQuantity = quantity;
+  }
+
+  public String toString() {
+		return toString(resource, label, quantity, createLabelWithQuantity);
 	}
-	
-	public static String toString(String resource, String label, int quantity) {
+
+	public static String toString(String resource, String label, int quantity, int createLabelWithQuantity) {
 		// a label takes always priority
 		if (label != null) {
-			if (quantity > 0) {
-				return "Label: " + label + ", Quantity: " + quantity;
-			}
-			return "Label: " + label;
+		  String result = "";
+			result += "Label: " + label;
+      if (quantity > 0) {
+        result += ", Quantity: " + quantity;
+      }
+      if (createLabelWithQuantity > 0) {
+        result += ", CreateLabelWithQuantity: " + createLabelWithQuantity;
+      }
+      return result;
 		}
 		// make sure there is an actual resource specified
 		if (resource != null) {
@@ -73,20 +86,23 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	 * Label and resource are mutual exclusive.
 	 */
 	public void validate() throws Exception {
-		validate(resource, label, quantity);
+		validate(resource, label, quantity, createLabelWithQuantity);
 	}
 
 	/**
 	 * Label and resource are mutual exclusive.
 	 * The label, if provided, must be configured (at least one resource must have this label).
 	 */
-	public static void validate(String resource, String label, int quantity) throws Exception {
+	public static void validate(String resource, String label, int quantity, int createLabelWithQuantity) throws Exception {
 		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
 			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
 		}
-		if (label != null && !LockableResourcesManager.get().isValidLabel( label ) ) {
-			throw new IllegalArgumentException("The label does not exist: " + label);
+		if (label != null && !LockableResourcesManager.get().isValidLabel( label ) && (createLabelWithQuantity == 0)) {
+			throw new IllegalArgumentException("The label does not exist, and createLabelWithQuantity is 0: " + label);
 		}
+    if (label == null && (createLabelWithQuantity > 0)) {
+      throw new IllegalArgumentException("createLabelWithQuantity cannot be used without a label name.");
+    }
 	}
 
 	private static final long serialVersionUID = 1L;

@@ -45,11 +45,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     for (LockStepResource resource : step.getResources()) {
       List<String> resources = new ArrayList<>();
+
       if (resource.resource != null) {
-        if (LockableResourcesManager.get().createResource(resource.resource)) {
+        if (LockableResourcesManager.get().createResource(resource.resource, true)) {
           logger.println("Resource [" + resource + "] did not exist. Created.");
         }
         resources.add(resource.resource);
+      }
+
+      if (resource.label != null && resource.createLabelWithQuantity > 0) {
+        boolean ephemeralLabelCreated = LockableResourcesManager.get().createEphemeralLabel(
+          resource.label, resource.createLabelWithQuantity);
+        if (ephemeralLabelCreated) {
+          logger.println("Label [" + resource.label + "] did not exist. An ephemeral label was created.");
+        }
       }
       resourceHolderList.add(
           new LockableResourcesStruct(resources, resource.label, resource.quantity));
