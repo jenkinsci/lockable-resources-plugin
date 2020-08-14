@@ -247,6 +247,26 @@ public class FreeStyleProjectTest {
   }
 
   @Test
+  public void labelFromParameter() throws IOException, InterruptedException, ExecutionException {
+    LockableResourcesManager lm = LockableResourcesManager.get();
+    lm.createResourceWithLabel("resource1", "resource");
+    lm.createResourceWithLabel("resource2", "resource");
+
+    ParametersDefinitionProperty params = new ParametersDefinitionProperty(
+            new StringParameterDefinition("labelParam", "resource", "parameter 1")
+    );
+
+    FreeStyleProject f = j.createFreeStyleProject("f");
+    f.addProperty(params);
+    f.addProperty(new RequiredResourcesProperty(null, null, null, "${labelParam}", null));
+
+    FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(fb1);
+    assertEquals("resource", fb1.getBuildVariableResolver().resolve("labelParam"));
+    j.assertLogContains("acquired lock on [resource1, resource2]", fb1);
+  }
+
+  @Test
   public void resourceNumberFromParameter() throws IOException, InterruptedException, ExecutionException {
     LockableResourcesManager lm = LockableResourcesManager.get();
     lm.createResourceWithLabel("resource1", "resource");
