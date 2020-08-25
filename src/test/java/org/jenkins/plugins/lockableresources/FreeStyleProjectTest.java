@@ -15,6 +15,8 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Item;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.Result;
@@ -25,7 +27,7 @@ import hudson.triggers.TimerTrigger;
 import hudson.util.OneShotEvent;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -140,6 +142,7 @@ public class FreeStyleProjectTest {
   }
 
   @Test
+  @Issue("JENKINS-30308")
   public void configRoundTripWithParam() throws Exception {
     FreeStyleProject withParam = j.createFreeStyleProject("withparam");
     withParam.addProperty(new ParametersDefinitionProperty(
@@ -250,6 +253,7 @@ public class FreeStyleProjectTest {
   }
 
   @Test
+  @Issue("JENKINS-30308")
   public void autoCreateResourceFromParameter() throws Exception {
 
     ParametersDefinitionProperty params = new ParametersDefinitionProperty(
@@ -270,6 +274,7 @@ public class FreeStyleProjectTest {
   }
 
   @Test
+  @Issue("JENKINS-30308")
   public void parallelResourceFromParameter() throws Exception {
     LockableResourcesManager lm = LockableResourcesManager.get();
     lm.createResource("resource1");
@@ -379,7 +384,7 @@ public class FreeStyleProjectTest {
     lm.createResourceWithLabel("resource1", "resource");
     lm.createResourceWithLabel("resource2", "resource");
     lm.createResourceWithLabel("resource3", "resource");
-    lm.reserve(Arrays.asList(lm.fromName("resource1")), "user1");
+    lm.reserve(Collections.singletonList(lm.fromName("resource1")), "user1");
 
     ParametersDefinitionProperty params = new ParametersDefinitionProperty(
             new StringParameterDefinition("numParam", "2", "parameter 1")
@@ -408,7 +413,7 @@ public class FreeStyleProjectTest {
     }
   }
 
-  private class WaitBuilder extends TestBuilder {
+  private static class WaitBuilder extends TestBuilder {
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
             throws InterruptedException {
