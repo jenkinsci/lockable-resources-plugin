@@ -155,6 +155,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     for (LockableResource r : this.resources) {
       if (r.isValidLabel(label, params)) found.add(r);
     }
+
+    // Randomize
+    Collections.shuffle(found);
+
     return found;
   }
 
