@@ -26,6 +26,7 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @Extension
 public class LockableResourcesRootAction implements RootAction {
@@ -84,6 +85,7 @@ public class LockableResourcesRootAction implements RootAction {
 		return LockableResourcesManager.get().getAllLabels().size();
 	}
 
+	@RequirePOST
 	public void doUnlock(StaplerRequest req, StaplerResponse rsp)
 			throws IOException, ServletException {
 		Jenkins.get().checkPermission(UNLOCK);
@@ -102,6 +104,7 @@ public class LockableResourcesRootAction implements RootAction {
 		rsp.forwardToPreviousPage(req);
 	}
 
+	@RequirePOST
 	public void doReserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 		Jenkins.get().checkPermission(RESERVE);
@@ -122,6 +125,7 @@ public class LockableResourcesRootAction implements RootAction {
 		rsp.forwardToPreviousPage(req);
 	}
 
+	@RequirePOST
 	public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 		Jenkins.get().checkPermission(RESERVE);
@@ -146,6 +150,7 @@ public class LockableResourcesRootAction implements RootAction {
 		rsp.forwardToPreviousPage(req);
 	}
 
+	@RequirePOST
 	public void doReset(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 		Jenkins.get().checkPermission(UNLOCK);
