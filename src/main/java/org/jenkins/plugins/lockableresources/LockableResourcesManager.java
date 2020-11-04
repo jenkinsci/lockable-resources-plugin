@@ -17,6 +17,7 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,7 +41,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   /** @deprecated Leftover of queue sorter support (since 1.7) */
   @Deprecated private transient String priorityParameterName;
 
-  private List<LockableResource> resources;
+  Collection<LockableResource> resources;
 
   /**
    * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
@@ -49,12 +50,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
   public LockableResourcesManager() {
-    resources = new ArrayList<>();
+    resources = new ConcurrentLinkedQueue<>();
     load();
   }
 
-  public List<LockableResource> getResources() {
-    return resources;
+  public Collection<LockableResource> getReadOnlyResources() {
+    return Collections.unmodifiableCollection(resources);
   }
 
   public synchronized List<LockableResource> getDeclaredResources() {
@@ -76,7 +77,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Removed from configuration locks became ephemeral.
-    ArrayList<LockableResource> mergedResources = new ArrayList<>();
+    Collection<LockableResource> mergedResources = new ConcurrentLinkedQueue<>();
     Set<String> addedLocks = new HashSet<>();
     for (LockableResource r : declaredResources) {
       if (!addedLocks.add(r.getName())) {
@@ -309,7 +310,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   // Adds already selected (in previous queue round) resources to 'selected'
   // Return false if another item queued for this project -> bail out
-  private boolean checkCurrentResourcesStatus(
+  boolean checkCurrentResourcesStatus(
       List<LockableResource> selected, String project, long taskId, Logger log) {
     for (LockableResource r : resources) {
       // This project might already have something in queue
@@ -573,7 +574,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (existent == null) {
         LockableResource resource = new LockableResource(name);
         resource.setEphemeral(true);
-        getResources().add(resource);
+        resources.add(resource);
         save();
         return true;
       }
@@ -587,7 +588,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (existent == null) {
         LockableResource resource = new LockableResource(name);
         resource.setLabels(label);
-        getResources().add(resource);
+        resources.add(resource);
         save();
         return true;
       }

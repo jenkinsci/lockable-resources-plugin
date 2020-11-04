@@ -2,14 +2,15 @@ package org.jenkins.plugins.lockableresources;
 
 import static io.jenkins.plugins.casc.misc.Util.*;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
+import com.google.common.collect.Iterables;
 import io.jenkins.plugins.casc.ConfigurationContext;
 import io.jenkins.plugins.casc.ConfiguratorRegistry;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
 import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.model.CNode;
+import java.util.Collection;
 import java.util.List;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -35,13 +36,14 @@ public class ConfigurationAsCodeTest {
     assertEquals("Label_A", declaredResource.getLabels());
     assertEquals("Reserved_A", declaredResource.getReservedBy());
 
-    List<LockableResource> resources = LockableResourcesManager.get().getResources();
+    Collection<LockableResource> resources = LockableResourcesManager.get().getReadOnlyResources();
     assertEquals(
         "The number of resources is wrong. Check your configuration-as-code.yml",
         1,
         resources.size());
 
-    LockableResource resource = resources.get(0);
+    LockableResource resource = Iterables.getFirst(resources, null);
+    assertNotNull(resource);
     assertEquals("Resource_A", resource.getName());
     assertEquals("Description_A", resource.getDescription());
     assertEquals("Label_A", resource.getLabels());
