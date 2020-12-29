@@ -25,6 +25,7 @@ import hudson.tasks.Mailer.UserProperty;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -54,6 +55,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String description = "";
   private String labels = "";
   private String reservedBy = null;
+  private Date reservedTimestamp = null;
   private boolean ephemeral;
 
   private long queueItemId = NOT_QUEUED;
@@ -184,6 +186,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   @Exported
+  public Date getReservedTimestamp() {
+    return reservedTimestamp;
+  }
+
+  @DataBoundSetter
+  public void setReservedTimestamp(Date reservedTimestamp) {
+    this.reservedTimestamp = reservedTimestamp;
+  }
+
+  @Exported
   public String getReservedBy() {
     return reservedBy;
   }
@@ -195,7 +207,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getReservedByEmail() {
-    if (reservedBy != null) {
+    if (isReserved()) {
       UserProperty email = null;
       User user = Jenkins.get().getUser(reservedBy);
       if (user != null) email = user.getProperty(UserProperty.class);
@@ -239,10 +251,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @CheckForNull
   public String getLockCause() {
     if (isReserved()) {
-      return String.format("[%s] is reserved by %s", name, reservedBy);
+      return String.format("[%s] is reserved by %s at %tc", name, reservedBy, reservedTimestamp);
     }
     if (isLocked()) {
-      return String.format("[%s] is locked by %s", name, buildExternalizableId);
+      return String.format("[%s] is locked by %s at %tc", name, buildExternalizableId, reservedTimestamp);
     }
     return null;
   }
@@ -278,6 +290,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     } else {
       this.buildExternalizableId = null;
     }
+    setReservedTimestamp(new Date());
   }
 
   public Task getTask() {
@@ -321,8 +334,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.reservedBy = Util.fixEmptyAndTrim(userName);
   }
 
+  public void reserve(String userName) {
+    setReservedBy(userName);
+    setReservedTimestamp(new Date());
+  }
+
   public void unReserve() {
-    this.reservedBy = null;
+    setReservedBy(null);
+    setReservedTimestamp(null);
   }
 
   public void reset() {

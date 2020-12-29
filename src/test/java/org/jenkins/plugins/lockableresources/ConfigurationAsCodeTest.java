@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import static io.jenkins.plugins.casc.misc.Util.*;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import io.jenkins.plugins.casc.ConfigurationContext;
@@ -34,6 +35,7 @@ public class ConfigurationAsCodeTest {
     assertEquals("Description_A", declaredResource.getDescription());
     assertEquals("Label_A", declaredResource.getLabels());
     assertEquals("Reserved_A", declaredResource.getReservedBy());
+    assertNotNull(declaredResource.getReservedTimestamp());
 
     List<LockableResource> resources = LockableResourcesManager.get().getResources();
     assertEquals(
@@ -46,6 +48,7 @@ public class ConfigurationAsCodeTest {
     assertEquals("Description_A", resource.getDescription());
     assertEquals("Label_A", resource.getLabels());
     assertEquals("Reserved_A", resource.getReservedBy());
+    assertNotNull(resource.getReservedTimestamp());
   }
 
   @Test

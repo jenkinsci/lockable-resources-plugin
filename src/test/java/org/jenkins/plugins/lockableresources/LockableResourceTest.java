@@ -2,8 +2,10 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.util.Date;
 import org.junit.Test;
 
 public class LockableResourceTest {
@@ -17,6 +19,7 @@ public class LockableResourceTest {
     assertEquals("", instance.getDescription());
     assertEquals("", instance.getLabels());
     assertNull(instance.getReservedBy());
+    assertNull(instance.getReservedTimestamp());
     assertFalse(instance.isReserved());
     assertFalse(instance.isQueued());
     assertFalse(instance.isQueued(0));
@@ -43,8 +46,27 @@ public class LockableResourceTest {
   }
 
   @Test
+  public void testReservedTimestamp() {
+    instance.setReservedTimestamp(null);
+    assertNull(instance.getReservedTimestamp());
+
+    final Date date = new Date();
+    instance.setReservedTimestamp(date);
+    assertEquals(date, instance.getReservedTimestamp());
+  }
+
+  @Test
+  public void testReserve() {
+    instance.reserve("testUser1");
+    assertEquals("testUser1", instance.getReservedBy());
+    assertNotNull(instance.getReservedTimestamp());
+  }
+
+  @Test
   public void testUnReserve() {
     instance.unReserve();
+    assertNull(instance.getReservedBy());
+    assertNull(instance.getReservedTimestamp());
   }
 
   @Test

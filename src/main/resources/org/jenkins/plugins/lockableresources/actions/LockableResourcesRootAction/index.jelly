@@ -39,6 +39,8 @@
                   <a href="${rootURL}/${resource.build.url}">
                     ${resource.build.fullDisplayName}
                   </a>
+                  <br/>
+                  <em>${resource.reservedTimestamp}</em>
                 </td>
                 <td class="pane">${resource.labels}</td>
                 <td class="pane">${resource.ephemeral}</td>
@@ -54,6 +56,8 @@
                     <strong>RESERVED</strong>
                     by
                     <strong>${resource.reservedBy}</strong>
+                    <br/>
+                    <em>${resource.reservedTimestamp}</em>
                   </td>
                   <td class="pane">${resource.labels}</td>
                   <td class="pane">${resource.ephemeral}</td>
@@ -70,6 +74,8 @@
                   <j:if test="${resource.queued}">
                     <td class="pane" style="color: yellow;">
                       QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
+                      <br/>
+                      <em>${resource.reservedTimestamp}</em>
                     </td>
                     <td class="pane">${resource.labels}</td>
                     <td class="pane">${resource.ephemeral}</td>
