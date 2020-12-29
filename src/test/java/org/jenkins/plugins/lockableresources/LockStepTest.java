@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.jenkins.plugins.lockableresources.TestHelpers.clickButton;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -498,7 +499,8 @@ public class LockStepTest extends LockStepTestBase {
     clickButton(wc, "reserve");
     LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
     assertNotNull(resource1);
-    resource1.setReservedBy("someone");
+    resource1.reserve("someone");
+    assertEquals("someone", resource1.getReservedBy());
     assertTrue(resource1.isReserved());
     assertNotNull(resource1.getReservedTimestamp());
 

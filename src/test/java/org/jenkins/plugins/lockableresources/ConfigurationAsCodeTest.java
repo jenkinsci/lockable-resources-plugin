@@ -35,7 +35,6 @@ public class ConfigurationAsCodeTest {
     assertEquals("Description_A", declaredResource.getDescription());
     assertEquals("Label_A", declaredResource.getLabels());
     assertEquals("Reserved_A", declaredResource.getReservedBy());
-    assertNotNull(declaredResource.getReservedTimestamp());
 
     List<LockableResource> resources = LockableResourcesManager.get().getResources();
     assertEquals(
@@ -48,7 +47,6 @@ public class ConfigurationAsCodeTest {
     assertEquals("Description_A", resource.getDescription());
     assertEquals("Label_A", resource.getLabels());
     assertEquals("Reserved_A", resource.getReservedBy());
-    assertNotNull(resource.getReservedTimestamp());
   }
 
   @Test

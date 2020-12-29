@@ -8,6 +8,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import static java.text.DateFormat.MEDIUM;
+import static java.text.DateFormat.SHORT;
+
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import groovy.lang.Binding;
@@ -23,6 +26,8 @@ import hudson.model.Run;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 import java.io.Serializable;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -187,12 +192,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public Date getReservedTimestamp() {
-    return reservedTimestamp;
+    return reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
   }
 
   @DataBoundSetter
-  public void setReservedTimestamp(Date reservedTimestamp) {
-    this.reservedTimestamp = reservedTimestamp;
+  public void setReservedTimestamp(final Date reservedTimestamp) {
+    this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
   }
 
   @Exported
@@ -250,11 +255,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @CheckForNull
   public String getLockCause() {
+    final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
     if (isReserved()) {
-      return String.format("[%s] is reserved by %s at %tc", name, reservedBy, reservedTimestamp);
+      return String.format("[%s] is reserved by %s at %s", name, reservedBy, format.format(reservedTimestamp));
     }
     if (isLocked()) {
-      return String.format("[%s] is locked by %s at %tc", name, buildExternalizableId, reservedTimestamp);
+      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, format.format(reservedTimestamp));
     }
     return null;
   }
@@ -287,10 +293,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.build = lockedBy;
     if (lockedBy != null) {
       this.buildExternalizableId = lockedBy.getExternalizableId();
+      setReservedTimestamp(new Date());
     } else {
       this.buildExternalizableId = null;
+      setReservedTimestamp(null);
     }
-    setReservedTimestamp(new Date());
   }
 
   public Task getTask() {
