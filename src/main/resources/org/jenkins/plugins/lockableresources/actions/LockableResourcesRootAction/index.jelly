@@ -28,7 +28,7 @@
             </script>
             <tr data-resource-name="${resource.name}">
               <td class="pane">
-                <strong>${resource.name}</strong><l:copyButton message="Resource name copied to clipboard." text="${resource.name}"/>
+                <strong>${resource.name}</strong><l:copyButton message="Resource name copied to clipboard." text="${resource.name}" tooltip="Copy resource name to clipboard."/>
                 <br/>
                 <em>${resource.description}</em>
               </td>
