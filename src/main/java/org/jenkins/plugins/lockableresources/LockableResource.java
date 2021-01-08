@@ -22,6 +22,7 @@ import hudson.model.Queue.Task;
 import hudson.model.Run;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
+import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -38,8 +40,11 @@ import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource>
@@ -55,6 +60,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String labels = "";
   private String reservedBy = null;
   private boolean ephemeral;
+  private String note = "";
 
   private long queueItemId = NOT_QUEUED;
   private String queueItemProject = null;
@@ -132,6 +138,38 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Exported
   public boolean isEphemeral() {
     return ephemeral;
+  }
+
+  @Exported
+  public String getNote() {
+    return note;
+  }
+
+  @DataBoundSetter
+  public void setNote(String note) {
+    this.note = note;
+  }
+
+  /**
+   * Accepts the new note.
+   */
+  @RequirePOST
+  public synchronized void doSubmitNote( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+//    checkPermission(CONFIGURE);
+
+    setNote(req.getParameter("note"));
+    rsp.sendRedirect(".");  // go to the top page
+  }
+
+  /**
+   * Accepts the new note.
+   */
+  @RequirePOST
+  public synchronized void submitNote( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+//    checkPermission(CONFIGURE);
+
+    setNote(req.getParameter("note"));
+    rsp.sendRedirect(".");  // go to the top page
   }
 
   public boolean isValidLabel(String candidate, Map<String, Object> params) {

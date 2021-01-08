@@ -16,3 +16,27 @@ function resource_action(button, action) {
   document.body.appendChild(form);
   form.submit();
 }
+
+function replaceNote() {
+    var d = document.getElementById("note-" + resourceName);
+    $(d).down().next().innerHTML = "<div class='spinner-right'>loading... note-" + resourceName + "</div>";
+    new Ajax.Request(
+        "noteForm",
+        {
+          onComplete : function(x) {
+            d.innerHTML = x.responseText;
+            evalInnerHtmlScripts(x.responseText,function() {
+                Behaviour.applySubtree(d);
+                d.getElementsByTagName("TEXTAREA")[0].focus();
+            });
+            layoutUpdateCallback.call();
+          }
+        }
+    );
+    return false;
+}
+
+function submitNote() {
+
+}
+
