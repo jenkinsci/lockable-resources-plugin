@@ -88,6 +88,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         locked.setDescription(r.getDescription());
         locked.setLabels(r.getLabels());
         locked.setEphemeral(false);
+        locked.setNote(r.getNote());
         mergedResources.add(locked);
         continue;
       }
@@ -98,6 +99,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // Removed locks became ephemeral.
       r.setDescription("");
       r.setLabels("");
+      r.setNote("");
       r.setEphemeral(true);
       mergedResources.add(r);
     }

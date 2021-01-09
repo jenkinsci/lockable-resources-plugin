@@ -16,6 +16,7 @@ public class LockableResourceTest {
     assertEquals("r1", instance.getName());
     assertEquals("", instance.getDescription());
     assertEquals("", instance.getLabels());
+    assertEquals("", instance.getNote());
     assertNull(instance.getReservedBy());
     assertFalse(instance.isReserved());
     assertFalse(instance.isQueued());
@@ -25,6 +26,22 @@ public class LockableResourceTest {
     assertNull(instance.getBuild());
     assertEquals(0, instance.getQueueItemId());
     assertNull(instance.getQueueItemProject());
+  }
+
+  @Test
+  public void testNote() {
+    final LockableResource resource = new LockableResource("Name 1");
+
+    assertEquals("", resource.getNote());
+
+    resource.setNote("Note 1");
+    assertEquals("Note 1", resource.getNote());
+
+    resource.setNote("Note B");
+    assertEquals("Note B", resource.getNote());
+
+    resource.setNote("");
+    assertEquals("", resource.getNote());
   }
 
   @Test
