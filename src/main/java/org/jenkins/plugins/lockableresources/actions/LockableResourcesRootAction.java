@@ -17,6 +17,8 @@ import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
@@ -26,6 +28,7 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @Extension
@@ -71,6 +74,11 @@ public class LockableResourcesRootAction implements RootAction {
 
 	public List<LockableResource> getResources() {
 		return LockableResourcesManager.get().getResources();
+	}
+
+  @Exported
+	public LockableResource getResource(final String resourceName) {
+		return LockableResourcesManager.get().fromName(resourceName);
 	}
 
 	public int getFreeResourceAmount(String label) {
@@ -168,4 +176,19 @@ public class LockableResourcesRootAction implements RootAction {
 
 		rsp.forwardToPreviousPage(req);
 	}
+
+  @RequirePOST
+  public void doSubmitNote( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+    Jenkins.get().checkPermission(RESERVE);
+
+    final String resourceName = req.getParameter("resourceName");
+    final LockableResource resource = getResource(resourceName);
+    if (resource == null) {
+      rsp.sendError(404, "Resource not found: '" + resourceName + "'!");
+    } else {
+      resource.setNote(req.getParameter("resourceNote"));
+      LockableResourcesManager.get().save();
+      rsp.forwardToPreviousPage(req);
+    }
+  }
 }

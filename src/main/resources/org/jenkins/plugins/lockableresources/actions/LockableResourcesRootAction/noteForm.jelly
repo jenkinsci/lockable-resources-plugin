@@ -23,14 +23,37 @@ THE SOFTWARE.
 -->
 
 <!--
-  Used by editableNote.jelly for loading the edit form.
+  Used by editableDescription.jelly for loading the edit form.
 -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:f="/lib/form" xmlns:l="/lib/layout">
+  <j:set var="resourceName" value="${request.getParameter('resourceName')}"/>
+  <j:set var="it2" value="${it.getResource('${resourceName}')}"/>
   <l:ajax>
     <form action="submitNote" method="post">
       <div>
-          <f:textarea name="note-${resource.name}" value="${it.note}-${resource.name}"/>
+    <p>Test note...
+      <b>
+        <br/>it=${it}
+        <br/>it.class=${it.class}
+        <br/>
+        <br/>resourceName=${resourceName}
+        <br/>resource.resourceName=${request.getParameter('resourceName')}
+        <br/>
+        <br/>resourceNote=${resourceNote}
+        <br/>resourceNote=${request.getParameter('resourceNote')}
+        <br/>
+        <br/>it2=${it2}
+        <br/>it2.class=${it2.class}
+        <br/>it2.name=${it2.name}
+        <br/>it2.note=${it2.note}
+      </b>
+    </p>
+        <f:entry help="${app.markupFormatter.helpUrl}">
+          <f:readOnlyTextbox name="resourceName" value="${request.getParameter('resourceName')}"/>
+          <f:textarea name="resourceNote" value="${request.getParameter('resourceNote')}"
+                      codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
+        </f:entry>
       </div>
       <div align="right">
         <f:submit />

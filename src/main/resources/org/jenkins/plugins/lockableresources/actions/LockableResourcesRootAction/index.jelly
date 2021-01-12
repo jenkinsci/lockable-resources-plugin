@@ -8,7 +8,7 @@
   See the "LICENSE.txt" file for more information.
  -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:t="/lib/hudson">
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
   <l:layout title="${it.displayName}" type="one-column">
     <script type="text/javascript"
             src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
@@ -43,7 +43,7 @@
                   </a>
                 </td>
                 <td class="pane">${resource.labels}</td>
-                <td class="pane"><input type="checkbox" readonly="true" checked="${resource.ephemeral}"/></td>
+                <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                 <td class="pane">
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
                     <button onClick="resource_action(this, 'unlock');">Unlock</button>
@@ -58,7 +58,7 @@
                     <strong>${resource.reservedBy}</strong>
                   </td>
                   <td class="pane">${resource.labels}</td>
-                  <td class="pane">${resource.ephemeral}</td>
+                  <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                   <td class="pane">
                     <j:if test="${h.hasPermission(it.RESERVE)}">
                       <j:if
@@ -74,7 +74,7 @@
                       QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
                     </td>
                     <td class="pane">${resource.labels}</td>
-                    <td class="pane">${resource.ephemeral}</td>
+                    <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td class="pane">
                       <j:if test="${h.hasPermission(it.UNLOCK)}">
                         <button onClick="resource_action(this, 'reset');">ResetResource</button>
@@ -86,7 +86,7 @@
                       <strong>FREE</strong>
                     </td>
                     <td class="pane">${resource.labels}</td>
-                    <td class="pane">${resource.ephemeral}</td>
+                    <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td class="pane">
                       <j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
                         <button onClick="resource_action(this, 'reserve');">Reserve</button>
@@ -96,17 +96,18 @@
                 </j:if>
               </j:if>
             </tr>
-            <tr data-resource-name-note="${resource.name}">
-              <td colspan="5" >
-                <div id="note-${resource.name}">
-                  <div>
-                    <j:out value="${it.note}" />
+            <tr>
+              <td class="pane" colspan="5">
+                <div id="note-${resource.name}" style="display: flex;">
+                  <div style="color:darkgrey; flex-grow: 1;">
+                    <j:out value="${resource.note !=null ? app.markupFormatter.translate(resource.note) : ''}" />
                   </div>
+
                   <l:hasPermission permission="${it.RESERVE}">
-                    <div align="right"><a id="note-link" href="editNote" onclick="return replaceNote(});">
+                    <div align="right"><a id="note-link" href="editNote" onclick="return replaceNote(this, '${resource.name}', '${resource.note}');">
                       <l:icon class="icon-notepad icon-sm"/>
                       <j:choose>
-                        <j:when test="${empty(it.note)}">
+                        <j:when test="${empty(resource.note)}">
                           ${%Add note}
                         </j:when>
                         <j:otherwise>
