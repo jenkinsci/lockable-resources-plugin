@@ -17,13 +17,13 @@ function resource_action(button, action) {
   form.submit();
 }
 
-function replaceNote(element, resourceName, resourceNote) {
+function replaceNote(element, resourceName) {
     var d = document.getElementById("note-" + resourceName);
     $(d).down().next().innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>loading...</div>";
     new Ajax.Request(
         "noteForm",
         {
-          parameters: {resourceName: resourceName, resourceNote: resourceNote},
+          parameters: {resourceName: resourceName},
           onComplete : function(x) {
             d.innerHTML = x.responseText;
             evalInnerHtmlScripts(x.responseText,function() {

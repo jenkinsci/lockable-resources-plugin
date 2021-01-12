@@ -8,10 +8,10 @@
   See the "LICENSE.txt" file for more information.
  -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
   <l:layout title="${it.displayName}" type="one-column">
     <script type="text/javascript"
-            src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
+      src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
     <l:main-panel>
       <h1>${%Lockable Resources}</h1>
       <table class="pane" style="width: auto;">
@@ -98,13 +98,13 @@
             </tr>
             <tr>
               <td class="pane" colspan="5">
-                <div id="note-${resource.name}" style="display: flex;">
-                  <div style="color:darkgrey; flex-grow: 1;">
+                <div id="note-${resource.name}" style="display: flex; padding-left: 25px; padding-right: 10px;">
+                  <div style="color: darkgray; font-size: small; flex-grow: 1;">
                     <j:out value="${resource.note !=null ? app.markupFormatter.translate(resource.note) : ''}" />
                   </div>
 
                   <l:hasPermission permission="${it.RESERVE}">
-                    <div align="right"><a id="note-link" href="editNote" onclick="return replaceNote(this, '${resource.name}', '${resource.note}');">
+                    <div align="right"><a id="note-link" href="editNote" onclick="return replaceNote(this, '${resource.name}');">
                       <l:icon class="icon-notepad icon-sm"/>
                       <j:choose>
                         <j:when test="${empty(resource.note)}">
