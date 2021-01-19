@@ -12,11 +12,21 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
+import hudson.model.AbstractProject;
 import hudson.model.Job;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.Run;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
+
+import javax.annotation.Nonnull;
 
 public final class Utils {
     private Utils() {}
@@ -25,6 +35,11 @@ public final class Utils {
      * Pattern for capturing variables. Either $xyz, ${xyz} or ${a.b} but not $a.b
      */
     private static final Pattern VARIABLE = Pattern.compile("\\$([A-Za-z0-9_]+|\\{[A-Za-z0-9_.]+\\})");
+
+    /**
+     * Pattern for capturing parameters. ${xyz} but not $${xyz}
+     */
+    private static final Pattern PARAMETER = Pattern.compile("(?<!\\$)\\$\\{([A-Za-z0-9_.]+)\\}");
 
     @CheckForNull
     public static Job<?, ?> getProject(@NonNull Queue.Item item) {
@@ -38,8 +53,7 @@ public final class Utils {
     }
 
     @CheckForNull
-    public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project,
-                                                            EnvVars env) {
+    public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project, EnvVars env) {
 
         if (project instanceof MatrixConfiguration) {
             env.putAll(((MatrixConfiguration) project).getCombination());
@@ -54,5 +68,35 @@ public final class Utils {
 
     public static boolean isVariable(String name) {
         return VARIABLE.matcher(name).matches();
+    }
+
+    @Nonnull
+    public static List<String> getProjectParameterNames(AbstractProject<?,?> project) {
+        ParametersDefinitionProperty params = project.getProperty(ParametersDefinitionProperty.class);
+        if (params != null)
+            return params.getParameterDefinitionNames();
+        return Collections.emptyList();
+    }
+
+    public static boolean isParameter(String s) {
+        return PARAMETER.matcher(s).matches();
+    }
+
+    public static boolean containsParameter(String s) {
+        return PARAMETER.matcher(s).find();
+    }
+
+    @Nonnull
+    public static List<String> checkParameters(String s, AbstractProject<?, ?> project) {
+        List<String> unknownParameters = new ArrayList<>();
+        List<String> paramNames = getProjectParameterNames(project);
+        Matcher m = PARAMETER.matcher(s);
+        while (m.find()) {
+            String param = m.group(1);
+            if (!paramNames.contains(param)) {
+                unknownParameters.add(param);
+            }
+        }
+        return unknownParameters;
     }
 }

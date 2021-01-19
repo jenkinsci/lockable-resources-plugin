@@ -159,9 +159,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String value,
                 @QueryParameter String labelName,
                 @QueryParameter boolean script,
-                @AncestorInPath Item item) {
+                @AncestorInPath AbstractProject<?,?> project) {
             // check permission, security first
-            checkPermission(item);
+            checkPermission(project);
 
             String labelVal = Util.fixEmptyAndTrim(labelName);
             String names = Util.fixEmptyAndTrim(value);
@@ -173,24 +173,29 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             } else {
                 List<String> wrongNames = new ArrayList<>();
                 List<String> varNames = new ArrayList<>();
+                List<String> unknownParams = new ArrayList<>();
                 for (String name : names.split("\\s+")) {
                     boolean found = LockableResourcesManager.get().resourceExist(name);
                     if (!found) {
-                        if (Utils.isVariable(name)) {
+                        if (Utils.containsParameter(name)) {
+                            List<String> badParams = Utils.checkParameters(name, project);
+                            if (!badParams.isEmpty()) {
+                                unknownParams.addAll(badParams);
+                            }
                             varNames.add(name);
                         } else {
                             wrongNames.add(name);
                         }
                     }
                 }
-                if (wrongNames.isEmpty() && varNames.isEmpty()) {
+                if (wrongNames.isEmpty() && varNames.isEmpty() && unknownParams.isEmpty()) {
                     return FormValidation.ok();
-                } else if (wrongNames.isEmpty()) {
-                    return FormValidation
-              .warning("The following resources cannot be validated as they are the environment variables: "
-                       + varNames);
-                } else {
+                } else if (!wrongNames.isEmpty()) {
                     return FormValidation.error(Messages.error_resourceDoesNotExist(wrongNames));
+                } else if (!unknownParams.isEmpty()) {
+                    return FormValidation.error(Messages.error_parameterDoesNotExist(unknownParams));
+                } else {
+                    return FormValidation.warning(Messages.warn_resourceNotValidated(varNames));
                 }
             }
         }
@@ -200,9 +205,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String value,
                 @QueryParameter String resourceNames,
                 @QueryParameter boolean script,
-                @AncestorInPath Item item) {
+                @AncestorInPath AbstractProject<?,?> project) {
             // check permission, security first
-            checkPermission(item);
+            checkPermission(project);
 
             String label = Util.fixEmptyAndTrim(value);
             String names = Util.fixEmptyAndTrim(resourceNames);
@@ -214,6 +219,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             } else {
                 if (LockableResourcesManager.get().isValidLabel(label)) {
                     return FormValidation.ok();
+                } else if (Utils.containsParameter(label)) {
+                    List<String> badParams = Utils.checkParameters(label, project);
+                    if (!badParams.isEmpty()) {
+                        return FormValidation.error(Messages.error_parameterDoesNotExist(badParams));
+                    }
+                    return FormValidation.warning(Messages.warn_labelNotValidated(label));
                 } else {
                     return FormValidation.error(Messages.error_labelDoesNotExist(label));
                 }
@@ -226,35 +237,45 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String resourceNames,
                 @QueryParameter String labelName,
                 @QueryParameter String resourceMatchScript,
-                @AncestorInPath Item item) {
+                @AncestorInPath AbstractProject<?,?> project) {
             // check permission, security first
-            checkPermission(item);
+            checkPermission(project);
 
             String number = Util.fixEmptyAndTrim(value);
             String names = Util.fixEmptyAndTrim(resourceNames);
             String label = Util.fixEmptyAndTrim(labelName);
             String script = Util.fixEmptyAndTrim(resourceMatchScript);
 
-            if (number == null || number.isEmpty() || number.trim().equals("0")) {
+            if (number == null || number.equals("0")) {
                 return FormValidation.ok();
             }
 
-            int numAsInt;
+            int numAsInt = 0;
             try {
                 numAsInt = Integer.parseInt(number);
             } catch (NumberFormatException e) {
-                return FormValidation.error(Messages.error_couldNotParseToint());
+                if (Utils.isParameter(number)) {
+                    List<String> badParams = Utils.checkParameters(number, project);
+                    if (!badParams.isEmpty()) {
+                        return FormValidation.error(Messages.error_parameterDoesNotExist(badParams));
+                    }
+                    return FormValidation.warning(Messages.warn_valueNotValidated(number));
+                }
+                return FormValidation.error(Messages.error_couldNotParseToInt());
             }
+
             int numResources = 0;
             if (names != null) {
                 numResources = names.split("\\s+").length;
-            } else if (label != null || script != null) {
+            } else if (label != null) {
+                numResources = LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
+            } else if (script != null) {
                 numResources = Integer.MAX_VALUE;
             }
 
-            if (numResources < numAsInt) {
+            if (numAsInt > numResources) {
                 return FormValidation.error(
-                        String.format(Messages.error_givenAmountIsGreaterThatResurcesAmount(), numAsInt, numResources));
+                        String.format(Messages.error_givenAmountIsGreaterThanResourcesAmount(), numAsInt, numResources));
             }
             return FormValidation.ok();
         }

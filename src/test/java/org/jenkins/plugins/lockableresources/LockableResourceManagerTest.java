@@ -5,7 +5,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.FreeStyleProject;
 import hudson.model.Item;
+import hudson.model.ParametersDefinitionProperty;
+import hudson.model.StringParameterDefinition;
 import hudson.model.User;
 import hudson.security.AccessDeniedException3;
 import hudson.util.FormValidation;
@@ -26,6 +29,12 @@ public class LockableResourceManagerTest {
 
     @Test
     public void validationFailure() throws Exception {
+        ParametersDefinitionProperty params = new ParametersDefinitionProperty(
+                new StringParameterDefinition("param1", "resource1", "parameter 1"),
+                new StringParameterDefinition("param2", "2", "parameter 2"));
+        FreeStyleProject p = j.createFreeStyleProject("p");
+        p.addProperty(params);
+
         RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
         LockableResourcesManager.get().createResource("resource1");
         LockableResource r = LockableResourcesManager.get().getFirst();
@@ -33,25 +42,69 @@ public class LockableResourceManagerTest {
 
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",
-                d.doCheckResourceNames("resource1", null, true, null).getMessage());
+                d.doCheckResourceNames("resource1", null, true, p).getMessage());
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",
-                d.doCheckResourceNames("resource1", "some-label", false, null).getMessage());
+                d.doCheckResourceNames("resource1", "some-label", false, p).getMessage());
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",
-                d.doCheckResourceNames("resource1", "some-label", true, null).getMessage());
+                d.doCheckResourceNames("resource1", "some-label", true, p).getMessage());
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",
-                d.doCheckLabelName("some-label", "resource1", false, null).getMessage());
+                d.doCheckLabelName("some-label", "resource1", false, p).getMessage());
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",
-                d.doCheckLabelName("some-label", null, true, null).getMessage());
+                d.doCheckLabelName("some-label", null, true, p).getMessage());
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",
-                d.doCheckLabelName("some-label", "resource1", true, null).getMessage());
+                d.doCheckLabelName("some-label", "resource1", true, p).getMessage());
 
-        assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false, null));
-        assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false, null));
+        assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false, p));
+        assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false, p));
+        assertEquals(FormValidation.ok(), d.doCheckResourceNumber("1", "resource1", null, null, p));
+
+        assertEquals(
+                "The resource does not exist: [resource3].",
+                d.doCheckResourceNames("${param5} resource3", null,  false, p).getMessage());
+        assertEquals(
+                "The parameter does not exist: [param5, param4].",
+                d.doCheckResourceNames("${param5} ${param4} resource1", null,  false, p).getMessage());
+        assertEquals(
+                "The resource label does not exist: other-label.",
+                d.doCheckLabelName("other-label", null, false, p).getMessage());
+
+        assertEquals(
+                "The resource cannot be validated as it contains parameters: [${param1}].",
+                d.doCheckResourceNames("${param1}", null,  false, p).getMessage());
+        assertEquals(
+                "The resource cannot be validated as it contains parameters: [xyz_${param1}].",
+                d.doCheckResourceNames("xyz_${param1}", null,  false, p).getMessage());
+        assertEquals(
+                "The resource label cannot be validated as it contains parameters: ${param1}.",
+                d.doCheckLabelName("${param1}", null, false, p).getMessage());
+        assertEquals(
+                "The resource label cannot be validated as it contains parameters: ${param1}${param2}.",
+                d.doCheckLabelName("${param1}${param2}", null, false, p).getMessage());
+        assertEquals(
+                "The resource label cannot be validated as it contains parameters: resource${param2}.",
+                d.doCheckLabelName("resource${param2}", null, false, p).getMessage());
+        assertEquals(
+                "The value cannot be validated as it is a parameter value: ${param1}.",
+                d.doCheckResourceNumber("${param1}", null,null,  null, p).getMessage());
+
+        assertEquals(
+                "Could not parse the given value as integer.",
+                d.doCheckResourceNumber("${param1}${param2}", null,null,  null, p).getMessage());
+        assertEquals(
+                "Could not parse the given value as integer.",
+                d.doCheckResourceNumber("Five", null,null,  null, p).getMessage());
+
+        assertEquals(
+                "Given amount 4 is greater than amount of resources: 1.",
+                d.doCheckResourceNumber("4", "resource1", null,null, p).getMessage());
+        assertEquals(
+                "Given amount 5 is greater than amount of resources: 1.",
+                d.doCheckResourceNumber("5", null, "some-label",null, p).getMessage());
 
         j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
         j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
@@ -65,8 +118,8 @@ public class LockableResourceManagerTest {
                 .everywhere()
                 .to("manager"));
 
-        j.buildAndAssertSuccess(j.createFreeStyleProject("aProject"));
-        Item item = j.jenkins.getItem("aProject");
+        FreeStyleProject item = j.createFreeStyleProject("aProject");
+        j.buildAndAssertSuccess(item);
         assertNotNull(item);
 
         User user = User.get("user", true, Collections.emptyMap());

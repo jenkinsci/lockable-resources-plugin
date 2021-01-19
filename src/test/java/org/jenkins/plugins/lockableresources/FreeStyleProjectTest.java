@@ -173,6 +173,38 @@ public class FreeStyleProjectTest {
     }
 
     @Test
+    public void configRoundTripWithLabelParam() throws Exception {
+        FreeStyleProject withLabel = j.createFreeStyleProject("withLabelParam");
+        withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "${labelParam}", null));
+        FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
+
+        RequiredResourcesProperty withLabelProp =
+                withLabelRoundTrip.getProperty(RequiredResourcesProperty.class);
+        assertNotNull(withLabelProp);
+        assertNull(withLabelProp.getResourceNames());
+        assertNull(withLabelProp.getResourceNamesVar());
+        assertNull(withLabelProp.getResourceNumber());
+        assertEquals("${labelParam}", withLabelProp.getLabelName());
+        assertNull(withLabelProp.getResourceMatchScript());
+    }
+
+    @Test
+    public void configRoundTripWithNumParam() throws Exception {
+        FreeStyleProject withNum = j.createFreeStyleProject("withNumParam");
+        withNum.addProperty(new RequiredResourcesProperty(null, null, "${resNum}", "some-resources", null));
+        FreeStyleProject withNumRoundTrip = j.configRoundtrip(withNum);
+
+        RequiredResourcesProperty withNumProp =
+                withNumRoundTrip.getProperty(RequiredResourcesProperty.class);
+        assertNotNull(withNumProp);
+        assertNull(withNumProp.getResourceNames());
+        assertNull(withNumProp.getResourceNamesVar());
+        assertEquals("${resNum}", withNumProp.getResourceNumber());
+        assertEquals("some-resources", withNumProp.getLabelName());
+        assertNull(withNumProp.getResourceMatchScript());
+    }
+
+    @Test
     public void configRoundTripWithScript() throws Exception {
         FreeStyleProject withScript = j.createFreeStyleProject("withScript");
         SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
