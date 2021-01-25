@@ -357,6 +357,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.setBuild(null);
   }
 
+  /**
+   * Copy unconfigurable properties from another instance. Normally, called after "lockable resource" configuration change.
+   * @param sourceResource resource with properties to copy from
+   */
+  public void copyUnconfigurableProperties(final LockableResource sourceResource) {
+    if (sourceResource != null) {
+      setReservedTimestamp(sourceResource.getReservedTimestamp());
+    }
+  }
+
   @Override
   public String toString() {
     return name;
