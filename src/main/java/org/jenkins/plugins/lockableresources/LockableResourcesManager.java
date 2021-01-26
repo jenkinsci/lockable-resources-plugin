@@ -726,6 +726,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @Override
   public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+    final List<LockableResource> oldDeclaredResources = new ArrayList<>(getDeclaredResources());
+
     try (BulkChange bc = new BulkChange(this)) {
       // reset resources to default which are not currently locked
       this.resources.removeIf(resource -> !resource.isLocked());
@@ -736,6 +738,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
           Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
       return false;
     }
+
+    // Copy unconfigurable properties from old instances
+    boolean updated = false;
+    for (LockableResource oldDeclaredResource: oldDeclaredResources) {
+      final LockableResource updatedResource = fromName(oldDeclaredResource.getName());
+      if (updatedResource != null) {
+        updatedResource.copyUnconfigurableProperties(oldDeclaredResource);
+        updated = true;
+      }
+    }
+    if (updated) {
+      save();
+    }
+
     return true;
   }
 

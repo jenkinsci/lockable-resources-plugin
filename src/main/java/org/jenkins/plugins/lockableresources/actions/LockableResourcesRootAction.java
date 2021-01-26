@@ -174,16 +174,24 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
   @RequirePOST
-  public void doSubmitNote(final StaplerRequest req, final StaplerResponse rsp)
+  public void doSaveNote(final StaplerRequest req, final StaplerResponse rsp)
     throws IOException, ServletException {
     Jenkins.get().checkPermission(RESERVE);
 
-    final String resourceName = req.getParameter("resourceName");
+    String resourceName = req.getParameter("resource");
+    if (resourceName == null) {
+      resourceName = req.getParameter("resourceName");
+    }
+
     final LockableResource resource = getResource(resourceName);
     if (resource == null) {
       rsp.sendError(404, "Resource not found: '" + resourceName + "'!");
     } else {
-      resource.setNote(req.getParameter("resourceNote"));
+      String resourceNote = req.getParameter("note");
+      if (resourceNote == null) {
+        resourceNote = req.getParameter("resourceNote");
+      }
+      resource.setNote(resourceNote);
       LockableResourcesManager.get().save();
 
       rsp.forwardToPreviousPage(req);

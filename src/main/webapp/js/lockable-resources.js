@@ -23,7 +23,7 @@ function replaceNote(element, resourceName) {
     new Ajax.Request(
         "noteForm",
         {
-          parameters: {resourceName: resourceName},
+          parameters: {resource: resourceName},
           onComplete : function(x) {
             d.innerHTML = x.responseText;
             evalInnerHtmlScripts(x.responseText,function() {

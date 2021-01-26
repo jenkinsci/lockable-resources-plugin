@@ -20,9 +20,6 @@
 	<f:entry title="${%Labels}" field="labels">
 		<f:textbox/>
 	</f:entry>
-  <f:entry title="${%Note}" field="note">
-    <f:textbox/>
-  </f:entry>
 	<f:entry title="${%Reserved by}" field="reservedBy">
 		<f:textbox/>
 	</f:entry>

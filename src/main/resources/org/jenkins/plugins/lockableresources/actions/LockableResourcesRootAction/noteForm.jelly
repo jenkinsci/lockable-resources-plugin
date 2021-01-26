@@ -28,15 +28,15 @@ THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:l="/lib/layout">
-  <j:set var="resourceName" value="${request.getParameter('resourceName')}"/>
-  <j:set var="resource" value="${it.getResource(resourceName)}"/>
-  <j:set var="resourceNote" value="${resource.note}"/>
+  <j:set var="resource" value="${request.getParameter('resource')}"/>
+  <j:set var="resourceObject" value="${it.getResource(resource)}"/>
+  <j:set var="note" value="${resourceObject.note}"/>
   <l:ajax>
     <f:block>
-    <form action="submitNote?resourceName=${resourceName}" method="post" style="flex-grow: 1;">
+    <form action="saveNote?resource=${resource}" method="post" style="flex-grow: 1;">
       <div>
         <f:entry help="${app.markupFormatter.helpUrl}">
-          <f:textarea name="resourceNote" value="${resourceNote}"
+          <f:textarea name="note" value="${note}"
                       codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
         </f:entry>
       </div>
