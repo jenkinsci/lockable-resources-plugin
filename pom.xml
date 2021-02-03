@@ -50,7 +50,7 @@
   </scm>
 
   <properties>
-    <revision>2.9</revision>
+    <revision>2.11</revision>
     <changelist>-SNAPSHOT</changelist>
     <java.level>8</java.level>
     <workflow-support.version>3.4</workflow-support.version>
@@ -58,6 +58,7 @@
     <configuration-as-code.version>1.25</configuration-as-code.version>
     <!-- For compatibility with modern Jenkins LTS -->
     <slf4jVersion>1.7.26</slf4jVersion>
+    <jenkins-test-harness.version>2.67</jenkins-test-harness.version>
   </properties>
 
   <dependencies>

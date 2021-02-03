@@ -1,6 +1,6 @@
 <!--
   Copyright 2013, 6WIND S.A. All rights reserved.
-  Copyright 2019, TobiX
+  Copyright 2019-2020, TobiX
 
   This file is part of the Jenkins Lockable Resources Plugin and is
   published under the MIT license.
@@ -9,18 +9,9 @@
  -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
-  <script>
-    function find_resource_name(element) {
-      var row = element.up('tr');
-      var resourceName = row.getAttribute('data-resource-name');
-      return resourceName;
-    }
-    function resource_action(button, action) {
-      window.location.assign(action + "?resource=" + find_resource_name(button));
-    }
-  </script>
-
   <l:layout title="${it.displayName}" type="one-column">
+    <script type="text/javascript"
+            src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
     <l:main-panel>
       <h1>${%Lockable Resources}</h1>
       <table class="pane" style="width: auto;">
