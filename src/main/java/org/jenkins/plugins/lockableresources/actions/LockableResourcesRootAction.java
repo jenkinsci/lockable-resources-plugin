@@ -119,9 +119,12 @@ public class LockableResourcesRootAction implements RootAction {
 		List<LockableResource> resources = new ArrayList<>();
 		resources.add(r);
 		String userName = getUserName();
-		if (userName != null)
-			LockableResourcesManager.get().reserve(resources, userName);
-
+		if (userName != null) {
+			if (!LockableResourcesManager.get().reserve(resources, userName)) {
+				rsp.sendError(423, "Resource '" + name + "' already reserved or locked!");
+				return;
+			};
+		}
 		rsp.forwardToPreviousPage(req);
 	}
 
