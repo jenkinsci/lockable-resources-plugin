@@ -569,17 +569,15 @@ public class LockStepTest extends LockStepTestBase {
     final CyclicBarrier barrier = new CyclicBarrier(51);
     for (int i = 0; i < 50; i++) {
       Thread thread =
-          new Thread() {
-            @Override
-            public void run() {
-              try {
-                barrier.await();
-                p.scheduleBuild2(0).waitForStart();
-              } catch (Exception e) {
-                System.err.println("Failed to start pipeline job");
-              }
-            }
-          };
+          new Thread(
+              () -> {
+                try {
+                  barrier.await();
+                  p.scheduleBuild2(0).waitForStart();
+                } catch (Exception e) {
+                  System.err.println("Failed to start pipeline job");
+                }
+              });
       thread.start();
     }
     barrier.await();
