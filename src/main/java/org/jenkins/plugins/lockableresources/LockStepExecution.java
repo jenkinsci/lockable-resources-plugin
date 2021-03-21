@@ -180,7 +180,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     if (!cleaned) {
       LOGGER.log(
           Level.WARNING,
-          "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
+          "Cannot remove context from lockable resource waiting list. "
+              + "The context is not in the waiting list.");
     }
     getContext().onFailure(cause);
   }

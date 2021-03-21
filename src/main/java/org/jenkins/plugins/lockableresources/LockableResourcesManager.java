@@ -484,11 +484,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // running?)
             LOGGER.log(
                 Level.WARNING,
-                "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, "
-                    + "this could be a legitimate status if the build waiting for the lock was deleted or"
-                    + " hard killed. More information at Level.FINE if debug is needed.");
+                "Skipping queued context for lock. Cannot get the Run object from the context to "
+                    + "proceed with lock; this could be a legitimate state if the build waiting "
+                    + "for the lock was deleted or hard killed. More information is logged at "
+                    + "Level.FINE for debugging purposes.");
             LOGGER.log(
-                Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+                Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
             unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
             return;
           }
@@ -697,11 +698,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
           // running?)
           LOGGER.log(
               Level.WARNING,
-              "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, "
-                  + "this could be a legitimate status if the build waiting for the lock was deleted or"
-                  + " hard killed. More information at Level.FINE if debug is needed.");
+              "Skipping queued context for lock. Cannot get the Run object from the context to "
+                  + "proceed with lock; this could be a legitimate state if the build waiting for "
+                  + "the lock was deleted or hard killed. More information is logged at "
+                  + "Level.FINE for debugging purposes.");
           LOGGER.log(
-              Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+              Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
           return;
         }
       }

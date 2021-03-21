@@ -16,8 +16,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 public class LockableResourceApiTest {
 
-  @Rule
-  public JenkinsRule j = new JenkinsRule();
+  @Rule public JenkinsRule j = new JenkinsRule();
 
   @Test
   public void reserveUnreserveApi() throws Exception {
@@ -38,9 +37,10 @@ public class LockableResourceApiTest {
   @Issue("SECURITY-1958")
   public void apiUsageHttpGet() {
     JenkinsRule.WebClient wc = j.createWebClient();
-    FailingHttpStatusCodeException e = assertThrows(FailingHttpStatusCodeException.class,
-      () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
+    FailingHttpStatusCodeException e =
+        assertThrows(
+            FailingHttpStatusCodeException.class,
+            () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
     assertThat(e.getStatusCode(), is(405));
   }
-
 }

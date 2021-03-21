@@ -184,7 +184,10 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+            "lock(label: 'label1') {\n"
+                + "	semaphore 'wait-inside'\n"
+                + "}\n"
+                + "echo 'Finish'",
             true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -660,7 +663,10 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
+            "lock(label: 'label1') {\n"
+                + "	semaphore 'wait-inside-p3'\n"
+                + "}\n"
+                + "echo 'Finish'",
             true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
@@ -711,7 +717,10 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
+            "lock(label: 'label1') {\n"
+                + "	semaphore 'wait-inside-p3'\n"
+                + "}\n"
+                + "echo 'Finish'",
             true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
@@ -746,7 +755,8 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], [label: 'label1', quantity: 2]]) {\n"
+            "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], "
+                + "[label: 'label1', quantity: 2]]) {\n"
                 + "  def lockedResources = env.var.split(',').sort()\n"
                 + "  echo \"Resources locked: ${lockedResources}\"\n"
                 + "  semaphore 'wait-inside'\n"

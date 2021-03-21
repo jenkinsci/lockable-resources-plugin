@@ -177,7 +177,8 @@ public class FreeStyleProjectTest {
             .to("alice"));
 
     final String SCRIPT =
-        "resourceName == org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
+        "resourceName == "
+            + "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
 
     FreeStyleProject p = j.createFreeStyleProject();
     SecureGroovyScript groovyScript =
@@ -206,7 +207,8 @@ public class FreeStyleProjectTest {
     ScriptApproval.PendingSignature firstPending = pending.get(0);
 
     assertEquals(
-        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction ICON",
+        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction "
+            + "ICON",
         firstPending.signature);
     approval.approveSignature(firstPending.signature);
 
