@@ -199,8 +199,8 @@ public class FreeStyleProjectTest {
         is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed.class)));
 
     ScriptApproval approval = ScriptApproval.get();
-    List<ScriptApproval.PendingSignature> pending = new ArrayList<>();
-    pending.addAll(approval.getPendingSignatures());
+    List<ScriptApproval.PendingSignature> pending =
+        new ArrayList<>(approval.getPendingSignatures());
 
     assertFalse(pending.isEmpty());
     assertEquals(1, pending.size());
