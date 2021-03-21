@@ -47,6 +47,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 		this.quantity = quantity;
 	}
 
+	@Override
 	public String toString() {
 		return toString(resource, label, quantity);
 	}

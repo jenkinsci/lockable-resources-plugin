@@ -26,14 +26,17 @@ public class LockedResourcesBuildAction implements Action {
 		return lockedResources;
 	}
 
+	@Override
 	public String getIconFileName() {
 		return LockableResourcesRootAction.ICON;
 	}
 
+	@Override
 	public String getDisplayName() {
 		return "Locked Resources";
 	}
 
+	@Override
 	public String getUrlName() {
 		return "locked-resources";
 	}

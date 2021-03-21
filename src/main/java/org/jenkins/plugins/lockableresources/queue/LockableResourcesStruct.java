@@ -120,6 +120,7 @@ public class LockableResourcesStruct implements Serializable {
     return resourceMatchScript;
   }
 
+  @Override
   public String toString() {
     return "Required resources: "
         + this.required
