@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.BulkChange;
 import hudson.Extension;
@@ -27,7 +28,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nonnull;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -175,9 +175,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
    *     as a fatal failure since the requirement list may be incomplete
    * @since 2.0
    */
-  @Nonnull
+  @NonNull
   public List<LockableResource> getResourcesMatchingScript(
-      @Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+      @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
       throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
     for (LockableResource r : this.resources) {
@@ -615,7 +615,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
-  private void unreserveResources(@Nonnull List<LockableResource> resources) {
+  private void unreserveResources(@NonNull List<LockableResource> resources) {
     for (LockableResource l : resources) {
       l.unReserve();
     }
