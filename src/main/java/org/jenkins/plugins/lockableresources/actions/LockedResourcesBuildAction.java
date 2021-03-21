@@ -9,11 +9,9 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.Action;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class LockedResourcesBuildAction implements Action {

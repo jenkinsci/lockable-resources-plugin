@@ -34,7 +34,10 @@ import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.*;
+import org.jvnet.hudson.test.Issue;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
+import org.jvnet.hudson.test.TestBuilder;
 
 public class FreeStyleProjectTest {
 

@@ -12,7 +12,6 @@ import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
 import hudson.model.Queue;
-
 import hudson.model.Run;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 

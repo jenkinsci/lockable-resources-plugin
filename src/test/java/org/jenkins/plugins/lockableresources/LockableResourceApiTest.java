@@ -3,17 +3,16 @@
  */
 package org.jenkins.plugins.lockableresources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThrows;
+
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.jenkins.plugins.lockableresources.TestHelpers.clickButton;
-import static org.junit.Assert.assertThrows;
 
 public class LockableResourceApiTest {
 
@@ -29,9 +28,9 @@ public class LockableResourceApiTest {
 
     JenkinsRule.WebClient wc = j.createWebClient();
     wc.login("user");
-    clickButton(wc, "reserve");
+    TestHelpers.clickButton(wc, "reserve");
     assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(true));
-    clickButton(wc, "unreserve");
+    TestHelpers.clickButton(wc, "unreserve");
     assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(false));
   }
 

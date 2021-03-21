@@ -2,7 +2,6 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
-import static org.jenkins.plugins.lockableresources.TestHelpers.clickButton;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -435,7 +434,7 @@ public class LockStepTest extends LockStepTestBase {
         j.waitForMessage(
             "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
-        clickButton(wc, "unlock");
+        TestHelpers.clickButton(wc, "unlock");
       }
 
       j.waitForMessage("Lock acquired on [resource1]", rNext);
@@ -495,7 +494,7 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     JenkinsRule.WebClient wc = j.createWebClient();
 
-    clickButton(wc, "reserve");
+    TestHelpers.clickButton(wc, "reserve");
     LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
     assertNotNull(resource1);
     resource1.setReservedBy("someone");
@@ -517,7 +516,7 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowRun r = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked, waiting...", r);
-    clickButton(wc, "unreserve");
+    TestHelpers.clickButton(wc, "unreserve");
     SemaphoreStep.waitForStart("wait-inside/1", r);
     SemaphoreStep.success("wait-inside/1", null);
     j.assertBuildStatusSuccess(j.waitForCompletion(r));
