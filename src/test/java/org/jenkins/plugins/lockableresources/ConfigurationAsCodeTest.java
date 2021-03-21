@@ -21,7 +21,7 @@ public class ConfigurationAsCodeTest {
   public static JenkinsConfiguredWithCodeRule r = new JenkinsConfiguredWithCodeRule();
 
   @Test
-  public void should_support_configuration_as_code() throws Exception {
+  public void should_support_configuration_as_code() {
     List<LockableResource> declaredResources =
         LockableResourcesManager.get().getDeclaredResources();
     assertEquals(
