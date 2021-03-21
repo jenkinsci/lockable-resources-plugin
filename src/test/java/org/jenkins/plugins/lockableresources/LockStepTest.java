@@ -10,7 +10,7 @@ import static org.junit.Assume.assumeFalse;
 import hudson.Functions;
 import hudson.model.Result;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import net.sf.json.JSONObject;
@@ -908,7 +908,7 @@ public class LockStepTest extends LockStepTestBase {
   public void unreserveSetsVariable() throws Exception {
     LockableResourcesManager lm = LockableResourcesManager.get();
     lm.createResourceWithLabel("resource1", "label1");
-    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+    lm.reserve(Collections.singletonList(lm.fromName("resource1")), "test");
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
@@ -920,7 +920,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
     j.waitForMessage("is locked, waiting...", b1);
-    lm.unreserve(Arrays.asList(lm.fromName("resource1")));
+    lm.unreserve(Collections.singletonList(lm.fromName("resource1")));
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
     // Variable should have been filled
@@ -943,7 +943,7 @@ public class LockStepTest extends LockStepTestBase {
   public void skipIfLocked() throws Exception {
     LockableResourcesManager lm = LockableResourcesManager.get();
     lm.createResourceWithLabel("resource1", "label1");
-    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+    lm.reserve(Collections.singletonList(lm.fromName("resource1")), "test");
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(

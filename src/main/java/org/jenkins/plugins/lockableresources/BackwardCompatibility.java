@@ -12,7 +12,7 @@ package org.jenkins.plugins.lockableresources;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +41,7 @@ public final class BackwardCompatibility {
 					List<String> resourcesNames = new ArrayList<>();
 					resourcesNames.add(resource.getName());
 					LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-					LockableResourcesManager.get().queueContext(queuedContext, Arrays.asList(resourceHolder), resource.getName(), null);
+					LockableResourcesManager.get().queueContext(queuedContext, Collections.singletonList(resourceHolder), resource.getName(), null);
 				}
 				queuedContexts.clear();
 			}
