@@ -100,8 +100,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       String resourceDescription,
       final String variable,
       boolean inversePrecedence) {
-    Run<?, ?> r = null;
-    FlowNode node = null;
+    Run<?, ?> r;
+    FlowNode node;
     try {
       r = context.get(Run.class);
       node = context.get(FlowNode.class);

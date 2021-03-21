@@ -32,7 +32,6 @@ private Utils() {
 
 	public static LockableResourcesStruct requiredResources(
 			Job<?, ?> project) {
-		RequiredResourcesProperty property = null;
 		EnvVars env = new EnvVars();
 
 		if (project instanceof MatrixConfiguration) {
@@ -40,7 +39,7 @@ private Utils() {
 			project = (Job<?, ?>) project.getParent();
 		}
 
-		property = project.getProperty(RequiredResourcesProperty.class);
+		RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);
 		if (property != null)
 			return new LockableResourcesStruct(property, env);
 

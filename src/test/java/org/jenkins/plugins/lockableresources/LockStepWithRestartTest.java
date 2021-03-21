@@ -99,7 +99,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           j.waitForMessage("Lock released on resource [resource1]", b1);
           isPaused(b1, 1, 0);
 
-          FreeStyleBuild fb1 = null;
+          FreeStyleBuild fb1;
           System.out.print("Waiting for freestyle #1 to start building");
           while ((fb1 = f.getBuildByNumber(1)) == null) {
             Thread.sleep(250);

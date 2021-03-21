@@ -438,7 +438,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     QueuedContextStruct nextContext = null;
     while (!remainingResourceNamesToUnLock.isEmpty()) {
       // check if there are resources which can be unlocked (and shall not be unlocked)
-      Set<LockableResource> requiredResourceForNextContext = null;
       nextContext =
           this.getNextQueuedContext(remainingResourceNamesToUnLock, inversePrecedence, nextContext);
 
@@ -449,7 +448,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return;
       }
 
-      requiredResourceForNextContext =
+      Set<LockableResource> requiredResourceForNextContext =
           checkResourcesAvailability(
               nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
@@ -634,7 +633,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // check if there are resources which can be unlocked (and shall not be unlocked)
-    Set<LockableResource> requiredResourceForNextContext = null;
     QueuedContextStruct nextContext =
         this.getNextQueuedContext(resourceNamesToUnreserve, false, null);
 
@@ -661,7 +659,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // remove context from queue and process it
-    requiredResourceForNextContext =
+    Set<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
             nextContext.getResources(), nextContextLogger, resourceNamesToUnreserve);
     this.queuedContexts.remove(nextContext);
