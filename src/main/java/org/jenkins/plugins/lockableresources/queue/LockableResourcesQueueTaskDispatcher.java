@@ -200,7 +200,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		@Override
 		public String getShortDescription() {
 			//TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
-			String resourceInfo = (resources.label.isEmpty()) ? resources.required.toString() : "with label " + resources.label;
+			String resourceInfo = resources.label.isEmpty() ? resources.required.toString() : "with label " + resources.label;
 			return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
 		}
 	}

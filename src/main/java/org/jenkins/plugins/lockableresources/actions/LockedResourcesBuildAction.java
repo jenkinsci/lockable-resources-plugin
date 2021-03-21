@@ -9,11 +9,9 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.Action;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class LockedResourcesBuildAction implements Action {
@@ -28,14 +26,17 @@ public class LockedResourcesBuildAction implements Action {
 		return lockedResources;
 	}
 
+	@Override
 	public String getIconFileName() {
 		return LockableResourcesRootAction.ICON;
 	}
 
+	@Override
 	public String getDisplayName() {
 		return "Locked Resources";
 	}
 
+	@Override
 	public String getUrlName() {
 		return "locked-resources";
 	}

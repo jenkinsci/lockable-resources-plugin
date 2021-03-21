@@ -12,7 +12,6 @@ import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
 import hudson.model.Queue;
-
 import hudson.model.Run;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
@@ -33,7 +32,6 @@ private Utils() {
 
 	public static LockableResourcesStruct requiredResources(
 			Job<?, ?> project) {
-		RequiredResourcesProperty property = null;
 		EnvVars env = new EnvVars();
 
 		if (project instanceof MatrixConfiguration) {
@@ -41,7 +39,7 @@ private Utils() {
 			project = (Job<?, ?>) project.getParent();
 		}
 
-		property = project.getProperty(RequiredResourcesProperty.class);
+		RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);
 		if (property != null)
 			return new LockableResourcesStruct(property, env);
 

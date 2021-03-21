@@ -2,7 +2,6 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
-import static org.jenkins.plugins.lockableresources.TestHelpers.clickButton;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -11,7 +10,7 @@ import static org.junit.Assume.assumeFalse;
 import hudson.Functions;
 import hudson.model.Result;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import net.sf.json.JSONObject;
@@ -185,7 +184,10 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+            "lock(label: 'label1') {\n"
+                + "	semaphore 'wait-inside'\n"
+                + "}\n"
+                + "echo 'Finish'",
             true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -435,7 +437,7 @@ public class LockStepTest extends LockStepTestBase {
         j.waitForMessage(
             "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
-        clickButton(wc, "unlock");
+        TestHelpers.clickButton(wc, "unlock");
       }
 
       j.waitForMessage("Lock acquired on [resource1]", rNext);
@@ -495,7 +497,7 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     JenkinsRule.WebClient wc = j.createWebClient();
 
-    clickButton(wc, "reserve");
+    TestHelpers.clickButton(wc, "reserve");
     LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
     assertNotNull(resource1);
     resource1.setReservedBy("someone");
@@ -517,7 +519,7 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowRun r = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked, waiting...", r);
-    clickButton(wc, "unreserve");
+    TestHelpers.clickButton(wc, "unreserve");
     SemaphoreStep.waitForStart("wait-inside/1", r);
     SemaphoreStep.success("wait-inside/1", null);
     j.assertBuildStatusSuccess(j.waitForCompletion(r));
@@ -567,17 +569,15 @@ public class LockStepTest extends LockStepTestBase {
     final CyclicBarrier barrier = new CyclicBarrier(51);
     for (int i = 0; i < 50; i++) {
       Thread thread =
-          new Thread() {
-            @Override
-            public void run() {
-              try {
-                barrier.await();
-                p.scheduleBuild2(0).waitForStart();
-              } catch (Exception e) {
-                System.err.println("Failed to start pipeline job");
-              }
-            }
-          };
+          new Thread(
+              () -> {
+                try {
+                  barrier.await();
+                  p.scheduleBuild2(0).waitForStart();
+                } catch (Exception e) {
+                  System.err.println("Failed to start pipeline job");
+                }
+              });
       thread.start();
     }
     barrier.await();
@@ -661,7 +661,10 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
+            "lock(label: 'label1') {\n"
+                + "	semaphore 'wait-inside-p3'\n"
+                + "}\n"
+                + "echo 'Finish'",
             true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
@@ -712,7 +715,10 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
+            "lock(label: 'label1') {\n"
+                + "	semaphore 'wait-inside-p3'\n"
+                + "}\n"
+                + "echo 'Finish'",
             true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
@@ -747,7 +753,8 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], [label: 'label1', quantity: 2]]) {\n"
+            "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], "
+                + "[label: 'label1', quantity: 2]]) {\n"
                 + "  def lockedResources = env.var.split(',').sort()\n"
                 + "  echo \"Resources locked: ${lockedResources}\"\n"
                 + "  semaphore 'wait-inside'\n"
@@ -901,7 +908,7 @@ public class LockStepTest extends LockStepTestBase {
   public void unreserveSetsVariable() throws Exception {
     LockableResourcesManager lm = LockableResourcesManager.get();
     lm.createResourceWithLabel("resource1", "label1");
-    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+    lm.reserve(Collections.singletonList(lm.fromName("resource1")), "test");
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
@@ -913,7 +920,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
     j.waitForMessage("is locked, waiting...", b1);
-    lm.unreserve(Arrays.asList(lm.fromName("resource1")));
+    lm.unreserve(Collections.singletonList(lm.fromName("resource1")));
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
     // Variable should have been filled
@@ -936,7 +943,7 @@ public class LockStepTest extends LockStepTestBase {
   public void skipIfLocked() throws Exception {
     LockableResourcesManager lm = LockableResourcesManager.get();
     lm.createResourceWithLabel("resource1", "label1");
-    lm.reserve(Arrays.asList(lm.fromName("resource1")), "test");
+    lm.reserve(Collections.singletonList(lm.fromName("resource1")), "test");
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(

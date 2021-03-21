@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import groovy.lang.Binding;
 import hudson.Extension;
 import hudson.Util;
@@ -30,7 +31,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -157,7 +157,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class)
   public boolean scriptMatches(
-      @Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+      @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
       throws ExecutionException {
     Binding binding = new Binding(params);
     binding.setVariable("resourceName", name);

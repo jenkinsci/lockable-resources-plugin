@@ -100,8 +100,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       String resourceDescription,
       final String variable,
       boolean inversePrecedence) {
-    Run<?, ?> r = null;
-    FlowNode node = null;
+    Run<?, ?> r;
+    FlowNode node;
     try {
       r = context.get(Run.class);
       node = context.get(FlowNode.class);
@@ -180,7 +180,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     if (!cleaned) {
       LOGGER.log(
           Level.WARNING,
-          "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
+          "Cannot remove context from lockable resource waiting list. "
+              + "The context is not in the waiting list.");
     }
     getContext().onFailure(cause);
   }

@@ -4,7 +4,10 @@
 package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlElementUtil;
@@ -57,11 +60,11 @@ public final class TestHelpers {
     assertThat(resources, is(not(nullValue())));
     JSONObject res =
         (JSONObject)
-            (resources.stream()
+            resources.stream()
                 .filter(e -> resourceName.equals(((JSONObject) e).getString("name")))
                 .findAny()
                 .orElseThrow(
-                    () -> new AssertionError("Could not find '" + resourceName + "' in API.")));
+                    () -> new AssertionError("Could not find '" + resourceName + "' in API."));
     assertThat(res, hasEntry("locked", isLocked));
     return res;
   }
