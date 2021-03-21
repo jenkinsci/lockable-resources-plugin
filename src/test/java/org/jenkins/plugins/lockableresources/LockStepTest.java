@@ -928,6 +928,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
+    j.waitUntilNoActivity();
     j.assertLogContains("The label does not exist: invalidLabel", b1);
     isPaused(b1, 0, 0);
   }
