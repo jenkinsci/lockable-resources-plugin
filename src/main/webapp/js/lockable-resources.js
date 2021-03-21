@@ -11,7 +11,7 @@ function resource_action(button, action) {
   // TODO: Migrate to form:link after Jenkins 2.233 (for button-styled links)
   var form = document.createElement('form');
   form.setAttribute('method', 'POST');
-  form.setAttribute('action', action + "?resource=" + find_resource_name(button));
+  form.setAttribute('action', action + "?resource=" + encodeURIComponent(find_resource_name(button)));
   crumb.appendToForm(form);
   document.body.appendChild(form);
   form.submit();
