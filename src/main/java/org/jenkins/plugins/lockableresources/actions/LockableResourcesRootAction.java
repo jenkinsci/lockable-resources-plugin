@@ -17,6 +17,7 @@ import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
@@ -69,8 +70,8 @@ public class LockableResourcesRootAction implements RootAction {
 		return (Jenkins.get().hasPermission(VIEW)) ? "lockable-resources" : "";
 	}
 
-	public List<LockableResource> getResources() {
-		return LockableResourcesManager.get().getResources();
+	public Collection<LockableResource> getResources() {
+		return LockableResourcesManager.get().getReadOnlyResources();
 	}
 
 	public int getFreeResourceAmount(String label) {

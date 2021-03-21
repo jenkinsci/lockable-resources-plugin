@@ -162,7 +162,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 				for (String name : names.split("\\s+")) {
 					boolean found = false;
 					for (LockableResource r : LockableResourcesManager.get()
-							.getResources()) {
+							.getReadOnlyResources()) {
 						if (r.getName().equals(name)) {
 							found = true;
 							break;
@@ -262,7 +262,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
 			if (value != null) {
 				for (LockableResource r : LockableResourcesManager.get()
-						.getResources()) {
+						.getReadOnlyResources()) {
 					if (r.getName().startsWith(value))
 						c.add(r.getName());
 				}

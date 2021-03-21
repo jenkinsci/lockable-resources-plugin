@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.Plugin;
 import hudson.model.Api;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.kohsuke.stapler.export.Exported;
@@ -24,6 +25,6 @@ public class LockableResources extends Plugin {
 
   @Exported
   public List<LockableResource> getResources() {
-    return Collections.unmodifiableList(LockableResourcesManager.get().getResources());
+    return Collections.unmodifiableList(new ArrayList<>(LockableResourcesManager.get().getReadOnlyResources()));
   }
 }

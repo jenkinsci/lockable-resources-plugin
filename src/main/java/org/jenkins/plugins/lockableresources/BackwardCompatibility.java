@@ -13,6 +13,7 @@ import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,7 +34,7 @@ public final class BackwardCompatibility {
 	@Initializer(after = InitMilestone.JOB_LOADED)
 	public static void compatibilityMigration() {
 		LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run");
-		List<LockableResource> resources = LockableResourcesManager.get().getResources();
+		Collection<LockableResource> resources = LockableResourcesManager.get().getReadOnlyResources();
 		for (LockableResource resource : resources) {
 			List<StepContext> queuedContexts = resource.getQueuedContexts();
 			if (!queuedContexts.isEmpty()) {
