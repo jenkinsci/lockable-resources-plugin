@@ -428,7 +428,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable Run<?, ?> build,
       boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
-    if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
+    if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
       return;
     }
 
@@ -624,7 +624,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public synchronized void unreserve(List<LockableResource> resources) {
     // make sure there is a list of resources to unreserve
-    if (resources == null || (resources.isEmpty())) {
+    if (resources == null || resources.isEmpty()) {
       return;
     }
     List<String> resourceNamesToUnreserve = new ArrayList<>();

@@ -60,11 +60,11 @@ public final class TestHelpers {
     assertThat(resources, is(not(nullValue())));
     JSONObject res =
         (JSONObject)
-            (resources.stream()
+            resources.stream()
                 .filter(e -> resourceName.equals(((JSONObject) e).getString("name")))
                 .findAny()
                 .orElseThrow(
-                    () -> new AssertionError("Could not find '" + resourceName + "' in API.")));
+                    () -> new AssertionError("Could not find '" + resourceName + "' in API."));
     assertThat(res, hasEntry("locked", isLocked));
     return res;
   }
