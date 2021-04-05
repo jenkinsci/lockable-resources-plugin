@@ -49,8 +49,9 @@ public class LockableResourcesRootAction implements RootAction {
 
 	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
 
+	@Override
 	public String getIconFileName() {
-		return (Jenkins.get().hasPermission(VIEW)) ? ICON : null;
+		return Jenkins.get().hasPermission(VIEW) ? ICON : null;
 	}
 
 	public String getUserName() {
@@ -61,12 +62,14 @@ public class LockableResourcesRootAction implements RootAction {
 			return null;
 	}
 
+	@Override
 	public String getDisplayName() {
 	  return Messages.LockableResourcesRootAction_PermissionGroup();
 	}
 
+	@Override
 	public String getUrlName() {
-		return (Jenkins.get().hasPermission(VIEW)) ? "lockable-resources" : "";
+		return Jenkins.get().hasPermission(VIEW) ? "lockable-resources" : "";
 	}
 
 	public List<LockableResource> getResources() {

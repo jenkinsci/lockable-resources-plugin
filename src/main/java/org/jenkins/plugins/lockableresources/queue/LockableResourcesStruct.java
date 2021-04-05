@@ -8,12 +8,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.CheckForNull;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -120,6 +120,7 @@ public class LockableResourcesStruct implements Serializable {
     return resourceMatchScript;
   }
 
+  @Override
   public String toString() {
     return "Required resources: "
         + this.required

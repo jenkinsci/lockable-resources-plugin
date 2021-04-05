@@ -9,17 +9,16 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.RestartableJenkinsRule;
+import org.jvnet.hudson.test.JenkinsSessionRule;
 
 public class LockStepWithRestartTest extends LockStepTestBase {
 
-  @Rule public RestartableJenkinsRule story = new RestartableJenkinsRule();
+  @Rule public JenkinsSessionRule sessions = new JenkinsSessionRule();
 
   @Test
-  public void lockOrderRestart() {
-    story.then(
-        (JenkinsRule j) -> {
+  public void lockOrderRestart() throws Throwable {
+    sessions.then(
+        j -> {
           LockableResourcesManager.get().createResource("resource1");
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
@@ -41,8 +40,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           isPaused(b3, 1, 1);
         });
 
-    story.then(
-        (JenkinsRule j) -> {
+    sessions.then(
+        j -> {
           WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
           WorkflowRun b1 = p.getBuildByNumber(1);
           WorkflowRun b2 = p.getBuildByNumber(2);
@@ -68,9 +67,9 @@ public class LockStepWithRestartTest extends LockStepTestBase {
   }
 
   @Test
-  public void interoperabilityOnRestart() {
-    story.then(
-        (JenkinsRule j) -> {
+  public void interoperabilityOnRestart() throws Throwable {
+    sessions.then(
+        j -> {
           LockableResourcesManager.get().createResource("resource1");
           WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
           p.setDefinition(
@@ -88,8 +87,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           TestHelpers.waitForQueue(j.jenkins, f);
         });
 
-    story.then(
-        (JenkinsRule j) -> {
+    sessions.then(
+        j -> {
           WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
           FreeStyleProject f = j.jenkins.getItemByFullName("f", FreeStyleProject.class);
           WorkflowRun b1 = p.getBuildByNumber(1);
@@ -99,7 +98,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           j.waitForMessage("Lock released on resource [resource1]", b1);
           isPaused(b1, 1, 0);
 
-          FreeStyleBuild fb1 = null;
+          FreeStyleBuild fb1;
           System.out.print("Waiting for freestyle #1 to start building");
           while ((fb1 = f.getBuildByNumber(1)) == null) {
             Thread.sleep(250);
@@ -112,9 +111,9 @@ public class LockStepWithRestartTest extends LockStepTestBase {
   }
 
   @Test
-  public void testReserveOverRestart() {
-    story.then(
-        (JenkinsRule j) -> {
+  public void testReserveOverRestart() throws Throwable {
+    sessions.then(
+        j -> {
           LockableResourcesManager manager = LockableResourcesManager.get();
           manager.createResource("resource1");
           manager.reserve(Collections.singletonList(manager.fromName("resource1")), "user");
@@ -134,8 +133,8 @@ public class LockStepWithRestartTest extends LockStepTestBase {
           TestHelpers.waitForQueue(j.jenkins, f);
         });
 
-    story.then(
-        (JenkinsRule j) -> {
+    sessions.then(
+        j -> {
           WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
           FreeStyleProject f = j.jenkins.getItemByFullName("f", FreeStyleProject.class);
           WorkflowRun b1 = p.getBuildByNumber(1);

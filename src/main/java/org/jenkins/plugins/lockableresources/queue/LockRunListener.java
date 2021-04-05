@@ -13,17 +13,15 @@ import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.Job;
 import hudson.model.Run;
+import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
-import hudson.model.StringParameterValue;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
-
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 

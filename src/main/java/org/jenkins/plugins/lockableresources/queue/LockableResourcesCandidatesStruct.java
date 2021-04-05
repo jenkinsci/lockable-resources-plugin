@@ -1,7 +1,6 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import java.util.List;
-
 import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class LockableResourcesCandidatesStruct {
