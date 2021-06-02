@@ -45,6 +45,8 @@
                 <td class="pane">
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
                     <button onClick="resource_action(this, 'unlock');">Unlock</button>
+                  </j:if>
+                  <j:if test="${h.hasPermission(it.STEAL) or h.hasPermission(app.ADMINISTER)}">
                     <button onClick="resource_action(this, 'steal');">Steal Lock</button>
                   </j:if>
                 </td>
@@ -65,7 +67,7 @@
                         <button onClick="resource_action(this, 'unreserve');">UnReserve</button>
                       </j:if>
                       <j:if
-                        test="${it.UserName != null and it.UserName != resource.reservedBy and ( h.hasPermission(it.RESERVE) or h.hasPermission(app.ADMINISTER) )}">
+                        test="${it.UserName != null and it.UserName != resource.reservedBy and ( h.hasPermission(it.STEAL) or h.hasPermission(app.ADMINISTER) )}">
                           <j:choose>
                               <j:when
                                 test="${resource.reservedBy.contains('#')}">
