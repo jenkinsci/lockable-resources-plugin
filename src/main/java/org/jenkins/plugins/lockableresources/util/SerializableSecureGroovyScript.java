@@ -23,17 +23,16 @@
  */
 package org.jenkins.plugins.lockableresources.util;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
+import hudson.util.FormValidation;
 import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import hudson.util.FormValidation;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ClasspathEntry;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
@@ -100,7 +99,7 @@ public class SerializableSecureGroovyScript implements Serializable {
 
 		private final String url;
 
-		private SerializableClassPathEntry(@Nonnull ClasspathEntry entry) {
+		private SerializableClassPathEntry(@NonNull ClasspathEntry entry) {
 			this.url = entry.getPath();
 		}
 

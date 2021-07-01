@@ -1,10 +1,5 @@
 package org.jenkins.plugins.lockableresources.actions;
 
-import java.io.IOException;
-
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
-
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.EnvironmentContributor;
@@ -12,6 +7,9 @@ import hudson.model.InvisibleAction;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
+import java.io.IOException;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 @Restricted(NoExternalUse.class)
 public class ResourceVariableNameAction extends InvisibleAction {

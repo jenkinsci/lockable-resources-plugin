@@ -25,12 +25,10 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.junit.Assert.assertThat;
 
-import com.gargoylesoftware.htmlunit.AlertHandler;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
-import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlElementUtil;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -67,13 +65,7 @@ public class LockableResourceRootActionSEC1361Test {
     wc.login("user");
 
     final AtomicReference<String> lastAlertReceived = new AtomicReference<>();
-    wc.setAlertHandler(
-        new AlertHandler() {
-          @Override
-          public void handleAlert(Page page, String s) {
-            lastAlertReceived.set(s);
-          }
-        });
+    wc.setAlertHandler((page, s) -> lastAlertReceived.set(s));
 
     HtmlPage htmlPage = wc.goTo("lockable-resources");
     assertThat(lastAlertReceived.get(), nullValue());

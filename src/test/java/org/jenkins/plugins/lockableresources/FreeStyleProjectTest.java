@@ -34,7 +34,10 @@ import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.*;
+import org.jvnet.hudson.test.Issue;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
+import org.jvnet.hudson.test.TestBuilder;
 
 public class FreeStyleProjectTest {
 
@@ -174,7 +177,8 @@ public class FreeStyleProjectTest {
             .to("alice"));
 
     final String SCRIPT =
-        "resourceName == org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
+        "resourceName == "
+            + "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
 
     FreeStyleProject p = j.createFreeStyleProject();
     SecureGroovyScript groovyScript =
@@ -195,15 +199,16 @@ public class FreeStyleProjectTest {
         is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed.class)));
 
     ScriptApproval approval = ScriptApproval.get();
-    List<ScriptApproval.PendingSignature> pending = new ArrayList<>();
-    pending.addAll(approval.getPendingSignatures());
+    List<ScriptApproval.PendingSignature> pending =
+        new ArrayList<>(approval.getPendingSignatures());
 
     assertFalse(pending.isEmpty());
     assertEquals(1, pending.size());
     ScriptApproval.PendingSignature firstPending = pending.get(0);
 
     assertEquals(
-        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction ICON",
+        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction "
+            + "ICON",
         firstPending.signature);
     approval.approveSignature(firstPending.signature);
 

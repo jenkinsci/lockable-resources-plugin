@@ -8,8 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
@@ -37,7 +37,7 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Extension
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
-	private transient Cache<Long,Date> lastLogged = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
+	private transient Cache<Long,Date> lastLogged = Caffeine.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
 
 	static final Logger LOGGER = Logger
 			.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
@@ -200,7 +200,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		@Override
 		public String getShortDescription() {
 			//TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
-			String resourceInfo = (resources.label.isEmpty()) ? resources.required.toString() : "with label " + resources.label;
+			String resourceInfo = resources.label.isEmpty() ? resources.required.toString() : "with label " + resources.label;
 			return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
 		}
 	}

@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.BulkChange;
 import hudson.Extension;
@@ -16,11 +17,17 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nonnull;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -168,9 +175,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
    *     as a fatal failure since the requirement list may be incomplete
    * @since 2.0
    */
-  @Nonnull
+  @NonNull
   public List<LockableResource> getResourcesMatchingScript(
-      @Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+      @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
       throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
     for (LockableResource r : this.resources) {
@@ -421,7 +428,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable Run<?, ?> build,
       boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
-    if (resourceNamesToUnLock == null || (resourceNamesToUnLock.isEmpty())) {
+    if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
       return;
     }
 
@@ -431,7 +438,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     QueuedContextStruct nextContext = null;
     while (!remainingResourceNamesToUnLock.isEmpty()) {
       // check if there are resources which can be unlocked (and shall not be unlocked)
-      Set<LockableResource> requiredResourceForNextContext = null;
       nextContext =
           this.getNextQueuedContext(remainingResourceNamesToUnLock, inversePrecedence, nextContext);
 
@@ -442,7 +448,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return;
       }
 
-      requiredResourceForNextContext =
+      Set<LockableResource> requiredResourceForNextContext =
           checkResourcesAvailability(
               nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
@@ -477,11 +483,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // running?)
             LOGGER.log(
                 Level.WARNING,
-                "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, "
-                    + "this could be a legitimate status if the build waiting for the lock was deleted or"
-                    + " hard killed. More information at Level.FINE if debug is needed.");
+                "Skipping queued context for lock. Cannot get the Run object from the context to "
+                    + "proceed with lock; this could be a legitimate state if the build waiting "
+                    + "for the lock was deleted or hard killed. More information is logged at "
+                    + "Level.FINE for debugging purposes.");
             LOGGER.log(
-                Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+                Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
             unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
             return;
           }
@@ -608,7 +615,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
-  private void unreserveResources(@Nonnull List<LockableResource> resources) {
+  private void unreserveResources(@NonNull List<LockableResource> resources) {
     for (LockableResource l : resources) {
       l.unReserve();
     }
@@ -617,7 +624,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public synchronized void unreserve(List<LockableResource> resources) {
     // make sure there is a list of resources to unreserve
-    if (resources == null || (resources.isEmpty())) {
+    if (resources == null || resources.isEmpty()) {
       return;
     }
     List<String> resourceNamesToUnreserve = new ArrayList<>();
@@ -626,7 +633,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // check if there are resources which can be unlocked (and shall not be unlocked)
-    Set<LockableResource> requiredResourceForNextContext = null;
     QueuedContextStruct nextContext =
         this.getNextQueuedContext(resourceNamesToUnreserve, false, null);
 
@@ -653,7 +659,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // remove context from queue and process it
-    requiredResourceForNextContext =
+    Set<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
             nextContext.getResources(), nextContextLogger, resourceNamesToUnreserve);
     this.queuedContexts.remove(nextContext);
@@ -690,11 +696,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
           // running?)
           LOGGER.log(
               Level.WARNING,
-              "Skipping queued context for lock. Can not get the Run object from the context to proceed with lock, "
-                  + "this could be a legitimate status if the build waiting for the lock was deleted or"
-                  + " hard killed. More information at Level.FINE if debug is needed.");
+              "Skipping queued context for lock. Cannot get the Run object from the context to "
+                  + "proceed with lock; this could be a legitimate state if the build waiting for "
+                  + "the lock was deleted or hard killed. More information is logged at "
+                  + "Level.FINE for debugging purposes.");
           LOGGER.log(
-              Level.FINE, "Can not get the Run object from the context to proceed with lock", e);
+              Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
           return;
         }
       }

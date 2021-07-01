@@ -1,19 +1,16 @@
 package org.jenkins.plugins.lockableresources;
 
-import java.io.Serializable;
-
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.QueryParameter;
-
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Descriptor;
 import hudson.util.FormValidation;
-import hudson.Util;
-
-import edu.umd.cs.findbugs.annotations.CheckForNull;
+import java.io.Serializable;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 
 public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {
 
@@ -50,6 +47,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 		this.quantity = quantity;
 	}
 
+	@Override
 	public String toString() {
 		return toString(resource, label, quantity);
 	}

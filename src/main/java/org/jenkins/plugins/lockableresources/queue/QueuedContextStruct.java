@@ -10,7 +10,6 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import java.io.Serializable;
 import java.util.List;
-
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 /*

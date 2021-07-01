@@ -1,14 +1,14 @@
 package org.jenkins.plugins.lockableresources;
 
-import static io.jenkins.plugins.casc.misc.Util.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 import io.jenkins.plugins.casc.ConfigurationContext;
 import io.jenkins.plugins.casc.ConfiguratorRegistry;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
 import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
+import io.jenkins.plugins.casc.misc.Util;
 import io.jenkins.plugins.casc.model.CNode;
 import java.util.List;
 import org.junit.ClassRule;
@@ -21,7 +21,7 @@ public class ConfigurationAsCodeTest {
   public static JenkinsConfiguredWithCodeRule r = new JenkinsConfiguredWithCodeRule();
 
   @Test
-  public void should_support_configuration_as_code() throws Exception {
+  public void should_support_configuration_as_code() {
     List<LockableResource> declaredResources =
         LockableResourcesManager.get().getDeclaredResources();
     assertEquals(
@@ -52,9 +52,9 @@ public class ConfigurationAsCodeTest {
   public void should_support_configuration_export() throws Exception {
     ConfiguratorRegistry registry = ConfiguratorRegistry.get();
     ConfigurationContext context = new ConfigurationContext(registry);
-    CNode yourAttribute = getUnclassifiedRoot(context).get("lockableResourcesManager");
-    String exported = toYamlString(yourAttribute);
-    String expected = toStringFromYamlFile(this, "casc_expected_output.yml");
+    CNode yourAttribute = Util.getUnclassifiedRoot(context).get("lockableResourcesManager");
+    String exported = Util.toYamlString(yourAttribute);
+    String expected = Util.toStringFromYamlFile(this, "casc_expected_output.yml");
 
     assertThat(exported, is(expected));
   }

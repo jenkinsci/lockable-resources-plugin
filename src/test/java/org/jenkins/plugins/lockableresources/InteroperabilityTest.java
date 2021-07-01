@@ -5,7 +5,6 @@ import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
-import java.io.IOException;
 import java.util.concurrent.Semaphore;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -37,7 +36,7 @@ public class InteroperabilityTest extends LockStepTestBase {
               @Override
               public boolean perform(
                   AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-                  throws InterruptedException, IOException {
+                  throws InterruptedException {
                 semaphore.acquire();
                 return true;
               }
