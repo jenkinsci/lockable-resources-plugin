@@ -717,6 +717,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  @NonNull
   @Override
   public String getDisplayName() {
     return "External Resources";

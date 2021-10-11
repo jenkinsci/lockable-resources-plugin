@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources.actions;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.EnvironmentContributor;
@@ -28,7 +29,7 @@ public class ResourceVariableNameAction extends InvisibleAction {
 	public static final class ResourceVariableNameActionEnvironmentContributor extends EnvironmentContributor {
 
 		@Override
-		public void buildEnvironmentFor(Run r, EnvVars envs, TaskListener listener)
+		public void buildEnvironmentFor(@NonNull Run r, @NonNull EnvVars envs, @NonNull TaskListener listener)
 				throws IOException, InterruptedException {
 			ResourceVariableNameAction a = r.getAction(ResourceVariableNameAction.class);
 			if (a != null && a.getParameter() != null && a.getParameter().getValue() != null) {

@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractProject;
@@ -128,6 +129,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 	@Extension
 	public static class DescriptorImpl extends JobPropertyDescriptor {
 
+		@NonNull
 		@Override
 		public String getDisplayName() {
 			return "Required Lockable Resources";

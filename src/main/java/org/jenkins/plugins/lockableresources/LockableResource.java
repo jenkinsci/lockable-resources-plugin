@@ -359,6 +359,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Extension
   public static class DescriptorImpl extends Descriptor<LockableResource> {
 
+    @NonNull
     @Override
     public String getDisplayName() {
       return "Resource";

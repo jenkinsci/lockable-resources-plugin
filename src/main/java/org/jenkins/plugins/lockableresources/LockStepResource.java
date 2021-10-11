@@ -1,6 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -22,14 +24,14 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
 	public int quantity = 0;
 
-	LockStepResource(String resource, String label, int quantity) {
+	LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
 		this.resource = resource;
 		this.label = label;
 		this.quantity = quantity;
 	}
 
 	@DataBoundConstructor
-	public LockStepResource(String resource) {
+	public LockStepResource(@Nullable String resource) {
 		if (resource != null && !resource.isEmpty()) {
 			this.resource = resource;
 		}
@@ -51,7 +53,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	public String toString() {
 		return toString(resource, label, quantity);
 	}
-	
+
 	public static String toString(String resource, String label, int quantity) {
 		// a label takes always priority
 		if (label != null) {
@@ -92,6 +94,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	@Extension
 	public static class DescriptorImpl extends Descriptor<LockStepResource> {
 
+    @NonNull
 		@Override
 		public String getDisplayName() {
 			return "Resource";
