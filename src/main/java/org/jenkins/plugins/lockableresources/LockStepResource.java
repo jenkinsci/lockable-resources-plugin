@@ -72,7 +72,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	/**
 	 * Label and resource are mutual exclusive.
 	 */
-	public void validate() throws Exception {
+	public void validate() {
 		validate(resource, label, quantity);
 	}
 
@@ -80,7 +80,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	 * Label and resource are mutual exclusive.
 	 * The label, if provided, must be configured (at least one resource must have this label).
 	 */
-	public static void validate(String resource, String label, int quantity) throws Exception {
+	public static void validate(String resource, String label, int quantity) {
 		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
 			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
 		}

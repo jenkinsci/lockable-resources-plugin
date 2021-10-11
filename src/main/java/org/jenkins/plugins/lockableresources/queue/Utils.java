@@ -16,9 +16,9 @@ import hudson.model.Run;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public final class Utils {
-private Utils() {
+  private Utils() {
+  }
 
-}
 	public static Job<?, ?> getProject(Queue.Item item) {
 		if (item.task instanceof Job)
 			return (Job<?, ?>) item.task;

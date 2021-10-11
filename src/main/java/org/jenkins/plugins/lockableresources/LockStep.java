@@ -137,7 +137,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   /** Label and resource are mutual exclusive. */
-  public void validate() throws Exception {
+  public void validate() {
     LockStepResource.validate(resource, label, quantity);
   }
 
@@ -154,7 +154,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   @Override
-  public StepExecution start(StepContext context) throws Exception {
+  public StepExecution start(StepContext context) {
     return new LockStepExecution(this, context);
   }
 }
