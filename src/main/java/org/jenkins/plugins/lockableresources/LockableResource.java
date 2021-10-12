@@ -261,8 +261,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    *     1.8)
    */
   @Deprecated
-  private Object getAbstractBuild(final Run owner, final Class targetClass) {
-    return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
+  private Object getAbstractBuild(final Run<?, ?> owner, final Class<?> targetClass) {
+    return owner instanceof AbstractBuild ? (AbstractBuild<?, ?>) owner : null;
   }
 
   @Exported
@@ -359,6 +359,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Extension
   public static class DescriptorImpl extends Descriptor<LockableResource> {
 
+    @NonNull
     @Override
     public String getDisplayName() {
       return "Resource";

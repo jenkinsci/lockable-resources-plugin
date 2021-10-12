@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
@@ -77,7 +78,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 	}
 
 	@Override
-	public void onCompleted(Run<?, ?> build, TaskListener listener) {
+	public void onCompleted(Run<?, ?> build, @NonNull TaskListener listener) {
 		// Skip unlocking for multiple configuration projects,
 		// only the child jobs will actually unlock resources.
 		if (build instanceof MatrixBuild)

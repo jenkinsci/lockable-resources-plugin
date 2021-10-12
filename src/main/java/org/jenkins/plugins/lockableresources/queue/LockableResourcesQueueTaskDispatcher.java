@@ -160,7 +160,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 		public String getShortDescription() {
 			if (this.rscStruct.label.isEmpty()) {
 				if (!this.rscStruct.required.isEmpty()) {
-					return "Waiting for resource instances " + rscStruct.required.toString();
+					return "Waiting for resource instances " + rscStruct.required;
 				} else {
 					final SecureGroovyScript systemGroovyScript = this.rscStruct.getResourceMatchScript();
 					if (systemGroovyScript != null) {
@@ -174,7 +174,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 					}
 					// TODO: Developers should extend here if LockableResourcesStruct is extended
 					LOGGER.log(Level.WARNING, "Failed to classify reason of waiting for resource: "
-						+ this.rscStruct.toString());
+						+ this.rscStruct);
 					return "Waiting for lockable resources";
 				}
 			} else {
