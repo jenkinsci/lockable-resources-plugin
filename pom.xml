@@ -11,7 +11,7 @@
 
   <groupId>org.6wind.jenkins</groupId>
   <artifactId>lockable-resources</artifactId>
-  <version>${revision}${changelist}</version>
+  <version>2.12</version>
   <packaging>hpi</packaging>
 
   <name>Lockable Resources plugin</name>
@@ -51,7 +51,7 @@
     <connection>scm:git:git://github.com/${gitHubRepo}.git</connection>
     <developerConnection>scm:git:git@github.com:${gitHubRepo}.git</developerConnection>
     <url>https://github.com/${gitHubRepo}</url>
-    <tag>${scmTag}</tag>
+    <tag>lockable-resources-2.12</tag>
   </scm>
 
   <properties>
