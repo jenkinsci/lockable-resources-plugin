@@ -58,7 +58,7 @@
     <revision>2.12</revision>
     <changelist>-SNAPSHOT</changelist>
     <java.level>8</java.level>
-    <jenkins.version>2.222.4</jenkins.version>
+    <jenkins.version>2.235.5</jenkins.version>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
   </properties>
 
@@ -66,8 +66,8 @@
     <dependencies>
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.222.x</artifactId>
-        <version>887.vae9c8ac09ff7</version>
+        <artifactId>bom-2.235.x</artifactId>
+        <version>918.vae501d2cdc99</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
