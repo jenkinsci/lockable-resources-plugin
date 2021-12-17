@@ -928,6 +928,229 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  //@Issue("JENKINS-XXXXX")
+  public void reserveInsideLockHonoured() throws Exception {
+    // Use-case is a job keeping the resource reserved so it can use
+    // it in other stages and free it later, not all in one closure
+    // Variant: using the LockableResourcesManager to manipulate
+    // the LockableResource object(s) (with its synchronized code)
+    LockableResourcesManager lm = LockableResourcesManager.get();
+    lm.createResourceWithLabel("resource1", "label1");
+
+    // Can't store in CPS script variable because not serializable:
+    String lmget = "org.jenkins.plugins.lockableresources.LockableResourcesManager.get()";
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "reserveInsideLockHonoured");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "timeout(2) {\n"
+                + "parallel p1: {\n"
+                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+                + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
+                + "    echo \"VAR IS $env.LOCK_NAME\"\n"
+                + "    lr = " + lmget + ".fromName(env.LOCK_NAME)\n"
+                + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
+                + "    def res = " + lmget + ".reserve([lr], 'test2a')\n"
+                //+ "    semaphore 'wait-inside'\n"
+                + "    echo \"Locked resource cause 1-2a: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 1-2a: ${lr.getReservedBy()}\"\n"
+                + "    if (!res) {\n"
+                + "        echo \"LockableResourcesManager did not reserve an already locked resource; hack it!\"\n"
+                + "        lr.setReservedBy('test2b')\n"
+                + "        echo \"Locked resource cause 1-2b: ${lr.getLockCause()}\"\n"
+                + "        echo \"Locked resource reservedBy 1-2b: ${lr.getReservedBy()}\"\n"
+                + "    }\n"
+                + "    echo \"Unlocking parallel closure 1\"\n"
+                + "  }\n"
+                + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 1-3: ${lr.getReservedBy()}\"\n"
+                + "  echo \"Ended locked parallel closure 1 with resource reserved, sleeping...\"\n"
+                + "  sleep (5)\n"
+                + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
+                + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
+                + "  " + lmget + ".reset([lr])\n"
+                + "  sleep (5)\n"
+                + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
+                + "},\n"
+                + "p2: {\n"
+                //+ "  semaphore 'wait-outside'\n"
+                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+                + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
+                + "  lock(label: 'label1', variable: 'someVar2') {\n"
+                + "    echo \"VAR2 IS $env.someVar2\"\n"
+                + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+                + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
+                + "    echo \"Just sleeping...\"\n"
+                + "    sleep (20)\n"
+                + "    echo \"Unlocking parallel closure 2\"\n"
+                + "  }\n"
+                + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
+                + "},\n"
+                // Add some pressure to try for race conditions:
+                + "p3: { lock(label: 'label1') { sleep 2 } },\n"
+                + "p4: { lock(label: 'label1') { sleep 1 } },\n"
+                + "p5: { lock(label: 'label1') { sleep 3 } },\n"
+                + "p6: { lock(label: 'label1') { sleep 2 } },\n"
+                + "p7: { lock(label: 'label1') { sleep 1 } },\n"
+                + "p8: { lock(label: 'label1') { sleep 2 } },\n"
+                + "p9: { lock(label: 'label1') { sleep 1 } }\n"
+            + "}", // timeout wrapper
+            false));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+
+    j.waitForMessage("Locked resource cause 1-1", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 1-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 1-3", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    // Bug #1 happens here (without further patch):
+    // although resource is seen as reserved, it is
+    // grabbed anyway by the other parallel thread
+    // which is already waiting. Notably, log is like:
+    //  62.908 [setReservedByInsideLockHonoured #1] Lock acquired on [Label: label1]
+    //  62.909 [setReservedByInsideLockHonoured #1] Lock released on resource [Label: label1]
+    // and the consistent ordering of acquired first,
+    // released later is unsettling.
+    j.waitForMessage("Locked resource cause 1-4", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 1-5", b1);
+    // This line might not strictly be required,
+    // but we are processing a parallel pipeline
+    // and many seconds were spent sleeping, so:
+    j.assertLogContains("Locked resource cause 2-1", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 2-2", b1);
+    j.assertLogContains("Locked resource cause 1-5", b1);
+
+    j.assertLogContains("is locked, waiting...", b1);
+
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+  }
+
+  @Test
+  //@Issue("JENKINS-XXXXX")
+  public void setReservedByInsideLockHonoured() throws Exception {
+    // Use-case is a job keeping the resource reserved so it can use
+    // it in other stages and free it later, not all in one closure
+    // Variant: directly using the LockableResource object
+    LockableResourcesManager lm = LockableResourcesManager.get();
+    lm.createResourceWithLabel("resource1", "label1");
+
+    // Can't store in CPS script variable because not serializable:
+    String lmget = "org.jenkins.plugins.lockableresources.LockableResourcesManager.get()";
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "setReservedByInsideLockHonoured");
+    p.setDefinition(
+        new CpsFlowDefinition(
+            "timeout(2) {\n"
+                + "parallel p1: {\n"
+                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+                + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
+                + "    echo \"VAR IS $env.LOCK_NAME\"\n"
+                + "    lr = " + lmget + ".fromName(env.LOCK_NAME)\n"
+                + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
+                + "    lr.setReservedBy('test')\n"
+                //+ "    semaphore 'wait-inside'\n"
+                + "    echo \"Locked resource cause 1-2: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 1-2: ${lr.getReservedBy()}\"\n"
+                + "    echo \"Unlocking parallel closure 1\"\n"
+                + "  }\n"
+                + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 1-3: ${lr.getReservedBy()}\"\n"
+                + "  echo \"Ended locked parallel closure 1 with resource reserved, sleeping...\"\n"
+                + "  sleep (5)\n"
+                + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
+                + "  echo \"Un-reserving Locked resource directly and sleeping...\"\n"
+                + "  lr.reset()\n"
+                + "  sleep (5)\n"
+                + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
+                + "},\n"
+                + "p2: {\n"
+                //+ "  semaphore 'wait-outside'\n"
+                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+                + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
+                + "  lock(label: 'label1', variable: 'someVar2') {\n"
+                + "    echo \"VAR2 IS $env.someVar2\"\n"
+                + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+                + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
+                + "    echo \"Just sleeping...\"\n"
+                + "    sleep (20)\n"
+                + "    echo \"Unlocking parallel closure 2\"\n"
+                + "  }\n"
+                + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
+                + "},\n"
+                // Add some pressure to try for race conditions:
+                + "p3: { lock(label: 'label1') { sleep 2 } },\n"
+                + "p4: { lock(label: 'label1') { sleep 1 } },\n"
+                + "p5: { lock(label: 'label1') { sleep 3 } },\n"
+                + "p6: { lock(label: 'label1') { sleep 2 } },\n"
+                + "p7: { lock(label: 'label1') { sleep 1 } },\n"
+                + "p8: { lock(label: 'label1') { sleep 2 } },\n"
+                + "p9: { lock(label: 'label1') { sleep 1 } }\n"
+            + "}", // timeout wrapper
+            false));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+
+    j.waitForMessage("Locked resource cause 1-1", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 1-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 1-3", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    // Bug #1 happens here (without further patch):
+    // although resource is seen as reserved, it is
+    // grabbed anyway by the other parallel thread
+    // which is already waiting. Notably, log is like:
+    //  62.908 [setReservedByInsideLockHonoured #1] Lock acquired on [Label: label1]
+    //  62.909 [setReservedByInsideLockHonoured #1] Lock released on resource [Label: label1]
+    // and the consistent ordering of acquired first,
+    // released later is unsettling.
+    j.waitForMessage("Locked resource cause 1-4", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 1-5", b1);
+    // This line might not strictly be required,
+    // but we are processing a parallel pipeline
+    // and many seconds were spent sleeping, so:
+    j.assertLogContains("Locked resource cause 2-1", b1);
+    j.assertLogNotContains("Locked resource cause 2-2", b1);
+    j.assertLogNotContains("Locked resource cause 2-3", b1);
+
+    j.waitForMessage("Locked resource cause 2-2", b1);
+    j.assertLogContains("Locked resource cause 1-5", b1);
+
+    j.assertLogContains("is locked, waiting...", b1);
+
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+  }
+
+  @Test
   public void lockWithInvalidLabel() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
