@@ -808,6 +808,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
           if (selected.size() >= requiredResources.requiredAmount) {
             break;
           }
+          if (candidate.isReserved()) {
+            // Still needed, might be setReservedBy() from the lock step
+            // closure by users who deemed that required in their workflow
+            // and might need to free it manually - maybe after postmortem
+            if (logger != null) {
+              logger.println(
+                "Candidate resource '" + candidate.getName() +
+                "' is reserved, not treating as available.");
+            }
+            continue;
+          }
           if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
             selected.add(candidate);
           }
