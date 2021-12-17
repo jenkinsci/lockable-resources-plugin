@@ -796,6 +796,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // Process freed resources
     int totalSelected = 0;
+    // These resources are currently reserved, even though candidates
+    // for freeing (might be reserved inside lock step "bypassing" the
+    // lockable resources general logic). They may become available
+    // later and we want to notice that - so they are not selected
+    // now, but we do not bail out and end the looping either.
+    int totalReserved = 0;
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
       // start with an empty set of selected resources
@@ -817,6 +823,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 "Candidate resource '" + candidate.getName() +
                 "' is reserved, not treating as available.");
             }
+            totalReserved += 1;
             continue;
           }
           if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
@@ -831,7 +838,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // if none of the currently locked resources can be reused,
     // this context is not suitable to be continued with
-    if (lockedResourcesAboutToBeUnlocked != null && totalSelected == 0) {
+    if (lockedResourcesAboutToBeUnlocked != null && totalSelected == 0 && totalReserved == 0) {
       return null;
     }
 
