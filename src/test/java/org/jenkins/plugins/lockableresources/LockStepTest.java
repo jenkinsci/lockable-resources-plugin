@@ -1068,6 +1068,8 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
+    System.err.println("GOOD: Did not encounter Bug #1 " +
+        "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
     // This line might not strictly be required,
@@ -1083,24 +1085,44 @@ public class LockStepTest extends LockStepTestBase {
     // to be un-reserved, resources already looping waiting
     // for it (after the fix for Bug #1) are not "notified".
     // Adding and removing the resource helps unblock this.
+    Boolean sawBug2a = false;
     try {
         j.waitForMessage("Locked resource cause 1-6", b1);
         j.assertLogContains("Locked resource cause 2-2", b1);
     } catch (java.lang.AssertionError t1) {
+        sawBug2a = true;
         System.err.println("Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
         //System.err.println(t1.toString());
         // throw t1;
     }
+    if (!sawBug2a) {
+        System.err.println("GOOD: Did not encounter Bug #2a " +
+            "(Parallel 2 did not start after Parallel 1 finished " +
+            "and resource later released)!");
+    }
 
-    j.assertLogContains("Locked resource cause 1-5: null", b1);
+    // If the bug is resolved, then by the time we get to 1-5
+    // the resource should be taken by the other parallel stage
+    // and so not locked by not-"null"; reservation should be away though
+    Boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-    try {
-        j.assertLogNotContains("LRM seems stuck; trying to reserve/unreserve", b1);
-        j.assertLogNotContains("Secondary lock trick", b1);
-    } catch (java.lang.AssertionError t2) {
-        System.err.println("Bug #2b (LRM required un-stucking) currently tolerated");
+    for (String line : new String[]{
+        "Locked resource cause 1-5: null",
+        "LRM seems stuck; trying to reserve/unreserve",
+        "Secondary lock trick"}
+    ) {
+      try {
+        j.assertLogNotContains(line, b1);
+      } catch (java.lang.AssertionError t2) {
+        sawBug2b = true;
+        System.err.println("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
         //System.err.println(t2.toString());
         // throw t2;
+      }
+    }
+    if (!sawBug2b) {
+        System.err.println("GOOD: Did not encounter Bug #2b " +
+            "(LRM required un-stucking)!");
     }
 
     j.waitForMessage("Locked resource cause 2-2", b1);
@@ -1219,6 +1241,8 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
+    System.err.println("GOOD: Did not encounter Bug #1 " +
+        "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
     // This line might not strictly be required,
@@ -1234,15 +1258,47 @@ public class LockStepTest extends LockStepTestBase {
     // to be un-reserved, resources already looping waiting
     // for it (after the fix for Bug #1) are not "notified".
     // Adding and removing the resource helps unblock this.
+    Boolean sawBug2a = false;
     try {
         j.waitForMessage("Locked resource cause 1-6", b1);
         j.assertLogContains("Locked resource cause 2-2", b1);
     } catch (java.lang.AssertionError t1) {
+        sawBug2a = true;
         System.err.println("Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
         //System.err.println(t1.toString());
         // throw t1;
     }
+    if (!sawBug2a) {
+        System.err.println("GOOD: Did not encounter Bug #2a " +
+            "(Parallel 2 did not start after Parallel 1 finished " +
+            "and resource later released)!");
+    }
 
+    // If the bug is resolved, then by the time we get to 1-5
+    // the resource should be taken by the other parallel stage
+    // and so not locked by not-"null"; reservation should be away though
+    Boolean sawBug2b = false;
+    j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
+    for (String line : new String[]{
+        "Locked resource cause 1-5: null",
+        "LRM seems stuck; trying to reserve/unreserve",
+        "Secondary lock trick"}
+    ) {
+      try {
+        j.assertLogNotContains(line, b1);
+      } catch (java.lang.AssertionError t2) {
+        sawBug2b = true;
+        System.err.println("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
+        //System.err.println(t2.toString());
+        // throw t2;
+      }
+    }
+    if (!sawBug2b) {
+        System.err.println("GOOD: Did not encounter Bug #2b " +
+            "(LRM required un-stucking)!");
+    }
+
+/*
     j.assertLogContains("Locked resource cause 1-5: null", b1);
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
     try {
@@ -1253,6 +1309,7 @@ public class LockStepTest extends LockStepTestBase {
         //System.err.println(t2.toString());
         // throw t2;
     }
+*/
 
     j.waitForMessage("Locked resource cause 2-2", b1);
     j.assertLogContains("Locked resource cause 1-5", b1);
