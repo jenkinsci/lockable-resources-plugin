@@ -747,6 +747,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  /** Make the lockable resource re-usable and notify the queue(s), if any */
+  public synchronized void recycle(List<LockableResource> resources) {
+    // Not calling reset() because that also un-queues the resource
+    // and we want to proclaim it is usable (if anyone is waiting)
+    this.unlock(resources, null);
+    this.unreserve(resources);
+  }
+
   @Override
   public boolean configure(StaplerRequest req, JSONObject json) {
     try (BulkChange bc = new BulkChange(this)) {

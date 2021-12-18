@@ -331,6 +331,20 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.setBuild(null);
   }
 
+  /** Tell LRM to recycle this resource, including notifications for
+    * whoever may be waiting in the queue so they can proceed immediately.
+    */
+  public void recycle() {
+    try {
+      List<LockableResource> resources = new ArrayList<>();
+      resources.add(this);
+      org.jenkins.plugins.lockableresources.LockableResourcesManager.get().
+        recycle(resources);
+    } catch (Exception e) {
+      this.reset();
+    }
+  }
+
   @Override
   public String toString() {
     return name;
