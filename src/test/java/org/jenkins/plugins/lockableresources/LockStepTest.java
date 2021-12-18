@@ -1074,8 +1074,10 @@ public class LockStepTest extends LockStepTestBase {
     // but we are processing a parallel pipeline
     // and many seconds were spent sleeping, so:
     j.assertLogContains("Locked resource cause 2-1", b1);
-    j.assertLogNotContains("Locked resource cause 2-2", b1);
-    j.assertLogNotContains("Locked resource cause 2-3", b1);
+    // Here the other parallel stage may have already started
+    // (we try to recycle the resource between 1-4 and 1-5):
+    //j.assertLogNotContains("Locked resource cause 2-2", b1);
+    //j.assertLogNotContains("Locked resource cause 2-3", b1);
 
     // Bug #2 happens here: even after the resource is known
     // to be un-reserved, resources already looping waiting
@@ -1223,8 +1225,10 @@ public class LockStepTest extends LockStepTestBase {
     // but we are processing a parallel pipeline
     // and many seconds were spent sleeping, so:
     j.assertLogContains("Locked resource cause 2-1", b1);
-    j.assertLogNotContains("Locked resource cause 2-2", b1);
-    j.assertLogNotContains("Locked resource cause 2-3", b1);
+    // Here the other parallel stage may have already started
+    // (we try to recycle the resource between 1-4 and 1-5):
+    //j.assertLogNotContains("Locked resource cause 2-2", b1);
+    //j.assertLogNotContains("Locked resource cause 2-3", b1);
 
     // Bug #2 happens here: even after the resource is known
     // to be un-reserved, resources already looping waiting
