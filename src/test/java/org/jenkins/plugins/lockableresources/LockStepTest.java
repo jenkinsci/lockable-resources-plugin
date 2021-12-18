@@ -1135,14 +1135,17 @@ public class LockStepTest extends LockStepTestBase {
 
     j.waitForMessage("Locked resource cause 2-2", b1);
     j.assertLogContains("Locked resource cause 1-5", b1);
+    System.err.println("GOOD: lock#2 was taken after we un-reserved lock#1");
 
     j.waitForMessage("Unlocking parallel closure 2", b1);
     j.assertLogNotContains("Locked resource cause 3-2", b1);
+    System.err.println("GOOD: lock#3 was NOT taken just after we un-locked closure 2 (keeping lock#2 reserved)");
 
     // After 2-3 we lrm.recycle() the lock so it should
     // go to the next bidder
     j.waitForMessage("Locked resource cause 2-4", b1);
     j.assertLogContains("Locked resource cause 3-2", b1);
+    System.err.println("GOOD: lock#3 was taken just after we recycled lock#2");
 
     j.assertLogContains("is locked, waiting...", b1);
 
