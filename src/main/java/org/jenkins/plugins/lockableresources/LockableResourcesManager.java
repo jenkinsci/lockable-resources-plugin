@@ -867,11 +867,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
           if (selected.size() >= requiredResources.requiredAmount) {
             break;
           }
-          if (candidate.isReserved()) {
-            if (reservedResourcesAboutToBeUnreserved != null
-            &&  reservedResourcesAboutToBeUnreserved.contains(candidate.getName())
-            ) {
-              selected.add(candidate);
+
+          String candidateName = candidate.getName();
+          Boolean listedUnlock = (lockedResourcesAboutToBeUnlocked != null
+            &&  lockedResourcesAboutToBeUnlocked.contains(candidateName));
+          Boolean listedUnreserve = (reservedResourcesAboutToBeUnreserved != null
+            &&  reservedResourcesAboutToBeUnreserved.contains(candidateName));
+          Boolean isReserved = candidate.isReserved();
+          Boolean isLocked = candidate.isLocked();
+
+          if (isReserved) {
+            if (listedUnreserve) {
+              if (!isLocked || listedUnlock) {
+                // Avoid selecting a reserved candidate which *is* also locked
+                // and not listed for imminent un-locking
+                selected.add(candidate);
+              }
             } else {
               // Caller did not say that this resource will be un-reserved now!
               // Still needed, might be `lr.setReservedBy()` from the lock step
@@ -885,7 +896,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
               // notified until you lock/unlock that resource again.
               if (logger != null) {
                 logger.println(
-                  "Candidate resource '" + candidate.getName() +
+                  "Candidate resource '" + candidateName +
                   "' is reserved by '" + candidate.getReservedBy() +
                   "', not treating as available.");
               }
@@ -893,7 +904,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
               continue;
             }
           } else {
-            if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
+            // If the resource is not reserved (as checked above)
+            // but listed for releasing in either category, select it
+            if (listedUnlock || listedUnreserve) {
               selected.add(candidate);
             }
           }
