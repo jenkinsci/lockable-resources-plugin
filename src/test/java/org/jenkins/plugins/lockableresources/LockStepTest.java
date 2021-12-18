@@ -1172,8 +1172,12 @@ public class LockStepTest extends LockStepTestBase {
                 + "  sleep (5)\n"
                 + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
-                + "  echo \"Un-reserving Locked resource directly and sleeping...\"\n"
-                + "  lr.reset()\n"
+                // Note: lr.reset() only nullifies the fields in LR instance
+                // but does not help a queue get moving
+                //+ "  echo \"Un-reserving Locked resource directly as `lr.reset()` and sleeping...\"\n"
+                //+ "  lr.reset()\n"
+                + "  echo \"Un-reserving Locked resource directly as `lr.recycle()` and sleeping...\"\n"
+                + "  lr.recycle()\n"
                 + "  sleep (5)\n"
                 + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
