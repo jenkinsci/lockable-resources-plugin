@@ -1004,21 +1004,29 @@ public class LockStepTest extends LockStepTestBase {
                 + "    sleep (1)\n"
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
-                + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource:\"\n"
-                + "    lr.setReservedBy('test2')\n"
+                + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
+                + "    lr.setReservedBy('test2-1')\n"
                 + "    " + lmget + ".unreserve([lr])\n"
                 + "    echo \"Just sleeping...\"\n"
                 + "    sleep (20)\n"
+                + "    echo \"Setting (directly) a reservation on locked resource\"\n"
+                + "    lr.setReservedBy('test2-2')\n"
                 + "    echo \"Unlocking parallel closure 2\"\n"
                 + "  }\n"
                 + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
+                + "  sleep (5)\n"
+                + "  echo \"Recycling (via LRM) the reserved not-locked resource\"\n"
+                + "  " + lmget + ".recycle([lr])\n"
+                + "  sleep (5)\n"
+                + "  echo \"Locked resource cause 2-4: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 2-4: ${lr.getReservedBy()}\"\n"
                 + "},\n"
                 // Test that reserve/unreserve in p2 did not "allow" p3 to kidnap the lock:
                 + "p3: {\n"
                 + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
                 + "  echo \"Locked resource cause 3-1: not locked yet\"\n"
-                + "  sleep 5\n"
+                + "  sleep 1\n"
                 + "  lock(label: 'label1', variable: 'someVar3') {\n"
                 + "    echo \"VAR3 IS $env.someVar3\"\n"
                 + "    lr = " + lmget + ".fromName(env.someVar3)\n"
@@ -1130,6 +1138,11 @@ public class LockStepTest extends LockStepTestBase {
 
     j.waitForMessage("Unlocking parallel closure 2", b1);
     j.assertLogNotContains("Locked resource cause 3-2", b1);
+
+    // After 2-3 we lrm.recycle() the lock so it should
+    // go to the next bidder
+    j.waitForMessage("Locked resource cause 2-4", b1);
+    j.assertLogContains("Locked resource cause 3-2", b1);
 
     j.assertLogContains("is locked, waiting...", b1);
 
