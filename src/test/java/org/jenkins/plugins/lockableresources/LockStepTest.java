@@ -968,9 +968,17 @@ public class LockStepTest extends LockStepTestBase {
                 + "  sleep (5)\n"
                 + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
-                + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
+                + "  echo \"Resetting Locked resource via LRM and sleeping ...\"\n"
                 + "  " + lmget + ".reset([lr])\n"
                 + "  sleep (5)\n"
+                + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
+                + "  " + lmget + ".unreserve([lr])\n"
+                + "  sleep (5)\n"
+                // Note: the unlock attempt here might steal this resource
+                // from another parallel stage, so we don't do it:
+                //+ "  echo \"Un-locking Locked resource via LRM and sleeping...\"\n"
+                //+ "  " + lmget + ".unlock([lr], null)\n"
+                //+ "  sleep (5)\n"
                 + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
                 + "  sleep (5)\n"
