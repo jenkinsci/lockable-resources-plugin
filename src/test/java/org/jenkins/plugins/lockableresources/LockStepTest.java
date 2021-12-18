@@ -1040,12 +1040,12 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource reservedBy 3-3: ${lr.getReservedBy()}\"\n"
                 + "},\n"
                 // Add some pressure to try for race conditions:
-                + "p4: { lock(label: 'label1') { sleep 1 } },\n"
-                + "p5: { lock(label: 'label1') { sleep 3 } },\n"
-                + "p6: { lock(label: 'label1') { sleep 2 } },\n"
-                + "p7: { lock(label: 'label1') { sleep 1 } },\n"
-                + "p8: { lock(label: 'label1') { sleep 2 } },\n"
-                + "p9: { lock(label: 'label1') { sleep 1 } }\n"
+                + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+                + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
+                + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+                + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+                + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+                + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
             + "\necho \"Survived the test\"\n"
             + "}", // timeout wrapper
             false));
@@ -1221,13 +1221,13 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
                 + "},\n"
                 // Add some pressure to try for race conditions:
-                + "p3: { lock(label: 'label1') { sleep 2 } },\n"
-                + "p4: { lock(label: 'label1') { sleep 1 } },\n"
-                + "p5: { lock(label: 'label1') { sleep 3 } },\n"
-                + "p6: { lock(label: 'label1') { sleep 2 } },\n"
-                + "p7: { lock(label: 'label1') { sleep 1 } },\n"
-                + "p8: { lock(label: 'label1') { sleep 2 } },\n"
-                + "p9: { lock(label: 'label1') { sleep 1 } }\n"
+                + "p3: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+                + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+                + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
+                + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+                + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+                + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+                + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
             + "\necho \"Survived the test\"\n"
             + "}", // timeout wrapper
             false));
