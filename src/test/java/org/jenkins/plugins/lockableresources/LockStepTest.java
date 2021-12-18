@@ -1004,6 +1004,9 @@ public class LockStepTest extends LockStepTestBase {
                 + "    sleep (1)\n"
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
+                + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource:\"\n"
+                + "    lr.setReservedBy('test2')\n"
+                + "    " + lmget + ".unreserve([lr])\n"
                 + "    echo \"Just sleeping...\"\n"
                 + "    sleep (20)\n"
                 + "    echo \"Unlocking parallel closure 2\"\n"
@@ -1011,8 +1014,24 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
                 + "},\n"
+                // Test that reserve/unreserve in p2 did not "allow" p3 to kidnap the lock:
+                + "p3: {\n"
+                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+                + "  echo \"Locked resource cause 3-1: not locked yet\"\n"
+                + "  sleep 5\n"
+                + "  lock(label: 'label1', variable: 'someVar3') {\n"
+                + "    echo \"VAR3 IS $env.someVar3\"\n"
+                + "    lr = " + lmget + ".fromName(env.someVar3)\n"
+                + "    echo \"Locked resource cause 3-2: ${lr.getLockCause()}\"\n"
+                + "    echo \"Locked resource reservedBy 3-2: ${lr.getReservedBy()}\"\n"
+                + "    echo \"Just sleeping...\"\n"
+                + "    sleep (10)\n"
+                + "    echo \"Unlocking parallel closure 3\"\n"
+                + "  }\n"
+                + "  echo \"Locked resource cause 3-3: ${lr.getLockCause()}\"\n"
+                + "  echo \"Locked resource reservedBy 3-3: ${lr.getReservedBy()}\"\n"
+                + "},\n"
                 // Add some pressure to try for race conditions:
-                + "p3: { lock(label: 'label1') { sleep 2 } },\n"
                 + "p4: { lock(label: 'label1') { sleep 1 } },\n"
                 + "p5: { lock(label: 'label1') { sleep 3 } },\n"
                 + "p6: { lock(label: 'label1') { sleep 2 } },\n"
@@ -1084,6 +1103,9 @@ public class LockStepTest extends LockStepTestBase {
 
     j.waitForMessage("Locked resource cause 2-2", b1);
     j.assertLogContains("Locked resource cause 1-5", b1);
+
+    j.waitForMessage("Unlocking parallel closure 2", b1);
+    j.assertLogNotContains("Locked resource cause 3-2", b1);
 
     j.assertLogContains("is locked, waiting...", b1);
 
