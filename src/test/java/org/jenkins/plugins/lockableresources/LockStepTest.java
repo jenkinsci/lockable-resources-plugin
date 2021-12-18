@@ -1128,7 +1128,7 @@ public class LockStepTest extends LockStepTestBase {
                 + "  sleep (5)\n"
                 + "  if (lr.getLockCause() == null) {\n"
                 + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by lock step\"\n"
-                + "    lock(label: 'label1') { echo \"Secondary lock trick\" }\n"
+                + "    lock(label: 'label1', skipIfLocked: true) { echo \"Secondary lock trick\" }\n"
                 + "  }\n"
                 + "  sleep (5)\n"
                 + "  echo \"Locked resource cause 1-6: ${lr.getLockCause()}\"\n"
