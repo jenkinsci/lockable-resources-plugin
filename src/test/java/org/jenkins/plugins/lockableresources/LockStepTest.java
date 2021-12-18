@@ -1006,6 +1006,7 @@ public class LockStepTest extends LockStepTestBase {
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
                 + "    lr.setReservedBy('test2-1')\n"
+                + "    sleep (3)\n"
                 + "    " + lmget + ".unreserve([lr])\n"
                 + "    echo \"Just sleeping...\"\n"
                 + "    sleep (20)\n"
