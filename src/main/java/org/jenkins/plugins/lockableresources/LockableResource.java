@@ -333,6 +333,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** Tell LRM to recycle this resource, including notifications for
     * whoever may be waiting in the queue so they can proceed immediately.
+    * WARNING: Do not use this from inside the lock step closure which
+    * originally locked this resource, to avoid nasty surprises!
+    * Just stick with unReserve() and close the closure, if needed.
     */
   public void recycle() {
     try {
