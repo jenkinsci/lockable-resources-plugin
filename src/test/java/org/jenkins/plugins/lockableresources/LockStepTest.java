@@ -1001,6 +1001,7 @@ public class LockStepTest extends LockStepTestBase {
                 + "  lock(label: 'label1', variable: 'someVar2') {\n"
                 + "    echo \"VAR2 IS $env.someVar2\"\n"
                 + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+                + "    sleep (1)\n"
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Just sleeping...\"\n"
@@ -1044,6 +1045,8 @@ public class LockStepTest extends LockStepTestBase {
     // and the consistent ordering of acquired first,
     // released later is unsettling.
     j.waitForMessage("Locked resource cause 1-4", b1);
+    // Note: stage in test has a sleep(1) to reduce chances that
+    // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
 
@@ -1144,6 +1147,7 @@ public class LockStepTest extends LockStepTestBase {
                 + "  lock(label: 'label1', variable: 'someVar2') {\n"
                 + "    echo \"VAR2 IS $env.someVar2\"\n"
                 + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+                + "    sleep (1)\n"
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Just sleeping...\"\n"
@@ -1187,6 +1191,8 @@ public class LockStepTest extends LockStepTestBase {
     // and the consistent ordering of acquired first,
     // released later is unsettling.
     j.waitForMessage("Locked resource cause 1-4", b1);
+    // Note: stage in test has a sleep(1) to reduce chances that
+    // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
 
