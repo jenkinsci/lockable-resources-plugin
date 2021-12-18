@@ -809,6 +809,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       // some resources might be already locked, but will be freed.
       // Determine if these resources can be reused
+      // FIXME? Why is this check not outside the for loop?
       if (lockedResourcesAboutToBeUnlocked != null) {
         for (LockableResource candidate : requiredResources.candidates) {
           if (selected.size() >= requiredResources.requiredAmount) {
@@ -838,6 +839,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // if none of the currently locked resources can be reused,
     // this context is not suitable to be continued with
+    // Note that if argument lockedResourcesAboutToBeUnlocked==null,
+    // the loop above was effectively skipped
     if (lockedResourcesAboutToBeUnlocked != null && totalSelected == 0 && totalReserved == 0) {
       return null;
     }
@@ -873,6 +876,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       if (selected.size() < requiredAmount) {
+        // Note: here we are looping over requiredResourcesCandidatesList
+        // based on original argument requiredResourcesList with its specs
+        // (maybe several) of required resources and their amounts.
+        // As soon as we know we can not fulfill the overall requirement
+        // (not enough of something from that list), we bail out quickly.
         if (logger != null && !skipIfLocked) {
           logger.println(
               "Found "
