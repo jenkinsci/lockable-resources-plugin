@@ -526,24 +526,40 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  /** @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct) */
+  @CheckForNull
+  private QueuedContextStruct getNextQueuedContext(
+      List<String> resourceNamesToUnLock,
+      boolean inversePrecedence,
+      QueuedContextStruct from
+  ) {
+      return this.getNextQueuedContext(resourceNamesToUnLock, null, inversePrecedence, from);
+  }
+
   /**
    * Returns the next queued context with all its requirements satisfied.
    *
-   * @param resourceNamesToUnLock resource names locked at the moment but available is required (as
-   *     they are going to be unlocked soon
+   * @param resourceNamesToUnLock resource names locked at the moment but
+   *     available if required (as they are going to be unlocked soon)
+   * @param resourceNamesToUnReserve resource names reserved at the moment but
+   *     available if required (as they are going to be un-reserved soon)
    * @param inversePrecedence false pick up context as they are in the queue or true to take the
    *     most recent one (satisfying requirements)
    * @return the context or null
    */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
-      List<String> resourceNamesToUnLock, boolean inversePrecedence, QueuedContextStruct from) {
+      @Nullable List<String> resourceNamesToUnLock,
+      @Nullable List<String> resourceNamesToUnReserve,
+      boolean inversePrecedence,
+      QueuedContextStruct from
+  ) {
     QueuedContextStruct newestEntry = null;
     int fromIndex = from != null ? this.queuedContexts.indexOf(from) + 1 : 0;
     if (!inversePrecedence) {
       for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
-        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
+        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve) != null) {
           return entry;
         }
       }
@@ -552,7 +568,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       List<QueuedContextStruct> orphan = new ArrayList<>();
       for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
-        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock) != null) {
+        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve) != null) {
           try {
             Run<?, ?> run = entry.getContext().get(Run.class);
             if (run != null && run.getStartTimeInMillis() > newest) {
@@ -634,7 +650,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // check if there are resources which can be unlocked (and shall not be unlocked)
     QueuedContextStruct nextContext =
-        this.getNextQueuedContext(resourceNamesToUnreserve, false, null);
+        this.getNextQueuedContext(null, resourceNamesToUnreserve, false, null);
 
     // no context is queued which can be started once these resources are free'd.
     if (nextContext == null) {
@@ -661,7 +677,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // remove context from queue and process it
     Set<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
-            nextContext.getResources(), nextContextLogger, resourceNamesToUnreserve);
+            nextContext.getResources(), nextContextLogger,
+            null, resourceNamesToUnreserve);
     this.queuedContexts.remove(nextContext);
 
     // resourceNamesToUnreserve contains the names of the previous resources.
@@ -745,14 +762,38 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, boolean) */
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
   public synchronized Set<LockableResource> checkResourcesAvailability(
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
       @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
     boolean skipIfLocked = false;
     return this.checkResourcesAvailability(
-        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, skipIfLocked);
+        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+  }
+
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
+  public synchronized Set<LockableResource> checkResourcesAvailability(
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    boolean skipIfLocked) {
+    return this.checkResourcesAvailability(
+        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+  }
+
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
+  public synchronized Set<LockableResource> checkResourcesAvailability(
+      List<LockableResourcesStruct> requiredResourcesList,
+      @Nullable PrintStream logger,
+      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+      @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
+    boolean skipIfLocked = false;
+    return this.checkResourcesAvailability(
+        requiredResourcesList, logger,
+        lockedResourcesAboutToBeUnlocked,
+        reservedResourcesAboutToBeUnreserved,
+        skipIfLocked);
   }
 
   /**
@@ -764,6 +805,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
       @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+      @Nullable List<String> reservedResourcesAboutToBeUnreserved,
       boolean skipIfLocked) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
@@ -810,25 +852,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // some resources might be already locked, but will be freed.
       // Determine if these resources can be reused
       // FIXME? Why is this check not outside the for loop?
-      if (lockedResourcesAboutToBeUnlocked != null) {
+      if (lockedResourcesAboutToBeUnlocked != null
+      ||  reservedResourcesAboutToBeUnreserved != null
+      ) {
         for (LockableResource candidate : requiredResources.candidates) {
           if (selected.size() >= requiredResources.requiredAmount) {
             break;
           }
           if (candidate.isReserved()) {
-            // Still needed, might be setReservedBy() from the lock step
-            // closure by users who deemed that required in their workflow
-            // and might need to free it manually - maybe after postmortem
-            if (logger != null) {
-              logger.println(
-                "Candidate resource '" + candidate.getName() +
-                "' is reserved, not treating as available.");
+            if (reservedResourcesAboutToBeUnreserved != null
+            &&  reservedResourcesAboutToBeUnreserved.contains(candidate.getName())
+            ) {
+              selected.add(candidate);
+            } else {
+              // Caller did not say that this resource will be un-reserved now!
+              // Still needed, might be `lr.setReservedBy()` from the lock step
+              // closure by users who deemed that required in their workflow
+              // and might need to free it manually - maybe after postmortem.
+              // Note that such un-reservation should go through LRM API,
+              // as `lrm.unreserve([lr])`, and not just `lr.setReservedBy(null)`,
+              // (nor `lrm.reset([lr])`) to get into this method among others
+              // and let the resource be instantly re-used by someone from an
+              // already waiting queue. Otherwise those already waiting are not
+              // notified until you lock/unlock that resource again.
+              if (logger != null) {
+                logger.println(
+                  "Candidate resource '" + candidate.getName() +
+                  "' is reserved by '" + candidate.getReservedBy() +
+                  "', not treating as available.");
+              }
+              totalReserved += 1;
+              continue;
             }
-            totalReserved += 1;
-            continue;
-          }
-          if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
-            selected.add(candidate);
+          } else {
+            if (lockedResourcesAboutToBeUnlocked.contains(candidate.getName())) {
+              selected.add(candidate);
+            }
           }
         }
       }
@@ -839,9 +898,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // if none of the currently locked resources can be reused,
     // this context is not suitable to be continued with
-    // Note that if argument lockedResourcesAboutToBeUnlocked==null,
+    // Note that if arguments lockedResourcesAboutToBeUnlocked==null
+    // and reservedResourcesAboutToBeUnreserved==null, then
     // the loop above was effectively skipped
-    if (lockedResourcesAboutToBeUnlocked != null && totalSelected == 0 && totalReserved == 0) {
+    if (totalSelected == 0 && totalReserved == 0
+    &&  (lockedResourcesAboutToBeUnlocked != null
+         || reservedResourcesAboutToBeUnreserved != null)
+    ) {
       return null;
     }
 
