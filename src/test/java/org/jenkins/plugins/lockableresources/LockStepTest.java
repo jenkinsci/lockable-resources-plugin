@@ -1018,6 +1018,7 @@ public class LockStepTest extends LockStepTestBase {
                 + "p7: { lock(label: 'label1') { sleep 1 } },\n"
                 + "p8: { lock(label: 'label1') { sleep 2 } },\n"
                 + "p9: { lock(label: 'label1') { sleep 1 } }\n"
+            + "\necho \"Survived the test\"\n"
             + "}", // timeout wrapper
             false));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
@@ -1084,6 +1085,8 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("is locked, waiting...", b1);
 
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+
+    j.assertLogContains("Survived the test", b1);
   }
 
   @Test
@@ -1158,6 +1161,7 @@ public class LockStepTest extends LockStepTestBase {
                 + "p7: { lock(label: 'label1') { sleep 1 } },\n"
                 + "p8: { lock(label: 'label1') { sleep 2 } },\n"
                 + "p9: { lock(label: 'label1') { sleep 1 } }\n"
+            + "\necho \"Survived the test\"\n"
             + "}", // timeout wrapper
             false));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
@@ -1224,6 +1228,8 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("is locked, waiting...", b1);
 
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+
+    j.assertLogContains("Survived the test", b1);
   }
 
   @Test
