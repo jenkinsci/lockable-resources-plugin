@@ -164,7 +164,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     binding.setVariable("resourceDescription", description);
     binding.setVariable("resourceLabels", makeLabelsList());
     try {
-      Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding);
+      Object result =
+          script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
       if (LOGGER.isLoggable(Level.FINE)) {
         LOGGER.fine(
             "Checked resource "
