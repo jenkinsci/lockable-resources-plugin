@@ -8,6 +8,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.Job;
@@ -18,16 +20,19 @@ import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 public final class Utils {
   private Utils() {}
 
-  public static Job<?, ?> getProject(Queue.Item item) {
+  @CheckForNull
+  public static Job<?, ?> getProject(@NonNull Queue.Item item) {
     if (item.task instanceof Job) return (Job<?, ?>) item.task;
     return null;
   }
 
-  public static Job<?, ?> getProject(Run<?, ?> build) {
+  @CheckForNull
+  public static Job<?, ?> getProject(@NonNull Run<?, ?> build) {
     return build.getParent();
   }
 
-  public static LockableResourcesStruct requiredResources(Job<?, ?> project) {
+  @CheckForNull
+  public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project) {
     EnvVars env = new EnvVars();
 
     if (project instanceof MatrixConfiguration) {
