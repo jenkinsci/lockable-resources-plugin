@@ -1,6 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.TaskListener;
@@ -42,7 +44,7 @@ public class LockStep extends Step implements Serializable {
   // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
   // is not required)
   @DataBoundConstructor
-  public LockStep(String resource) {
+  public LockStep(@Nullable String resource) {
     if (resource != null && !resource.isEmpty()) {
       this.resource = resource;
     }
@@ -78,7 +80,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   @DataBoundSetter
-  public void setExtra(List<LockStepResource> extra) {
+  public void setExtra(@CheckForNull List<LockStepResource> extra) {
     this.extra = extra;
   }
 
@@ -90,6 +92,7 @@ public class LockStep extends Step implements Serializable {
       return "lock";
     }
 
+    @NonNull
     @Override
     public String getDisplayName() {
       return "Lock shared resource";
@@ -134,7 +137,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   /** Label and resource are mutual exclusive. */
-  public void validate() throws Exception {
+  public void validate() {
     LockStepResource.validate(resource, label, quantity);
   }
 
@@ -151,7 +154,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   @Override
-  public StepExecution start(StepContext context) throws Exception {
+  public StepExecution start(StepContext context) {
     return new LockStepExecution(this, context);
   }
 }

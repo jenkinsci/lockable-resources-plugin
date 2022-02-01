@@ -54,6 +54,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String description = "";
   private String labels = "";
   private String reservedBy = null;
+  private boolean stolen = false;
+
   /**
    * We can use arbitrary identifier in a temporary lock (e.g. a commit hash of
    * built/tested sources), and not overwhelm Jenkins with lots of "garbage" locks.
@@ -173,7 +175,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     binding.setVariable("resourceDescription", description);
     binding.setVariable("resourceLabels", makeLabelsList());
     try {
-      Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding);
+      Object result =
+          script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
       if (LOGGER.isLoggable(Level.FINE)) {
         LOGGER.fine(
             "Checked resource "
@@ -270,8 +273,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    *     1.8)
    */
   @Deprecated
-  private Object getAbstractBuild(final Run owner, final Class targetClass) {
-    return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
+  private Object getAbstractBuild(final Run<?, ?> owner, final Class<?> targetClass) {
+    return owner instanceof AbstractBuild ? (AbstractBuild<?, ?>) owner : null;
   }
 
   @Exported
@@ -330,14 +333,41 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.reservedBy = Util.fixEmptyAndTrim(userName);
   }
 
+  public void setStolen() {
+    this.stolen = true;
+  }
+
+  @Exported
+  public boolean isStolen() {
+    return this.stolen;
+  }
+
   public void unReserve() {
     this.reservedBy = null;
+    this.stolen = false;
   }
 
   public void reset() {
     this.unReserve();
     this.unqueue();
     this.setBuild(null);
+  }
+
+  /** Tell LRM to recycle this resource, including notifications for
+    * whoever may be waiting in the queue so they can proceed immediately.
+    * WARNING: Do not use this from inside the lock step closure which
+    * originally locked this resource, to avoid nasty surprises!
+    * Just stick with unReserve() and close the closure, if needed.
+    */
+  public void recycle() {
+    try {
+      List<LockableResource> resources = new ArrayList<>();
+      resources.add(this);
+      org.jenkins.plugins.lockableresources.LockableResourcesManager.get().
+        recycle(resources);
+    } catch (Exception e) {
+      this.reset();
+    }
   }
 
   @Override
@@ -368,6 +398,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Extension
   public static class DescriptorImpl extends Descriptor<LockableResource> {
 
+    @NonNull
     @Override
     public String getDisplayName() {
       return "Resource";

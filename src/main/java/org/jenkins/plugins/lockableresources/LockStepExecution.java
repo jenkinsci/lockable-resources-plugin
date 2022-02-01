@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
@@ -130,7 +131,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                   private static final long serialVersionUID = -3431466225193397896L;
 
                   @Override
-                  public void expand(EnvVars env) throws IOException, InterruptedException {
+                  public void expand(@NonNull EnvVars env) {
                     final String resources = String.join(",", resourcenames);
                     LOGGER.finest(
                         "Setting ["
@@ -156,7 +157,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     private final String resourceDescription;
     private final boolean inversePrecedence;
 
-    Callback(List<String> resourceNames, String resourceDescription, boolean inversePrecedence) {
+    Callback(
+        List<String> resourceNames,
+        String resourceDescription,
+        boolean inversePrecedence) {
       this.resourceNames = resourceNames;
       this.resourceDescription = resourceDescription;
       this.inversePrecedence = inversePrecedence;
@@ -175,7 +179,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   }
 
   @Override
-  public void stop(Throwable cause) throws Exception {
+  public void stop(@NonNull Throwable cause) {
     boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
     if (!cleaned) {
       LOGGER.log(

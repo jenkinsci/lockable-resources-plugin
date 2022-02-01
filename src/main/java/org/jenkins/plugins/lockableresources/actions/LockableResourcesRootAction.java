@@ -41,13 +41,16 @@ public class LockableResourcesRootAction implements RootAction {
 			Messages.LockableResourcesRootAction_ReservePermission(),
 			Messages._LockableResourcesRootAction_ReservePermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
-
+	public static final Permission STEAL = new Permission(PERMISSIONS_GROUP,
+			Messages.LockableResourcesRootAction_StealPermission(),
+			Messages._LockableResourcesRootAction_StealPermission_Description(), Jenkins.ADMINISTER,
+			PermissionScope.JENKINS);
 	public static final Permission VIEW = new Permission(PERMISSIONS_GROUP,
 			Messages.LockableResourcesRootAction_ViewPermission(),
 			Messages._LockableResourcesRootAction_ViewPermission_Description(), Jenkins.ADMINISTER,
 			PermissionScope.JENKINS);
 
-	public static final String ICON = "/plugin/lockable-resources/img/device-24x24.png";
+	public static final String ICON = "/plugin/lockable-resources/img/device.svg";
 
 	@Override
 	public String getIconFileName() {
@@ -129,6 +132,63 @@ public class LockableResourcesRootAction implements RootAction {
 	}
 
 	@RequirePOST
+	public void doSteal(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+		Jenkins.getInstance().checkPermission(STEAL);
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<>();
+		resources.add(r);
+		String userName = getUserName();
+		if (userName != null)
+			LockableResourcesManager.get().steal(resources, userName);
+
+		rsp.forwardToPreviousPage(req);
+	}
+
+	@RequirePOST
+	public void doReassign(StaplerRequest req, StaplerResponse rsp)
+		throws IOException, ServletException {
+		Jenkins.getInstance().checkPermission(STEAL);
+
+		String name = req.getParameter("resource");
+		LockableResource r = LockableResourcesManager.get().fromName(name);
+		if (r == null) {
+			rsp.sendError(404, "Resource not found " + name);
+			return;
+		}
+
+		String userName = getUserName();
+		if ( userName == null ||
+			( !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER) &&
+			  !Jenkins.getInstance().hasPermission(STEAL) )
+		) {
+			throw new AccessDeniedException2(Jenkins.getAuthentication(),
+					STEAL);
+		}
+
+		if (userName.equals(r.getReservedBy())) {
+			// Can not achieve much by re-assigning the
+			// resource I already hold to myself again,
+			// that would just burn the compute resources.
+			//...unless something catches the event? (TODO?)
+			return;
+		}
+
+		List<LockableResource> resources = new ArrayList<>();
+		resources.add(r);
+		LockableResourcesManager.get().reassign(resources, userName);
+
+		rsp.forwardToPreviousPage(req);
+	}
+
+	@RequirePOST
 	public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 		Jenkins.get().checkPermission(RESERVE);
@@ -157,6 +217,7 @@ public class LockableResourcesRootAction implements RootAction {
 	public void doReset(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
 		Jenkins.get().checkPermission(UNLOCK);
+		// Should this also be permitted by "STEAL"?..
 
 		String name = req.getParameter("resource");
 		LockableResource r = LockableResourcesManager.get().fromName(name);
