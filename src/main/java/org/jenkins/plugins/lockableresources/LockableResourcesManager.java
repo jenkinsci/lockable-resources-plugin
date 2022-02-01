@@ -196,9 +196,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean queue(
-      List<LockableResource> resources, long queueItemId, String queueProjectName) {
-    for (LockableResource r : resources)
-      if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) return false;
+      List<LockableResource> resources,
+      long queueItemId,
+      String queueProjectName) {
+    for (LockableResource r : resources) {
+      if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
+        return false;
+      }
+    }
     for (LockableResource r : resources) {
       r.setQueued(queueItemId, queueProjectName);
     }
@@ -405,7 +410,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized void unlock(
-      List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
+      List<LockableResource> resourcesToUnLock,
+      @Nullable Run<?, ?> build) {
     unlock(resourcesToUnLock, build, false);
   }
 
@@ -459,6 +465,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // reused.
       boolean needToWait = false;
       for (LockableResource requiredResource : requiredResourceForNextContext) {
+        if(requiredResource.isStolen()) {
+          needToWait = true;
+          break;
+        }
         if (!remainingResourceNamesToUnLock.contains(requiredResource.getName())) {
           if (requiredResource.isReserved() || requiredResource.isLocked()) {
             needToWait = true;
@@ -602,7 +612,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return false;
   }
 
-  public synchronized boolean reserve(List<LockableResource> resources, String userName) {
+  /**
+   * Reserves an available resource for the userName indefinitely
+   * (until that person, or some explicit scripted action, decides
+   * to release the resource).
+   */
+  public synchronized boolean reserve(
+      List<LockableResource> resources,
+      String userName) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked() || r.isQueued()) {
         return false;
@@ -613,6 +630,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
     save();
     return true;
+  }
+
+  /**
+   * Reserves a resource that may be or not be reserved by some
+   * job already, giving it away to the userName indefinitely
+   * (until that person, or some explicit scripted action, decides
+   * to release the resource).
+   */
+  public synchronized boolean steal(
+      List<LockableResource> resources,
+      String userName) {
+    for (LockableResource r : resources) {
+      r.setReservedBy(userName);
+      r.setStolen();
+    }
+    unlock(resources, null, false);
+    save();
+    return true;
+  }
+
+  /**
+   * Reserves a resource that may be or not be reserved by some
+   * person already, giving it away to the userName indefinitely
+   * (until that person, or some explicit scripted action, decides
+   * to release the resource).
+   */
+  public synchronized void reassign(
+      List<LockableResource> resources,
+      String userName) {
+    for (LockableResource r : resources) {
+      if (r.isReserved() || r.isLocked() || r.isQueued()) {
+        r.unReserve();
+      }
+      r.setReservedBy(userName);
+    }
+    save();
   }
 
   private void unreserveResources(@NonNull List<LockableResource> resources) {

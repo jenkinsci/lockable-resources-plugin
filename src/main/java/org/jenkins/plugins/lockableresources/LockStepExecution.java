@@ -157,7 +157,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     private final String resourceDescription;
     private final boolean inversePrecedence;
 
-    Callback(List<String> resourceNames, String resourceDescription, boolean inversePrecedence) {
+    Callback(
+        List<String> resourceNames,
+        String resourceDescription,
+        boolean inversePrecedence) {
       this.resourceNames = resourceNames;
       this.resourceDescription = resourceDescription;
       this.inversePrecedence = inversePrecedence;
