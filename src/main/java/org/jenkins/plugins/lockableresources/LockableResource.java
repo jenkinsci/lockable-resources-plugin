@@ -55,6 +55,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String labels = "";
   private String reservedBy = null;
   private boolean stolen = false;
+
+  /**
+   * We can use arbitrary identifier in a temporary lock (e.g. a commit hash of
+   * built/tested sources), and not overwhelm Jenkins with lots of "garbage" locks.
+   * Such locks will be automatically removed when freed, if they were not
+   * explicitly declared in the Jenkins Configure System page.
+   * If an originally ephemeral lock is later defined in configuration, it becomes
+   * a usual persistent lock. If a "usual" lock definition is deleted while it is
+   * being held, it becomes ephemeral and will disappear when freed.
+   */
   private boolean ephemeral;
 
   private long queueItemId = NOT_QUEUED;
