@@ -142,7 +142,7 @@ public class LockableResourcesRootAction implements RootAction {
 			if (!LockableResourcesManager.get().reserve(resources, userName)) {
 				rsp.sendError(423, "Resource '" + name + "' already reserved or locked!");
 				return;
-			};
+			}
 		}
 		rsp.forwardToPreviousPage(req);
 	}
