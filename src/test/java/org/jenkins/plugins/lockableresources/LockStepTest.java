@@ -2,6 +2,7 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -501,7 +502,9 @@ public class LockStepTest extends LockStepTestBase {
     LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
     assertNotNull(resource1);
     resource1.setReservedBy("someone");
+    assertEquals("someone", resource1.getReservedBy());
     assertTrue(resource1.isReserved());
+    assertNull(resource1.getReservedTimestamp());
 
     JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
     assertThat(apiRes, hasEntry("reserved", true));
@@ -1005,13 +1008,13 @@ public class LockStepTest extends LockStepTestBase {
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
-                + "    lr.setReservedBy('test2-1')\n"
+                + "    lr.reserve('test2-1')\n"
                 + "    sleep (3)\n"
                 + "    " + lmget + ".unreserve([lr])\n"
                 + "    echo \"Just sleeping...\"\n"
                 + "    sleep (20)\n"
                 + "    echo \"Setting (directly) a reservation on locked resource\"\n"
-                + "    lr.setReservedBy('test2-2')\n"
+                + "    lr.reserve('test2-2')\n"
                 + "    echo \"Unlocking parallel closure 2\"\n"
                 + "  }\n"
                 + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
