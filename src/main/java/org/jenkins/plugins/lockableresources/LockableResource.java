@@ -281,11 +281,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @CheckForNull
   public String getLockCause() {
     final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+    final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
     if (isReserved()) {
-      return String.format("[%s] is reserved by %s at %s", name, reservedBy, format.format(reservedTimestamp));
+      return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
     }
     if (isLocked()) {
-      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, format.format(reservedTimestamp));
+      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
     }
     return null;
   }
