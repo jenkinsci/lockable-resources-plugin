@@ -151,5 +151,6 @@ The MIT License (MIT)
 - Copyright 2013-2015 6WIND
 - Copyright 2016-2018 Antonio Muñiz
 - Copyright 2019 TobiX
+- Copyright 2017-2022 Jim Klimov
 
 See [LICENSE](LICENSE.txt)
