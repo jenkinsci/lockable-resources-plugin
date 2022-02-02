@@ -8,22 +8,21 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.Job;
 import hudson.model.Run;
+import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
-import hudson.model.StringParameterValue;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
-
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 
@@ -79,7 +78,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 	}
 
 	@Override
-	public void onCompleted(Run<?, ?> build, TaskListener listener) {
+	public void onCompleted(Run<?, ?> build, @NonNull TaskListener listener) {
 		// Skip unlocking for multiple configuration projects,
 		// only the child jobs will actually unlock resources.
 		if (build instanceof MatrixBuild)

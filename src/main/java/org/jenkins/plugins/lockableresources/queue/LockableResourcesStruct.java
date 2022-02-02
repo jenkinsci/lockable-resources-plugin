@@ -8,12 +8,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.CheckForNull;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -107,8 +107,10 @@ public class LockableResourcesStruct implements Serializable {
    * LockableResource} matches the condition.
    *
    * @return System Groovy Script if defined
-   * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
-   * @since TODO
+   * @see
+   *     LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript,
+   *     java.util.Map)
+   * @since 2.1
    */
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {
@@ -118,6 +120,7 @@ public class LockableResourcesStruct implements Serializable {
     return resourceMatchScript;
   }
 
+  @Override
   public String toString() {
     return "Required resources: "
         + this.required

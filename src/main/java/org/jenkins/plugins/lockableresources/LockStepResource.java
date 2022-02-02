@@ -1,19 +1,18 @@
 package org.jenkins.plugins.lockableresources;
 
-import java.io.Serializable;
-
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.QueryParameter;
-
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Descriptor;
 import hudson.util.FormValidation;
-import hudson.Util;
-
-import edu.umd.cs.findbugs.annotations.CheckForNull;
+import java.io.Serializable;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 
 public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {
 
@@ -25,14 +24,14 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
 	public int quantity = 0;
 
-	LockStepResource(String resource, String label, int quantity) {
+	LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
 		this.resource = resource;
 		this.label = label;
 		this.quantity = quantity;
 	}
 
 	@DataBoundConstructor
-	public LockStepResource(String resource) {
+	public LockStepResource(@Nullable String resource) {
 		if (resource != null && !resource.isEmpty()) {
 			this.resource = resource;
 		}
@@ -50,10 +49,11 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 		this.quantity = quantity;
 	}
 
+	@Override
 	public String toString() {
 		return toString(resource, label, quantity);
 	}
-	
+
 	public static String toString(String resource, String label, int quantity) {
 		// a label takes always priority
 		if (label != null) {
@@ -72,7 +72,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	/**
 	 * Label and resource are mutual exclusive.
 	 */
-	public void validate() throws Exception {
+	public void validate() {
 		validate(resource, label, quantity);
 	}
 
@@ -80,7 +80,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	 * Label and resource are mutual exclusive.
 	 * The label, if provided, must be configured (at least one resource must have this label).
 	 */
-	public static void validate(String resource, String label, int quantity) throws Exception {
+	public static void validate(String resource, String label, int quantity) {
 		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
 			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
 		}
@@ -94,6 +94,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 	@Extension
 	public static class DescriptorImpl extends Descriptor<LockStepResource> {
 
+    @NonNull
 		@Override
 		public String getDisplayName() {
 			return "Resource";

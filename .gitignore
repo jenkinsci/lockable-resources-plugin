@@ -1,4 +1,5 @@
-/*.iml
+*.iml
+.DS_Store
 /.idea/
 /target/
 /work/

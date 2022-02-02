@@ -16,6 +16,9 @@
 	<f:entry field="inversePrecedence">
 		<f:checkbox title="${%Inverse precedence}"/>
 	</f:entry>
+	<f:entry field="skipIfLocked">
+		<f:checkbox title="${%Skip queue}"/>
+	</f:entry>
 	<f:entry title="${%Extra resources}">
 		<f:repeatable field="extra" header="" minimum="0" add="${%Add Resource}">
 			<table width="100%">

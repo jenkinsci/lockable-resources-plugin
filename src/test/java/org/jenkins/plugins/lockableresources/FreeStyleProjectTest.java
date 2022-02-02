@@ -1,5 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -16,16 +19,14 @@ import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
-import hudson.security.ACL;
 import hudson.triggers.TimerTrigger;
-import hudson.util.FormValidation;
+import hudson.util.OneShotEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
-import org.acegisecurity.context.SecurityContext;
-import org.acegisecurity.context.SecurityContextHolder;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDispatcher;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
@@ -36,11 +37,9 @@ import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
-import org.jvnet.hudson.test.MockBuilder;
-import org.jvnet.hudson.test.SleepBuilder;
-import org.jvnet.hudson.test.TestExtension;
+import org.jvnet.hudson.test.TestBuilder;
 
-public class BasicIntegrationTest {
+public class FreeStyleProjectTest {
 
   @Rule public JenkinsRule j = new JenkinsRule();
 
@@ -76,19 +75,23 @@ public class BasicIntegrationTest {
     assertNotNull(newProp.getResourceMatchScript());
     assertEquals("resourceName == 'resource1'", newProp.getResourceMatchScript().getScript());
 
-    p2.getBuildersList().add(new SleepBuilder(5000));
+    SemaphoreBuilder p2Builder = new SemaphoreBuilder();
+    p2.getBuildersList().add(p2Builder);
 
     FreeStyleProject p3 = j.createFreeStyleProject("p3");
     p3.addProperty(new RequiredResourcesProperty("resource1", null, "1", null, null));
-    p3.getBuildersList().add(new SleepBuilder(10000));
+    SemaphoreBuilder p3Builder = new SemaphoreBuilder();
+    p3.getBuildersList().add(p3Builder);
 
     final QueueTaskFuture<FreeStyleBuild> taskA =
         p3.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
-    Thread.sleep(2500);
+    TestHelpers.waitForQueue(j.jenkins, p3);
     final QueueTaskFuture<FreeStyleBuild> taskB =
         p2.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
 
+    p3Builder.release();
     final FreeStyleBuild buildA = taskA.get(60, TimeUnit.SECONDS);
+    p2Builder.release();
     final FreeStyleBuild buildB = taskB.get(60, TimeUnit.SECONDS);
 
     long buildAEndTime = buildA.getStartTimeInMillis() + buildA.getDuration();
@@ -102,7 +105,7 @@ public class BasicIntegrationTest {
   }
 
   @Test
-  public void configRoundTrip() throws Exception {
+  public void configRoundTripPlain() throws Exception {
     LockableResourcesManager.get().createResource("resource1");
 
     FreeStyleProject withResource = j.createFreeStyleProject("withResource");
@@ -118,7 +121,10 @@ public class BasicIntegrationTest {
     assertNull(withResourceProp.getResourceNumber());
     assertNull(withResourceProp.getLabelName());
     assertNull(withResourceProp.getResourceMatchScript());
+  }
 
+  @Test
+  public void configRoundTripWithLabel() throws Exception {
     FreeStyleProject withLabel = j.createFreeStyleProject("withLabel");
     withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "some-label", null));
     FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
@@ -131,7 +137,10 @@ public class BasicIntegrationTest {
     assertNull(withLabelProp.getResourceNumber());
     assertEquals("some-label", withLabelProp.getLabelName());
     assertNull(withLabelProp.getResourceMatchScript());
+  }
 
+  @Test
+  public void configRoundTripWithScript() throws Exception {
     FreeStyleProject withScript = j.createFreeStyleProject("withScript");
     SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
     withScript.addProperty(new RequiredResourcesProperty(null, null, null, null, origScript));
@@ -146,37 +155,7 @@ public class BasicIntegrationTest {
     assertNull(withScriptProp.getLabelName());
     assertNotNull(withScriptProp.getResourceMatchScript());
     assertEquals("return true", withScriptProp.getResourceMatchScript().getScript());
-    assertEquals(false, withScriptProp.getResourceMatchScript().isSandbox());
-  }
-
-  @Test
-  public void validationFailure() throws Exception {
-    RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
-    LockableResourcesManager.get().createResource("resource1");
-    LockableResource r = LockableResourcesManager.get().getResources().get(0);
-    r.setLabels("some-label");
-
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckResourceNames("resource1", null, true).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckResourceNames("resource1", "some-label", false).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckResourceNames("resource1", "some-label", true).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckLabelName("some-label", "resource1", false).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckLabelName("some-label", null, true).getMessage());
-    assertEquals(
-        "Only label, groovy expression, or resources can be defined, not more than one.",
-        d.doCheckLabelName("some-label", "resource1", true).getMessage());
-
-    assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false));
-    assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false));
+    assertFalse(withScriptProp.getResourceMatchScript().isSandbox());
   }
 
   @Test
@@ -198,57 +177,57 @@ public class BasicIntegrationTest {
             .to("alice"));
 
     final String SCRIPT =
-        "resourceName == org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
+        "resourceName == "
+            + "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
 
     FreeStyleProject p = j.createFreeStyleProject();
-    SecurityContext orig = ACL.impersonate(User.get("alice").impersonate());
-    SecurityContextHolder.setContext(orig);
     SecureGroovyScript groovyScript =
         new SecureGroovyScript(SCRIPT, true, null).configuring(ApprovalContext.create());
 
     p.addProperty(new RequiredResourcesProperty(null, null, null, null, groovyScript));
 
+    User.getOrCreateByIdOrFullName("alice");
     JenkinsRule.WebClient wc = j.createWebClient();
     wc.login("alice");
 
     QueueTaskFuture<FreeStyleBuild> futureBuild = p.scheduleBuild2(0);
+    TestHelpers.waitForQueue(j.jenkins, p, Queue.BlockedItem.class);
 
-    // Sleeping briefly to make sure the queue gets updated.
-    Thread.sleep(2000);
-
-    List<Queue.Item> items = j.jenkins.getQueue().getItems(p);
-    assertNotNull(items);
-    assertEquals(1, items.size());
-
-    assertTrue(items.get(0) instanceof Queue.BlockedItem);
-
-    Queue.BlockedItem blockedItem = (Queue.BlockedItem) items.get(0);
-    assertTrue(
-        blockedItem.getCauseOfBlockage()
-            instanceof LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed);
+    Queue.BlockedItem blockedItem = (Queue.BlockedItem) j.jenkins.getQueue().getItem(p);
+    assertThat(
+        blockedItem.getCauseOfBlockage(),
+        is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed.class)));
 
     ScriptApproval approval = ScriptApproval.get();
-    List<ScriptApproval.PendingSignature> pending = new ArrayList<>();
-    pending.addAll(approval.getPendingSignatures());
+    List<ScriptApproval.PendingSignature> pending =
+        new ArrayList<>(approval.getPendingSignatures());
 
     assertFalse(pending.isEmpty());
     assertEquals(1, pending.size());
     ScriptApproval.PendingSignature firstPending = pending.get(0);
 
     assertEquals(
-        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction ICON",
+        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction "
+            + "ICON",
         firstPending.signature);
     approval.approveSignature(firstPending.signature);
 
     j.assertBuildStatusSuccess(futureBuild);
   }
 
-  @TestExtension
-  public static class PrinterBuilder extends MockBuilder {
+  @Test
+  public void autoCreateResource() throws IOException, InterruptedException, ExecutionException {
+    FreeStyleProject f = j.createFreeStyleProject("f");
+    f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
 
-    public PrinterBuilder() {
-      super(Result.SUCCESS);
-    }
+    FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+    j.waitForMessage("acquired lock on [resource1]", fb1);
+    j.waitForCompletion(fb1);
+
+    assertNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  public static class PrinterBuilder extends TestBuilder {
 
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
@@ -257,6 +236,22 @@ public class BasicIntegrationTest {
           .getLogger()
           .println("resourceNameVar: " + build.getEnvironment(listener).get("resourceNameVar"));
       return true;
+    }
+  }
+
+  private static class SemaphoreBuilder extends TestBuilder {
+
+    private final OneShotEvent event = new OneShotEvent();
+
+    @Override
+    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+        throws InterruptedException {
+      event.block();
+      return true;
+    }
+
+    void release() {
+      event.signal();
     }
   }
 }
