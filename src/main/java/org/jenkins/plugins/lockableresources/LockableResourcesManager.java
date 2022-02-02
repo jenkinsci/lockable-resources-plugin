@@ -274,11 +274,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return null;
     }
 
-    boolean candidatesByScript = false;
-    List<LockableResource> candidates;
     final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
     boolean candidatesByScript = (systemGroovyScript != null);
-    List<LockableResource> candidates = requiredResources.required; // default canditates
+    List<LockableResource> candidates = requiredResources.required; // default candidates
 
     if (candidatesByScript ||
         (requiredResources.label != null && !requiredResources.label.isEmpty())) {
