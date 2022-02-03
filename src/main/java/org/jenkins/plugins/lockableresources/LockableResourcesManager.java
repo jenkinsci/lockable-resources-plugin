@@ -245,6 +245,57 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /**
+   * If the lockable resource availability was evaluated before and
+   * cached to avoid frequent re-evaluations under queued pressure
+   * when there are no resources to give, we should state that a
+   * resource is again instantly available for re-evaluation when
+   * we know it was busy and right now is being freed.
+   * Note that a resource may be (both or separately) locked by a
+   * build and/or reserved by a user (or stolen from build to user)
+   * so we only un-cache it here if it becomes completely available.
+   * Called as a helper from methods that unlock/unreserve/reset
+   * (or indirectly - recycle) stuff.
+   *
+   * NOTE for people using LR or LRM methods directly to add some
+   * abilities in their pipelines that are not provided by plugin:
+   * the `cachedCandidates` is an LRM concept, so if you tell a
+   * resource (LR instance) directly to unlock/unreserve, it has
+   * no idea to clean itself from this cache, and may be considered
+   * busy in queuing for some time afterwards.
+   */
+  public synchronized boolean uncacheIfFreeing(LockableResource candidate, boolean unlocking, boolean unreserving) {
+    if (candidate.isLocked() && !unlocking) return false;
+
+    // "stolen" state helps track that a resource is currently not
+    // reserved for the same entity as it was originally given to;
+    // this flag is cleared during un-reservation.
+    if ((candidate.isReserved() || candidate.isStolen()) && !unreserving) return false;
+
+    if (cachedCandidates.size() == 0) return true;
+
+    // Per https://guava.dev/releases/19.0/api/docs/com/google/common/cache/Cache.html
+    // "Modifications made to the map directly affect the cache."
+    // so it is both a way for us to iterate the cache and to edit
+    // the lists it stores per queue.
+    Map<Long, List<LockableResource>> cachedCandidatesMap = cachedCandidates.asMap();
+    for (Map.Entry<Long, List<LockableResource>> entry : cachedCandidatesMap.entrySet()) {
+      Long queueItemId = entry.getKey();
+      List<LockableResource> candidates = entry.getValue();
+      if (candidates != null && (candidates.size() == 0 || candidates.contains(candidate))) {
+        if (candidates.size() < 2) {
+          // Nothing is there, or would be after removing the one entry
+          cachedCandidates.invalidate(queueItemId);
+        } else {
+          // Reduce the referenced list
+          candidates.remove(candidate);
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Try to acquire the resources required by the task.
    *
    * @param number Number of resources to acquire. {@code 0} means all
@@ -409,6 +460,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // No more contexts, unlock resource
             resource.unqueue();
             resource.setBuild(null);
+            uncacheIfFreeing(resource, true, false);
             if (resource.isEphemeral()) {
               resourceIterator.remove();
             }
@@ -696,6 +748,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   private void unreserveResources(@NonNull List<LockableResource> resources) {
     for (LockableResource l : resources) {
+      uncacheIfFreeing(l, false, true);
       l.unReserve();
     }
     save();
@@ -805,6 +858,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public synchronized void reset(List<LockableResource> resources) {
     for (LockableResource r : resources) {
+      uncacheIfFreeing(r, true, true);
       r.reset();
     }
     save();
