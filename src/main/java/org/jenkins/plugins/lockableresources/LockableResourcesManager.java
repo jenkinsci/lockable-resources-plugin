@@ -658,10 +658,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /**
-   * Reserves a resource that may be or not be reserved by some
-   * job already, giving it away to the userName indefinitely
-   * (until that person, or some explicit scripted action, decides
-   * to release the resource).
+   * Reserves a resource that may be or not be locked by some
+   * job (or reserved by some user) already, giving it away to
+   * the userName indefinitely (until that person, or some
+   * explicit scripted action, later decides to release the
+   * resource).
    */
   public synchronized boolean steal(
       List<LockableResource> resources,
