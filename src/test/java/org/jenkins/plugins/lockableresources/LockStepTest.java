@@ -1097,7 +1097,7 @@ public class LockStepTest extends LockStepTestBase {
     // to be un-reserved, resources already looping waiting
     // for it (after the fix for Bug #1) are not "notified".
     // Adding and removing the resource helps unblock this.
-    Boolean sawBug2a = false;
+    boolean sawBug2a = false;
     try {
         j.waitForMessage("Locked resource cause 1-6", b1);
         j.assertLogContains("Locked resource cause 2-2", b1);
@@ -1116,7 +1116,7 @@ public class LockStepTest extends LockStepTestBase {
     // If the bug is resolved, then by the time we get to 1-5
     // the resource should be taken by the other parallel stage
     // and so not locked by not-"null"; reservation should be away though
-    Boolean sawBug2b = false;
+    boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
     for (String line : new String[]{
         "Locked resource cause 1-5: null",
@@ -1282,7 +1282,7 @@ public class LockStepTest extends LockStepTestBase {
     // to be un-reserved, resources already looping waiting
     // for it (after the fix for Bug #1) are not "notified".
     // Adding and removing the resource helps unblock this.
-    Boolean sawBug2a = false;
+    boolean sawBug2a = false;
     try {
         j.waitForMessage("Locked resource cause 1-6", b1);
         j.assertLogContains("Locked resource cause 2-2", b1);
@@ -1301,7 +1301,7 @@ public class LockStepTest extends LockStepTestBase {
     // If the bug is resolved, then by the time we get to 1-5
     // the resource should be taken by the other parallel stage
     // and so not locked by not-"null"; reservation should be away though
-    Boolean sawBug2b = false;
+    boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
     for (String line : new String[]{
         "Locked resource cause 1-5: null",

@@ -946,12 +946,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
           }
 
           String candidateName = candidate.getName();
-          Boolean listedUnlock = (lockedResourcesAboutToBeUnlocked != null
+          boolean listedUnlock = (lockedResourcesAboutToBeUnlocked != null
             &&  lockedResourcesAboutToBeUnlocked.contains(candidateName));
-          Boolean listedUnreserve = (reservedResourcesAboutToBeUnreserved != null
+          boolean listedUnreserve = (reservedResourcesAboutToBeUnreserved != null
             &&  reservedResourcesAboutToBeUnreserved.contains(candidateName));
-          Boolean isReserved = candidate.isReserved();
-          Boolean isLocked = candidate.isLocked();
+          boolean isReserved = candidate.isReserved();
+          boolean isLocked = candidate.isLocked();
 
           if (isReserved) {
             if (listedUnreserve) {

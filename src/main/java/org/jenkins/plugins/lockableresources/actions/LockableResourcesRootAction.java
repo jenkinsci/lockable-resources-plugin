@@ -150,7 +150,7 @@ public class LockableResourcesRootAction implements RootAction {
 	@RequirePOST
 	public void doSteal(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
-		Jenkins.getInstance().checkPermission(STEAL);
+		Jenkins.get().checkPermission(STEAL);
 
 		String name = req.getParameter("resource");
 		LockableResource r = LockableResourcesManager.get().fromName(name);
@@ -171,7 +171,7 @@ public class LockableResourcesRootAction implements RootAction {
 	@RequirePOST
 	public void doReassign(StaplerRequest req, StaplerResponse rsp)
 		throws IOException, ServletException {
-		Jenkins.getInstance().checkPermission(STEAL);
+		Jenkins.get().checkPermission(STEAL);
 
 		String name = req.getParameter("resource");
 		LockableResource r = LockableResourcesManager.get().fromName(name);
@@ -182,8 +182,8 @@ public class LockableResourcesRootAction implements RootAction {
 
 		String userName = getUserName();
 		if ( userName == null ||
-			( !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER) &&
-			  !Jenkins.getInstance().hasPermission(STEAL) )
+			( !Jenkins.get().hasPermission(Jenkins.ADMINISTER) &&
+			  !Jenkins.get().hasPermission(STEAL) )
 		) {
 			throw new AccessDeniedException2(Jenkins.getAuthentication(),
 					STEAL);
