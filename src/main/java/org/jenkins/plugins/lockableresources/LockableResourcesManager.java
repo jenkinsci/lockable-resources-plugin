@@ -203,9 +203,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean queue(
-      List<LockableResource> resources,
-      long queueItemId,
-      String queueProjectName) {
+      List<LockableResource> resources, long queueItemId, String queueProjectName) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
         return false;
@@ -335,7 +333,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       candidates = cachedCandidates.getIfPresent(queueItemId);
       if (candidates != null) {
         candidates.retainAll(resources);
-      } else {
+    } else {
         candidates = (systemGroovyScript == null)
             ? getResourcesWithLabel(requiredResources.label, params)
             : getResourcesMatchingScript(systemGroovyScript, params);
@@ -472,8 +470,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized void unlock(
-      List<LockableResource> resourcesToUnLock,
-      @Nullable Run<?, ?> build) {
+      List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
     unlock(resourcesToUnLock, build, false);
   }
 
@@ -601,20 +598,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
   /** @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct) */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
-      List<String> resourceNamesToUnLock,
-      boolean inversePrecedence,
-      QueuedContextStruct from
-  ) {
+      List<String> resourceNamesToUnLock, boolean inversePrecedence, QueuedContextStruct from) {
       return this.getNextQueuedContext(resourceNamesToUnLock, null, inversePrecedence, from);
   }
 
   /**
    * Returns the next queued context with all its requirements satisfied.
    *
-   * @param resourceNamesToUnLock resource names locked at the moment but
-   *     available if required (as they are going to be unlocked soon)
-   * @param resourceNamesToUnReserve resource names reserved at the moment but
-   *     available if required (as they are going to be un-reserved soon)
+   * @param resourceNamesToUnLock resource names locked at the moment but available if required (as
+   *     they are going to be unlocked soon)
+   * @param resourceNamesToUnReserve resource names reserved at the moment but available if required
+   *     (as they are going to be un-reserved soon)
    * @param inversePrecedence false pick up context as they are in the queue or true to take the
    *     most recent one (satisfying requirements)
    * @return the context or null
@@ -624,14 +618,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable List<String> resourceNamesToUnLock,
       @Nullable List<String> resourceNamesToUnReserve,
       boolean inversePrecedence,
-      QueuedContextStruct from
-  ) {
+      QueuedContextStruct from) {
     QueuedContextStruct newestEntry = null;
     int fromIndex = from != null ? this.queuedContexts.indexOf(from) + 1 : 0;
     if (!inversePrecedence) {
       for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
-        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve) != null) {
+        if (checkResourcesAvailability(
+                entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
+            != null) {
           return entry;
         }
       }
@@ -640,7 +635,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       List<QueuedContextStruct> orphan = new ArrayList<>();
       for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
-        if (checkResourcesAvailability(entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve) != null) {
+        if (checkResourcesAvailability(
+                entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
+            != null) {
           try {
             Run<?, ?> run = entry.getContext().get(Run.class);
             if (run != null && run.getStartTimeInMillis() > newest) {
@@ -712,13 +709,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /**
-   * Reserves an available resource for the userName indefinitely
-   * (until that person, or some explicit scripted action, decides
-   * to release the resource).
+   * Reserves an available resource for the userName indefinitely (until that person, or some
+   * explicit scripted action, decides to release the resource).
    */
-  public synchronized boolean reserve(
-      List<LockableResource> resources,
-      String userName) {
+  public synchronized boolean reserve(List<LockableResource> resources, String userName) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked() || r.isQueued()) {
         return false;
@@ -732,15 +726,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /**
-   * Reserves a resource that may be or not be locked by some
-   * job (or reserved by some user) already, giving it away to
-   * the userName indefinitely (until that person, or some
-   * explicit scripted action, later decides to release the
-   * resource).
+   * Reserves a resource that may be or not be reserved by some job already, giving it away to the
+   * userName indefinitely (until that person, or some explicit scripted action, decides to release
+   * the resource).
    */
-  public synchronized boolean steal(
-      List<LockableResource> resources,
-      String userName) {
+  public synchronized boolean steal(List<LockableResource> resources, String userName) {
     for (LockableResource r : resources) {
       r.setReservedBy(userName);
       r.setStolen();
@@ -751,14 +741,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /**
-   * Reserves a resource that may be or not be reserved by some
-   * person already, giving it away to the userName indefinitely
-   * (until that person, or some explicit scripted action, decides
-   * to release the resource).
+   * Reserves a resource that may be or not be reserved by some person already, giving it away to
+   * the userName indefinitely (until that person, or some explicit scripted action, decides to
+   * release the resource).
    */
-  public synchronized void reassign(
-      List<LockableResource> resources,
-      String userName) {
+  public synchronized void reassign(List<LockableResource> resources, String userName) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked() || r.isQueued()) {
         r.unReserve();
@@ -815,8 +802,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // remove context from queue and process it
     Set<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
-            nextContext.getResources(), nextContextLogger,
-            null, resourceNamesToUnreserve);
+            nextContext.getResources(), nextContextLogger, null, resourceNamesToUnreserve);
     this.queuedContexts.remove(nextContext);
 
     // resourceNamesToUnreserve contains the names of the previous resources.
@@ -886,12 +872,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
-  /** Make the lockable resource re-usable and notify the queue(s), if any
-   * WARNING: Do not use this from inside the lock step closure which
-   * originally locked this resource, to avoid nasty surprises!
-   * Namely, this *might* let a second consumer use the resource quickly,
-   * but when the original closure ends and unlocks again that resource,
-   * a third consumer might then effectively hijack it from the second one.
+  /**
+   * Make the lockable resource re-usable and notify the queue(s), if any WARNING: Do not use this
+   * from inside the lock step closure which originally locked this resource, to avoid nasty
+   * surprises! Namely, this *might* let a second consumer use the resource quickly, but when the
+   * original closure ends and unlocks again that resource, a third consumer might then effectively
+   * hijack it from the second one.
    */
   public synchronized void recycle(List<LockableResource> resources) {
     // Not calling reset() because that also un-queues the resource
@@ -959,7 +945,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
     boolean skipIfLocked = false;
     return this.checkResourcesAvailability(
-        requiredResourcesList, logger,
+        requiredResourcesList,
+        logger,
         lockedResourcesAboutToBeUnlocked,
         reservedResourcesAboutToBeUnreserved,
         skipIfLocked);
@@ -1022,17 +1009,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // Determine if these resources can be reused
       // FIXME? Why is this check not outside the for loop?
       if (lockedResourcesAboutToBeUnlocked != null
-      ||  reservedResourcesAboutToBeUnreserved != null
-      ) {
+          || reservedResourcesAboutToBeUnreserved != null) {
         for (LockableResource candidate : requiredResources.candidates) {
           if (selected.size() >= requiredResources.requiredAmount) {
             break;
           }
 
           String candidateName = candidate.getName();
-          boolean listedUnlock = (lockedResourcesAboutToBeUnlocked != null
+          boolean listedUnlock =
+              (lockedResourcesAboutToBeUnlocked != null
             &&  lockedResourcesAboutToBeUnlocked.contains(candidateName));
-          boolean listedUnreserve = (reservedResourcesAboutToBeUnreserved != null
+          boolean listedUnreserve =
+              (reservedResourcesAboutToBeUnreserved != null
             &&  reservedResourcesAboutToBeUnreserved.contains(candidateName));
           boolean isReserved = candidate.isReserved();
           boolean isLocked = candidate.isLocked();
@@ -1057,9 +1045,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
               // notified until you lock/unlock that resource again.
               if (logger != null) {
                 logger.println(
-                  "Candidate resource '" + candidateName +
-                  "' is reserved by '" + candidate.getReservedBy() +
-                  "', not treating as available.");
+                    "Candidate resource '"
+                        + candidateName
+                        + "' is reserved by '"
+                        + candidate.getReservedBy()
+                        + "', not treating as available.");
               }
               totalReserved += 1;
               continue;
@@ -1083,10 +1073,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // Note that if arguments lockedResourcesAboutToBeUnlocked==null
     // and reservedResourcesAboutToBeUnreserved==null, then
     // the loop above was effectively skipped
-    if (totalSelected == 0 && totalReserved == 0
+    if (totalSelected == 0
+        && totalReserved == 0
     &&  (lockedResourcesAboutToBeUnlocked != null
-         || reservedResourcesAboutToBeUnreserved != null)
-    ) {
+            || reservedResourcesAboutToBeUnreserved != null)) {
       return null;
     }
 

@@ -186,10 +186,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
+            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
             true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -665,10 +662,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n"
-                + "	semaphore 'wait-inside-p3'\n"
-                + "}\n"
-                + "echo 'Finish'",
+            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
             true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
@@ -719,10 +713,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
         new CpsFlowDefinition(
-            "lock(label: 'label1') {\n"
-                + "	semaphore 'wait-inside-p3'\n"
-                + "}\n"
-                + "echo 'Finish'",
+            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
             true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
@@ -980,7 +971,7 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
-  //@Issue("JENKINS-XXXXX")
+  // @Issue("JENKINS-XXXXX")
   public void reserveInsideLockHonoured() throws Exception {
     // Use-case is a job keeping the resource reserved so it can use
     // it in other stages and free it later, not all in one closure
@@ -999,11 +990,15 @@ public class LockStepTest extends LockStepTestBase {
                 + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
                 + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
                 + "    echo \"VAR IS $env.LOCK_NAME\"\n"
-                + "    lr = " + lmget + ".fromName(env.LOCK_NAME)\n"
+                + "    lr = "
+                + lmget
+                + ".fromName(env.LOCK_NAME)\n"
                 + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
-                + "    def res = " + lmget + ".reserve([lr], 'test2a')\n"
-                //+ "    semaphore 'wait-inside'\n"
+                + "    def res = "
+                + lmget
+                + ".reserve([lr], 'test2a')\n"
+                // + "    semaphore 'wait-inside'\n"
                 + "    echo \"Locked resource cause 1-2a: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 1-2a: ${lr.getReservedBy()}\"\n"
                 + "    if (!res) {\n"
@@ -1021,25 +1016,33 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
                 + "  echo \"Resetting Locked resource via LRM and sleeping ...\"\n"
-                + "  " + lmget + ".reset([lr])\n"
+                + "  "
+                + lmget
+                + ".reset([lr])\n"
                 + "  sleep (5)\n"
                 + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
-                + "  " + lmget + ".unreserve([lr])\n"
+                + "  "
+                + lmget
+                + ".unreserve([lr])\n"
                 + "  sleep (5)\n"
                 // Note: the unlock attempt here might steal this resource
                 // from another parallel stage, so we don't do it:
-                //+ "  echo \"Un-locking Locked resource via LRM and sleeping...\"\n"
-                //+ "  " + lmget + ".unlock([lr], null)\n"
-                //+ "  sleep (5)\n"
+                // + "  echo \"Un-locking Locked resource via LRM and sleeping...\"\n"
+                // + "  " + lmget + ".unlock([lr], null)\n"
+                // + "  sleep (5)\n"
                 + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
                 + "  sleep (5)\n"
                 + "  if (lr.getLockCause() == null) {\n"
                 + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by LRM methods\"\n"
-                //+ "    lock(label: 'label1') { echo \"Secondary lock trick\" }\n"
-                + "    if (" + lmget + ".reserve([lr], 'unstucker')) {\n"
+                // + "    lock(label: 'label1') { echo \"Secondary lock trick\" }\n"
+                + "    if ("
+                + lmget
+                + ".reserve([lr], 'unstucker')) {\n"
                 + "        echo \"Secondary lock trick\"\n"
-                + "        " + lmget + ".unreserve([lr])\n"
+                + "        "
+                + lmget
+                + ".unreserve([lr])\n"
                 + "    } else { echo \"Could not reserve by LRM methods as 'unstucker'\" }\n"
                 + "  }\n"
                 + "  sleep (5)\n"
@@ -1047,19 +1050,23 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource reservedBy 1-6: ${lr.getReservedBy()}\"\n"
                 + "},\n"
                 + "p2: {\n"
-                //+ "  semaphore 'wait-outside'\n"
+                // + "  semaphore 'wait-outside'\n"
                 + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
                 + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
                 + "  lock(label: 'label1', variable: 'someVar2') {\n"
                 + "    echo \"VAR2 IS $env.someVar2\"\n"
-                + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+                + "    lr = "
+                + lmget
+                + ".fromName(env.someVar2)\n"
                 + "    sleep (1)\n"
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
                 + "    lr.reserve('test2-1')\n"
                 + "    sleep (3)\n"
-                + "    " + lmget + ".unreserve([lr])\n"
+                + "    "
+                + lmget
+                + ".unreserve([lr])\n"
                 + "    echo \"Just sleeping...\"\n"
                 + "    sleep (20)\n"
                 + "    echo \"Setting (directly) a reservation on locked resource\"\n"
@@ -1070,7 +1077,9 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
                 + "  sleep (5)\n"
                 + "  echo \"Recycling (via LRM) the reserved not-locked resource\"\n"
-                + "  " + lmget + ".recycle([lr])\n"
+                + "  "
+                + lmget
+                + ".recycle([lr])\n"
                 + "  sleep (5)\n"
                 + "  echo \"Locked resource cause 2-4: ${lr.getLockCause()}\"\n"
                 + "  echo \"Locked resource reservedBy 2-4: ${lr.getReservedBy()}\"\n"
@@ -1082,7 +1091,9 @@ public class LockStepTest extends LockStepTestBase {
                 + "  sleep 1\n"
                 + "  lock(label: 'label1', variable: 'someVar3') {\n"
                 + "    echo \"VAR3 IS $env.someVar3\"\n"
-                + "    lr = " + lmget + ".fromName(env.someVar3)\n"
+                + "    lr = "
+                + lmget
+                + ".fromName(env.someVar3)\n"
                 + "    echo \"Locked resource cause 3-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 3-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Just sleeping...\"\n"
@@ -1099,8 +1110,8 @@ public class LockStepTest extends LockStepTestBase {
                 + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
                 + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
                 + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
-            + "\necho \"Survived the test\"\n"
-            + "}", // timeout wrapper
+                + "\necho \"Survived the test\"\n"
+                + "}", // timeout wrapper
             false));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
@@ -1129,8 +1140,9 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
-    System.err.println("GOOD: Did not encounter Bug #1 " +
-        "(parallel p2 gets the lock on a still-reserved resource)!");
+    System.err.println(
+        "GOOD: Did not encounter Bug #1 "
+            + "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
     // This line might not strictly be required,
@@ -1139,8 +1151,8 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("Locked resource cause 2-1", b1);
     // Here the other parallel stage may have already started
     // (we try to recycle the resource between 1-4 and 1-5):
-    //j.assertLogNotContains("Locked resource cause 2-2", b1);
-    //j.assertLogNotContains("Locked resource cause 2-3", b1);
+    // j.assertLogNotContains("Locked resource cause 2-2", b1);
+    // j.assertLogNotContains("Locked resource cause 2-3", b1);
 
     // Bug #2 happens here: even after the resource is known
     // to be un-reserved, resources already looping waiting
@@ -1148,18 +1160,20 @@ public class LockStepTest extends LockStepTestBase {
     // Adding and removing the resource helps unblock this.
     boolean sawBug2a = false;
     try {
-        j.waitForMessage("Locked resource cause 1-6", b1);
-        j.assertLogContains("Locked resource cause 2-2", b1);
+      j.waitForMessage("Locked resource cause 1-6", b1);
+      j.assertLogContains("Locked resource cause 2-2", b1);
     } catch (java.lang.AssertionError t1) {
-        sawBug2a = true;
-        System.err.println("Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
-        //System.err.println(t1.toString());
-        // throw t1;
+      sawBug2a = true;
+      System.err.println(
+          "Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
+      // System.err.println(t1.toString());
+      // throw t1;
     }
     if (!sawBug2a) {
-        System.err.println("GOOD: Did not encounter Bug #2a " +
-            "(Parallel 2 did not start after Parallel 1 finished " +
-            "and resource later released)!");
+      System.err.println(
+          "GOOD: Did not encounter Bug #2a "
+              + "(Parallel 2 did not start after Parallel 1 finished "
+              + "and resource later released)!");
     }
 
     // If the bug is resolved, then by the time we get to 1-5
@@ -1167,23 +1181,23 @@ public class LockStepTest extends LockStepTestBase {
     // and so not locked by not-"null"; reservation should be away though
     boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-    for (String line : new String[]{
-        "Locked resource cause 1-5: null",
-        "LRM seems stuck; trying to reserve/unreserve",
-        "Secondary lock trick"}
-    ) {
+    for (String line :
+        new String[] {
+          "Locked resource cause 1-5: null",
+          "LRM seems stuck; trying to reserve/unreserve",
+          "Secondary lock trick"
+        }) {
       try {
         j.assertLogNotContains(line, b1);
       } catch (java.lang.AssertionError t2) {
         sawBug2b = true;
         System.err.println("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
-        //System.err.println(t2.toString());
+        // System.err.println(t2.toString());
         // throw t2;
       }
     }
     if (!sawBug2b) {
-        System.err.println("GOOD: Did not encounter Bug #2b " +
-            "(LRM required un-stucking)!");
+      System.err.println("GOOD: Did not encounter Bug #2b " + "(LRM required un-stucking)!");
     }
 
     j.waitForMessage("Locked resource cause 2-2", b1);
@@ -1192,7 +1206,8 @@ public class LockStepTest extends LockStepTestBase {
 
     j.waitForMessage("Unlocking parallel closure 2", b1);
     j.assertLogNotContains("Locked resource cause 3-2", b1);
-    System.err.println("GOOD: lock#3 was NOT taken just after we un-locked closure 2 (keeping lock#2 reserved)");
+    System.err.println(
+        "GOOD: lock#3 was NOT taken just after we un-locked closure 2 (keeping lock#2 reserved)");
 
     // After 2-3 we lrm.recycle() the lock so it should
     // go to the next bidder
@@ -1208,7 +1223,7 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
-  //@Issue("JENKINS-XXXXX")
+  // @Issue("JENKINS-XXXXX")
   public void setReservedByInsideLockHonoured() throws Exception {
     // Use-case is a job keeping the resource reserved so it can use
     // it in other stages and free it later, not all in one closure
@@ -1226,11 +1241,13 @@ public class LockStepTest extends LockStepTestBase {
                 + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
                 + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
                 + "    echo \"VAR IS $env.LOCK_NAME\"\n"
-                + "    lr = " + lmget + ".fromName(env.LOCK_NAME)\n"
+                + "    lr = "
+                + lmget
+                + ".fromName(env.LOCK_NAME)\n"
                 + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
                 + "    lr.setReservedBy('test')\n"
-                //+ "    semaphore 'wait-inside'\n"
+                // + "    semaphore 'wait-inside'\n"
                 + "    echo \"Locked resource cause 1-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 1-2: ${lr.getReservedBy()}\"\n"
                 + "    echo \"Unlocking parallel closure 1\"\n"
@@ -1243,8 +1260,9 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
                 // Note: lr.reset() only nullifies the fields in LR instance
                 // but does not help a queue get moving
-                //+ "  echo \"Un-reserving Locked resource directly as `lr.reset()` and sleeping...\"\n"
-                //+ "  lr.reset()\n"
+                // + "  echo \"Un-reserving Locked resource directly as `lr.reset()` and
+                // sleeping...\"\n"
+                // + "  lr.reset()\n"
                 + "  echo \"Un-reserving Locked resource directly as `lr.recycle()` and sleeping...\"\n"
                 + "  lr.recycle()\n"
                 + "  sleep (5)\n"
@@ -1260,12 +1278,14 @@ public class LockStepTest extends LockStepTestBase {
                 + "  echo \"Locked resource reservedBy 1-6: ${lr.getReservedBy()}\"\n"
                 + "},\n"
                 + "p2: {\n"
-                //+ "  semaphore 'wait-outside'\n"
+                // + "  semaphore 'wait-outside'\n"
                 + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
                 + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
                 + "  lock(label: 'label1', variable: 'someVar2') {\n"
                 + "    echo \"VAR2 IS $env.someVar2\"\n"
-                + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+                + "    lr = "
+                + lmget
+                + ".fromName(env.someVar2)\n"
                 + "    sleep (1)\n"
                 + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                 + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
@@ -1284,8 +1304,8 @@ public class LockStepTest extends LockStepTestBase {
                 + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
                 + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
                 + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
-            + "\necho \"Survived the test\"\n"
-            + "}", // timeout wrapper
+                + "\necho \"Survived the test\"\n"
+                + "}", // timeout wrapper
             false));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
@@ -1314,8 +1334,9 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
-    System.err.println("GOOD: Did not encounter Bug #1 " +
-        "(parallel p2 gets the lock on a still-reserved resource)!");
+    System.err.println(
+        "GOOD: Did not encounter Bug #1 "
+            + "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
     // This line might not strictly be required,
@@ -1324,8 +1345,8 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("Locked resource cause 2-1", b1);
     // Here the other parallel stage may have already started
     // (we try to recycle the resource between 1-4 and 1-5):
-    //j.assertLogNotContains("Locked resource cause 2-2", b1);
-    //j.assertLogNotContains("Locked resource cause 2-3", b1);
+    // j.assertLogNotContains("Locked resource cause 2-2", b1);
+    // j.assertLogNotContains("Locked resource cause 2-3", b1);
 
     // Bug #2 happens here: even after the resource is known
     // to be un-reserved, resources already looping waiting
@@ -1333,18 +1354,20 @@ public class LockStepTest extends LockStepTestBase {
     // Adding and removing the resource helps unblock this.
     boolean sawBug2a = false;
     try {
-        j.waitForMessage("Locked resource cause 1-6", b1);
-        j.assertLogContains("Locked resource cause 2-2", b1);
+      j.waitForMessage("Locked resource cause 1-6", b1);
+      j.assertLogContains("Locked resource cause 2-2", b1);
     } catch (java.lang.AssertionError t1) {
-        sawBug2a = true;
-        System.err.println("Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
-        //System.err.println(t1.toString());
-        // throw t1;
+      sawBug2a = true;
+      System.err.println(
+          "Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
+      // System.err.println(t1.toString());
+      // throw t1;
     }
     if (!sawBug2a) {
-        System.err.println("GOOD: Did not encounter Bug #2a " +
-            "(Parallel 2 did not start after Parallel 1 finished " +
-            "and resource later released)!");
+      System.err.println(
+          "GOOD: Did not encounter Bug #2a "
+              + "(Parallel 2 did not start after Parallel 1 finished "
+              + "and resource later released)!");
     }
 
     // If the bug is resolved, then by the time we get to 1-5
@@ -1352,37 +1375,37 @@ public class LockStepTest extends LockStepTestBase {
     // and so not locked by not-"null"; reservation should be away though
     boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-    for (String line : new String[]{
-        "Locked resource cause 1-5: null",
-        "LRM seems stuck; trying to reserve/unreserve",
-        "Secondary lock trick"}
-    ) {
+    for (String line :
+        new String[] {
+          "Locked resource cause 1-5: null",
+          "LRM seems stuck; trying to reserve/unreserve",
+          "Secondary lock trick"
+        }) {
       try {
         j.assertLogNotContains(line, b1);
       } catch (java.lang.AssertionError t2) {
         sawBug2b = true;
         System.err.println("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
-        //System.err.println(t2.toString());
+        // System.err.println(t2.toString());
         // throw t2;
       }
     }
     if (!sawBug2b) {
-        System.err.println("GOOD: Did not encounter Bug #2b " +
-            "(LRM required un-stucking)!");
+      System.err.println("GOOD: Did not encounter Bug #2b " + "(LRM required un-stucking)!");
     }
 
-/*
-    j.assertLogContains("Locked resource cause 1-5: null", b1);
-    j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-    try {
-        j.assertLogNotContains("LRM seems stuck; trying to reserve/unreserve", b1);
-        j.assertLogNotContains("Secondary lock trick", b1);
-    } catch (java.lang.AssertionError t2) {
-        System.err.println("Bug #2b (LRM required un-stucking) currently tolerated");
-        //System.err.println(t2.toString());
-        // throw t2;
-    }
-*/
+    /*
+        j.assertLogContains("Locked resource cause 1-5: null", b1);
+        j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
+        try {
+            j.assertLogNotContains("LRM seems stuck; trying to reserve/unreserve", b1);
+            j.assertLogNotContains("Secondary lock trick", b1);
+        } catch (java.lang.AssertionError t2) {
+            System.err.println("Bug #2b (LRM required un-stucking) currently tolerated");
+            //System.err.println(t2.toString());
+            // throw t2;
+        }
+    */
 
     j.waitForMessage("Locked resource cause 2-2", b1);
     j.assertLogContains("Locked resource cause 1-5", b1);
