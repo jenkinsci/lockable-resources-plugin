@@ -83,6 +83,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * being held, it becomes ephemeral and will disappear when freed.
    */
   private boolean ephemeral;
+  private List<LockableResourceProperty> properties = new ArrayList<>();
 
   private long queueItemId = NOT_QUEUED;
   private String queueItemProject = null;
@@ -171,6 +172,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Exported
   public boolean isEphemeral() {
     return ephemeral;
+  }
+
+  @Exported
+  public List<LockableResourceProperty> getProperties() {
+    return properties;
+  }
+
+  @DataBoundSetter
+  public void setProperties(List<LockableResourceProperty> properties) {
+    this.properties = (properties == null ? new ArrayList<>() : properties);
   }
 
   public boolean isValidLabel(String candidate, Map<String, Object> params) {

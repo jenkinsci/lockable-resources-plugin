@@ -10,26 +10,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
-	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-	<f:entry title="${%Name}" field="name">
-		<f:textbox/>
-	</f:entry>
-	<f:entry title="${%Description}" field="description">
-		<f:textbox/>
-	</f:entry>
-	<f:entry title="${%Labels}" field="labels">
-		<f:textbox/>
-	</f:entry>
-  <f:entry title="${%Reserved by}" field="reservedBy">
+  xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  <f:entry title="${%Name}" field="name">
     <f:textbox/>
   </f:entry>
-  <f:entry title="${%Properties}">
-    <f:repeatableProperty field="properties" header="" minimum="0" add="${%Add Property}">
-      <f:block>
-        <div align="right">
-          <f:repeatableDeleteButton value="${%Delete Property}" />
-        </div>
-      </f:block>
-    </f:repeatableProperty>
+  <f:entry title="${%Value}" field="value">
+    <f:textbox/>
   </f:entry>
 </j:jelly>
