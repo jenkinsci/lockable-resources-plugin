@@ -62,6 +62,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String reservedBy = null;
   private Date reservedTimestamp = null;
   private String note = "";
+
+  /**
+   * Track that a currently reserved resource was originally reserved
+   * for someone else, or locked for some other job, and explicitly
+   * taken away - e.g. for SUT post-mortems while a test job runs.
+   * Currently this does not track "who" it was taken from nor intend
+   * to give it back - just for bookkeeping and UI button naming.
+   * Cleared when the resource is unReserve'd.
+   */
   private boolean stolen = false;
 
   /**
