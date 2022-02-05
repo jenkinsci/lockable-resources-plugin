@@ -119,6 +119,9 @@ unclassified:
         description: "Description_A"
         labels: "Label_A"
         reservedBy: "Reserved_A"
+        properties:
+          - name: "Property_A"
+            value: "Value"
 ```
 
 ## Changelog
