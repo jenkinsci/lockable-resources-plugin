@@ -201,7 +201,7 @@ public class LockableResourcesRootAction implements RootAction {
       // Can not achieve much by re-assigning the
       // resource I already hold to myself again,
       // that would just burn the compute resources.
-      // ...unless something catches the event? (TODO?)
+      //...unless something catches the event? (TODO?)
       return;
     }
 

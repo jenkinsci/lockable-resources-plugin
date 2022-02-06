@@ -333,7 +333,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       candidates = cachedCandidates.getIfPresent(queueItemId);
       if (candidates != null) {
         candidates.retainAll(resources);
-    } else {
+      } else {
         candidates = (systemGroovyScript == null)
             ? getResourcesWithLabel(requiredResources.label, params)
             : getResourcesMatchingScript(systemGroovyScript, params);

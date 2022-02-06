@@ -49,7 +49,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource>
-    implements Serializable {
+  implements Serializable {
 
   private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
   public static final int NOT_QUEUED = 0;
@@ -207,8 +207,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class)
   public boolean scriptMatches(
-      @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
-      throws ExecutionException {
+    @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+    throws ExecutionException {
     Binding binding = new Binding(params);
     binding.setVariable("resourceName", name);
     binding.setVariable("resourceDescription", description);
@@ -216,22 +216,22 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     binding.setVariable("resourceNote", note);
     try {
       Object result =
-          script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
+        script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
       if (LOGGER.isLoggable(Level.FINE)) {
         LOGGER.fine(
-            "Checked resource "
-                + name
-                + " for "
-                + script.getScript()
-                + " with "
-                + binding
-                + " -> "
-                + result);
+          "Checked resource "
+            + name
+            + " for "
+            + script.getScript()
+            + " with "
+            + binding
+            + " -> "
+            + result);
       }
       return (Boolean) result;
     } catch (Exception e) {
       throw new ExecutionException(
-          "Cannot get boolean result out of groovy expression. See system log for more info", e);
+        "Cannot get boolean result out of groovy expression. See system log for more info", e);
     }
   }
 
@@ -425,11 +425,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   /** Tell LRM to recycle this resource, including notifications for
-    * whoever may be waiting in the queue so they can proceed immediately.
-    * WARNING: Do not use this from inside the lock step closure which
-    * originally locked this resource, to avoid nasty surprises!
-    * Just stick with unReserve() and close the closure, if needed.
-    */
+   * whoever may be waiting in the queue so they can proceed immediately.
+   * WARNING: Do not use this from inside the lock step closure which
+   * originally locked this resource, to avoid nasty surprises!
+   * Just stick with unReserve() and close the closure, if needed.
+   */
   public void recycle() {
     try {
       List<LockableResource> resources = new ArrayList<>();
