@@ -38,9 +38,9 @@ public class LockableResourceApiTest {
   public void apiUsageHttpGet() {
     JenkinsRule.WebClient wc = j.createWebClient();
     FailingHttpStatusCodeException e =
-        assertThrows(
-            FailingHttpStatusCodeException.class,
-            () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
+      assertThrows(
+        FailingHttpStatusCodeException.class,
+        () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
     assertThat(e.getStatusCode(), is(405));
   }
 }

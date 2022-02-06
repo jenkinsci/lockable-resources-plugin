@@ -19,63 +19,63 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
  */
 public class QueuedContextStruct implements Serializable {
 
-	/*
-	 * Reference to the pipeline step context.
-	 */
-	private StepContext context;
+  /*
+   * Reference to the pipeline step context.
+   */
+  private StepContext context;
 
-	/*
-	 * Reference to the resources required by the step context.
-	 */
-	private List<LockableResourcesStruct> lockableResourcesStruct;
+  /*
+   * Reference to the resources required by the step context.
+   */
+  private List<LockableResourcesStruct> lockableResourcesStruct;
 
-	/*
-	 * Description of the required resources used within logging messages.
-	 */
-	private String resourceDescription;
+  /*
+   * Description of the required resources used within logging messages.
+   */
+  private String resourceDescription;
 
-	/*
-	 * Name of the variable to save the locks taken.
-	 */
-	private String variableName;
+  /*
+   * Name of the variable to save the locks taken.
+   */
+  private String variableName;
 
-	/*
-	 * Constructor for the QueuedContextStruct class.
-	 */
-	public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription, String variableName) {
-		this.context = context;
-		this.lockableResourcesStruct = lockableResourcesStruct;
-		this.resourceDescription = resourceDescription;
-		this.variableName = variableName;
-	}
+  /*
+   * Constructor for the QueuedContextStruct class.
+   */
+  public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription, String variableName) {
+    this.context = context;
+    this.lockableResourcesStruct = lockableResourcesStruct;
+    this.resourceDescription = resourceDescription;
+    this.variableName = variableName;
+  }
 
-	/*
-	 * Gets the pipeline step context.
-	 */
-	public StepContext getContext() {
-		return this.context;
-	}
+  /*
+   * Gets the pipeline step context.
+   */
+  public StepContext getContext() {
+    return this.context;
+  }
 
-	/*
-	 * Gets the required resources.
-	 */
-	public List<LockableResourcesStruct> getResources() {
-		return this.lockableResourcesStruct;
-	}
+  /*
+   * Gets the required resources.
+   */
+  public List<LockableResourcesStruct> getResources() {
+    return this.lockableResourcesStruct;
+  }
 
-	/*
-	 * Gets the resource description for logging messages.
-	 */
-	public String getResourceDescription() {
-		return this.resourceDescription;
-	}
+  /*
+   * Gets the resource description for logging messages.
+   */
+  public String getResourceDescription() {
+    return this.resourceDescription;
+  }
 
-	/*
-	 * Gets the variable name to save the locks taken.
-	 */
-	public String getVariableName() {
-		return this.variableName;
-	}
+  /*
+   * Gets the variable name to save the locks taken.
+   */
+  public String getVariableName() {
+    return this.variableName;
+  }
 
-	private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 }
