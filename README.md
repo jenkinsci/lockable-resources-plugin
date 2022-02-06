@@ -67,13 +67,30 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 }
 ```
 
-*Resolve a variable configured with the resource*
+*Resolve a variable configured with the resource name*
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
   echo env.LOCKED_RESOURCE
 }
 ```
+
+When multiple locks are acquired, each will be assigned to a numbered variable:
+
+```groovy
+lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
+  // comma separated names of all acquired locks
+  echo env.LOCKED_RESOURCE
+
+  // first lock
+  echo env.LOCKED_RESOURCE0
+
+  // second lock
+  echo env.LOCKED_RESOURCE1
+}
+```
+
+
 
 *Skip executing the block if there is a queue*
 
