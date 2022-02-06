@@ -70,13 +70,13 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   public LockableResourcesStruct(
-      @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
+    @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
     this(resources, label, quantity);
     requiredVar = variable;
   }
 
   public LockableResourcesStruct(
-      @Nullable List<String> resources, @Nullable String label, int quantity) {
+    @Nullable List<String> resources, @Nullable String label, int quantity) {
     required = new ArrayList<>();
     if (resources != null) {
       for (String resource : resources) {
@@ -123,15 +123,15 @@ public class LockableResourcesStruct implements Serializable {
   @Override
   public String toString() {
     return "Required resources: "
-        + this.required
-        + ", Required label: "
-        + this.label
-        + ", Required label script: "
-        + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
-        + ", Variable name: "
-        + this.requiredVar
-        + ", Number of resources: "
-        + this.requiredNumber;
+      + this.required
+      + ", Required label: "
+      + this.label
+      + ", Required label script: "
+      + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
+      + ", Variable name: "
+      + this.requiredVar
+      + ", Number of resources: "
+      + this.requiredNumber;
   }
 
   private static final long serialVersionUID = 1L;

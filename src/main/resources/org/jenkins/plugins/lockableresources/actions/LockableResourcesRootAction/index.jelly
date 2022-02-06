@@ -78,15 +78,15 @@
                       </j:if>
                       <j:if
                         test="${it.UserName != null and it.UserName != resource.reservedBy and ( h.hasPermission(it.STEAL) or h.hasPermission(app.ADMINISTER) )}">
-                          <j:choose>
-                              <j:when
-                                test="${resource.reservedBy.contains('#')}">
-                                <br/><button onClick="resource_action(this, 'reassign');">Reassign from a job</button>
-                              </j:when>
-                              <j:otherwise> <!-- TODO: Want to need any rights here vs. for jobs? -->
-                                <br/><button onClick="resource_action(this, 'reassign');">Reassign from a user</button>
-                              </j:otherwise>
-                          </j:choose>
+                        <j:choose>
+                          <j:when
+                            test="${resource.reservedBy.contains('#')}">
+                            <br/><button onClick="resource_action(this, 'reassign');">Reassign from a job</button>
+                          </j:when>
+                          <j:otherwise> <!-- TODO: Want to need any rights here vs. for jobs? -->
+                            <br/><button onClick="resource_action(this, 'reassign');">Reassign from a user</button>
+                          </j:otherwise>
+                        </j:choose>
                       </j:if>
                     </j:if>
                   </td>

@@ -26,7 +26,7 @@ public final class Utils {
     return null;
   }
 
-  @CheckForNull
+  @NonNull
   public static Job<?, ?> getProject(@NonNull Run<?, ?> build) {
     return build.getParent();
   }

@@ -108,12 +108,12 @@ public class LockStep extends Step implements Serializable {
     }
 
     public static FormValidation doCheckLabel(
-        @QueryParameter String value, @QueryParameter String resource) {
+      @QueryParameter String value, @QueryParameter String resource) {
       return LockStepResource.DescriptorImpl.doCheckLabel(value, resource);
     }
 
     public static FormValidation doCheckResource(
-        @QueryParameter String value, @QueryParameter String label) {
+      @QueryParameter String value, @QueryParameter String label) {
       return LockStepResource.DescriptorImpl.doCheckLabel(label, value);
     }
 
@@ -127,8 +127,8 @@ public class LockStep extends Step implements Serializable {
   public String toString() {
     if (extra != null && !extra.isEmpty()) {
       return getResources().stream()
-          .map(res -> "{" + res.toString() + "}")
-          .collect(Collectors.joining(","));
+        .map(res -> "{" + res.toString() + "}")
+        .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
       return LockStepResource.toString(resource, label, quantity);
     } else {
