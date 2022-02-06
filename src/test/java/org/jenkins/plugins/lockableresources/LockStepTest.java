@@ -832,9 +832,9 @@ public class LockStepTest extends LockStepTestBase {
     p.setDefinition(
       new CpsFlowDefinition(
         "lock(label: 'label1', variable: 'someVar', quantity: 2) {\n"
-          + "  echo \"VAR IS $env.someVar\"\n"
-          + "  echo \"VAR0 IS $env.someVar0\"\n"
-          + "  echo \"VAR1 IS $env.someVar1\"\n"
+          + "  echo \"VAR IS ${env.someVar.split(',').sort()}\"\n"
+          + "  echo \"VAR0or1 IS $env.someVar0\"\n"
+          + "  echo \"VAR0or1 IS $env.someVar1\"\n"
           + "  echo \"VAR2 IS $env.someVar2\"\n"
           + "}",
         true));
@@ -842,9 +842,9 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForCompletion(b1);
 
     // Variable should have been filled
-    j.assertLogContains("VAR IS resource1,resource2", b1);
-    j.assertLogContains("VAR0 IS resource1", b1);
-    j.assertLogContains("VAR1 IS resource2", b1);
+    j.assertLogContains("VAR IS [resource1, resource2]", b1);
+    j.assertLogContains("VAR0or1 IS resource1", b1);
+    j.assertLogContains("VAR0or1 IS resource2", b1);
     j.assertLogContains("VAR2 IS null", b1);
   }
 
