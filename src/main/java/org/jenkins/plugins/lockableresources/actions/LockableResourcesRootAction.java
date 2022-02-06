@@ -36,36 +36,36 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 public class LockableResourcesRootAction implements RootAction {
 
   public static final PermissionGroup PERMISSIONS_GROUP =
-      new PermissionGroup(
-          LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
+    new PermissionGroup(
+      LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
   public static final Permission UNLOCK =
-      new Permission(
-          PERMISSIONS_GROUP,
-          Messages.LockableResourcesRootAction_UnlockPermission(),
-          Messages._LockableResourcesRootAction_UnlockPermission_Description(),
-          Jenkins.ADMINISTER,
-          PermissionScope.JENKINS);
+    new Permission(
+      PERMISSIONS_GROUP,
+      Messages.LockableResourcesRootAction_UnlockPermission(),
+      Messages._LockableResourcesRootAction_UnlockPermission_Description(),
+      Jenkins.ADMINISTER,
+      PermissionScope.JENKINS);
   public static final Permission RESERVE =
-      new Permission(
-          PERMISSIONS_GROUP,
-          Messages.LockableResourcesRootAction_ReservePermission(),
-          Messages._LockableResourcesRootAction_ReservePermission_Description(),
-          Jenkins.ADMINISTER,
-          PermissionScope.JENKINS);
+    new Permission(
+      PERMISSIONS_GROUP,
+      Messages.LockableResourcesRootAction_ReservePermission(),
+      Messages._LockableResourcesRootAction_ReservePermission_Description(),
+      Jenkins.ADMINISTER,
+      PermissionScope.JENKINS);
   public static final Permission STEAL =
-      new Permission(
-          PERMISSIONS_GROUP,
-          Messages.LockableResourcesRootAction_StealPermission(),
-          Messages._LockableResourcesRootAction_StealPermission_Description(),
-          Jenkins.ADMINISTER,
-          PermissionScope.JENKINS);
+    new Permission(
+      PERMISSIONS_GROUP,
+      Messages.LockableResourcesRootAction_StealPermission(),
+      Messages._LockableResourcesRootAction_StealPermission_Description(),
+      Jenkins.ADMINISTER,
+      PermissionScope.JENKINS);
   public static final Permission VIEW =
-      new Permission(
-          PERMISSIONS_GROUP,
-          Messages.LockableResourcesRootAction_ViewPermission(),
-          Messages._LockableResourcesRootAction_ViewPermission_Description(),
-          Jenkins.ADMINISTER,
-          PermissionScope.JENKINS);
+    new Permission(
+      PERMISSIONS_GROUP,
+      Messages.LockableResourcesRootAction_ViewPermission(),
+      Messages._LockableResourcesRootAction_ViewPermission_Description(),
+      Jenkins.ADMINISTER,
+      PermissionScope.JENKINS);
 
   public static final String ICON = "/plugin/lockable-resources/img/device.svg";
 
@@ -80,8 +80,11 @@ public class LockableResourcesRootAction implements RootAction {
 
   public String getUserName() {
     User current = User.current();
-    if (current != null) return current.getFullName();
-    else return null;
+    if (current != null) {
+      return current.getFullName();
+    } else {
+      return null;
+    }
   }
 
   @Override
@@ -117,7 +120,8 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doUnlock(StaplerRequest req, StaplerResponse rsp)
-      throws IOException, ServletException {
+    throws IOException, ServletException
+  {
     Jenkins.get().checkPermission(UNLOCK);
 
     String name = req.getParameter("resource");
@@ -136,7 +140,8 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doReserve(StaplerRequest req, StaplerResponse rsp)
-      throws IOException, ServletException {
+    throws IOException, ServletException
+  {
     Jenkins.get().checkPermission(RESERVE);
 
     String name = req.getParameter("resource");
@@ -160,7 +165,8 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doSteal(StaplerRequest req, StaplerResponse rsp)
-      throws IOException, ServletException {
+    throws IOException, ServletException
+  {
     Jenkins.get().checkPermission(STEAL);
 
     String name = req.getParameter("resource");
@@ -173,14 +179,17 @@ public class LockableResourcesRootAction implements RootAction {
     List<LockableResource> resources = new ArrayList<>();
     resources.add(r);
     String userName = getUserName();
-    if (userName != null) LockableResourcesManager.get().steal(resources, userName);
+    if (userName != null) {
+      LockableResourcesManager.get().steal(resources, userName);
+    }
 
     rsp.forwardToPreviousPage(req);
   }
 
   @RequirePOST
   public void doReassign(StaplerRequest req, StaplerResponse rsp)
-      throws IOException, ServletException {
+    throws IOException, ServletException
+  {
     Jenkins.get().checkPermission(STEAL);
 
     String name = req.getParameter("resource");
@@ -193,7 +202,8 @@ public class LockableResourcesRootAction implements RootAction {
     String userName = getUserName();
     if (userName == null
         || (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)
-            && !Jenkins.get().hasPermission(STEAL))) {
+            && !Jenkins.get().hasPermission(STEAL))
+    ) {
       throw new AccessDeniedException2(Jenkins.getAuthentication(), STEAL);
     }
 
@@ -214,7 +224,8 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
-      throws IOException, ServletException {
+    throws IOException, ServletException
+  {
     Jenkins.get().checkPermission(RESERVE);
 
     String name = req.getParameter("resource");
@@ -226,8 +237,10 @@ public class LockableResourcesRootAction implements RootAction {
 
     String userName = getUserName();
     if ((userName == null || !userName.equals(r.getReservedBy()))
-        && !Jenkins.get().hasPermission(Jenkins.ADMINISTER))
+        && !Jenkins.get().hasPermission(Jenkins.ADMINISTER)
+    ) {
       throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+    }
 
     List<LockableResource> resources = new ArrayList<>();
     resources.add(r);
@@ -238,7 +251,8 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doReset(StaplerRequest req, StaplerResponse rsp)
-      throws IOException, ServletException {
+    throws IOException, ServletException
+  {
     Jenkins.get().checkPermission(UNLOCK);
     // Should this also be permitted by "STEAL"?..
 

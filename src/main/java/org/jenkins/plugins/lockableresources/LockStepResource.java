@@ -16,112 +16,112 @@ import org.kohsuke.stapler.QueryParameter;
 
 public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {
 
-	@CheckForNull
-	public String resource = null;
+  @CheckForNull
+  public String resource = null;
 
-	@CheckForNull
-	public String label = null;
+  @CheckForNull
+  public String label = null;
 
-	public int quantity = 0;
+  public int quantity = 0;
 
-	LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
-		this.resource = resource;
-		this.label = label;
-		this.quantity = quantity;
-	}
+  LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
+    this.resource = resource;
+    this.label = label;
+    this.quantity = quantity;
+  }
 
-	@DataBoundConstructor
-	public LockStepResource(@Nullable String resource) {
-		if (resource != null && !resource.isEmpty()) {
-			this.resource = resource;
-		}
-	}
+  @DataBoundConstructor
+  public LockStepResource(@Nullable String resource) {
+    if (resource != null && !resource.isEmpty()) {
+      this.resource = resource;
+    }
+  }
 
-	@DataBoundSetter
-	public void setLabel(String label) {
-		if (label != null && !label.isEmpty()) {
-			this.label = label;
-		}
-	}
+  @DataBoundSetter
+  public void setLabel(String label) {
+    if (label != null && !label.isEmpty()) {
+      this.label = label;
+    }
+  }
 
-	@DataBoundSetter
-	public void setQuantity(int quantity) {
-		this.quantity = quantity;
-	}
+  @DataBoundSetter
+  public void setQuantity(int quantity) {
+    this.quantity = quantity;
+  }
 
-	@Override
-	public String toString() {
-		return toString(resource, label, quantity);
-	}
+  @Override
+  public String toString() {
+    return toString(resource, label, quantity);
+  }
 
-	public static String toString(String resource, String label, int quantity) {
-		// a label takes always priority
-		if (label != null) {
-			if (quantity > 0) {
-				return "Label: " + label + ", Quantity: " + quantity;
-			}
-			return "Label: " + label;
-		}
-		// make sure there is an actual resource specified
-		if (resource != null) {
-			return resource;
-		}
-		return "[no resource/label specified - probably a bug]";
-	}
+  public static String toString(String resource, String label, int quantity) {
+    // a label takes always priority
+    if (label != null) {
+      if (quantity > 0) {
+        return "Label: " + label + ", Quantity: " + quantity;
+      }
+      return "Label: " + label;
+    }
+    // make sure there is an actual resource specified
+    if (resource != null) {
+      return resource;
+    }
+    return "[no resource/label specified - probably a bug]";
+  }
 
-	/**
-	 * Label and resource are mutual exclusive.
-	 */
-	public void validate() {
-		validate(resource, label, quantity);
-	}
+  /**
+   * Label and resource are mutual exclusive.
+   */
+  public void validate() {
+    validate(resource, label, quantity);
+  }
 
-	/**
-	 * Label and resource are mutual exclusive.
-	 * The label, if provided, must be configured (at least one resource must have this label).
-	 */
-	public static void validate(String resource, String label, int quantity) {
-		if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
-			throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
-		}
-		if (label != null && !LockableResourcesManager.get().isValidLabel( label ) ) {
-			throw new IllegalArgumentException("The label does not exist: " + label);
-		}
-	}
+  /**
+   * Label and resource are mutual exclusive.
+   * The label, if provided, must be configured (at least one resource must have this label).
+   */
+  public static void validate(String resource, String label, int quantity) {
+    if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
+      throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
+    }
+    if (label != null && !LockableResourcesManager.get().isValidLabel( label ) ) {
+      throw new IllegalArgumentException("The label does not exist: " + label);
+    }
+  }
 
-	private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-	@Extension
-	public static class DescriptorImpl extends Descriptor<LockStepResource> {
+  @Extension
+  public static class DescriptorImpl extends Descriptor<LockStepResource> {
 
     @NonNull
-		@Override
-		public String getDisplayName() {
-			return "Resource";
-		}
+    @Override
+    public String getDisplayName() {
+      return "Resource";
+    }
 
-		public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
-			return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
-		}
+    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
+      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
+    }
 
-		public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
-			String resourceLabel = Util.fixEmpty(value);
-			String resourceName = Util.fixEmpty(resource);
-			if (resourceLabel != null && resourceName != null) {
-				return FormValidation.error("Label and resource name cannot be specified simultaneously.");
-			}
-			if ((resourceLabel == null) && (resourceName == null)) {
-				return FormValidation.error("Either label or resource name must be specified.");
-			}
-			if (resourceLabel != null && !LockableResourcesManager.get().isValidLabel(resourceLabel)) {
-				return FormValidation.error("The label does not exist: " + resourceLabel);
-			}
-			return FormValidation.ok();
-		}
+    public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
+      String resourceLabel = Util.fixEmpty(value);
+      String resourceName = Util.fixEmpty(resource);
+      if (resourceLabel != null && resourceName != null) {
+        return FormValidation.error("Label and resource name cannot be specified simultaneously.");
+      }
+      if ((resourceLabel == null) && (resourceName == null)) {
+        return FormValidation.error("Either label or resource name must be specified.");
+      }
+      if (resourceLabel != null && !LockableResourcesManager.get().isValidLabel(resourceLabel)) {
+        return FormValidation.error("The label does not exist: " + resourceLabel);
+      }
+      return FormValidation.ok();
+    }
 
-		public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
-			return doCheckLabel(label, value);
-		}
-	}
+    public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
+      return doCheckLabel(label, value);
+    }
+  }
 
 }

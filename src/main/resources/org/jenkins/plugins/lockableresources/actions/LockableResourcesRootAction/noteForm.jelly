@@ -33,17 +33,17 @@ THE SOFTWARE.
   <j:set var="note" value="${resourceObject.note}"/>
   <l:ajax>
     <f:block>
-    <form action="saveNote?resource=${resource}" method="post" style="flex-grow: 1;">
-      <div>
-        <f:entry help="${app.markupFormatter.helpUrl}">
-          <f:textarea name="note" value="${note}"
-                      codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
-        </f:entry>
-      </div>
-      <div align="right">
-        <f:submit value="${%Save}"/>
-      </div>
-    </form>
+      <form action="saveNote?resource=${resource}" method="post" style="flex-grow: 1;">
+        <div>
+          <f:entry help="${app.markupFormatter.helpUrl}">
+            <f:textarea name="note" value="${note}"
+              codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
+          </f:entry>
+        </div>
+        <div align="right">
+          <f:submit value="${%Save}"/>
+        </div>
+      </form>
     </f:block>
   </l:ajax>
 </j:jelly>

@@ -33,8 +33,8 @@ public class LockStepTest extends LockStepTestBase {
   public void autoCreateResource() throws Exception {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	echo 'Resource locked'\n" + "}\n" + "echo 'Finish'", true));
+      new CpsFlowDefinition(
+        "lock('resource1') {\n" + "	echo 'Resource locked'\n" + "}\n" + "echo 'Finish'", true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -47,8 +47,8 @@ public class LockStepTest extends LockStepTestBase {
   public void lockNothing() throws Exception {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock() {\n" + "  echo 'Nothing locked.'\n" + "}\n" + "echo 'Finish'", true));
+      new CpsFlowDefinition(
+        "lock() {\n" + "  echo 'Nothing locked.'\n" + "}\n" + "echo 'Finish'", true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -60,12 +60,12 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', variable: 'var') {\n"
-                + "	echo \"Resource locked: ${env.var}\"\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -83,12 +83,12 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', quantity: 2) {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', quantity: 2) {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
@@ -130,12 +130,12 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', quantity: 2) {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', quantity: 2) {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
@@ -147,12 +147,12 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', quantity: 1) {\n"
-                + "	semaphore 'wait-inside-quantity1'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', quantity: 1) {\n"
+          + "	semaphore 'wait-inside-quantity1'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     // While 2 continues waiting, 3 can continue directly
     SemaphoreStep.waitForStart("wait-inside-quantity1/1", b3);
@@ -184,9 +184,12 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1') {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
@@ -195,12 +198,12 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', quantity: 2) {\n"
-                + "	semaphore 'wait-inside-quantity2'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', quantity: 2) {\n"
+          + "	semaphore 'wait-inside-quantity2'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     // Ensure that b2 reaches the lock before b3
     j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b2);
@@ -209,12 +212,12 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', quantity: 1) {\n"
-                + "	semaphore 'wait-inside-quantity1'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', quantity: 1) {\n"
+          + "	semaphore 'wait-inside-quantity1'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1, Quantity: 1] is locked, waiting...", b3);
     j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 1.", b3);
@@ -246,9 +249,9 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock('resource1') {\n" + "	semaphore 'wait-inside'\n" + "}\n" + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
@@ -282,12 +285,12 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(resource: 'resource1', inversePrecedence: true) {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(resource: 'resource1', inversePrecedence: true) {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
@@ -320,18 +323,18 @@ public class LockStepTest extends LockStepTestBase {
   public void parallelLock() throws Exception {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "parallel a: {\n"
-                + "	semaphore 'before-a'\n"
-                + "	lock('resource1') {\n"
-                + "		semaphore 'inside-a'\n"
-                + "	}\n"
-                + "}, b: {\n"
-                + "	lock('resource1') {\n"
-                + "		semaphore 'wait-b'\n"
-                + "	}\n"
-                + "}\n",
-            true));
+      new CpsFlowDefinition(
+        "parallel a: {\n"
+          + "	semaphore 'before-a'\n"
+          + "	lock('resource1') {\n"
+          + "		semaphore 'inside-a'\n"
+          + "	}\n"
+          + "}, b: {\n"
+          + "	lock('resource1') {\n"
+          + "		semaphore 'wait-b'\n"
+          + "	}\n"
+          + "}\n",
+        true));
 
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-b/1", b1);
@@ -373,15 +376,15 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p");
     p1.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }", true));
+      new CpsFlowDefinition(
+        "lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }", true));
     WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
     j.waitForMessage("locked!", b1);
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
+      new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     // Make sure that b2 is blocked on b1's lock.
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b2);
@@ -391,7 +394,7 @@ public class LockStepTest extends LockStepTestBase {
     // unlock.
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
+      new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b3);
     isPaused(b3, 1, 1);
@@ -418,13 +421,13 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "retry(99) {\n"
-                + "    lock('resource1') {\n"
-                + "        semaphore('wait-inside')\n"
-                + "     }\n"
-                + "}",
-            true));
+      new CpsFlowDefinition(
+        "retry(99) {\n"
+          + "    lock('resource1') {\n"
+          + "        semaphore('wait-inside')\n"
+          + "     }\n"
+          + "}",
+        true));
 
     JenkinsRule.WebClient wc = j.createWebClient();
 
@@ -433,7 +436,7 @@ public class LockStepTest extends LockStepTestBase {
       WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
       if (prevBuild != null) {
         j.waitForMessage(
-            "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
+          "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
         TestHelpers.clickButton(wc, "unlock");
       }
@@ -459,15 +462,15 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource2");
     WorkflowJob job = j.jenkins.createProject(WorkflowJob.class, "j");
     job.setDefinition(
-        new CpsFlowDefinition(
-            "lock(resource: 'resource1') {\n"
-                + "    semaphore 'wait-inside-1'\n"
-                + "}\n"
-                + "lock(resource: 'resource2') { \n"
-                + "    echo 'Entering semaphore now'\n"
-                + "    semaphore 'wait-inside-2'\n"
-                + "}\n",
-            true));
+      new CpsFlowDefinition(
+        "lock(resource: 'resource1') {\n"
+          + "    semaphore 'wait-inside-1'\n"
+          + "}\n"
+          + "lock(resource: 'resource2') { \n"
+          + "    echo 'Entering semaphore now'\n"
+          + "    semaphore 'wait-inside-2'\n"
+          + "}\n",
+        true));
 
     List<WorkflowRun> nextRuns = new ArrayList<>();
 
@@ -476,7 +479,7 @@ public class LockStepTest extends LockStepTestBase {
       WorkflowRun rNext = job.scheduleBuild2(0).waitForStart();
       if (toUnlock != null) {
         j.waitForMessage(
-            "[resource1] is locked by " + toUnlock.getFullDisplayName() + ", waiting...", rNext);
+          "[resource1] is locked by " + toUnlock.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
         SemaphoreStep.success("wait-inside-1/" + i, null);
       }
@@ -509,13 +512,13 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "retry(99) {\n"
-                + "    lock('resource1') {\n"
-                + "        semaphore('wait-inside')\n"
-                + "     }\n"
-                + "}",
-            true));
+      new CpsFlowDefinition(
+        "retry(99) {\n"
+          + "    lock('resource1') {\n"
+          + "        semaphore('wait-inside')\n"
+          + "     }\n"
+          + "}",
+        true));
 
     WorkflowRun r = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked, waiting...", r);
@@ -557,27 +560,27 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     final WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "import java.util.Random; \n"
-                + "Random random = new Random(0);\n"
-                + "lock(label: 'label1') {\n"
-                + "  echo 'Resource locked'\n"
-                + "  sleep random.nextInt(10)*100\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "import java.util.Random; \n"
+          + "Random random = new Random(0);\n"
+          + "lock(label: 'label1') {\n"
+          + "  echo 'Resource locked'\n"
+          + "  sleep random.nextInt(10)*100\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     final CyclicBarrier barrier = new CyclicBarrier(51);
     for (int i = 0; i < 50; i++) {
       Thread thread =
-          new Thread(
-              () -> {
-                try {
-                  barrier.await();
-                  p.scheduleBuild2(0).waitForStart();
-                } catch (Exception e) {
-                  System.err.println("Failed to start pipeline job");
-                }
-              });
+        new Thread(
+          () -> {
+            try {
+              barrier.await();
+              p.scheduleBuild2(0).waitForStart();
+            } catch (Exception e) {
+              System.err.println("Failed to start pipeline job");
+            }
+          });
       thread.start();
     }
     barrier.await();
@@ -589,29 +592,29 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(resource: 'resource1', extra: [[resource: 'resource2']]) {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(resource: 'resource1', extra: [[resource: 'resource2']]) {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'",
+        true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b2);
     isPaused(b2, 1, 1);
 
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource2') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock('resource2') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource2] is locked by " + b1.getFullDisplayName() + ", waiting...", b3);
     isPaused(b3, 1, 1);
@@ -640,29 +643,32 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', extra: [[resource: 'resource1']]) {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', extra: [[resource: 'resource1']]) {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'",
+        true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b2);
     isPaused(b2, 1, 1);
 
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1') {\n"
+          + "	semaphore 'wait-inside-p3'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
     isPaused(b3, 1, 1);
@@ -691,29 +697,32 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', extra: [[resource: 'resource1']]) {\n"
-                + "	semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', extra: [[resource: 'resource1']]) {\n"
+          + "	semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition(
-            "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'",
+        true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b2);
     isPaused(b2, 1, 1);
 
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1') {\n"
+          + "	semaphore 'wait-inside-p3'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1] is locked, waiting...", b3);
     isPaused(b3, 1, 1);
@@ -746,29 +755,29 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource4", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], "
-                + "[label: 'label1', quantity: 2]]) {\n"
-                + "  def lockedResources = env.var.split(',').sort()\n"
-                + "  echo \"Resources locked: ${lockedResources}\"\n"
-                + "  semaphore 'wait-inside'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(variable: 'var', extra: [[resource: 'resource4'], [resource: 'resource2'], "
+          + "[label: 'label1', quantity: 2]]) {\n"
+          + "  def lockedResources = env.var.split(',').sort()\n"
+          + "  echo \"Resources locked: ${lockedResources}\"\n"
+          + "  semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     // #1 should lock as few resources as possible
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', variable: 'var', quantity: 3) {\n"
-                + "	def lockedResources = env.var.split(',').sort()\n"
-                + "	echo \"Resources locked: ${lockedResources}\"\n"
-                + "	semaphore 'wait-inside-quantity3'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var', quantity: 3) {\n"
+          + "	def lockedResources = env.var.split(',').sort()\n"
+          + "	echo \"Resources locked: ${lockedResources}\"\n"
+          + "	semaphore 'wait-inside-quantity3'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[Label: label1, Quantity: 3] is locked, waiting...", b2);
     j.waitForMessage("Found 2 available resource(s). Waiting for correct amount: 3.", b2);
@@ -776,14 +785,14 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', variable: 'var', quantity: 2) {\n"
-                + "	def lockedResources = env.var.split(',').sort()\n"
-                + "	echo \"Resources locked: ${lockedResources}\"\n"
-                + "	semaphore 'wait-inside-quantity2'\n"
-                + "}\n"
-                + "echo 'Finish'",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var', quantity: 2) {\n"
+          + "	def lockedResources = env.var.split(',').sort()\n"
+          + "	echo \"Resources locked: ${lockedResources}\"\n"
+          + "	semaphore 'wait-inside-quantity2'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
     // While 2 continues waiting, 3 can continue directly
     SemaphoreStep.waitForStart("wait-inside-quantity2/1", b3);
@@ -796,7 +805,7 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage(
-        "Lock released on resource [{resource4},{resource2},{Label: label1, Quantity: 2}]", b1);
+      "Lock released on resource [{resource4},{resource2},{Label: label1, Quantity: 2}]", b1);
     j.assertLogContains("Resources locked: [resource2, resource4]", b1);
     isPaused(b1, 1, 0);
 
@@ -820,22 +829,22 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', variable: 'someVar') {\n"
-                + "  semaphore 'wait-inside'\n"
-                + "  echo \"VAR IS $env.someVar\"\n"
-                + "}",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'someVar') {\n"
+          + "  semaphore 'wait-inside'\n"
+          + "  echo \"VAR IS $env.someVar\"\n"
+          + "}",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', variable: 'someVar2') {\n"
-                + "  echo \"VAR2 IS $env.someVar2\"\n"
-                + "}",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'someVar2') {\n"
+          + "  echo \"VAR2 IS $env.someVar2\"\n"
+          + "}",
+        true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     j.waitForMessage("is locked, waiting...", b2);
     isPaused(b2, 1, 1);
@@ -861,20 +870,20 @@ public class LockStepTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "parallel p1: {\n"
-                + "  lock(label: 'label1', variable: 'someVar') {\n"
-                + "    semaphore 'wait-inside'\n"
-                + "    echo \"VAR IS $env.someVar\"\n"
-                + "  }\n"
-                + "},\n"
-                + "p2: {\n"
-                + "  semaphore 'wait-outside'\n"
-                + "  lock(label: 'label1', variable: 'someVar2') {\n"
-                + "    echo \"VAR2 IS $env.someVar2\"\n"
-                + "  }\n"
-                + "}",
-            true));
+      new CpsFlowDefinition(
+        "parallel p1: {\n"
+          + "  lock(label: 'label1', variable: 'someVar') {\n"
+          + "    semaphore 'wait-inside'\n"
+          + "    echo \"VAR IS $env.someVar\"\n"
+          + "  }\n"
+          + "},\n"
+          + "p2: {\n"
+          + "  semaphore 'wait-outside'\n"
+          + "  lock(label: 'label1', variable: 'someVar2') {\n"
+          + "    echo \"VAR2 IS $env.someVar2\"\n"
+          + "  }\n"
+          + "}",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-outside/1", b1);
     SemaphoreStep.waitForStart("wait-inside/1", b1);
@@ -906,11 +915,11 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(label: 'label1', variable: 'someVar') {\n"
-                + "  echo \"VAR IS $env.someVar\"\n"
-                + "}",
-            true));
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'someVar') {\n"
+          + "  echo \"VAR IS $env.someVar\"\n"
+          + "}",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
     j.waitForMessage("is locked, waiting...", b1);
@@ -935,135 +944,115 @@ public class LockStepTest extends LockStepTestBase {
     String lmget = "org.jenkins.plugins.lockableresources.LockableResourcesManager.get()";
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "reserveInsideLockHonoured");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "timeout(2) {\n"
-                + "parallel p1: {\n"
-                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
-                + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
-                + "    echo \"VAR IS $env.LOCK_NAME\"\n"
-                + "    lr = "
-                + lmget
-                + ".fromName(env.LOCK_NAME)\n"
-                + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
-                + "    def res = "
-                + lmget
-                + ".reserve([lr], 'test2a')\n"
-                // + "    semaphore 'wait-inside'\n"
-                + "    echo \"Locked resource cause 1-2a: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 1-2a: ${lr.getReservedBy()}\"\n"
-                + "    if (!res) {\n"
-                + "        echo \"LockableResourcesManager did not reserve an already locked resource; hack it!\"\n"
-                + "        lr.setReservedBy('test2b')\n"
-                + "        echo \"Locked resource cause 1-2b: ${lr.getLockCause()}\"\n"
-                + "        echo \"Locked resource reservedBy 1-2b: ${lr.getReservedBy()}\"\n"
-                + "    }\n"
-                + "    echo \"Unlocking parallel closure 1\"\n"
-                + "  }\n"
-                + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-3: ${lr.getReservedBy()}\"\n"
-                + "  echo \"Ended locked parallel closure 1 with resource reserved, sleeping...\"\n"
-                + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
-                + "  echo \"Resetting Locked resource via LRM and sleeping ...\"\n"
-                + "  "
-                + lmget
-                + ".reset([lr])\n"
-                + "  sleep (5)\n"
-                + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
-                + "  "
-                + lmget
-                + ".unreserve([lr])\n"
-                + "  sleep (5)\n"
-                // Note: the unlock attempt here might steal this resource
-                // from another parallel stage, so we don't do it:
-                // + "  echo \"Un-locking Locked resource via LRM and sleeping...\"\n"
-                // + "  " + lmget + ".unlock([lr], null)\n"
-                // + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
-                + "  sleep (5)\n"
-                + "  if (lr.getLockCause() == null) {\n"
-                + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by LRM methods\"\n"
-                // + "    lock(label: 'label1') { echo \"Secondary lock trick\" }\n"
-                + "    if ("
-                + lmget
-                + ".reserve([lr], 'unstucker')) {\n"
-                + "        echo \"Secondary lock trick\"\n"
-                + "        "
-                + lmget
-                + ".unreserve([lr])\n"
-                + "    } else { echo \"Could not reserve by LRM methods as 'unstucker'\" }\n"
-                + "  }\n"
-                + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 1-6: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-6: ${lr.getReservedBy()}\"\n"
-                + "},\n"
-                + "p2: {\n"
-                // + "  semaphore 'wait-outside'\n"
-                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
-                + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
-                + "  lock(label: 'label1', variable: 'someVar2') {\n"
-                + "    echo \"VAR2 IS $env.someVar2\"\n"
-                + "    lr = "
-                + lmget
-                + ".fromName(env.someVar2)\n"
-                + "    sleep (1)\n"
-                + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
-                + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
-                + "    lr.reserve('test2-1')\n"
-                + "    sleep (3)\n"
-                + "    "
-                + lmget
-                + ".unreserve([lr])\n"
-                + "    echo \"Just sleeping...\"\n"
-                + "    sleep (20)\n"
-                + "    echo \"Setting (directly) a reservation on locked resource\"\n"
-                + "    lr.reserve('test2-2')\n"
-                + "    echo \"Unlocking parallel closure 2\"\n"
-                + "  }\n"
-                + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
-                + "  sleep (5)\n"
-                + "  echo \"Recycling (via LRM) the reserved not-locked resource\"\n"
-                + "  "
-                + lmget
-                + ".recycle([lr])\n"
-                + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 2-4: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 2-4: ${lr.getReservedBy()}\"\n"
-                + "},\n"
-                // Test that reserve/unreserve in p2 did not "allow" p3 to kidnap the lock:
-                + "p3: {\n"
-                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
-                + "  echo \"Locked resource cause 3-1: not locked yet\"\n"
-                + "  sleep 1\n"
-                + "  lock(label: 'label1', variable: 'someVar3') {\n"
-                + "    echo \"VAR3 IS $env.someVar3\"\n"
-                + "    lr = "
-                + lmget
-                + ".fromName(env.someVar3)\n"
-                + "    echo \"Locked resource cause 3-2: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 3-2: ${lr.getReservedBy()}\"\n"
-                + "    echo \"Just sleeping...\"\n"
-                + "    sleep (10)\n"
-                + "    echo \"Unlocking parallel closure 3\"\n"
-                + "  }\n"
-                + "  echo \"Locked resource cause 3-3: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 3-3: ${lr.getReservedBy()}\"\n"
-                + "},\n"
-                // Add some pressure to try for race conditions:
-                + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
-                + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
-                + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-                + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
-                + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-                + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
-                + "\necho \"Survived the test\"\n"
-                + "}", // timeout wrapper
-            false));
+      new CpsFlowDefinition(
+        "timeout(2) {\n"
+          + "parallel p1: {\n"
+          + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+          + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
+          + "    echo \"VAR IS $env.LOCK_NAME\"\n"
+          + "    lr = " + lmget + ".fromName(env.LOCK_NAME)\n"
+          + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
+          + "    def res = " + lmget + ".reserve([lr], 'test2a')\n"
+          //+ "    semaphore 'wait-inside'\n"
+          + "    echo \"Locked resource cause 1-2a: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 1-2a: ${lr.getReservedBy()}\"\n"
+          + "    if (!res) {\n"
+          + "        echo \"LockableResourcesManager did not reserve an already locked resource; hack it!\"\n"
+          + "        lr.setReservedBy('test2b')\n"
+          + "        echo \"Locked resource cause 1-2b: ${lr.getLockCause()}\"\n"
+          + "        echo \"Locked resource reservedBy 1-2b: ${lr.getReservedBy()}\"\n"
+          + "    }\n"
+          + "    echo \"Unlocking parallel closure 1\"\n"
+          + "  }\n"
+          + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-3: ${lr.getReservedBy()}\"\n"
+          + "  echo \"Ended locked parallel closure 1 with resource reserved, sleeping...\"\n"
+          + "  sleep (5)\n"
+          + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
+          + "  echo \"Resetting Locked resource via LRM and sleeping ...\"\n"
+          + "  " + lmget + ".reset([lr])\n"
+          + "  sleep (5)\n"
+          + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
+          + "  " + lmget + ".unreserve([lr])\n"
+          + "  sleep (5)\n"
+          // Note: the unlock attempt here might steal this resource
+          // from another parallel stage, so we don't do it:
+          //+ "  echo \"Un-locking Locked resource via LRM and sleeping...\"\n"
+          //+ "  " + lmget + ".unlock([lr], null)\n"
+          //+ "  sleep (5)\n"
+          + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
+          + "  sleep (5)\n"
+          + "  if (lr.getLockCause() == null) {\n"
+          + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by LRM methods\"\n"
+          //+ "    lock(label: 'label1') { echo \"Secondary lock trick\" }\n"
+          + "    if (" + lmget + ".reserve([lr], 'unstucker')) {\n"
+          + "        echo \"Secondary lock trick\"\n"
+          + "        " + lmget + ".unreserve([lr])\n"
+          + "    } else { echo \"Could not reserve by LRM methods as 'unstucker'\" }\n"
+          + "  }\n"
+          + "  sleep (5)\n"
+          + "  echo \"Locked resource cause 1-6: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-6: ${lr.getReservedBy()}\"\n"
+          + "},\n"
+          + "p2: {\n"
+          //+ "  semaphore 'wait-outside'\n"
+          + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+          + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
+          + "  lock(label: 'label1', variable: 'someVar2') {\n"
+          + "    echo \"VAR2 IS $env.someVar2\"\n"
+          + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+          + "    sleep (1)\n"
+          + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
+          + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
+          + "    lr.reserve('test2-1')\n"
+          + "    sleep (3)\n"
+          + "    " + lmget + ".unreserve([lr])\n"
+          + "    echo \"Just sleeping...\"\n"
+          + "    sleep (20)\n"
+          + "    echo \"Setting (directly) a reservation on locked resource\"\n"
+          + "    lr.reserve('test2-2')\n"
+          + "    echo \"Unlocking parallel closure 2\"\n"
+          + "  }\n"
+          + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
+          + "  sleep (5)\n"
+          + "  echo \"Recycling (via LRM) the reserved not-locked resource\"\n"
+          + "  " + lmget + ".recycle([lr])\n"
+          + "  sleep (5)\n"
+          + "  echo \"Locked resource cause 2-4: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 2-4: ${lr.getReservedBy()}\"\n"
+          + "},\n"
+          // Test that reserve/unreserve in p2 did not "allow" p3 to kidnap the lock:
+          + "p3: {\n"
+          + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+          + "  echo \"Locked resource cause 3-1: not locked yet\"\n"
+          + "  sleep 1\n"
+          + "  lock(label: 'label1', variable: 'someVar3') {\n"
+          + "    echo \"VAR3 IS $env.someVar3\"\n"
+          + "    lr = " + lmget + ".fromName(env.someVar3)\n"
+          + "    echo \"Locked resource cause 3-2: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 3-2: ${lr.getReservedBy()}\"\n"
+          + "    echo \"Just sleeping...\"\n"
+          + "    sleep (10)\n"
+          + "    echo \"Unlocking parallel closure 3\"\n"
+          + "  }\n"
+          + "  echo \"Locked resource cause 3-3: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 3-3: ${lr.getReservedBy()}\"\n"
+          + "},\n"
+          // Add some pressure to try for race conditions:
+          + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+          + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
+          + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+          + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+          + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+          + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
+          + "\necho \"Survived the test\"\n"
+          + "}", // timeout wrapper
+        false));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
     j.waitForMessage("Locked resource cause 1-1", b1);
@@ -1091,9 +1080,8 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
-    System.err.println(
-        "GOOD: Did not encounter Bug #1 "
-            + "(parallel p2 gets the lock on a still-reserved resource)!");
+    System.err.println("GOOD: Did not encounter Bug #1 " +
+      "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
     // This line might not strictly be required,
@@ -1116,15 +1104,16 @@ public class LockStepTest extends LockStepTestBase {
     } catch (java.lang.AssertionError t1) {
       sawBug2a = true;
       System.err.println(
-          "Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
-      // System.err.println(t1.toString());
+        "Bug #2a (Parallel 2 did not start after Parallel 1 finished " +
+        "and resource later released) currently tolerated");
+      //System.err.println(t1.toString());
       // throw t1;
     }
     if (!sawBug2a) {
       System.err.println(
-          "GOOD: Did not encounter Bug #2a "
-              + "(Parallel 2 did not start after Parallel 1 finished "
-              + "and resource later released)!");
+        "GOOD: Did not encounter Bug #2a " +
+        "(Parallel 2 did not start after Parallel 1 finished " +
+        "and resource later released)!");
     }
 
     // If the bug is resolved, then by the time we get to 1-5
@@ -1132,12 +1121,11 @@ public class LockStepTest extends LockStepTestBase {
     // and so not locked by not-"null"; reservation should be away though
     boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-    for (String line :
-        new String[] {
-          "Locked resource cause 1-5: null",
-          "LRM seems stuck; trying to reserve/unreserve",
-          "Secondary lock trick"
-        }) {
+    for (String line : new String[]{
+      "Locked resource cause 1-5: null",
+      "LRM seems stuck; trying to reserve/unreserve",
+      "Secondary lock trick"}
+    ) {
       try {
         j.assertLogNotContains(line, b1);
       } catch (java.lang.AssertionError t2) {
@@ -1148,7 +1136,9 @@ public class LockStepTest extends LockStepTestBase {
       }
     }
     if (!sawBug2b) {
-      System.err.println("GOOD: Did not encounter Bug #2b " + "(LRM required un-stucking)!");
+      System.err.println(
+        "GOOD: Did not encounter Bug #2b " +
+        "(LRM required un-stucking)!");
     }
 
     j.waitForMessage("Locked resource cause 2-2", b1);
@@ -1186,78 +1176,73 @@ public class LockStepTest extends LockStepTestBase {
     String lmget = "org.jenkins.plugins.lockableresources.LockableResourcesManager.get()";
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "setReservedByInsideLockHonoured");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "timeout(2) {\n"
-                + "parallel p1: {\n"
-                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
-                + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
-                + "    echo \"VAR IS $env.LOCK_NAME\"\n"
-                + "    lr = "
-                + lmget
-                + ".fromName(env.LOCK_NAME)\n"
-                + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
-                + "    lr.setReservedBy('test')\n"
-                // + "    semaphore 'wait-inside'\n"
-                + "    echo \"Locked resource cause 1-2: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 1-2: ${lr.getReservedBy()}\"\n"
-                + "    echo \"Unlocking parallel closure 1\"\n"
-                + "  }\n"
-                + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-3: ${lr.getReservedBy()}\"\n"
-                + "  echo \"Ended locked parallel closure 1 with resource reserved, sleeping...\"\n"
-                + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
-                // Note: lr.reset() only nullifies the fields in LR instance
-                // but does not help a queue get moving
-                // + "  echo \"Un-reserving Locked resource directly as `lr.reset()` and
-                // sleeping...\"\n"
-                // + "  lr.reset()\n"
-                + "  echo \"Un-reserving Locked resource directly as `lr.recycle()` and sleeping...\"\n"
-                + "  lr.recycle()\n"
-                + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
-                + "  sleep (5)\n"
-                + "  if (lr.getLockCause() == null) {\n"
-                + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by lock step\"\n"
-                + "    lock(label: 'label1', skipIfLocked: true) { echo \"Secondary lock trick\" }\n"
-                + "  }\n"
-                + "  sleep (5)\n"
-                + "  echo \"Locked resource cause 1-6: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 1-6: ${lr.getReservedBy()}\"\n"
-                + "},\n"
-                + "p2: {\n"
-                // + "  semaphore 'wait-outside'\n"
-                + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
-                + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
-                + "  lock(label: 'label1', variable: 'someVar2') {\n"
-                + "    echo \"VAR2 IS $env.someVar2\"\n"
-                + "    lr = "
-                + lmget
-                + ".fromName(env.someVar2)\n"
-                + "    sleep (1)\n"
-                + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
-                + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
-                + "    echo \"Just sleeping...\"\n"
-                + "    sleep (20)\n"
-                + "    echo \"Unlocking parallel closure 2\"\n"
-                + "  }\n"
-                + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
-                + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
-                + "},\n"
-                // Add some pressure to try for race conditions:
-                + "p3: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-                + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
-                + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
-                + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-                + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
-                + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-                + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
-                + "\necho \"Survived the test\"\n"
-                + "}", // timeout wrapper
-            false));
+      new CpsFlowDefinition(
+        "timeout(2) {\n"
+          + "parallel p1: {\n"
+          + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+          + "  lock(label: 'label1', variable: 'LOCK_NAME') {\n"
+          + "    echo \"VAR IS $env.LOCK_NAME\"\n"
+          + "    lr = " + lmget + ".fromName(env.LOCK_NAME)\n"
+          + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
+          + "    lr.setReservedBy('test')\n"
+          //+ "    semaphore 'wait-inside'\n"
+          + "    echo \"Locked resource cause 1-2: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 1-2: ${lr.getReservedBy()}\"\n"
+          + "    echo \"Unlocking parallel closure 1\"\n"
+          + "  }\n"
+          + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-3: ${lr.getReservedBy()}\"\n"
+          + "  echo \"Ended locked parallel closure 1 with resource reserved, sleeping...\"\n"
+          + "  sleep (5)\n"
+          + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
+          // Note: lr.reset() only nullifies the fields in LR instance
+          // but does not help a queue get moving
+          //+ "  echo \"Un-reserving Locked resource directly as `lr.reset()` and sleeping...\"\n"
+          //+ "  lr.reset()\n"
+          + "  echo \"Un-reserving Locked resource directly as `lr.recycle()` and sleeping...\"\n"
+          + "  lr.recycle()\n"
+          + "  sleep (5)\n"
+          + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
+          + "  sleep (5)\n"
+          + "  if (lr.getLockCause() == null) {\n"
+          + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by lock step\"\n"
+          + "    lock(label: 'label1', skipIfLocked: true) { echo \"Secondary lock trick\" }\n"
+          + "  }\n"
+          + "  sleep (5)\n"
+          + "  echo \"Locked resource cause 1-6: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 1-6: ${lr.getReservedBy()}\"\n"
+          + "},\n"
+          + "p2: {\n"
+          //+ "  semaphore 'wait-outside'\n"
+          + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+          + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
+          + "  lock(label: 'label1', variable: 'someVar2') {\n"
+          + "    echo \"VAR2 IS $env.someVar2\"\n"
+          + "    lr = " + lmget + ".fromName(env.someVar2)\n"
+          + "    sleep (1)\n"
+          + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
+          + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
+          + "    echo \"Just sleeping...\"\n"
+          + "    sleep (20)\n"
+          + "    echo \"Unlocking parallel closure 2\"\n"
+          + "  }\n"
+          + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
+          + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
+          + "},\n"
+          // Add some pressure to try for race conditions:
+          + "p3: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+          + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+          + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
+          + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+          + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
+          + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
+          + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
+          + "\necho \"Survived the test\"\n"
+          + "}", // timeout wrapper
+        false));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
     j.waitForMessage("Locked resource cause 1-1", b1);
@@ -1286,8 +1271,8 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
     System.err.println(
-        "GOOD: Did not encounter Bug #1 "
-            + "(parallel p2 gets the lock on a still-reserved resource)!");
+      "GOOD: Did not encounter Bug #1 " +
+      "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
     // This line might not strictly be required,
@@ -1310,15 +1295,16 @@ public class LockStepTest extends LockStepTestBase {
     } catch (java.lang.AssertionError t1) {
       sawBug2a = true;
       System.err.println(
-          "Bug #2a (Parallel 2 did not start after Parallel 1 finished and resource later released) currently tolerated");
-      // System.err.println(t1.toString());
+        "Bug #2a (Parallel 2 did not start after Parallel 1 finished " +
+        "and resource later released) currently tolerated");
+      //System.err.println(t1.toString());
       // throw t1;
     }
     if (!sawBug2a) {
       System.err.println(
-          "GOOD: Did not encounter Bug #2a "
-              + "(Parallel 2 did not start after Parallel 1 finished "
-              + "and resource later released)!");
+        "GOOD: Did not encounter Bug #2a " +
+        "(Parallel 2 did not start after Parallel 1 finished " +
+        "and resource later released)!");
     }
 
     // If the bug is resolved, then by the time we get to 1-5
@@ -1326,12 +1312,11 @@ public class LockStepTest extends LockStepTestBase {
     // and so not locked by not-"null"; reservation should be away though
     boolean sawBug2b = false;
     j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-    for (String line :
-        new String[] {
-          "Locked resource cause 1-5: null",
-          "LRM seems stuck; trying to reserve/unreserve",
-          "Secondary lock trick"
-        }) {
+    for (String line : new String[]{
+      "Locked resource cause 1-5: null",
+      "LRM seems stuck; trying to reserve/unreserve",
+      "Secondary lock trick"}
+    ) {
       try {
         j.assertLogNotContains(line, b1);
       } catch (java.lang.AssertionError t2) {
@@ -1342,7 +1327,9 @@ public class LockStepTest extends LockStepTestBase {
       }
     }
     if (!sawBug2b) {
-      System.err.println("GOOD: Did not encounter Bug #2b " + "(LRM required un-stucking)!");
+      System.err.println(
+        "GOOD: Did not encounter Bug #2b " +
+        "(LRM required un-stucking)!");
     }
 
     /*
@@ -1388,9 +1375,9 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-        new CpsFlowDefinition(
-            "lock(resource: 'resource1', skipIfLocked: true) {\n" + "  echo 'Running body'\n" + "}",
-            true));
+      new CpsFlowDefinition(
+        "lock(resource: 'resource1', skipIfLocked: true) {\n" + "  echo 'Running body'\n" + "}",
+        true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);

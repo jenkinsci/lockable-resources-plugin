@@ -183,8 +183,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @NonNull
   public List<LockableResource> getResourcesMatchingScript(
-      @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
-      throws ExecutionException {
+    @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+    throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
     for (LockableResource r : this.resources) {
       if (r.scriptMatches(script, params)) found.add(r);
@@ -202,7 +202,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean queue(
-      List<LockableResource> resources, long queueItemId, String queueProjectName) {
+    List<LockableResource> resources,
+    long queueItemId,
+    String queueProjectName
+  ) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
         return false;
@@ -222,21 +225,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @Deprecated
   @CheckForNull
   public synchronized List<LockableResource> queue(
-      LockableResourcesStruct requiredResources,
-      long queueItemId,
-      String queueItemProject,
-      int number, // 0 means all
-      Map<String, Object> params,
-      Logger log) {
+    LockableResourcesStruct requiredResources,
+    long queueItemId,
+    String queueItemProject,
+    int number, // 0 means all
+    Map<String, Object> params,
+    Logger log) {
     try {
       return tryQueue(requiredResources, queueItemId, queueItemProject, number, params, log);
     } catch (ExecutionException ex) {
       if (LOGGER.isLoggable(Level.WARNING)) {
         String itemName = queueItemProject + " (id=" + queueItemId + ")";
         LOGGER.log(
-            Level.WARNING,
-            "Failed to queue item " + itemName,
-            ex.getCause() != null ? ex.getCause() : ex);
+          Level.WARNING,
+          "Failed to queue item " + itemName,
+          ex.getCause() != null ? ex.getCause() : ex);
       }
       return null;
     }
@@ -305,21 +308,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @CheckForNull
   public synchronized List<LockableResource> tryQueue(
-      LockableResourcesStruct requiredResources,
-      long queueItemId,
-      String queueItemProject,
-      int number,
-      Map<String, Object> params,
-      Logger log)
-      throws ExecutionException {
+    LockableResourcesStruct requiredResources,
+    long queueItemId,
+    String queueItemProject,
+    int number,
+    Map<String, Object> params,
+    Logger log)
+    throws ExecutionException {
     List<LockableResource> selected = new ArrayList<>();
 
     if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
       // The project has another buildable item waiting -> bail out
       log.log(
-          Level.FINEST,
-          "{0} has another build waiting resources." + " Waiting for it to proceed first.",
-          new Object[] {queueItemProject});
+        Level.FINEST,
+        "{0} has another build waiting resources." + " Waiting for it to proceed first.",
+        new Object[] {queueItemProject});
       return null;
     }
 
@@ -328,14 +331,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResource> candidates = requiredResources.required; // default candidates
 
     if (candidatesByScript ||
-        (requiredResources.label != null && !requiredResources.label.isEmpty())) {
+      (requiredResources.label != null && !requiredResources.label.isEmpty())) {
       candidates = cachedCandidates.getIfPresent(queueItemId);
       if (candidates != null) {
         candidates.retainAll(resources);
       } else {
         candidates = (systemGroovyScript == null)
-            ? getResourcesWithLabel(requiredResources.label, params)
-            : getResourcesMatchingScript(systemGroovyScript, params);
+          ? getResourcesWithLabel(requiredResources.label, params)
+          : getResourcesMatchingScript(systemGroovyScript, params);
         cachedCandidates.put(queueItemId, candidates);
       }
     }
@@ -360,9 +363,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     if (selected.size() != required_amount) {
       log.log(
-          Level.FINEST,
-          "{0} found {1} resource(s) to queue." + "Waiting for correct amount: {2}.",
-          new Object[] {queueItemProject, selected.size(), required_amount});
+        Level.FINEST,
+        "{0} found {1} resource(s) to queue." + "Waiting for correct amount: {2}.",
+        new Object[] {queueItemProject, selected.size(), required_amount});
       // just to be sure, clean up
       for (LockableResource x : resources) {
         if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject))
@@ -380,7 +383,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // Adds already selected (in previous queue round) resources to 'selected'
   // Return false if another item queued for this project -> bail out
   private boolean checkCurrentResourcesStatus(
-      List<LockableResource> selected, String project, long taskId, Logger log) {
+    List<LockableResource> selected, String project, long taskId, Logger log) {
     for (LockableResource r : resources) {
       // This project might already have something in queue
       String rProject = r.getQueueItemProject();
@@ -391,9 +394,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         } else {
           // The project has another buildable item waiting -> bail out
           log.log(
-              Level.FINEST,
-              "{0} has another build " + "that already queued resource {1}. Continue queueing.",
-              new Object[] {project, r});
+            Level.FINEST,
+            "{0} has another build " + "that already queued resource {1}. Continue queueing.",
+            new Object[] {project, r});
           return false;
         }
       }
@@ -402,18 +405,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean lock(
-      Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+    Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
     return lock(resources, build, context, null, null, false);
   }
 
   /** Try to lock the resource and return true if locked. */
   public synchronized boolean lock(
-      Set<LockableResource> resources,
-      Run<?, ?> build,
-      @Nullable StepContext context,
-      @Nullable String logmessage,
-      final String variable,
-      boolean inversePrecedence) {
+    Set<LockableResource> resources,
+    Run<?, ?> build,
+    @Nullable StepContext context,
+    @Nullable String logmessage,
+    final String variable,
+    boolean inversePrecedence) {
     boolean needToWait = false;
 
     for (LockableResource r : resources) {
@@ -442,19 +445,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   private synchronized void freeResources(
-      List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
+    List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
     for (String unlockResourceName : unlockResourceNames) {
       Iterator<LockableResource> resourceIterator = this.resources.iterator();
       while (resourceIterator.hasNext()) {
         LockableResource resource = resourceIterator.next();
         if (resource != null
-            && resource.getName() != null
-            && resource.getName().equals(unlockResourceName)) {
+          && resource.getName() != null
+          && resource.getName().equals(unlockResourceName)) {
           if (build == null
-              || (resource.getBuild() != null
-                  && build
-                      .getExternalizableId()
-                      .equals(resource.getBuild().getExternalizableId()))) {
+            || (resource.getBuild() != null
+            && build
+            .getExternalizableId()
+            .equals(resource.getBuild().getExternalizableId()))) {
             // No more contexts, unlock resource
             resource.unqueue();
             resource.setBuild(null);
@@ -469,14 +472,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized void unlock(
-      List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
+    List<LockableResource> resourcesToUnLock,
+    @Nullable Run<?, ?> build
+  ) {
     unlock(resourcesToUnLock, build, false);
   }
 
   public synchronized void unlock(
-      @Nullable List<LockableResource> resourcesToUnLock,
-      @Nullable Run<?, ?> build,
-      boolean inversePrecedence) {
+    @Nullable List<LockableResource> resourcesToUnLock,
+    @Nullable Run<?, ?> build,
+    boolean inversePrecedence) {
     List<String> resourceNamesToUnLock = new ArrayList<>();
     if (resourcesToUnLock != null) {
       for (LockableResource r : resourcesToUnLock) {
@@ -488,9 +493,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized void unlockNames(
-      @Nullable List<String> resourceNamesToUnLock,
-      @Nullable Run<?, ?> build,
-      boolean inversePrecedence) {
+    @Nullable List<String> resourceNamesToUnLock,
+    @Nullable Run<?, ?> build,
+    boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
     if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
       return;
@@ -503,7 +508,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     while (!remainingResourceNamesToUnLock.isEmpty()) {
       // check if there are resources which can be unlocked (and shall not be unlocked)
       nextContext =
-          this.getNextQueuedContext(remainingResourceNamesToUnLock, inversePrecedence, nextContext);
+        this.getNextQueuedContext(remainingResourceNamesToUnLock, inversePrecedence, nextContext);
 
       // no context is queued which can be started once these resources are free'd.
       if (nextContext == null) {
@@ -513,8 +518,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       Set<LockableResource> requiredResourceForNextContext =
-          checkResourcesAvailability(
-              nextContext.getResources(), null, remainingResourceNamesToUnLock);
+        checkResourcesAvailability(
+          nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
       // resourceNamesToUnlock contains the names of the previous resources.
       // requiredResourceForNextContext contains the resource objects which are required for the
@@ -550,13 +555,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // skip this context, as the build cannot be retrieved (maybe it was deleted while
             // running?)
             LOGGER.log(
-                Level.WARNING,
-                "Skipping queued context for lock. Cannot get the Run object from the context to "
-                    + "proceed with lock; this could be a legitimate state if the build waiting "
-                    + "for the lock was deleted or hard killed. More information is logged at "
-                    + "Level.FINE for debugging purposes.");
+              Level.WARNING,
+              "Skipping queued context for lock. Cannot get the Run object from the context to "
+                + "proceed with lock; this could be a legitimate state if the build waiting "
+                + "for the lock was deleted or hard killed. More information is logged at "
+                + "Level.FINE for debugging purposes.");
             LOGGER.log(
-                Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
+              Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
             unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
             return;
           }
@@ -568,7 +573,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           boolean resourceStillNeeded = false;
           for (LockableResource requiredResource : requiredResourceForNextContext) {
             if (resourceNameToUnlock != null
-                && resourceNameToUnlock.equals(requiredResource.getName())) {
+              && resourceNameToUnlock.equals(requiredResource.getName())) {
               resourceStillNeeded = true;
               break;
             }
@@ -584,11 +589,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         // continue with next context
         LockStepExecution.proceed(
-            resourceNamesToLock,
-            nextContext.getContext(),
-            nextContext.getResourceDescription(),
-            nextContext.getVariableName(),
-            inversePrecedence);
+          resourceNamesToLock,
+          nextContext.getContext(),
+          nextContext.getResourceDescription(),
+          nextContext.getVariableName(),
+          inversePrecedence);
       }
     }
     save();
@@ -597,7 +602,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
   /** @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct) */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
-      List<String> resourceNamesToUnLock, boolean inversePrecedence, QueuedContextStruct from) {
+    List<String> resourceNamesToUnLock,
+    boolean inversePrecedence,
+    QueuedContextStruct from
+  ) {
     return this.getNextQueuedContext(resourceNamesToUnLock, null, inversePrecedence, from);
   }
 
@@ -614,10 +622,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
-      @Nullable List<String> resourceNamesToUnLock,
-      @Nullable List<String> resourceNamesToUnReserve,
-      boolean inversePrecedence,
-      QueuedContextStruct from) {
+    @Nullable List<String> resourceNamesToUnLock,
+    @Nullable List<String> resourceNamesToUnReserve,
+    boolean inversePrecedence,
+    QueuedContextStruct from
+  ) {
     QueuedContextStruct newestEntry = null;
     int fromIndex = from != null ? this.queuedContexts.indexOf(from) + 1 : 0;
     if (!inversePrecedence) {
@@ -690,7 +699,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * Reserves an available resource for the userName indefinitely (until that person, or some
    * explicit scripted action, decides to release the resource).
    */
-  public synchronized boolean reserve(List<LockableResource> resources, String userName) {
+  public synchronized boolean reserve(
+    List<LockableResource> resources,
+    String userName
+  ) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked() || r.isQueued()) {
         return false;
@@ -710,7 +722,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * explicit scripted action, later decides to release the
    * resource).
    */
-  public synchronized boolean steal(List<LockableResource> resources, String userName) {
+  public synchronized boolean steal(
+    List<LockableResource> resources,
+    String userName
+  ) {
     for (LockableResource r : resources) {
       r.setReservedBy(userName);
       r.setStolen();
@@ -725,7 +740,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * the userName indefinitely (until that person, or some explicit scripted action, decides to
    * release the resource).
    */
-  public synchronized void reassign(List<LockableResource> resources, String userName) {
+  public synchronized void reassign(
+    List<LockableResource> resources,
+    String userName
+  ) {
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked() || r.isQueued()) {
         r.unReserve();
@@ -755,16 +773,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // check if there are resources which can be unlocked (and shall not be unlocked)
     QueuedContextStruct nextContext =
-        this.getNextQueuedContext(null, resourceNamesToUnreserve, false, null);
+      this.getNextQueuedContext(null, resourceNamesToUnreserve, false, null);
 
     // no context is queued which can be started once these resources are free'd.
     if (nextContext == null) {
       LOGGER.log(
-          Level.FINER,
-          () ->
-              "No context queued for resources "
-                  + String.join(", ", resourceNamesToUnreserve)
-                  + " so unreserving and proceeding.");
+        Level.FINER,
+        () ->
+          "No context queued for resources "
+            + String.join(", ", resourceNamesToUnreserve)
+            + " so unreserving and proceeding.");
       unreserveResources(resources);
       return;
     }
@@ -781,8 +799,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // remove context from queue and process it
     Set<LockableResource> requiredResourceForNextContext =
-        checkResourcesAvailability(
-            nextContext.getResources(), nextContextLogger, null, resourceNamesToUnreserve);
+      checkResourcesAvailability(
+        nextContext.getResources(), nextContextLogger,
+        null, resourceNamesToUnreserve);
     this.queuedContexts.remove(nextContext);
 
     // resourceNamesToUnreserve contains the names of the previous resources.
@@ -816,24 +835,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
           // skip this context, as the build cannot be retrieved (maybe it was deleted while
           // running?)
           LOGGER.log(
-              Level.WARNING,
-              "Skipping queued context for lock. Cannot get the Run object from the context to "
-                  + "proceed with lock; this could be a legitimate state if the build waiting for "
-                  + "the lock was deleted or hard killed. More information is logged at "
-                  + "Level.FINE for debugging purposes.");
+            Level.WARNING,
+            "Skipping queued context for lock. Cannot get the Run object from the context to "
+              + "proceed with lock; this could be a legitimate state if the build waiting for "
+              + "the lock was deleted or hard killed. More information is logged at "
+              + "Level.FINE for debugging purposes.");
           LOGGER.log(
-              Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
+            Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
           return;
         }
       }
 
       // continue with next context
       LockStepExecution.proceed(
-          resourceNamesToLock,
-          nextContext.getContext(),
-          nextContext.getResourceDescription(),
-          nextContext.getVariableName(),
-          false);
+        resourceNamesToLock,
+        nextContext.getContext(),
+        nextContext.getResourceDescription(),
+        nextContext.getVariableName(),
+        false);
     }
     save();
   }
@@ -877,7 +896,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       bc.commit();
     } catch (IOException exception) {
       LOGGER.log(
-          Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
+        Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
       return false;
     }
 
@@ -899,12 +918,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
   public synchronized Set<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
     boolean skipIfLocked = false;
     return this.checkResourcesAvailability(
-        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
@@ -914,22 +933,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable List<String> lockedResourcesAboutToBeUnlocked,
       boolean skipIfLocked) {
     return this.checkResourcesAvailability(
-        requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
   public synchronized Set<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
     boolean skipIfLocked = false;
     return this.checkResourcesAvailability(
-        requiredResourcesList,
-        logger,
-        lockedResourcesAboutToBeUnlocked,
-        reservedResourcesAboutToBeUnreserved,
-        skipIfLocked);
+      requiredResourcesList,
+      logger,
+      lockedResourcesAboutToBeUnlocked,
+      reservedResourcesAboutToBeUnreserved,
+      skipIfLocked);
   }
 
   /**
@@ -938,11 +957,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * available, returns null.
    */
   public synchronized Set<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      @Nullable List<String> reservedResourcesAboutToBeUnreserved,
-      boolean skipIfLocked) {
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    @Nullable List<String> reservedResourcesAboutToBeUnreserved,
+    boolean skipIfLocked) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
@@ -969,7 +988,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       requiredResourcesCandidatesList.add(
-          new LockableResourcesCandidatesStruct(candidates, requiredAmount));
+        new LockableResourcesCandidatesStruct(candidates, requiredAmount));
     }
 
     // Process freed resources
@@ -989,7 +1008,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // Determine if these resources can be reused
       // FIXME? Why is this check not outside the for loop?
       if (lockedResourcesAboutToBeUnlocked != null
-          || reservedResourcesAboutToBeUnreserved != null) {
+        ||  reservedResourcesAboutToBeUnreserved != null
+      ) {
         for (LockableResource candidate : requiredResources.candidates) {
           if (selected.size() >= requiredResources.requiredAmount) {
             break;
@@ -1025,11 +1045,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
               // notified until you lock/unlock that resource again.
               if (logger != null) {
                 logger.println(
-                    "Candidate resource '"
-                        + candidateName
-                        + "' is reserved by '"
-                        + candidate.getReservedBy()
-                        + "', not treating as available.");
+                  "Candidate resource '"
+                    + candidateName
+                    + "' is reserved by '"
+                    + candidate.getReservedBy()
+                    + "', not treating as available.");
               }
               totalReserved += 1;
               continue;
@@ -1056,7 +1076,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (totalSelected == 0
         && totalReserved == 0
         && (lockedResourcesAboutToBeUnlocked != null
-            || reservedResourcesAboutToBeUnreserved != null)) {
+            || reservedResourcesAboutToBeUnreserved != null)
+    ) {
       return null;
     }
 
@@ -1098,11 +1119,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // (not enough of something from that list), we bail out quickly.
         if (logger != null && !skipIfLocked) {
           logger.println(
-              "Found "
-                  + selected.size()
-                  + " available resource(s). Waiting for correct amount: "
-                  + requiredAmount
-                  + ".");
+            "Found "
+              + selected.size()
+              + " available resource(s). Waiting for correct amount: "
+              + requiredAmount
+              + ".");
         }
         return null;
       }
@@ -1118,10 +1139,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * this context is not yet queued.
    */
   public synchronized void queueContext(
-      StepContext context,
-      List<LockableResourcesStruct> requiredResources,
-      String resourceDescription,
-      String variableName) {
+    StepContext context,
+    List<LockableResourcesStruct> requiredResources,
+    String resourceDescription,
+    String variableName) {
     for (QueuedContextStruct entry : this.queuedContexts) {
       if (entry.getContext() == context) {
         return;
@@ -1129,13 +1150,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     this.queuedContexts.add(
-        new QueuedContextStruct(context, requiredResources, resourceDescription, variableName));
+      new QueuedContextStruct(context, requiredResources, resourceDescription, variableName));
     save();
   }
 
   public synchronized boolean unqueueContext(StepContext context) {
     for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator();
-        iter.hasNext(); ) {
+      iter.hasNext(); ) {
       if (iter.next().getContext() == context) {
         iter.remove();
         save();
@@ -1147,7 +1168,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public static LockableResourcesManager get() {
     return (LockableResourcesManager)
-        Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
+      Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
   }
 
   @Override
