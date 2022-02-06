@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -99,7 +100,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   }
 
   public static void proceed(
-    final List<String> resourcenames,
+    final Map<String, List<LockableResourceProperty>> lockedResources,
     StepContext context,
     String resourceDescription,
     final String variable,
@@ -124,7 +125,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       BodyInvoker bodyInvoker =
         context
           .newBodyInvoker()
-          .withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence));
+          .withCallback(new Callback(new ArrayList<>(lockedResources.keySet()), resourceDescription, inversePrecedence));
       if (variable != null && variable.length() > 0) {
         // set the variable for the duration of the block
         bodyInvoker.withContext(
@@ -136,10 +137,17 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
               @Override
               public void expand(@NonNull EnvVars env) {
                 final Map<String, String> variables = new HashMap<>();
-                final String resources = String.join(",", resourcenames);
-                variables.put(variable, resources);
-                for (int index = 0; index < resourcenames.size(); ++index) {
-                  variables.put(variable + index, resourcenames.get(index));
+                final String resourceNames = lockedResources.keySet().stream().collect(Collectors.joining(","));
+                variables.put(variable, resourceNames);
+                int index = 0;
+                for (Entry<String, List<LockableResourceProperty>> lockResourceEntry : lockedResources.entrySet()) {
+                  String lockEnvName = variable + index;
+                  variables.put(lockEnvName, lockResourceEntry.getKey());
+                  for (LockableResourceProperty lockProperty : lockResourceEntry.getValue()) {
+                    String propEnvName = lockEnvName + "_" + lockProperty.getName();
+                    variables.put(propEnvName, lockProperty.getValue());
+                  }
+                  ++index;
                 }
                 LOGGER.finest("Setting "
                   + variables.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "))
