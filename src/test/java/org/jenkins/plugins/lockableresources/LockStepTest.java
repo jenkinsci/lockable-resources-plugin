@@ -824,6 +824,31 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  //@Issue("JENKINS-XXXXX")
+  public void multipleLocksFillVariables() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'someVar', quantity: 2) {\n"
+          + "  echo \"VAR IS ${env.someVar.split(',').sort()}\"\n"
+          + "  echo \"VAR0or1 IS $env.someVar0\"\n"
+          + "  echo \"VAR0or1 IS $env.someVar1\"\n"
+          + "  echo \"VAR2 IS $env.someVar2\"\n"
+          + "}",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+
+    // Variable should have been filled
+    j.assertLogContains("VAR IS [resource1, resource2]", b1);
+    j.assertLogContains("VAR0or1 IS resource1", b1);
+    j.assertLogContains("VAR0or1 IS resource2", b1);
+    j.assertLogContains("VAR2 IS null", b1);
+  }
+
+  @Test
   @Issue("JENKINS-50176")
   public void lockWithLabelFillsVariable() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");

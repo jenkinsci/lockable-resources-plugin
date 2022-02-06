@@ -17,10 +17,13 @@ import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
@@ -62,9 +65,23 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             LOGGER.fine(build.getFullDisplayName()
               + " acquired lock on " + required);
             if (resources.requiredVar != null) {
-              build.addAction(new ResourceVariableNameAction(new StringParameterValue(
+              List<StringParameterValue> envsToSet = new ArrayList<>();
+
+              // add the comma separated list of names acquired
+              envsToSet.add(new StringParameterValue(
                 resources.requiredVar,
-                required.toString().replaceAll("[\\]\\[]", ""))));
+                required.stream()
+                  .map(LockableResource::getName)
+                  .collect(Collectors.joining(","))));
+
+              // also add a numbered variable for each acquired lock
+              int index = 0;
+              for (LockableResource lr : required) {
+                envsToSet.add(new StringParameterValue(resources.requiredVar + index, lr.getName()));
+                ++index;
+              }
+
+              build.addAction(new ResourceVariableNameAction(envsToSet));
             }
           } else {
             listener.getLogger().printf("%s failed to lock %s%n",

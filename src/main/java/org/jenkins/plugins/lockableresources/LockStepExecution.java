@@ -8,10 +8,13 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
@@ -132,15 +135,16 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
               @Override
               public void expand(@NonNull EnvVars env) {
+                final Map<String, String> variables = new HashMap<>();
                 final String resources = String.join(",", resourcenames);
-                LOGGER.finest(
-                  "Setting ["
-                    + variable
-                    + "] to ["
-                    + resources
-                    + "] for the duration of the block");
-
-                env.override(variable, resources);
+                variables.put(variable, resources);
+                for (int index = 0; index < resourcenames.size(); ++index) {
+                  variables.put(variable + index, resourcenames.get(index));
+                }
+                LOGGER.finest("Setting "
+                  + variables.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "))
+                  + " for the duration of the block");
+                env.overrideAll(variables);
               }
             }));
       }
