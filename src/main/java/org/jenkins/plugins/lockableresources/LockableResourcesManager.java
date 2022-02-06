@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -431,10 +432,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
       if (context != null) {
         // since LockableResource contains transient variables, they cannot be correctly serialized
-        // hence we use their unique resource names
-        List<String> resourceNames = new ArrayList<>();
+        // hence we use their unique resource names and properties
+        Map<String, List<LockableResourceProperty>> resourceNames = new HashMap<>();
         for (LockableResource resource : resources) {
-          resourceNames.add(resource.getName());
+          resourceNames.put(resource.getName(), resource.getProperties());
         }
         LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
       }
@@ -542,13 +543,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // remove context from queue and process it
         unqueueContext(nextContext.getContext());
 
-        List<String> resourceNamesToLock = new ArrayList<>();
+        Map<String, List<LockableResourceProperty>> resourcesToLock = new HashMap<>();
 
         // lock all (old and new resources)
         for (LockableResource requiredResource : requiredResourceForNextContext) {
           try {
             requiredResource.setBuild(nextContext.getContext().get(Run.class));
-            resourceNamesToLock.add(requiredResource.getName());
+            resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
           } catch (Exception e) {
             // skip this context, as the build cannot be retrieved (maybe it was deleted while
             // running?)
@@ -587,7 +588,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         // continue with next context
         LockStepExecution.proceed(
-            resourceNamesToLock,
+            resourcesToLock,
             nextContext.getContext(),
             nextContext.getResourceDescription(),
             nextContext.getVariableName(),
@@ -681,6 +682,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (existent == null) {
         LockableResource resource = new LockableResource(name);
         resource.setLabels(label);
+        getResources().add(resource);
+        save();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public synchronized boolean createResourceWithLabelAndProperties(String name, String label, Map<String, String> properties) {
+    if (name != null && label != null && properties != null) {
+      LockableResource existent = fromName(name);
+      if (existent == null) {
+        LockableResource resource = new LockableResource(name);
+        resource.setLabels(label);
+        resource.setProperties(
+          properties.entrySet().stream().map(e -> {
+            LockableResourceProperty p = new LockableResourceProperty();
+            p.setName(e.getKey());
+            p.setValue(e.getValue());
+            return p;
+          }).collect(Collectors.toList()));
         getResources().add(resource);
         save();
         return true;
@@ -817,13 +839,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return;
     } else {
       unreserveResources(resources);
-      List<String> resourceNamesToLock = new ArrayList<>();
+      Map<String, List<LockableResourceProperty>> resourcesToLock = new HashMap<>();
 
       // lock all (old and new resources)
       for (LockableResource requiredResource : requiredResourceForNextContext) {
         try {
           requiredResource.setBuild(nextContext.getContext().get(Run.class));
-          resourceNamesToLock.add(requiredResource.getName());
+          resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
         } catch (Exception e) {
           // skip this context, as the build cannot be retrieved (maybe it was deleted while
           // running?)
@@ -841,7 +863,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       // continue with next context
       LockStepExecution.proceed(
-          resourceNamesToLock,
+          resourcesToLock,
           nextContext.getContext(),
           nextContext.getResourceDescription(),
           nextContext.getVariableName(),

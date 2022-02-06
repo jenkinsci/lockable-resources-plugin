@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
@@ -74,10 +75,15 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 									.map(LockableResource::getName)
 									.collect(Collectors.joining(","))));
 
-							// also add a numbered variable for each acquired lock
+							// also add a numbered variable for each acquired lock along with properties of the lock
 							int index = 0;
 							for (LockableResource lr : required) {
-								envsToSet.add(new StringParameterValue(resources.requiredVar + index, lr.getName()));
+								String lockEnvName = resources.requiredVar + index;
+								envsToSet.add(new StringParameterValue(lockEnvName, lr.getName()));
+								for (LockableResourceProperty lockProperty : lr.getProperties()) {
+									String propEnvName = lockEnvName + "_" + lockProperty.getName();
+									envsToSet.add(new StringParameterValue(propEnvName, lockProperty.getValue()));
+								}
 								++index;
 							}
 
