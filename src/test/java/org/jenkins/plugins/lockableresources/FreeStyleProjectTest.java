@@ -62,8 +62,8 @@ public class FreeStyleProjectTest {
 
     FreeStyleProject p = j.createFreeStyleProject("p");
     p.addProperty(
-        new RequiredResourcesProperty(
-            null, null, null, "groovy:resourceName == 'resource1'", null));
+      new RequiredResourcesProperty(
+        null, null, null, "groovy:resourceName == 'resource1'", null));
 
     p.save();
 
@@ -84,10 +84,10 @@ public class FreeStyleProjectTest {
     p3.getBuildersList().add(p3Builder);
 
     final QueueTaskFuture<FreeStyleBuild> taskA =
-        p3.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
+      p3.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
     TestHelpers.waitForQueue(j.jenkins, p3);
     final QueueTaskFuture<FreeStyleBuild> taskB =
-        p2.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
+      p2.scheduleBuild2(0, new TimerTrigger.TimerTriggerCause());
 
     p3Builder.release();
     final FreeStyleBuild buildA = taskA.get(60, TimeUnit.SECONDS);
@@ -96,12 +96,12 @@ public class FreeStyleProjectTest {
 
     long buildAEndTime = buildA.getStartTimeInMillis() + buildA.getDuration();
     assertTrue(
-        "Project A build should be finished before the build of project B starts. "
-            + "A finished at "
-            + buildAEndTime
-            + ", B started at "
-            + buildB.getStartTimeInMillis(),
-        buildB.getStartTimeInMillis() >= buildAEndTime);
+      "Project A build should be finished before the build of project B starts. "
+        + "A finished at "
+        + buildAEndTime
+        + ", B started at "
+        + buildB.getStartTimeInMillis(),
+      buildB.getStartTimeInMillis() >= buildAEndTime);
   }
 
   @Test
@@ -110,11 +110,11 @@ public class FreeStyleProjectTest {
 
     FreeStyleProject withResource = j.createFreeStyleProject("withResource");
     withResource.addProperty(
-        new RequiredResourcesProperty("resource1", "resourceNameVar", null, null, null));
+      new RequiredResourcesProperty("resource1", "resourceNameVar", null, null, null));
     FreeStyleProject withResourceRoundTrip = j.configRoundtrip(withResource);
 
     RequiredResourcesProperty withResourceProp =
-        withResourceRoundTrip.getProperty(RequiredResourcesProperty.class);
+      withResourceRoundTrip.getProperty(RequiredResourcesProperty.class);
     assertNotNull(withResourceProp);
     assertEquals("resource1", withResourceProp.getResourceNames());
     assertEquals("resourceNameVar", withResourceProp.getResourceNamesVar());
@@ -130,7 +130,7 @@ public class FreeStyleProjectTest {
     FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
 
     RequiredResourcesProperty withLabelProp =
-        withLabelRoundTrip.getProperty(RequiredResourcesProperty.class);
+      withLabelRoundTrip.getProperty(RequiredResourcesProperty.class);
     assertNotNull(withLabelProp);
     assertNull(withLabelProp.getResourceNames());
     assertNull(withLabelProp.getResourceNamesVar());
@@ -147,7 +147,7 @@ public class FreeStyleProjectTest {
     FreeStyleProject withScriptRoundTrip = j.configRoundtrip(withScript);
 
     RequiredResourcesProperty withScriptProp =
-        withScriptRoundTrip.getProperty(RequiredResourcesProperty.class);
+      withScriptRoundTrip.getProperty(RequiredResourcesProperty.class);
     assertNotNull(withScriptProp);
     assertNull(withScriptProp.getResourceNames());
     assertNull(withScriptProp.getResourceNamesVar());
@@ -165,24 +165,24 @@ public class FreeStyleProjectTest {
     j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
 
     j.jenkins.setAuthorizationStrategy(
-        new MockAuthorizationStrategy()
-            .grant(Jenkins.READ, Item.READ)
-            .everywhere()
-            .toAuthenticated()
-            .grant(Jenkins.ADMINISTER)
-            .everywhere()
-            .to("bob")
-            .grant(Item.CONFIGURE, Item.BUILD)
-            .everywhere()
-            .to("alice"));
+      new MockAuthorizationStrategy()
+        .grant(Jenkins.READ, Item.READ)
+        .everywhere()
+        .toAuthenticated()
+        .grant(Jenkins.ADMINISTER)
+        .everywhere()
+        .to("bob")
+        .grant(Item.CONFIGURE, Item.BUILD)
+        .everywhere()
+        .to("alice"));
 
     final String SCRIPT =
-        "resourceName == "
-            + "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
+      "resourceName == "
+        + "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.ICON;";
 
     FreeStyleProject p = j.createFreeStyleProject();
     SecureGroovyScript groovyScript =
-        new SecureGroovyScript(SCRIPT, true, null).configuring(ApprovalContext.create());
+      new SecureGroovyScript(SCRIPT, true, null).configuring(ApprovalContext.create());
 
     p.addProperty(new RequiredResourcesProperty(null, null, null, null, groovyScript));
 
@@ -195,21 +195,21 @@ public class FreeStyleProjectTest {
 
     Queue.BlockedItem blockedItem = (Queue.BlockedItem) j.jenkins.getQueue().getItem(p);
     assertThat(
-        blockedItem.getCauseOfBlockage(),
-        is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed.class)));
+      blockedItem.getCauseOfBlockage(),
+      is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesQueueFailed.class)));
 
     ScriptApproval approval = ScriptApproval.get();
     List<ScriptApproval.PendingSignature> pending =
-        new ArrayList<>(approval.getPendingSignatures());
+      new ArrayList<>(approval.getPendingSignatures());
 
     assertFalse(pending.isEmpty());
     assertEquals(1, pending.size());
     ScriptApproval.PendingSignature firstPending = pending.get(0);
 
     assertEquals(
-        "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction "
-            + "ICON",
-        firstPending.signature);
+      "staticField org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction "
+        + "ICON",
+      firstPending.signature);
     approval.approveSignature(firstPending.signature);
 
     j.assertBuildStatusSuccess(futureBuild);
@@ -231,10 +231,10 @@ public class FreeStyleProjectTest {
 
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-        throws InterruptedException, IOException {
+      throws InterruptedException, IOException {
       listener
-          .getLogger()
-          .println("resourceNameVar: " + build.getEnvironment(listener).get("resourceNameVar"));
+        .getLogger()
+        .println("resourceNameVar: " + build.getEnvironment(listener).get("resourceNameVar"));
       return true;
     }
   }
@@ -245,7 +245,7 @@ public class FreeStyleProjectTest {
 
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-        throws InterruptedException {
+      throws InterruptedException {
       event.block();
       return true;
     }

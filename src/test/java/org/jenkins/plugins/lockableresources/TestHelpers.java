@@ -30,13 +30,13 @@ public final class TestHelpers {
   private TestHelpers() {}
 
   public static void waitForQueue(Jenkins jenkins, FreeStyleProject job)
-      throws InterruptedException {
+    throws InterruptedException {
     waitForQueue(jenkins, job, Queue.Item.class);
   }
 
   /** Schedule a build and make sure it has been added to Jenkins' queue. */
   public static void waitForQueue(Jenkins jenkins, FreeStyleProject job, Class<?> itemType)
-      throws InterruptedException {
+    throws InterruptedException {
     System.out.print("Waiting for job to be queued...");
     int waitTime = 0;
     while (!itemType.isInstance(jenkins.getQueue().getItem(job)) && waitTime < MAX_WAIT) {
@@ -54,17 +54,17 @@ public final class TestHelpers {
    * the API returns sane values while running other tests.
    */
   public static JSONObject getResourceFromApi(
-      JenkinsRule rule, String resourceName, boolean isLocked) throws IOException {
+    JenkinsRule rule, String resourceName, boolean isLocked) throws IOException {
     JSONObject data = getApiData(rule);
     JSONArray resources = data.getJSONArray("resources");
     assertThat(resources, is(not(nullValue())));
     JSONObject res =
-        (JSONObject)
-            resources.stream()
-                .filter(e -> resourceName.equals(((JSONObject) e).getString("name")))
-                .findAny()
-                .orElseThrow(
-                    () -> new AssertionError("Could not find '" + resourceName + "' in API."));
+      (JSONObject)
+        resources.stream()
+          .filter(e -> resourceName.equals(((JSONObject) e).getString("name")))
+          .findAny()
+          .orElseThrow(
+            () -> new AssertionError("Could not find '" + resourceName + "' in API."));
     assertThat(res, hasEntry("locked", isLocked));
     return res;
   }

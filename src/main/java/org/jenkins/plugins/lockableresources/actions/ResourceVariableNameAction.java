@@ -14,27 +14,27 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class ResourceVariableNameAction extends InvisibleAction {
 
-	private final StringParameterValue resourceNameParameter;
+  private final StringParameterValue resourceNameParameter;
 
-	public ResourceVariableNameAction(StringParameterValue r) {
-		this.resourceNameParameter = r;
-	}
+  public ResourceVariableNameAction(StringParameterValue r) {
+    this.resourceNameParameter = r;
+  }
 
-	StringParameterValue getParameter() {
-		return resourceNameParameter;
-	}
+  StringParameterValue getParameter() {
+    return resourceNameParameter;
+  }
 
-	@Extension
-	public static final class ResourceVariableNameActionEnvironmentContributor extends EnvironmentContributor {
+  @Extension
+  public static final class ResourceVariableNameActionEnvironmentContributor extends EnvironmentContributor {
 
-		@Override
-		public void buildEnvironmentFor(@NonNull Run r, @NonNull EnvVars envs, @NonNull TaskListener listener) {
-			ResourceVariableNameAction a = r.getAction(ResourceVariableNameAction.class);
-			if (a != null && a.getParameter() != null && a.getParameter().getValue() != null) {
-				envs.put(a.getParameter().getName(), String.valueOf(a.getParameter().getValue()));
-			}
-		}
+    @Override
+    public void buildEnvironmentFor(@NonNull Run r, @NonNull EnvVars envs, @NonNull TaskListener listener) {
+      ResourceVariableNameAction a = r.getAction(ResourceVariableNameAction.class);
+      if (a != null && a.getParameter() != null && a.getParameter().getValue() != null) {
+        envs.put(a.getParameter().getName(), String.valueOf(a.getParameter().getValue()));
+      }
+    }
 
-	}
+  }
 
 }
