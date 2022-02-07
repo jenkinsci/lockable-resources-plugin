@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -407,13 +406,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean lock(
-    LinkedHashSet<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+    Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
     return lock(resources, build, context, null, null, false);
   }
 
   /** Try to lock the resource and return true if locked. */
   public synchronized boolean lock(
-    LinkedHashSet<LockableResource> resources,
+    Set<LockableResource> resources,
     Run<?, ?> build,
     @Nullable StepContext context,
     @Nullable String logmessage,
@@ -950,7 +949,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized LinkedHashSet<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
       @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -979,7 +978,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * requiredResources and returns the necessary available resources. If not enough resources are
    * available, returns null.
    */
-  public synchronized LinkedHashSet<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -1105,7 +1104,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Find remaining resources
-    LinkedHashSet<LockableResource> allSelected = new LinkedHashSet<>();
+    Set<LockableResource> allSelected = new HashSet<>();
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
       List<LockableResource> candidates = requiredResources.candidates;
