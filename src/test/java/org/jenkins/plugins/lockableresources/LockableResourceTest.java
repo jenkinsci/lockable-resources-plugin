@@ -9,6 +9,8 @@ import static org.junit.Assert.assertNull;
 import java.util.Date;
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 public class LockableResourceTest {
 
   LockableResource instance = new LockableResource("r1");
@@ -27,7 +29,8 @@ public class LockableResourceTest {
     assertFalse(instance.isQueued(0));
     assertFalse(instance.isQueuedByTask(1));
     assertFalse(instance.isLocked());
-    assertNull(instance.getBuild());
+    assertNotNull(instance.getBuilds());
+    assertEquals(0, instance.getBuilds().size());
     assertEquals(0, instance.getQueueItemId());
     assertNull(instance.getQueueItemProject());
   }

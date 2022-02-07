@@ -59,6 +59,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private final String name;
   private String description = "";
   private String labels = "";
+  private String attributes = "";
   private String reservedBy = null;
   private Date reservedTimestamp = null;
   private String note = "";
@@ -86,9 +87,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private long queueItemId = NOT_QUEUED;
   private String queueItemProject = null;
-  private transient Run<?, ?> build = null;
+  private transient List<Run<?, ?>> builds = new ArrayList<>();
   // Needed to make the state non-transient
-  private String buildExternalizableId = null;
+  private List<String> buildExternalizableIds = new ArrayList<>();
   private long queuingStarted = 0;
 
   /**
@@ -138,6 +139,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.labels = labels;
   }
 
+  @DataBoundSetter
+  public void setAttributes(String attributes) {
+    this.attributes = attributes;
+  }
+
+  @DataBoundSetter
+  public String getAttributes() {
+    return this.attributes;
+  }
+
   @Exported
   public String getName() {
     return name;
@@ -177,12 +188,24 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return labelsContain(candidate);
   }
 
-  private boolean labelsContain(String candidate) {
+  public boolean isValidAttribute(String candidate, Map<String, Object> params) {
+    return atributesContain(candidate);
+  }
+
+  public boolean labelsContain(String candidate) {
     return makeLabelsList().contains(candidate);
+  }
+
+  public boolean atributesContain(String candidate) {
+    return makeAttributeList().contains(candidate);
   }
 
   private List<String> makeLabelsList() {
     return Arrays.asList(labels.split("\\s+"));
+  }
+
+  private List<String> makeAttributeList() {
+    return Arrays.asList(attributes.split("\\s+"));
   }
 
   /**
@@ -279,7 +302,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public boolean isLocked() {
-    return getBuild() != null;
+    return getBuilds().size() > 0;
   }
 
   /**
@@ -295,22 +318,26 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
       return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
     }
     if (isLocked()) {
-      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
+      return String.format("[%s] is locked by %s at %s", name, buildExternalizableIds, timestamp);
     }
     return null;
   }
 
   @WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuild")
-  public Run<?, ?> getBuild() {
-    if (build == null && buildExternalizableId != null) {
-      build = Run.fromExternalizableId(buildExternalizableId);
+  public List<Run<?, ?>> getBuilds() {
+    //transient variable was deleted during restart
+    if (this.builds == null) { this.builds = new ArrayList<>(); }
+    if (builds.size() == 0 && buildExternalizableIds.size()!=0) {
+      for(String buildExternalizableId : buildExternalizableIds) {
+        builds.add(Run.fromExternalizableId(buildExternalizableId));
+      }
     }
-    return build;
+    return builds;
   }
 
   /**
    * @see WithBridgeMethods
-   * @deprecated Return value of {@link #getBuild()} was widened from AbstractBuild to Run (since
+   * @deprecated Return value of {@link #getBuilds()} was widened from AbstractBuild to Run (since
    *     1.8)
    */
   @Deprecated
@@ -320,20 +347,44 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getBuildName() {
-    if (getBuild() != null) return getBuild().getFullDisplayName();
+    StringBuffer sb = new StringBuffer();
+    if (getBuilds().size() != 0) {
+      List<Run<?, ?>> builds = getBuilds();
+      for (Run<?, ?> build : builds) {
+        sb.append(build.getFullDisplayName());
+      }
+      return sb.toString();
+    }
     else return null;
   }
 
+  public void resetBuilds() {
+      if (this.builds == null) { this.builds = new ArrayList<>(); }
+      this.builds.clear();
+      this.buildExternalizableIds.clear();
+  }
+
   public void setBuild(Run<?, ?> lockedBy) {
-    this.build = lockedBy;
+    if (this.builds == null) { this.builds = new ArrayList<>(); }
     if (lockedBy != null) {
-      this.buildExternalizableId = lockedBy.getExternalizableId();
+      this.builds.add(lockedBy);
+      this.buildExternalizableIds.add(lockedBy.getExternalizableId());
       setReservedTimestamp(new Date());
-    } else {
-      this.buildExternalizableId = null;
-      setReservedTimestamp(null);
     }
   }
+
+  public void popBuild(Run<?, ?> lockedBy) {
+    if (this.builds == null) { this.builds = new ArrayList<>(); }
+    if (lockedBy != null) {
+      this.buildExternalizableIds.remove(lockedBy.getExternalizableId());
+      this.builds.remove(lockedBy);
+    }
+    //remove attribute if there is nobody owning this resource
+    if (this.builds.size() == 0){
+      this.setAttributes(null);
+    }
+  }
+
 
   public Task getTask() {
     Item item = Queue.getInstance().getItem(queueItemId);
@@ -399,7 +450,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   public void reset() {
     this.unReserve();
     this.unqueue();
-    this.setBuild(null);
+    this.resetBuilds();
   }
 
   /**

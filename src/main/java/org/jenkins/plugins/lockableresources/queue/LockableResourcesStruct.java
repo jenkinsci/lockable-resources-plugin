@@ -29,6 +29,7 @@ public class LockableResourcesStruct implements Serializable {
   public String label;
   public String requiredVar;
   public String requiredNumber;
+  public String attribute;
 
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
@@ -66,17 +67,15 @@ public class LockableResourcesStruct implements Serializable {
    * @param resources Resources to be required
    */
   public LockableResourcesStruct(@Nullable List<String> resources) {
-    this(resources, null, 0);
+    this(resources, null, 0, null);
   }
 
-  public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
-    this(resources, label, quantity);
+  public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity, String variable, @Nullable String attribute) {
+    this(resources, label, quantity, attribute);
     requiredVar = variable;
   }
 
-  public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity) {
+  public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity, @Nullable String attribute) {
     required = new ArrayList<>();
     if (resources != null) {
       for (String resource : resources) {
@@ -95,6 +94,11 @@ public class LockableResourcesStruct implements Serializable {
     this.requiredNumber = null;
     if (quantity > 0) {
       this.requiredNumber = String.valueOf(quantity);
+    }
+
+    this.attribute = attribute;
+    if (this.attribute == null) {
+      this.attribute = "";
     }
 
     // We do not support
@@ -131,7 +135,9 @@ public class LockableResourcesStruct implements Serializable {
       + ", Variable name: "
       + this.requiredVar
       + ", Number of resources: "
-      + this.requiredNumber;
+      + this.requiredNumber
+      + ", Attribute: "
+      + this.attribute;
   }
 
   private static final long serialVersionUID = 1L;

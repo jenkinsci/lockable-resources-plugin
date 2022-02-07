@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
@@ -74,6 +75,67 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b1, 1, 0);
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
+  public void lockWithAttribute() throws Exception {
+    //Normally you cannot create resource with attribute, but for tests its ok
+    LockableResourcesManager.get().createResourceWithAttribute("resource1", "attribute1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(attribute: 'attribute1', variable: 'var') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("Lock released on resource [Attribute: attribute1]", b1);
+    j.assertLogContains("Resource locked: resource1", b1);
+    isPaused(b1, 1, 0);
+
+    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
+  public void lockWithAndAssignAttributeThenLockByAttribute() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', attribute: 'attribute1', quantity: 1, variable: 'var') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + " semaphore 'wait-inside'\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+    WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
+    p2.setDefinition(
+      new CpsFlowDefinition(
+        "lock(attribute: 'attribute1', variable: 'var') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+    WorkflowRun b3 = p2.scheduleBuild2(0).waitForStart();
+
+    // While 1 continues waiting, 2 and 3 can continue directly
+    j.waitForMessage("Finish", b2);
+    j.waitForMessage("Finish", b3);
+
+    // Unlock Label: label1, Quantity: 2
+    SemaphoreStep.success("wait-inside/1", null);
+    j.waitForMessage("Finish", b1);
+
+    LockableResource lr = LockableResourcesManager.get().fromName("resource1");
+    assertNotNull(lr);
+    assertNull(lr.getAttributes());
   }
 
   @Test

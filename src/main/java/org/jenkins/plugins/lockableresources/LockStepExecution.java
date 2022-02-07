@@ -56,7 +56,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         resources.add(resource.resource);
       }
       resourceHolderList.add(
-        new LockableResourcesStruct(resources, resource.label, resource.quantity));
+        new LockableResourcesStruct(resources, resource.label, resource.quantity, resource.attribute));
     }
 
     // determine if there are enough resources available to proceed
@@ -66,13 +66,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     Run<?, ?> run = getContext().get(Run.class);
     if (available == null
       || !LockableResourcesManager.get()
-      .lock(
-        available,
-        run,
-        getContext(),
-        step.toString(),
-        step.variable,
-        step.inversePrecedence)) {
+        .lock(
+            available,
+            resourceHolderList,
+            run,
+            getContext(),
+            step.toString(),
+            step.variable,
+            step.inversePrecedence)) {
       // if the resource is known, we could output the active/blocking job/build
       LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
       boolean buildNameKnown = resource != null && resource.getBuildName() != null;
