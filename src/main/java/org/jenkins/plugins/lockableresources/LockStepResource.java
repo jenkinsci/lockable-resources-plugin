@@ -22,12 +22,16 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
   @CheckForNull
   public String label = null;
 
+  @CheckForNull
+  public String attribute = null;
+
   public int quantity = 0;
 
-  LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
+  LockStepResource(@Nullable String resource, @Nullable String label, int quantity, @Nullable String attribute) {
     this.resource = resource;
     this.label = label;
     this.quantity = quantity;
+    this.attribute = attribute;
   }
 
   @DataBoundConstructor
@@ -51,11 +55,20 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
   @Override
   public String toString() {
-    return toString(resource, label, quantity);
+    return toString(resource, label, quantity, attribute);
   }
 
-  public static String toString(String resource, String label, int quantity) {
-    // a label takes always priority
+  public static String toString(String resource, String label, int quantity, String attribute) {
+    //attribute is highest priority
+     if (attribute != null && quantity <= 1) {
+        if (label == null || "".equals(label)) {
+          return "Attribute: " + attribute;
+        } else {
+          return "Attribute: " + attribute + ", Label: " + label;
+        }
+     }
+
+    // a is second priority
     if (label != null) {
       if (quantity > 0) {
         return "Label: " + label + ", Quantity: " + quantity;
@@ -73,14 +86,14 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
    * Label and resource are mutual exclusive.
    */
   public void validate() {
-    validate(resource, label, quantity);
+    validate(resource, label, quantity, attribute);
   }
 
   /**
    * Label and resource are mutual exclusive.
    * The label, if provided, must be configured (at least one resource must have this label).
    */
-  public static void validate(String resource, String label, int quantity) {
+  public static void validate(String resource, String label, int quantity, String attribute) {
     if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
       throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
     }

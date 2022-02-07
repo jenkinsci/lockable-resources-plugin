@@ -132,9 +132,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
     List<LockableResource> matching = new ArrayList<>();
     for (LockableResource r : resources) {
-      Run<?, ?> rBuild = r.getBuild();
-      if (rBuild != null && rBuild == build) {
-        matching.add(r);
+      List<Run<?, ?>> rBuilds = r.getBuilds();
+      for (Run<?,?> rBuild : rBuilds){
+        if (rBuild != null && rBuild == build) {
+          matching.add(r);
+        }
       }
     }
     return matching;
@@ -170,6 +172,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
     return found;
   }
+
+  public List<LockableResource> getResourcesWithAttribute(String attribute, Map<String, Object> params) {
+    List<LockableResource> found = new ArrayList<>();
+    for (LockableResource r : this.resources) {
+      if (r.isValidAttribute(attribute, params)) found.add(r);
+    }
+    return found;
+  }
+
 
   /**
    * Get a list of resources matching the script.
@@ -406,12 +417,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public synchronized boolean lock(
     Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-    return lock(resources, build, context, null, null, false);
+    return lock(resources, null, build, context, null, null, false);
   }
 
   /** Try to lock the resource and return true if locked. */
   public synchronized boolean lock(
     Set<LockableResource> resources,
+    List<LockableResourcesStruct> resourceHolderList,
     Run<?, ?> build,
     @Nullable StepContext context,
     @Nullable String logmessage,
@@ -425,6 +437,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
         break;
       }
     }
+
+    if (resourceHolderList != null) {
+      for (LockableResourcesStruct requiredResource : resourceHolderList) {
+        if (requiredResource.attribute != null && !requiredResource.attribute.trim().isEmpty()) {
+          for (LockableResource availableResource : resources) {
+            if (availableResource.atributesContain(requiredResource.attribute)) {
+              needToWait = false;
+              break;
+            }else{
+              availableResource.setAttributes(requiredResource.attribute);
+            }
+
+          }
+        }
+      }
+    }
+
     if (!needToWait) {
       for (LockableResource r : resources) {
         r.unqueue();
@@ -452,20 +481,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         LockableResource resource = resourceIterator.next();
         if (resource != null
           && resource.getName() != null
-          && resource.getName().equals(unlockResourceName)) {
-          if (build == null
-            || (resource.getBuild() != null
-            && build
-            .getExternalizableId()
-            .equals(resource.getBuild().getExternalizableId()))) {
-            // No more contexts, unlock resource
-            resource.unqueue();
-            resource.setBuild(null);
+            && resource.getName().equals(unlockResourceName)) {
+              resource.popBuild(build);
+              resource.unqueue();
             uncacheIfFreeing(resource, true, false);
-            if (resource.isEphemeral()) {
+            if (resource.getBuilds().size() == 0 && resource.isEphemeral()) {
               resourceIterator.remove();
             }
-          }
         }
       }
     }
@@ -550,6 +572,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource requiredResource : requiredResourceForNextContext) {
           try {
             requiredResource.setBuild(nextContext.getContext().get(Run.class));
+            requiredResource.popBuild(build);
             resourceNamesToLock.add(requiredResource.getName());
           } catch (Exception e) {
             // skip this context, as the build cannot be retrieved (maybe it was deleted while
@@ -695,6 +718,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return false;
   }
 
+  public synchronized boolean createResourceWithAttribute(String name, String attribute) {
+    if (name != null && attribute != null) {
+      LockableResource existent = fromName(name);
+      if (existent == null) {
+        LockableResource resource = new LockableResource(name);
+        resource.setAttributes(attribute);
+        getResources().add(resource);
+        save();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public synchronized boolean createResourceWithAttributeAndLabel(String name, String labels, String attribute) {
+    if (name != null && attribute != null) {
+      LockableResource existent = fromName(name);
+      if (existent == null) {
+        LockableResource resource = new LockableResource(name);
+        resource.setAttributes(attribute);
+        resource.setLabels(labels);
+        getResources().add(resource);
+        save();
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Reserves an available resource for the userName indefinitely (until that person, or some
    * explicit scripted action, decides to release the resource).
@@ -766,6 +818,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (resources == null || resources.isEmpty()) {
       return;
     }
+
     List<String> resourceNamesToUnreserve = new ArrayList<>();
     for (LockableResource r : resources) {
       resourceNamesToUnreserve.add(r.getName());
@@ -965,14 +1018,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
-    // Build possible resources for each requirement
+    //1. Build requirement for resources
     for (LockableResourcesStruct requiredResources : requiredResourcesList) {
       // get possible resources
       int requiredAmount = 0; // 0 means all
       List<LockableResource> candidates = new ArrayList<>();
+      // by attribute - if we find any resource we return.
+      if (requiredResources.attribute != null && !requiredResources.attribute.isEmpty()){
+        candidates.addAll(getResourcesWithAttribute(requiredResources.attribute, null));
+        if (candidates.size() > 0) {
+          Set<LockableResource> resourceWithAttribute = new HashSet<>();
+          resourceWithAttribute.add(candidates.get(0));
+          return resourceWithAttribute;
+        }
+      }
+
+      //by name
       if (requiredResources.label != null && requiredResources.label.isEmpty()) {
         candidates.addAll(requiredResources.required);
-      } else {
+      //by label
+      }  else {
         candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
         if (requiredResources.requiredNumber != null) {
           try {
@@ -989,7 +1054,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       requiredResourcesCandidatesList.add(
         new LockableResourcesCandidatesStruct(candidates, requiredAmount));
-    }
+    }//Build requirement of resources
 
     // Process freed resources
     int totalSelected = 0;
@@ -1000,6 +1065,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // now, but we do not bail out and end the looping either.
     int totalReserved = 0;
 
+    //2. try to match the requirements above
+
+    //2.a Process freed resources
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
       // start with an empty set of selected resources
       List<LockableResource> selected = new ArrayList<>();
@@ -1081,7 +1149,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return null;
     }
 
-    // Find remaining resources
+    //2.b Find remaining resources
     Set<LockableResource> allSelected = new HashSet<>();
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
