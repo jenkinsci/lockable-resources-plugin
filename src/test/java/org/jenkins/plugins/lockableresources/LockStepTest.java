@@ -874,13 +874,10 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForCompletion(b1);
 
     // Variable should have been filled
-    j.assertLogContains("VAR IS main,extra0,extra1,extra2,extra3,extra4,extra5,extra6,extra7,extra8,extra9,extra10,extra11,"
-      + "extra12,extra13,extra14,extra15,extra16,extra17,extra18,extra19,extra20,extra21,extra22,extra23,extra24,extra25,extra26,"
-      + "extra27,extra28,extra29,extra30,extra31,extra32,extra33,extra34,extra35,extra36,extra37,extra38,extra39,extra40,extra41,"
-      + "extra42,extra43,extra44,extra45,extra46,extra47,extra48,extra49,extra50,extra51,extra52,extra53,extra54,extra55,extra56,"
-      + "extra57,extra58,extra59,extra60,extra61,extra62,extra63,extra64,extra65,extra66,extra67,extra68,extra69,extra70,extra71,"
-      + "extra72,extra73,extra74,extra75,extra76,extra77,extra78,extra79,extra80,extra81,extra82,extra83,extra84,extra85,extra86,"
-      + "extra87,extra88,extra89,extra90,extra91,extra92,extra93,extra94,extra95,extra96,extra97,extra98,extra99", b1);
+    j.assertLogContains("VAR IS main,extra0,extra1,extra2,extra3,extra4,extra5,extra6,extra7,extra8,extra9,extra10,extra11,extra12,extra13,extra14,extra15,extra16,extra17,extra18,extra19,extra20,extra21,extra22,extra23,extra24,\n"
+      + "extra25,extra26,extra27,extra28,extra29,extra30,extra31,extra32,extra33,extra34,extra35,extra36,extra37,extra38,extra39,extra40,extra41,extra42,extra43,extra44,extra45,extra46,extra47,extra48,extra49,ex\n"
+      + "tra50,extra51,extra52,extra53,extra54,extra55,extra56,extra57,extra58,extra59,extra60,extra61,extra62,extra63,extra64,extra65,extra66,extra67,extra68,extra69,extra70,extra71,extra72,extra73,extra74,extr\n"
+      + "a75,extra76,extra77,extra78,extra79,extra80,extra81,extra82,extra83,extra84,extra85,extra86,extra87,extra88,extra89,extra90,extra91,extra92,extra93,extra94,extra95,extra96,extra97,extra98,extra99", b1);
   }
 
   @Test
