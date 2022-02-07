@@ -9,11 +9,9 @@ import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -62,7 +60,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     }
 
     // determine if there are enough resources available to proceed
-    LinkedHashSet<LockableResource> available =
+    List<LockableResource> available =
       LockableResourcesManager.get()
         .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
     Run<?, ?> run = getContext().get(Run.class);
