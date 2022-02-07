@@ -407,13 +407,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean lock(
-    List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+    LinkedHashSet<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
     return lock(resources, build, context, null, null, false);
   }
 
   /** Try to lock the resource and return true if locked. */
   public synchronized boolean lock(
-    List<LockableResource> resources,
+    LinkedHashSet<LockableResource> resources,
     Run<?, ?> build,
     @Nullable StepContext context,
     @Nullable String logmessage,
@@ -519,7 +519,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return;
       }
 
-      List<LockableResource> requiredResourceForNextContext =
+      Set<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
           nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
@@ -821,7 +821,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // remove context from queue and process it
-    List<LockableResource> requiredResourceForNextContext =
+    Set<LockableResource> requiredResourceForNextContext =
       checkResourcesAvailability(
         nextContext.getResources(), nextContextLogger,
         null, resourceNamesToUnreserve);
@@ -940,7 +940,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
@@ -950,7 +950,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized LinkedHashSet<LockableResource> checkResourcesAvailability(
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
       @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -960,7 +960,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -979,7 +979,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * requiredResources and returns the necessary available resources. If not enough resources are
    * available, returns null.
    */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized LinkedHashSet<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -1154,7 +1154,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       allSelected.addAll(selected);
     }
 
-    return new ArrayList<>(allSelected);
+    return allSelected;
   }
 
   /*
