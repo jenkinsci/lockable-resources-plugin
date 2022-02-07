@@ -854,9 +854,11 @@ public class LockStepTest extends LockStepTestBase {
   //@Issue("JENKINS-XXXXX")
   public void locksInVariablesAreInTheRequestedOrder() throws Exception {
     List<String> extras = new ArrayList<>();
+    List<String> eachVar = new ArrayList<>();
     for (int i = 0; i < 100; ++i) {
       LockableResourcesManager.get().createResource("extra" + i);
       extras.add("[resource: 'extra" + i + "', quantity:1]");
+      eachVar.add("  echo \"VAR" + (i+1) + " IS ${env.var" + (i+1) + "}\"\n");
     }
     LockableResourcesManager.get().createResource("main");
 
@@ -867,6 +869,8 @@ public class LockStepTest extends LockStepTestBase {
           + extras.stream().collect(Collectors.joining(","))
           + "]) {\n"
           + "  echo \"VAR IS ${env.var}\"\n"
+          + "  echo \"VAR0 IS ${env.var0}\"\n"
+          + eachVar.stream().collect(Collectors.joining("\n"))
           + "}",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
@@ -880,6 +884,12 @@ public class LockStepTest extends LockStepTestBase {
       + "extra57,extra58,extra59,extra60,extra61,extra62,extra63,extra64,extra65,extra66,extra67,extra68,extra69,extra70,extra71,"
       + "extra72,extra73,extra74,extra75,extra76,extra77,extra78,extra79,extra80,extra81,extra82,extra83,extra84,extra85,extra86,"
       + "extra87,extra88,extra89,extra90,extra91,extra92,extra93,extra94,extra95,extra96,extra97,extra98,extra99", b1);
+
+    j.assertLogContains("VAR0 IS main", b1);
+    for (int i = 0; i < 100; ++i) {
+      j.assertLogContains("VAR" + (i+1) + " IS extra" + i, b1);
+    }
+
   }
 
   @Test
