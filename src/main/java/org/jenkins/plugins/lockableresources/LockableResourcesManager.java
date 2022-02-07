@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -434,7 +435,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (context != null) {
         // since LockableResource contains transient variables, they cannot be correctly serialized
         // hence we use their unique resource names and properties
-        Map<String, List<LockableResourceProperty>> resourceNames = new HashMap<>();
+        LinkedHashMap<String, List<LockableResourceProperty>> resourceNames = new LinkedHashMap<>();
         for (LockableResource resource : resources) {
           resourceNames.put(resource.getName(), resource.getProperties());
         }
@@ -545,7 +546,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // remove context from queue and process it
         unqueueContext(nextContext.getContext());
 
-        Map<String, List<LockableResourceProperty>> resourcesToLock = new HashMap<>();
+        LinkedHashMap<String, List<LockableResourceProperty>> resourcesToLock = new LinkedHashMap<>();
 
         // lock all (old and new resources)
         for (LockableResource requiredResource : requiredResourceForNextContext) {
@@ -846,7 +847,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return;
     } else {
       unreserveResources(resources);
-      Map<String, List<LockableResourceProperty>> resourcesToLock = new HashMap<>();
+      LinkedHashMap<String, List<LockableResourceProperty>> resourcesToLock = new LinkedHashMap<>();
 
       // lock all (old and new resources)
       for (LockableResource requiredResource : requiredResourceForNextContext) {

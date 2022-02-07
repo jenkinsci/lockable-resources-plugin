@@ -8,9 +8,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
@@ -100,7 +99,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   }
 
   public static void proceed(
-    final Map<String, List<LockableResourceProperty>> lockedResources,
+    final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
     StepContext context,
     String resourceDescription,
     final String variable,
@@ -136,7 +135,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
               @Override
               public void expand(@NonNull EnvVars env) {
-                final Map<String, String> variables = new HashMap<>();
+                final LinkedHashMap<String, String> variables = new LinkedHashMap<>();
                 final String resourceNames = lockedResources.keySet().stream().collect(Collectors.joining(","));
                 variables.put(variable, resourceNames);
                 int index = 0;
