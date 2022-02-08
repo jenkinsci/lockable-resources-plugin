@@ -43,7 +43,7 @@ already defined in the Jenkins global configuration, an ephemeral resource is
 used: These resources only exist as long as any running build is referencing
 them.
 
-Examples:
+#### Locking Examples
 
 *Acquire lock*
 
@@ -90,13 +90,38 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
 }
 ```
 
-
-
 *Skip executing the block if there is a queue*
 
 ```groovy
 lock(resource: 'some_resource', skipIfLocked: true) {
   echo 'Do something now or never!'
+}
+```
+
+#### Update Examples
+
+*Set the note on a lock*
+
+```groovy
+updateLock(resource: 'printer', setNote: 'this might take a long time...')
+```
+
+*Changing labels of a lock*
+
+```groovy
+updateLock(resource: 'printer', addLabel: 'offline')
+```
+*Adding/Deleting locks dynamically*
+
+```groovy
+discoveredPrinters.each { p ->
+  updateLock(resource: p.name, setLabels:'printer', createResource:true)
+}
+```
+
+```groovy
+brokenPrinters.each { p ->
+  updateLock(resource: p.name, deleteResource:true)
 }
 ```
 
