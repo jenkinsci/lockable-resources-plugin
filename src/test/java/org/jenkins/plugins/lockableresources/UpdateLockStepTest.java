@@ -124,6 +124,7 @@ public class UpdateLockStepTest extends LockStepTestBase {
   public void updateLockDeleteLockedResource() throws Exception {
     LockableResourcesManager.get().createResource("resource1");
     LockableResourcesManager.get().fromName("resource1").setEphemeral(false);
+
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
       new CpsFlowDefinition(
@@ -133,6 +134,7 @@ public class UpdateLockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
@@ -145,7 +147,6 @@ public class UpdateLockStepTest extends LockStepTestBase {
     Assert.assertNotNull(LockableResourcesManager.get().fromName("resource1"));
     Assert.assertTrue(LockableResourcesManager.get().fromName("resource1").isEphemeral());
 
-    SemaphoreStep.waitForStart("wait-inside/1", b1);
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForCompletion(b1);
 
