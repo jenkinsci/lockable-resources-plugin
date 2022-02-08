@@ -1,0 +1,16 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core"
+  xmlns:f="/lib/form">
+  <f:entry title="${%Resource Matches Expression}" field="matching">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Resource Labels Contain Any Of These Labels}" field="anyOfLabels">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Resource Labels Contain All Of These Labels}" field="allOfLabels">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Resource Labels Contain None Of These Labels}" field="noneOfLabels">
+    <f:textbox/>
+  </f:entry>
+</j:jelly>
