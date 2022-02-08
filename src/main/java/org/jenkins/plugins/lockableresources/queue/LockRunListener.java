@@ -18,10 +18,8 @@ import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -45,7 +43,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
     if (build instanceof AbstractBuild) {
       Job<?, ?> proj = Utils.getProject(build);
-      Set<LockableResource> required = new HashSet<>();
+      List<LockableResource> required = new ArrayList<>();
       if (proj != null) {
         LockableResourcesStruct resources = Utils.requiredResources(proj);
 
@@ -56,6 +54,9 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
           } else {
             required.addAll(resources.required);
           }
+
+          // make sure each entry is unique
+          required = new ArrayList<>(new LinkedHashSet<>(required));
 
           if (LockableResourcesManager.get().lock(required, build, null)) {
             build.addAction(LockedResourcesBuildAction

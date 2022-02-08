@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -60,7 +59,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     }
 
     // determine if there are enough resources available to proceed
-    Set<LockableResource> available =
+    List<LockableResource> available =
       LockableResourcesManager.get()
         .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
     Run<?, ?> run = getContext().get(Run.class);
@@ -99,7 +98,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   }
 
   public static void proceed(
-    final List<String> resourcenames,
+    final List<String> resourceNames,
     StepContext context,
     String resourceDescription,
     final String variable,
@@ -124,7 +123,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       BodyInvoker bodyInvoker =
         context
           .newBodyInvoker()
-          .withCallback(new Callback(resourcenames, resourceDescription, inversePrecedence));
+          .withCallback(new Callback(resourceNames, resourceDescription, inversePrecedence));
       if (variable != null && variable.length() > 0) {
         // set the variable for the duration of the block
         bodyInvoker.withContext(
@@ -136,10 +135,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
               @Override
               public void expand(@NonNull EnvVars env) {
                 final Map<String, String> variables = new HashMap<>();
-                final String resources = String.join(",", resourcenames);
+                final String resources = String.join(",", resourceNames);
                 variables.put(variable, resources);
-                for (int index = 0; index < resourcenames.size(); ++index) {
-                  variables.put(variable + index, resourcenames.get(index));
+                for (int index = 0; index < resourceNames.size(); ++index) {
+                  variables.put(variable + index, resourceNames.get(index));
                 }
                 LOGGER.finest("Setting "
                   + variables.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "))
