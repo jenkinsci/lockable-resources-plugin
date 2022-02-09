@@ -115,7 +115,6 @@ public class FindLocksStep extends Step implements Serializable {
   @Override
   public String toString() {
     List<String> desc = new ArrayList<>();
-    StringBuilder sb = new StringBuilder();
     if (StringUtils.isNotBlank(anyOfLabels)) {
       desc.add("anyLabels:" + anyOfLabels);
     }
