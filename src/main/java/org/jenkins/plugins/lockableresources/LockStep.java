@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -28,6 +29,9 @@ public class LockStep extends Step implements Serializable {
   @CheckForNull public String resource = null;
 
   @CheckForNull public String label = null;
+  @CheckForNull public String anyOfLabels = null;
+  @CheckForNull public String allOfLabels = null;
+  @CheckForNull public String noneOfLabels = null;
 
   public int quantity = 0;
 
@@ -45,7 +49,7 @@ public class LockStep extends Step implements Serializable {
   // is not required)
   @DataBoundConstructor
   public LockStep(@Nullable String resource) {
-    if (resource != null && !resource.isEmpty()) {
+    if (StringUtils.isNotBlank(resource)) {
       this.resource = resource;
     }
   }
@@ -62,8 +66,29 @@ public class LockStep extends Step implements Serializable {
 
   @DataBoundSetter
   public void setLabel(String label) {
-    if (label != null && !label.isEmpty()) {
+    if (StringUtils.isNotBlank(label)) {
       this.label = label;
+    }
+  }
+
+  @DataBoundSetter
+  public void setAnyOfLabels(String anyOfLabels) {
+    if (StringUtils.isNotBlank(anyOfLabels)) {
+      this.anyOfLabels = anyOfLabels;
+    }
+  }
+
+  @DataBoundSetter
+  public void setAllOfLabels(String allOfLabels) {
+    if (allOfLabels != null && !allOfLabels.isEmpty()) {
+      this.allOfLabels = allOfLabels;
+    }
+  }
+
+  @DataBoundSetter
+  public void setNoneOfLabels(String noneOfLabels) {
+    if (StringUtils.isNotBlank(noneOfLabels)) {
+      this.noneOfLabels = noneOfLabels;
     }
   }
 
@@ -129,8 +154,8 @@ public class LockStep extends Step implements Serializable {
       return getResources().stream()
         .map(res -> "{" + res.toString() + "}")
         .collect(Collectors.joining(","));
-    } else if (resource != null || label != null) {
-      return LockStepResource.toString(resource, label, quantity);
+    } else if (resource != null || label != null || anyOfLabels != null || allOfLabels != null || noneOfLabels != null) {
+      return LockStepResource.toString(resource, label, anyOfLabels, allOfLabels, noneOfLabels, quantity);
     } else {
       return "nothing";
     }
@@ -138,13 +163,13 @@ public class LockStep extends Step implements Serializable {
 
   /** Label and resource are mutual exclusive. */
   public void validate() {
-    LockStepResource.validate(resource, label, quantity);
+    LockStepResource.validate(resource, label, anyOfLabels, allOfLabels, noneOfLabels, quantity);
   }
 
   public List<LockStepResource> getResources() {
     List<LockStepResource> resources = new ArrayList<>();
-    if (resource != null || label != null) {
-      resources.add(new LockStepResource(resource, label, quantity));
+    if (resource != null || label != null || anyOfLabels != null || allOfLabels != null || noneOfLabels != null) {
+      resources.add(new LockStepResource(resource, label, anyOfLabels, allOfLabels, noneOfLabels, quantity));
     }
 
     if (extra != null) {

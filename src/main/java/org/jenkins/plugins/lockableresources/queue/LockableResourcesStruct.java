@@ -13,7 +13,12 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
+import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -26,13 +31,22 @@ public class LockableResourcesStruct implements Serializable {
   // do not forget to update LockableResourcesQueueTaskDispatcher.java with
   // class BecauseResourcesLocked method getShortDescription() for user info.
   public List<LockableResource> required;
-  public String label;
+  public String anyOfLabels;
+  public String allOfLabels;
+  public String noneOfLabels;
   public String requiredVar;
   public String requiredNumber;
 
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
   @CheckForNull private transient SecureGroovyScript resourceMatchScript;
+
+  public boolean hasLabelFilter()
+  {
+    return StringUtils.isNotBlank(anyOfLabels)
+      || StringUtils.isNotBlank(allOfLabels)
+      || StringUtils.isNotBlank(noneOfLabels);
+  }
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
     required = new ArrayList<>();
@@ -48,8 +62,8 @@ public class LockableResourcesStruct implements Serializable {
       this.required.add(r);
     }
 
-    label = env.expand(property.getLabelName());
-    if (label == null) label = "";
+    allOfLabels = env.expand(property.getLabelName());
+    if (allOfLabels == null) allOfLabels = "";
 
     resourceMatchScript = property.getResourceMatchScript();
     serializableResourceMatchScript = new SerializableSecureGroovyScript(resourceMatchScript);
@@ -66,17 +80,17 @@ public class LockableResourcesStruct implements Serializable {
    * @param resources Resources to be required
    */
   public LockableResourcesStruct(@Nullable List<String> resources) {
-    this(resources, null, 0);
+    this(resources, null, null, null, 0);
   }
 
   public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
-    this(resources, label, quantity);
+    @Nullable List<String> resources, @Nullable String allOfLabels, int quantity, String variable) {
+    this(resources, null, allOfLabels, null, quantity);
     requiredVar = variable;
   }
 
   public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity) {
+    @Nullable List<String> resources, @Nullable String anyOfLabels, @Nullable String allOfLabels, @Nullable String noneOfLabels, int quantity) {
     required = new ArrayList<>();
     if (resources != null) {
       for (String resource : resources) {
@@ -87,10 +101,9 @@ public class LockableResourcesStruct implements Serializable {
       }
     }
 
-    this.label = label;
-    if (this.label == null) {
-      this.label = "";
-    }
+    this.anyOfLabels = Optional.ofNullable(anyOfLabels).orElse("");
+    this.allOfLabels = Optional.ofNullable(allOfLabels).orElse("");
+    this.noneOfLabels = Optional.ofNullable(noneOfLabels).orElse("");
 
     this.requiredNumber = null;
     if (quantity > 0) {
@@ -124,8 +137,12 @@ public class LockableResourcesStruct implements Serializable {
   public String toString() {
     return "Required resources: "
       + this.required
-      + ", Required label: "
-      + this.label
+      + ", At least one of label: "
+      + this.anyOfLabels
+      + ", Required labels: "
+      + this.allOfLabels
+      + ", None of labels: "
+      + this.noneOfLabels
       + ", Required label script: "
       + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
       + ", Variable name: "
@@ -135,4 +152,39 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   private static final long serialVersionUID = 1L;
+
+  public static Predicate<List<String>> getLabelsMatchesPredicate(List<String> anyOfLabels, List<String> allOfLabels, List<String> noneOfLabels) {
+    return resourceLabels -> {
+      if (anyOfLabels.isEmpty() == false) {
+        if (anyOfLabels.stream().noneMatch(l -> resourceLabels.contains(l)))
+          return false;
+      }
+      if (allOfLabels.isEmpty() == false) {
+        if (allOfLabels.stream().anyMatch(l -> resourceLabels.contains(l) == false))
+          return false;
+      }
+      if (noneOfLabels.isEmpty() == false) {
+        if (noneOfLabels.stream().anyMatch(l -> resourceLabels.contains(l)))
+          return false;
+      }
+      return true;
+    };
+  }
+
+  public static List<String> labelStringToList(@Nullable String labels) {
+    return Optional.ofNullable(labels)
+      .map(str -> Arrays.asList(str.trim().split("\\s+")))
+      .orElse(Collections.emptyList());
+  }
+
+  public static Predicate<String> getLabelsMatchesPredicate(String anyOfLabelsStr, String allOfLabelsStr, String noneOfLabelsStr) {
+    List<String> anyOfLabels = labelStringToList(anyOfLabelsStr);
+    List<String> allOfLabels = labelStringToList(allOfLabelsStr);
+    List<String> noneOfLabels = labelStringToList(noneOfLabelsStr);
+    return resourceLabelsStr -> getLabelsMatchesPredicate(anyOfLabels, allOfLabels, noneOfLabels).test(labelStringToList(resourceLabelsStr));
+  }
+
+  public Predicate<LockableResource> getLabelsPredicate() {
+    return LockableResource -> getLabelsMatchesPredicate(anyOfLabels, allOfLabels, noneOfLabels).test(LockableResource.getLabels());
+  }
 }

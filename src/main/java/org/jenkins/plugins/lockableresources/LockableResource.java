@@ -173,7 +173,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return ephemeral;
   }
 
-  public boolean isValidLabel(String candidate, Map<String, Object> params) {
+  public boolean isValidLabel(String candidate) {
     return labelsContain(candidate);
   }
 

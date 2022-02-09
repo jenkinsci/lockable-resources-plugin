@@ -20,6 +20,7 @@ import hudson.model.ParametersAction;
 import hudson.model.Queue;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.model.queue.QueueTaskDispatcher;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
@@ -55,7 +58,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     LockableResourcesStruct resources = Utils.requiredResources(project);
     if (resources == null
       || (resources.required.isEmpty()
-      && resources.label.isEmpty()
+      && resources.hasLabelFilter() == false
       && resources.getResourceMatchScript() == null)) {
       return null;
     }
@@ -70,7 +73,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     LOGGER.finest(project.getName() + " trying to get resources with these details: " + resources);
 
     if (resourceNumber > 0
-      || !resources.label.isEmpty()
+      || resources.hasLabelFilter()
       || resources.getResourceMatchScript() != null) {
       Map<String, Object> params = new HashMap<>();
 
@@ -155,7 +158,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     @Override
     public String getShortDescription() {
-      if (this.rscStruct.label.isEmpty()) {
+      if (this.rscStruct.hasLabelFilter() == false) {
         if (!this.rscStruct.required.isEmpty()) {
           return "Waiting for resource instances " + rscStruct.required;
         } else {
@@ -176,7 +179,14 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
           return "Waiting for lockable resources";
         }
       } else {
-        return "Waiting for resources with label " + rscStruct.label;
+        List<String> rules = new ArrayList<>();
+        if (StringUtils.isNotBlank(rscStruct.anyOfLabels))
+          rules.add("any of [" + rscStruct.anyOfLabels + "]");
+        if (StringUtils.isNotBlank(rscStruct.allOfLabels))
+          rules.add("all of [" + rscStruct.allOfLabels + "]");
+        if (StringUtils.isNotBlank(rscStruct.noneOfLabels))
+          rules.add("none of [" + rscStruct.noneOfLabels + "]");
+        return "Waiting for resources with label matching " + rules.stream().collect(Collectors.joining(" and "));
       }
     }
   }
@@ -197,10 +207,18 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     @Override
     public String getShortDescription() {
       // TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
+      List<String> rules = new ArrayList<>();
+      if (StringUtils.isNotBlank(resources.anyOfLabels))
+        rules.add("any of [" + resources.anyOfLabels + "]");
+      if (StringUtils.isNotBlank(resources.allOfLabels))
+        rules.add("all of [" + resources.allOfLabels + "]");
+      if (StringUtils.isNotBlank(resources.noneOfLabels))
+        rules.add("none of [" + resources.noneOfLabels + "]");
+
       String resourceInfo =
-        resources.label.isEmpty()
+        rules.isEmpty()
           ? resources.required.toString()
-          : "with label " + resources.label;
+          : "with label matching " + rules.stream().collect(Collectors.joining(" and "));
       return "Execution failed while acquiring the resource "
         + resourceInfo
         + ". "

@@ -40,7 +40,7 @@ public final class BackwardCompatibility {
         for (StepContext queuedContext : queuedContexts) {
           List<String> resourcesNames = new ArrayList<>();
           resourcesNames.add(resource.getName());
-          LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
+          LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", "", "", 0);
           LockableResourcesManager.get().queueContext(queuedContext, Collections.singletonList(resourceHolder), resource.getName(), null);
         }
         queuedContexts.clear();

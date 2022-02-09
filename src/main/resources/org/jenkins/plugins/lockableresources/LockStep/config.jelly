@@ -29,4 +29,15 @@
       </table>
     </f:repeatable>
   </f:entry>
+  <f:advanced>
+    <f:entry title="${%Contains any the following labels}" field="anyOfLabels">
+      <f:textbox/>
+    </f:entry>
+    <f:entry title="${%Contains all the following labels}" field="allOfLabels">
+      <f:textbox/>
+    </f:entry>
+    <f:entry title="${%Contains none of the following labels}" field="noneOfLabels">
+      <f:textbox/>
+    </f:entry>
+  </f:advanced>
 </j:jelly>

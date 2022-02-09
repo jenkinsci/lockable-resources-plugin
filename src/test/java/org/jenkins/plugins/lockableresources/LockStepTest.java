@@ -1453,4 +1453,89 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("[resource1] is locked, skipping execution...", b1);
     j.assertLogNotContains("Running body", b1);
   }
+
+  @Test
+  //@Issue("JENKINS-XXXXX")
+  public void lockWithAnyLabelFilter() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("Charmander", "red fire");
+    LockableResourcesManager.get().createResourceWithLabel("Braviary", "red flying");
+    LockableResourcesManager.get().createResourceWithLabel("Meowstic", "blue psychic");
+    LockableResourcesManager.get().createResourceWithLabel("Minior", "blue flying");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(anyOfLabels:'red flying', variable:'var') {\n"
+          + "  echo \"GOT ${env.var}\"\n"
+          + "}\n",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+
+    // expecting only those that match any of the labels
+    j.assertLogContains("GOT Charmander,Braviary,Minior", b1);
+  }
+
+  @Test
+  //@Issue("JENKINS-XXXXX")
+  public void lockWithNoneOfLabelFilter() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("Charmander", "red fire");
+    LockableResourcesManager.get().createResourceWithLabel("Braviary", "red flying");
+    LockableResourcesManager.get().createResourceWithLabel("Meowstic", "blue psychic");
+    LockableResourcesManager.get().createResourceWithLabel("Minior", "blue flying");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(noneOfLabels:'red flying', variable:'var') {\n"
+          + "  echo \"GOT ${env.var}\"\n"
+          + "}\n",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+
+    // expecting only those that match none of the labels
+    j.assertLogContains("GOT Meowstic", b1);
+  }
+
+  @Test
+  //@Issue("JENKINS-XXXXX")
+  public void lockWithAllOfLabelFilter() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("Charmander", "red fire");
+    LockableResourcesManager.get().createResourceWithLabel("Braviary", "red flying");
+    LockableResourcesManager.get().createResourceWithLabel("Meowstic", "blue psychic");
+    LockableResourcesManager.get().createResourceWithLabel("Minior", "blue flying");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(allOfLabels:'red flying', variable:'var') {\n"
+          + "  echo \"GOT ${env.var}\"\n"
+          + "}\n",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+
+    // expecting only those that match all the labels
+    j.assertLogContains("GOT Braviary", b1);
+  }
+
+  @Test
+  //@Issue("JENKINS-XXXXX")
+  public void lockWithLabelAndAllOfLabelFilter() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("Charmander", "red fire");
+    LockableResourcesManager.get().createResourceWithLabel("Braviary", "red flying");
+    LockableResourcesManager.get().createResourceWithLabel("Meowstic", "blue psychic");
+    LockableResourcesManager.get().createResourceWithLabel("Minior", "blue flying");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label:'red', allOfLabels:'flying', variable:'var') {\n"
+          + "  echo \"GOT ${env.var}\"\n"
+          + "}\n",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+
+    // The label is equivalent to a single 'allOf', so they should be merged
+    j.assertLogContains("GOT Braviary", b1);
+  }
+
 }

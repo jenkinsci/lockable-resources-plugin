@@ -30,8 +30,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -164,12 +166,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return free;
   }
 
-  public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
-    List<LockableResource> found = new ArrayList<>();
-    for (LockableResource r : this.resources) {
-      if (r.isValidLabel(label, params)) found.add(r);
-    }
-    return found;
+  public List<LockableResource> getResourcesMatchingPredicate(Predicate<LockableResource> predicate) {
+    return this.resources.stream().filter(predicate).collect(Collectors.toList());
   }
 
   /**
@@ -331,14 +329,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     boolean candidatesByScript = (systemGroovyScript != null);
     List<LockableResource> candidates = requiredResources.required; // default candidates
 
-    if (candidatesByScript ||
-      (requiredResources.label != null && !requiredResources.label.isEmpty())) {
+    if (candidatesByScript || requiredResources.hasLabelFilter()) {
       candidates = cachedCandidates.getIfPresent(queueItemId);
       if (candidates != null) {
         candidates.retainAll(resources);
       } else {
         candidates = (systemGroovyScript == null)
-          ? getResourcesWithLabel(requiredResources.label, params)
+          ? getResourcesMatchingPredicate(requiredResources.getLabelsPredicate())
           : getResourcesMatchingScript(systemGroovyScript, params);
         cachedCandidates.put(queueItemId, candidates);
       }
@@ -971,10 +968,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // get possible resources
       int requiredAmount = 0; // 0 means all
       List<LockableResource> candidates = new ArrayList<>();
-      if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+      if (requiredResources.hasLabelFilter() == false) {
         candidates.addAll(requiredResources.required);
-      } else {
-        candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
+      }
+      else {
+        candidates.addAll(getResourcesMatchingPredicate(requiredResources.getLabelsPredicate()));
         if (requiredResources.requiredNumber != null) {
           try {
             requiredAmount = Integer.parseInt(requiredResources.requiredNumber);

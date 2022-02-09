@@ -90,13 +90,19 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
 }
 ```
 
-
-
 *Skip executing the block if there is a queue*
 
 ```groovy
 lock(resource: 'some_resource', skipIfLocked: true) {
   echo 'Do something now or never!'
+}
+```
+
+*Lock a resource based on a combination of labels*
+
+```groovy
+lock(anyOfLabels: 'cat dog', allOfLabels: 'friendly cute', noneOfLabels: 'dangerous dirty') {
+  echo "got a cat or a dog that's friendly and cute, and neither dangerous nor dirty"
 }
 ```
 
