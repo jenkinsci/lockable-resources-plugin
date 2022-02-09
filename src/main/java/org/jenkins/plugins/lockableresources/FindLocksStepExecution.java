@@ -26,7 +26,7 @@ public class FindLocksStepExecution extends AbstractStepExecutionImpl implements
     List<LockableResource> allResources = LockableResourcesManager.get().getResources();
 
     List<Map<String,Object>> resourcesAsMap = allResources.stream()
-      .filter(step::asPredicate)
+      .filter(step.asPredicate(getContext()))
       .map(FindLocksStepExecution::convertResourceToMap)
       .collect(Collectors.toList());
 

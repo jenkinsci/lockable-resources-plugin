@@ -102,28 +102,35 @@ lock(resource: 'some_resource', skipIfLocked: true) {
 
 #### Finding Examples
 
-*List all locks currently defined*
+*List all resources acquired by the current build*
 
 ```groovy
-echo findLocks().name
+lock(label:'printer') {
+  echo findLocks().name
+}
 ```
 
-*List all locks with label `printer` excluding those with label `offline`*
+*List all resources (locked or not) currently defined*
 
 ```groovy
-echo findLocks(anyOfLabels:'printer', noneOfLabels:'offline').name
+echo findLocks(build:'any').name
 ```
-*List all locks with label `printer` and label `offline`*
+
+*List all resources (locked or not) with label `printer` excluding those with label `offline`*
 
 ```groovy
-echo findLocks(allOfLabels:'printer offline').name
+echo findLocks(anyOfLabels:'printer', noneOfLabels:'offline', build:'any').name
 ```
-*List all locks with a name starting with `PRINTER`*
+*List all resources (locked or not) with label `printer` and label `offline`*
 
 ```groovy
-echo findLocks(matching:'^PRINTER.*').name
+echo findLocks(allOfLabels:'printer offline', build:'any').name
 ```
+*List all resources (locked or not) with a name starting with `PRINTER`*
 
+```groovy
+echo findLocks(matching:'^PRINTER.*', build:'any').name
+```
 
 Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)

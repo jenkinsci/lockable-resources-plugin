@@ -324,6 +324,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     else return null;
   }
 
+  @Exported
+  public String getBuildId() {
+    return this.buildExternalizableId;
+  }
+
   public void setBuild(Run<?, ?> lockedBy) {
     this.build = lockedBy;
     if (lockedBy != null) {
