@@ -13,4 +13,7 @@
   <f:entry title="${%Resource Labels Contain None Of These Labels}" field="noneOfLabels">
     <f:textbox/>
   </f:entry>
+  <f:entry title="${%Build Id}" field="build">
+    <f:textbox/>
+  </f:entry>
 </j:jelly>
