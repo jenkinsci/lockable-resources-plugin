@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.logging.Logger;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -152,29 +153,34 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   private static final long serialVersionUID = 1L;
+  private static final Logger LOGGER = Logger.getLogger(LockableResourcesStruct.class.getName());
 
   public static Predicate<List<String>> getLabelsMatchesPredicate(List<String> anyOfLabels, List<String> allOfLabels, List<String> noneOfLabels) {
     return resourceLabels -> {
       if (anyOfLabels.isEmpty() == false) {
-        if (anyOfLabels.stream().noneMatch(l -> resourceLabels.contains(l)))
+        if (anyOfLabels.stream().noneMatch(l -> resourceLabels.contains(l))) {
           return false;
+        }
       }
       if (allOfLabels.isEmpty() == false) {
-        if (allOfLabels.stream().anyMatch(l -> resourceLabels.contains(l) == false))
+        if (allOfLabels.stream().anyMatch(l -> resourceLabels.contains(l) == false)) {
           return false;
+        }
       }
       if (noneOfLabels.isEmpty() == false) {
-        if (noneOfLabels.stream().anyMatch(l -> resourceLabels.contains(l)))
+        if (noneOfLabels.stream().anyMatch(l -> resourceLabels.contains(l))) {
           return false;
+        }
       }
       return true;
     };
   }
 
   public static List<String> labelStringToList(@Nullable String labels) {
-    return Optional.ofNullable(labels)
-      .map(str -> Arrays.asList(str.trim().split("\\s+")))
-      .orElse(Collections.emptyList());
+    if (StringUtils.isBlank(labels))
+      return Collections.emptyList();
+
+    return Arrays.asList(labels.trim().split("\\s+"));
   }
 
   public static Predicate<String> getLabelsMatchesPredicate(String anyOfLabelsStr, String allOfLabelsStr, String noneOfLabelsStr) {

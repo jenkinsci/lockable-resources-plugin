@@ -111,15 +111,15 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     if (label != null || anyOfLabels != null || allOfLabels != null || noneOfLabels != null) {
       List<String> desc = new ArrayList<>();
       if (label != null)
-        desc.add("label: " + label);
+        desc.add("Label: " + label);
       if (anyOfLabels != null)
-        desc.add("anyOfLabels: " + anyOfLabels);
+        desc.add("AnyOfLabels: " + anyOfLabels);
       if (allOfLabels != null)
-        desc.add("allOfLabels: " + allOfLabels);
+        desc.add("AllOfLabels: " + allOfLabels);
       if (noneOfLabels != null)
-        desc.add("allOfLabels: " + noneOfLabels);
+        desc.add("AllOfLabels: " + noneOfLabels);
       if (quantity > 0) {
-        desc.add("quantity: " + quantity);
+        desc.add("Quantity: " + quantity);
       }
       return desc.stream().collect(Collectors.joining(", "));
     }
