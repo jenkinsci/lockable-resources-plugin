@@ -47,17 +47,23 @@ public class UpdateLockStep extends Step implements Serializable {
 
   @DataBoundSetter
   public void setAddLabels(String addLabels) {
-    this.addLabels = addLabels;
+    if (StringUtils.isNotBlank(addLabels)) {
+      this.addLabels = addLabels;
+    }
   }
 
   @DataBoundSetter
   public void setSetLabels(String setLabels) {
-    this.setLabels = setLabels;
+    if (StringUtils.isNotBlank(setLabels)) {
+      this.setLabels = setLabels;
+    }
   }
 
   @DataBoundSetter
   public void setRemoveLabels(String removeLabels) {
-    this.removeLabels = removeLabels;
+    if (StringUtils.isNotBlank(removeLabels)) {
+      this.removeLabels = removeLabels;
+    }
   }
 
   @DataBoundSetter
@@ -72,7 +78,9 @@ public class UpdateLockStep extends Step implements Serializable {
 
   @DataBoundSetter
   public void setSetNote(String setNote) {
-    this.setNote = setNote;
+    if (StringUtils.isNotBlank(setNote)) {
+      this.setNote = setNote;
+    }
   }
 
   @DataBoundConstructor
