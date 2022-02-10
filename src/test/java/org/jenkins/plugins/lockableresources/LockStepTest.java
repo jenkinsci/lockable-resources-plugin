@@ -135,7 +135,7 @@ public class LockStepTest extends LockStepTestBase {
 
     LockableResource lr = LockableResourcesManager.get().fromName("resource1");
     assertNotNull(lr);
-    assertNull(lr.getAttributes());
+    assertEquals("", lr.getAttributes());
   }
 
   @Test

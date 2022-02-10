@@ -205,6 +205,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   private List<String> makeAttributeList() {
+    if (this.attributes == null ){ this.attributes = ""; }
     return Arrays.asList(attributes.split("\\s+"));
   }
 
@@ -327,7 +328,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   public List<Run<?, ?>> getBuilds() {
     //transient variable was deleted during restart
     if (this.builds == null) { this.builds = new ArrayList<>(); }
-    if (builds.size() == 0 && buildExternalizableIds.size()!=0) {
+    if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
+    if (builds.size() == 0 && this.buildExternalizableIds.size()!=0) {
       for(String buildExternalizableId : buildExternalizableIds) {
         builds.add(Run.fromExternalizableId(buildExternalizableId));
       }
@@ -360,12 +362,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   public void resetBuilds() {
       if (this.builds == null) { this.builds = new ArrayList<>(); }
+      if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
       this.builds.clear();
       this.buildExternalizableIds.clear();
   }
 
   public void setBuild(Run<?, ?> lockedBy) {
     if (this.builds == null) { this.builds = new ArrayList<>(); }
+    if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
     if (lockedBy != null) {
       this.builds.add(lockedBy);
       this.buildExternalizableIds.add(lockedBy.getExternalizableId());
@@ -375,13 +379,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   public void popBuild(Run<?, ?> lockedBy) {
     if (this.builds == null) { this.builds = new ArrayList<>(); }
+    if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
     if (lockedBy != null) {
       this.buildExternalizableIds.remove(lockedBy.getExternalizableId());
       this.builds.remove(lockedBy);
     }
     //remove attribute if there is nobody owning this resource
     if (this.builds.size() == 0){
-      this.setAttributes(null);
+      this.setAttributes("");
     }
   }
 
