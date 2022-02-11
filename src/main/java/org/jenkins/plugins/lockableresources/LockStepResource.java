@@ -117,7 +117,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
       if (allOfLabels != null)
         desc.add("AllOfLabels: " + allOfLabels);
       if (noneOfLabels != null)
-        desc.add("AllOfLabels: " + noneOfLabels);
+        desc.add("NoneOfLabels: " + noneOfLabels);
       if (quantity > 0) {
         desc.add("Quantity: " + quantity);
       }
