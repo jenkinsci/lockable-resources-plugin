@@ -17,11 +17,12 @@
       <table class="pane" style="width: auto;">
         <thead>
           <tr>
-            <th class="pane-header" style="text-align:left">Resource</th>
-            <th class="pane-header" style="text-align:left">Status</th>
-            <th class="pane-header" style="text-align:left">Labels</th>
-            <th class="pane-header" style="text-align:left">Ephemeral</th>
-            <th class="pane-header" style="text-align:left">Action</th>
+            <th class="pane-header" style="text-align:left">${%Resource}</th>
+            <th class="pane-header" style="text-align:left">${%Status}</th>
+            <th class="pane-header" style="text-align:left">${%Labels}</th>
+            <th class="pane-header" style="text-align:left">${%Properties}</th>
+            <th class="pane-header" style="text-align:left">${%Ephemeral}</th>
+            <th class="pane-header" style="text-align:left">${%Action}</th>
           </tr>
         </thead>
         <tbody>
@@ -47,6 +48,11 @@
                   </j:if>
                 </td>
                 <td class="pane">${resource.labels}</td>
+                <td class="pane">
+                  <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                    <strong>${property.name}</strong>: ${property.value}<br/>
+                  </j:forEach>
+                </td>
                 <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                 <td class="pane">
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
@@ -69,6 +75,11 @@
                     </j:if>
                   </td>
                   <td class="pane">${resource.labels}</td>
+                  <td class="pane">
+                    <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                      <strong>${property.name}</strong>: ${property.value}<br/>
+                    </j:forEach>
+                  </td>
                   <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                   <td class="pane">
                     <j:if test="${h.hasPermission(it.RESERVE)}">
@@ -101,6 +112,11 @@
                       </j:if>
                     </td>
                     <td class="pane">${resource.labels}</td>
+                    <td class="pane">
+                      <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                        <strong>${property.name}</strong>: ${property.value}<br/>
+                      </j:forEach>
+                    </td>
                     <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td class="pane">
                       <j:if test="${h.hasPermission(it.UNLOCK)}">
@@ -113,6 +129,11 @@
                       <strong>FREE</strong>
                     </td>
                     <td class="pane">${resource.labels}</td>
+                    <td class="pane">
+                      <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                        <strong>${property.name}</strong>: ${property.value}<br/>
+                      </j:forEach>
+                    </td>
                     <td class="pane"><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td class="pane">
                       <j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
