@@ -40,10 +40,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   @Override
   public boolean start() throws Exception {
     step.validate();
-
+    LOGGER.warning("LockStepExecution start()");
     getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
     PrintStream logger = getContext().get(TaskListener.class).getLogger();
-    logger.println("Trying to acquire lock on [" + step + "]");
+
+    LOGGER.warning("Trying to acquire lock on [" + step + "]");
 
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
@@ -51,7 +52,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       List<String> resources = new ArrayList<>();
       if (resource.resource != null) {
         if (LockableResourcesManager.get().createResource(resource.resource)) {
-          logger.println("Resource [" + resource + "] did not exist. Created.");
+          LOGGER.warning("Resource [" + resource + "] did not exist. Created.");
         }
         resources.add(resource.resource);
       }
@@ -64,6 +65,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       LockableResourcesManager.get()
         .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
     Run<?, ?> run = getContext().get(Run.class);
+    LOGGER.warning("Trying to lock something for runid:"+run.getId()+" displayName"+run.getDisplayName()+" extId"+run.getExternalizableId());
     if (available == null
       || !LockableResourcesManager.get()
         .lock(
@@ -76,21 +78,23 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             step.inversePrecedence)) {
       // if the resource is known, we could output the active/blocking job/build
       LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
+      LOGGER.warning("Step resource is:"+ step.resource);
+      LOGGER.warning("Lockable resource is:"+ resource);
       boolean buildNameKnown = resource != null && resource.getBuildName() != null;
       if (step.skipIfLocked) {
         if (buildNameKnown) {
-          logger.println(
+          LOGGER.warning(
             "[" + step + "] is locked by " + resource.getBuildName() + ", skipping execution...");
         } else {
-          logger.println("[" + step + "] is locked, skipping execution...");
+          LOGGER.warning("[" + step + "] is locked, skipping execution...");
         }
         getContext().onSuccess(null);
         return true;
       } else {
         if (buildNameKnown) {
-          logger.println("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
+          LOGGER.warning("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
         } else {
-          logger.println("[" + step + "] is locked, waiting...");
+          LOGGER.warning("[" + step + "] is locked, waiting...");
         }
         LockableResourcesManager.get()
           .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
@@ -118,8 +122,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       context.onFailure(e);
       return;
     }
-
-    LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
+    LOGGER.warning("LockStepExecution proceed()");
+    LOGGER.warning("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
     try {
       PauseAction.endCurrentPause(node);
       BodyInvoker bodyInvoker =
@@ -173,19 +177,21 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     protected void finished(StepContext context) throws Exception {
+      LOGGER.warning("LockStepExecution finished()");
       LockableResourcesManager.get()
         .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
       context
         .get(TaskListener.class)
         .getLogger()
         .println("Lock released on resource [" + resourceDescription + "]");
-      LOGGER.finest("Lock released on [" + resourceDescription + "]");
+      LOGGER.warning("Lock released on [" + resourceDescription + "]");
     }
   }
 
   @Override
   public void stop(@NonNull Throwable cause) {
     boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
+    LOGGER.warning("LockStepExecution stop()");
     if (!cleaned) {
       LOGGER.log(
         Level.WARNING,

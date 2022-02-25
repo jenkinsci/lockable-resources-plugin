@@ -141,11 +141,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @DataBoundSetter
   public void setAttributes(String attributes) {
+    LOGGER.warning("LockbleResourceManager set attribute:" + attributes);
     this.attributes = attributes;
   }
 
   @DataBoundSetter
   public String getAttributes() {
+    LOGGER.warning("LockbleResourceManager set attribute:" + attributes);
     return this.attributes;
   }
 
@@ -303,6 +305,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public boolean isLocked() {
+    if (builds != null) {
+      for (Run<?, ?> build : builds) {
+        LOGGER.warning("->id:" + build.getId() + " displayName:" + build.getDisplayName() + "extId" + build.getExternalizableId());
+      }
+    }else{
+      LOGGER.warning("builds = null");
+    }
+    LOGGER.warning("attrbutes:"+this.attributes);
+    LOGGER.warning("isLocked" + (getBuilds().size() > 0));
     return getBuilds().size() > 0;
   }
 
@@ -361,28 +372,70 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public void resetBuilds() {
-      if (this.builds == null) { this.builds = new ArrayList<>(); }
+    LOGGER.warning("*******RESET BUILD*********");
+    if (this.builds == null) { this.builds = new ArrayList<>(); }
       if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
       this.builds.clear();
       this.buildExternalizableIds.clear();
   }
 
   public void setBuild(Run<?, ?> lockedBy) {
+    LOGGER.warning("*******SETBUILD*********");
     if (this.builds == null) { this.builds = new ArrayList<>(); }
     if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
     if (lockedBy != null) {
+      LOGGER.warning("****");
+      LOGGER.warning("LockableResourceManager setBuild():" + lockedBy.getId() + " displayName:" + lockedBy.getDisplayName()+ " extId:" + lockedBy.getExternalizableId());
+      LOGGER.warning("****");
+      LOGGER.warning("builds before add:");
+      for (Run<?, ?> build : builds) {
+        LOGGER.warning("->build id:" + build.getId() + "build displayName:" + build.getDisplayName()+ " extId:" + build.getExternalizableId());
+      }
+
+      LOGGER.warning("LockbleResourceManager setBuild() externalId:" + buildExternalizableIds);
+      LOGGER.warning("====");
+
       this.builds.add(lockedBy);
       this.buildExternalizableIds.add(lockedBy.getExternalizableId());
       setReservedTimestamp(new Date());
+
+      LOGGER.warning("builds after add:");
+      for (Run<?, ?> build : builds) {
+        LOGGER.warning("-> id:" + build.getId() + " displayName:" + build.getDisplayName() + " extId:" + build.getExternalizableId());
+      }
+      LOGGER.warning("LockbleResourceManager setBuild() externalId:" + buildExternalizableIds);
+      LOGGER.warning("*****");
+
     }
   }
 
   public void popBuild(Run<?, ?> lockedBy) {
+    LOGGER.warning("*******POP BUILD*********");
     if (this.builds == null) { this.builds = new ArrayList<>(); }
     if (this.buildExternalizableIds == null) { this.buildExternalizableIds = new ArrayList<>(); }
     if (lockedBy != null) {
+
+      LOGGER.warning("****");
+      LOGGER.warning("LockableResourceManager popBuild():" + lockedBy.getId() + " displayName:" + lockedBy.getDisplayName()+ " extId:" + lockedBy.getExternalizableId());
+      LOGGER.warning("****");
+      LOGGER.warning("builds before pop:");
+      for (Run<?, ?> build : builds) {
+        LOGGER.warning("->build id:" + build.getId() + "build displayName:" + build.getDisplayName()+ " extId:" + build.getExternalizableId());
+      }
+      LOGGER.warning("LockbleResourceManager setBuild() externalId:" + buildExternalizableIds);
+      LOGGER.warning("LockbleResourceManager attribute:" + attributes);
+      LOGGER.warning("====");
+
       this.buildExternalizableIds.remove(lockedBy.getExternalizableId());
       this.builds.remove(lockedBy);
+
+      LOGGER.warning("builds after pop:");
+      for (Run<?, ?> build : builds) {
+        LOGGER.warning("-> id:" + build.getId() + " displayName:" + build.getDisplayName() + " extId:" + build.getExternalizableId());
+      }
+      LOGGER.warning("LockbleResourceManager setBuild() externalId:" + buildExternalizableIds);
+      LOGGER.warning("LockbleResourceManager attribute:" + attributes);
+      LOGGER.warning("*****");
     }
     //remove attribute if there is nobody owning this resource
     if (this.builds.size() == 0){
