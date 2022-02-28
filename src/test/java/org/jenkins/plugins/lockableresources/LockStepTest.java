@@ -866,11 +866,11 @@ public class LockStepTest extends LockStepTestBase {
     p.setDefinition(
       new CpsFlowDefinition(
         "lock(variable: 'var', resource: 'main', quantity: 1, extra: ["
-          + extras.stream().collect(Collectors.joining(","))
+          + String.join(",", extras)
           + "]) {\n"
           + "  echo \"VAR IS ${env.var}\"\n"
           + "  echo \"VAR0 IS ${env.var0}\"\n"
-          + eachVar.stream().collect(Collectors.joining("\n"))
+          + String.join("\n", eachVar)
           + "}",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
