@@ -40,7 +40,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   @Override
   public boolean start() throws Exception {
     step.validate();
-    LOGGER.warning("LockStepExecution start()");
     getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
     PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
@@ -65,7 +64,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       LockableResourcesManager.get()
         .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
     Run<?, ?> run = getContext().get(Run.class);
-    LOGGER.warning("Trying to lock something for runid:"+run.getId()+" displayName"+run.getDisplayName()+" extId"+run.getExternalizableId());
     if (available == null
       || !LockableResourcesManager.get()
         .lock(
@@ -122,7 +120,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       context.onFailure(e);
       return;
     }
-    LOGGER.warning("LockStepExecution proceed()");
     LOGGER.warning("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
     try {
       PauseAction.endCurrentPause(node);
@@ -191,7 +188,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   @Override
   public void stop(@NonNull Throwable cause) {
     boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
-    LOGGER.warning("LockStepExecution stop()");
     if (!cleaned) {
       LOGGER.log(
         Level.WARNING,

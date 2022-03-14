@@ -431,16 +431,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     boolean inversePrecedence) {
     boolean needToWait = false;
 
-    if (build != null) {
-      LOGGER.warning("LockableresourceManager - lock() -> id:" + build.getId() + " displayName:" + build.getDisplayName()+ "extId"+build.getExternalizableId());
-    }
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked()) {
         needToWait = true;
         break;
       }
     }
-    LOGGER.warning("LockableresourceManager - lock() - needToWait?" + needToWait);
     if (resourceHolderList != null) {
       for (LockableResourcesStruct requiredResource : resourceHolderList) {
         if (requiredResource.attribute != null && !requiredResource.attribute.trim().isEmpty()) {
@@ -478,7 +474,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   private synchronized void freeResources(
     List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
-    LOGGER.warning("===FREE RESOURCES==");
     for (String unlockResourceName : unlockResourceNames) {
       Iterator<LockableResource> resourceIterator = this.resources.iterator();
       while (resourceIterator.hasNext()) {
@@ -508,9 +503,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Nullable List<LockableResource> resourcesToUnLock,
     @Nullable Run<?, ?> build,
     boolean inversePrecedence) {
-    if (build != null) {
-      LOGGER.warning("LockableresourceManager - unlock() ->build id:" + build.getId() + "build displayName:" + build.getDisplayName() + " extId:" + build.getExternalizableId());
-    }
 
     List<String> resourceNamesToUnLock = new ArrayList<>();
     if (resourcesToUnLock != null) {
@@ -526,15 +518,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Nullable List<String> resourceNamesToUnLock,
     @Nullable Run<?, ?> build,
     boolean inversePrecedence) {
-    if (build != null) {
-      LOGGER.warning("LockableresourceManager - unlockName() -> id:" + build.getId() + " displayName:" + build.getDisplayName()+ " extId:" + build.getExternalizableId());
-    }
     // make sure there is a list of resource names to unlock
     if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
       return;
     }
-    LOGGER.warning("LockableresourceManager - unlockName() @@BALI00");
-    LOGGER.warning("LockableresourceManager - unlockName()"+resourceNamesToUnLock);
 
     // process as many contexts as possible
     List<String> remainingResourceNamesToUnLock = new ArrayList<>(resourceNamesToUnLock);
@@ -562,17 +549,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // It is guaranteed that there is an overlap between the two - the resources which are to be
       // reused.
       boolean needToWait = false;
-      LOGGER.warning("LockableresourceManager - unlockName() @@BALI0");
       for (LockableResource requiredResource : requiredResourceForNextContext) {
-        LOGGER.warning("LockableresourceManager - unlockName() @@BALI1");
-        LOGGER.warning("LockableresourceManager - required resource "+requiredResource);
         if (requiredResource.isStolen()) {
           needToWait = true;
           break;
         }
         if (!remainingResourceNamesToUnLock.contains(requiredResource.getName())) {
           if (requiredResource.isReserved() || requiredResource.isLocked()) {
-            LOGGER.warning("LockableresourceManager - unlockName() @@BALI2");
             needToWait = true;
             break;
           }
@@ -582,13 +565,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (!needToWait) {
         // remove context from queue and process it
         unqueueContext(nextContext.getContext());
-        LOGGER.warning("LockableresourceManager - unlockName() @@BALI3");
         List<String> resourceNamesToLock = new ArrayList<>();
-        LOGGER.warning("LockableresourceManager requiredResourceForNextContext"+requiredResourceForNextContext);
         // lock all (old and new resources)
         for (LockableResource requiredResource : requiredResourceForNextContext) {
           try {
-            LOGGER.warning("LockableresourceManager - unlockName() @@BALI4");
             requiredResource.setBuild(nextContext.getContext().get(Run.class));
             requiredResource.popBuild(build);
             resourceNamesToLock.add(requiredResource.getName());
@@ -1056,17 +1036,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         //case when some lock is about to be released
         if (lockedResourcesAboutToBeUnlocked != null
           ||  reservedResourcesAboutToBeUnreserved != null){
-          LOGGER.warning("@@BABi0 attrib"+requiredResourcesStruct.attribute+ "label"+requiredResourcesStruct.label + "requiredlist" + requiredResourcesStruct.required);
           lockableResouceCandidateList.addAll(getResourcesWithAttribute(requiredResourcesStruct.attribute, null));
 
           //if there this is the last build holding this resource
           List<LockableResource> allResources = getResources();
           for (LockableResource resource : allResources ){
-            LOGGER.warning("@@BABi1");
             if (lockedResourcesAboutToBeUnlocked.contains(resource.getName())){
-              LOGGER.warning("@@BABi2");
               if (resource.getBuilds().size() == 1){
-                LOGGER.warning("@@BABi3");
                 Set<LockableResource> resourceWithAttribute = new HashSet<>();
                 resource.setAttributes(requiredResourcesStruct.attribute);
                 resourceWithAttribute.add(resource);
@@ -1078,10 +1054,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
           if (lockableResouceCandidateList.size() > 0) {
             Set<LockableResource> resourceWithAttribute = new HashSet<>();
             resourceWithAttribute.add(lockableResouceCandidateList.get(0));
-            LOGGER.warning("@@BABi4");
             return resourceWithAttribute;
           } else {
-            LOGGER.warning("@@BABi5");
             return null;
           }
         }
@@ -1182,16 +1156,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // If the resource is not reserved (as checked above)
             // but listed for releasing in either category, select it
             if (listedUnlock || listedUnreserve) {
-              LOGGER.warning("@@ILAB1");
-
-//              for (LockableResourcesStruct originalRequiredResources : requiredResourcesStructList) {
-//                if (originalRequiredResources.attribute != null && !originalRequiredResources.attribute.isEmpty()){
-//                  if(candidate.getAttributes().equals(originalRequiredResources.attribute)){
-//
-//                  }
-//                }
-//              }
-
               selectedResourceList.add(candidate);
             }
           }
