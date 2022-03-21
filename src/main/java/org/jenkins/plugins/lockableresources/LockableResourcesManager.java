@@ -35,6 +35,7 @@ import java.util.logging.Logger;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
@@ -971,7 +972,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // get possible resources
       int requiredAmount = 0; // 0 means all
       List<LockableResource> candidates = new ArrayList<>();
-      if (requiredResources.label != null && requiredResources.label.isEmpty()) {
+      if (StringUtils.isBlank(requiredResources.label)) {
         candidates.addAll(requiredResources.required);
       } else {
         candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
