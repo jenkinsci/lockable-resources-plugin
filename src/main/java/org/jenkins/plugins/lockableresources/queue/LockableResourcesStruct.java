@@ -156,16 +156,19 @@ public class LockableResourcesStruct implements Serializable {
   public static Predicate<List<String>> getLabelsMatchesPredicate(List<String> anyOfLabels, List<String> allOfLabels, List<String> noneOfLabels) {
     return resourceLabels -> {
       if (anyOfLabels.isEmpty() == false) {
-        if (anyOfLabels.stream().noneMatch(l -> resourceLabels.contains(l)))
+        if (anyOfLabels.stream().noneMatch(l -> resourceLabels.contains(l))) {
           return false;
+        }
       }
       if (allOfLabels.isEmpty() == false) {
-        if (allOfLabels.stream().anyMatch(l -> resourceLabels.contains(l) == false))
+        if (allOfLabels.stream().anyMatch(l -> resourceLabels.contains(l) == false)) {
           return false;
+        }
       }
       if (noneOfLabels.isEmpty() == false) {
-        if (noneOfLabels.stream().anyMatch(l -> resourceLabels.contains(l)))
+        if (noneOfLabels.stream().anyMatch(l -> resourceLabels.contains(l))) {
           return false;
+        }
       }
       return true;
     };

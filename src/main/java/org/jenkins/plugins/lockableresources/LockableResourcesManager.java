@@ -167,6 +167,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return free;
   }
 
+  @Deprecated//(forRemoval = true, since = "2.15")
+  public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
+    List<LockableResource> found = new ArrayList<>();
+    for (LockableResource r : this.resources) {
+      if (r.isValidLabel(label)) found.add(r);
+    }
+    return found;
+  }
+
   public List<LockableResource> getResourcesMatchingPredicate(Predicate<LockableResource> predicate) {
     return this.resources.stream().filter(predicate).collect(Collectors.toList());
   }

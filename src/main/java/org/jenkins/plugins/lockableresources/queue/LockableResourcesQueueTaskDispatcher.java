@@ -179,14 +179,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
           return "Waiting for lockable resources";
         }
       } else {
-        List<String> rules = new ArrayList<>();
-        if (StringUtils.isNotBlank(rscStruct.anyOfLabels))
-          rules.add("any of [" + rscStruct.anyOfLabels + "]");
-        if (StringUtils.isNotBlank(rscStruct.allOfLabels))
-          rules.add("all of [" + rscStruct.allOfLabels + "]");
-        if (StringUtils.isNotBlank(rscStruct.noneOfLabels))
-          rules.add("none of [" + rscStruct.noneOfLabels + "]");
-        return "Waiting for resources with label matching " + rules.stream().collect(Collectors.joining(" and "));
+        List<String> filterDescriptions = BecauseResourcesQueueFailed.getShortLabelFilterDescription(rscStruct);
+        return "Waiting for resources with label matching " + filterDescriptions.stream().collect(Collectors.joining(" and "));
       }
     }
   }
@@ -206,15 +200,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     @Override
     public String getShortDescription() {
-      // TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
-      List<String> rules = new ArrayList<>();
-      if (StringUtils.isNotBlank(resources.anyOfLabels))
-        rules.add("any of [" + resources.anyOfLabels + "]");
-      if (StringUtils.isNotBlank(resources.allOfLabels))
-        rules.add("all of [" + resources.allOfLabels + "]");
-      if (StringUtils.isNotBlank(resources.noneOfLabels))
-        rules.add("none of [" + resources.noneOfLabels + "]");
-
+      List<String> rules = getShortLabelFilterDescription(resources);
       String resourceInfo =
         rules.isEmpty()
           ? resources.required.toString()
@@ -223,6 +209,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         + resourceInfo
         + ". "
         + cause.getMessage();
+    }
+
+    private static List<String> getShortLabelFilterDescription(LockableResourcesStruct resources) {
+      List<String> rules = new ArrayList<>();
+      if (StringUtils.isNotBlank(resources.anyOfLabels))
+        rules.add("any of [" + resources.anyOfLabels + "]");
+      if (StringUtils.isNotBlank(resources.allOfLabels))
+        rules.add("all of [" + resources.allOfLabels + "]");
+      if (StringUtils.isNotBlank(resources.noneOfLabels))
+        rules.add("none of [" + resources.noneOfLabels + "]");
+      return rules;
     }
   }
 }
