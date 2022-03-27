@@ -31,9 +31,10 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl implement
     }
     else {
       LockableResource resource = LockableResourcesManager.get().fromName(this.step.resource);
+      LockableResourcesManager lockableResourcesManager = LockableResourcesManager.get();
       if (resource == null && this.step.createResource) {
-        LockableResourcesManager.get().createResource(this.step.resource);
-        resource = LockableResourcesManager.get().fromName(this.step.resource);
+        lockableResourcesManager.createResource(this.step.resource);
+        resource = lockableResourcesManager.fromName(this.step.resource);
         resource.setEphemeral(false);
       }
 
@@ -57,7 +58,7 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl implement
         resource.setNote(this.step.setNote);
       }
 
-      LockableResourcesManager.get().save();
+      lockableResourcesManager.save();
     }
 
     getContext().onSuccess(null);
