@@ -13,6 +13,7 @@ import hudson.model.Result;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.concurrent.CyclicBarrier;
 import java.util.stream.Collectors;
 import net.sf.json.JSONObject;
@@ -27,6 +28,8 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.WithPlugin;
 
 public class LockStepTest extends LockStepTestBase {
+
+  private static final Logger LOGGER = Logger.getLogger(LockStepTest.class.getName());
 
   @Rule public JenkinsRule j = new JenkinsRule();
 
@@ -532,7 +535,7 @@ public class LockStepTest extends LockStepTestBase {
   private void waitAndClear(int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
     WorkflowRun toClear = nextRuns.get(0);
 
-    System.err.println("Waiting for semaphore to start for " + toClear.getNumber());
+    LOGGER.info("Waiting for semaphore to start for " + toClear.getNumber());
     SemaphoreStep.waitForStart("wait-inside-2/" + semaphoreIndex, toClear);
 
     List<WorkflowRun> remainingRuns = new ArrayList<>();
@@ -541,13 +544,13 @@ public class LockStepTest extends LockStepTestBase {
       remainingRuns.addAll(nextRuns.subList(1, nextRuns.size()));
 
       for (WorkflowRun r : remainingRuns) {
-        System.err.println("Verifying no semaphore yet for " + r.getNumber());
+        LOGGER.info("Verifying no semaphore yet for " + r.getNumber());
         j.assertLogNotContains("Entering semaphore now", r);
       }
     }
 
     SemaphoreStep.success("wait-inside-2/" + semaphoreIndex, null);
-    System.err.println("Waiting for " + toClear.getNumber() + " to complete");
+    LOGGER.info("Waiting for " + toClear.getNumber() + " to complete");
     j.assertBuildStatusSuccess(j.waitForCompletion(toClear));
 
     if (!remainingRuns.isEmpty()) {
@@ -579,7 +582,7 @@ public class LockStepTest extends LockStepTestBase {
               barrier.await();
               p.scheduleBuild2(0).waitForStart();
             } catch (Exception e) {
-              System.err.println("Failed to start pipeline job");
+              LOGGER.info("Failed to start pipeline job");
             }
           });
       thread.start();
@@ -1149,7 +1152,7 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
-    System.err.println("GOOD: Did not encounter Bug #1 " +
+    LOGGER.info("GOOD: Did not encounter Bug #1 " +
       "(parallel p2 gets the lock on a still-reserved resource)!");
 
     j.waitForMessage("Locked resource cause 1-5", b1);
@@ -1172,14 +1175,14 @@ public class LockStepTest extends LockStepTestBase {
       j.assertLogContains("Locked resource cause 2-2", b1);
     } catch (java.lang.AssertionError t1) {
       sawBug2a = true;
-      System.err.println(
+      LOGGER.info(
         "Bug #2a (Parallel 2 did not start after Parallel 1 finished " +
         "and resource later released) currently tolerated");
-      //System.err.println(t1.toString());
+      //LOGGER.info(t1.toString());
       // throw t1;
     }
     if (!sawBug2a) {
-      System.err.println(
+      LOGGER.info(
         "GOOD: Did not encounter Bug #2a " +
         "(Parallel 2 did not start after Parallel 1 finished " +
         "and resource later released)!");
@@ -1199,31 +1202,31 @@ public class LockStepTest extends LockStepTestBase {
         j.assertLogNotContains(line, b1);
       } catch (java.lang.AssertionError t2) {
         sawBug2b = true;
-        System.err.println("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
-        // System.err.println(t2.toString());
+        LOGGER.info("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
+        // LOGGER.info(t2.toString());
         // throw t2;
       }
     }
     if (!sawBug2b) {
-      System.err.println(
+      LOGGER.info(
         "GOOD: Did not encounter Bug #2b " +
         "(LRM required un-stucking)!");
     }
 
     j.waitForMessage("Locked resource cause 2-2", b1);
     j.assertLogContains("Locked resource cause 1-5", b1);
-    System.err.println("GOOD: lock#2 was taken after we un-reserved lock#1");
+    LOGGER.info("GOOD: lock#2 was taken after we un-reserved lock#1");
 
     j.waitForMessage("Unlocking parallel closure 2", b1);
     j.assertLogNotContains("Locked resource cause 3-2", b1);
-    System.err.println(
+    LOGGER.info(
         "GOOD: lock#3 was NOT taken just after we un-locked closure 2 (keeping lock#2 reserved)");
 
     // After 2-3 we lrm.recycle() the lock so it should
     // go to the next bidder
     j.waitForMessage("Locked resource cause 2-4", b1);
     j.assertLogContains("Locked resource cause 3-2", b1);
-    System.err.println("GOOD: lock#3 was taken just after we recycled lock#2");
+    LOGGER.info("GOOD: lock#3 was taken just after we recycled lock#2");
 
     j.assertLogContains("is locked, waiting...", b1);
 
@@ -1339,7 +1342,7 @@ public class LockStepTest extends LockStepTestBase {
     // this line is noticed in log although it is there AFTER 1-4:
     j.assertLogNotContains("Locked resource cause 2-2", b1);
     j.assertLogNotContains("Locked resource cause 2-3", b1);
-    System.err.println(
+    LOGGER.info(
       "GOOD: Did not encounter Bug #1 " +
       "(parallel p2 gets the lock on a still-reserved resource)!");
 
@@ -1363,14 +1366,14 @@ public class LockStepTest extends LockStepTestBase {
       j.assertLogContains("Locked resource cause 2-2", b1);
     } catch (java.lang.AssertionError t1) {
       sawBug2a = true;
-      System.err.println(
+      LOGGER.info(
         "Bug #2a (Parallel 2 did not start after Parallel 1 finished " +
         "and resource later released) currently tolerated");
-      //System.err.println(t1.toString());
+      //LOGGER.info(t1.toString());
       // throw t1;
     }
     if (!sawBug2a) {
-      System.err.println(
+      LOGGER.info(
         "GOOD: Did not encounter Bug #2a " +
         "(Parallel 2 did not start after Parallel 1 finished " +
         "and resource later released)!");
@@ -1390,13 +1393,13 @@ public class LockStepTest extends LockStepTestBase {
         j.assertLogNotContains(line, b1);
       } catch (java.lang.AssertionError t2) {
         sawBug2b = true;
-        System.err.println("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
-        // System.err.println(t2.toString());
+        LOGGER.info("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
+        // LOGGER.info(t2.toString());
         // throw t2;
       }
     }
     if (!sawBug2b) {
-      System.err.println(
+      LOGGER.info(
         "GOOD: Did not encounter Bug #2b " +
         "(LRM required un-stucking)!");
     }
@@ -1408,8 +1411,8 @@ public class LockStepTest extends LockStepTestBase {
             j.assertLogNotContains("LRM seems stuck; trying to reserve/unreserve", b1);
             j.assertLogNotContains("Secondary lock trick", b1);
         } catch (java.lang.AssertionError t2) {
-            System.err.println("Bug #2b (LRM required un-stucking) currently tolerated");
-            //System.err.println(t2.toString());
+            LOGGER.info("Bug #2b (LRM required un-stucking) currently tolerated");
+            //LOGGER.info(t2.toString());
             // throw t2;
         }
     */
