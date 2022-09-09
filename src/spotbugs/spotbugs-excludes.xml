@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<FindBugsFilter>
+  <!--
+    Exclusions in this section have been triaged and determined to be false positives.
+  -->
+  <Match>
+    <Or>
+      <And>
+        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
+        <Class name="org.jenkins.plugins.lockableresources.LockableResource"/>
+        <Method name="getAbstractBuild"/>
+      </And>
+    </Or>
+  </Match>
+  <!--
+    Here lies technical debt. Exclusions in this section have not yet been triaged. When working on
+    on this section, pick an exclusion to triage, then:
+    - If it is a false positive, add a @SuppressFBWarnings(value = "[…]", justification = "[…]")
+      annotation indicating the reason why it is a false positive, then remove the exclusion from
+      this section.
+    - If it is not a false positive, fix the bug, then remove the exclusion from this section.
+   -->
+  <Match>
+    <Or>
+      <And>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+        <Or>
+          <Class name="org.jenkins.plugins.lockableresources.LockStepExecution"/>
+          <Class name="org.jenkins.plugins.lockableresources.LockableResourcesManager"/>
+        </Or>
+      </And>
+      <And>
+        <Bug pattern="SE_TRANSIENT_FIELD_NOT_RESTORED"/>
+        <Class name="org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct"/>
+        <Field name="resourceMatchScript"/>
+      </And>
+    </Or>
+  </Match>
+</FindBugsFilter>
