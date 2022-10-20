@@ -34,6 +34,8 @@ public class LockableResourcesStruct implements Serializable {
 
   @CheckForNull private transient SecureGroovyScript resourceMatchScript;
 
+  private static final long serialVersionUID = 1L;
+
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
     required = new ArrayList<>();
 
@@ -134,5 +136,8 @@ public class LockableResourcesStruct implements Serializable {
       + this.requiredNumber;
   }
 
-  private static final long serialVersionUID = 1L;
+  private Object readResolve() {
+    this.resourceMatchScript = getResourceMatchScript();
+    return this;
+  }
 }
