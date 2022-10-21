@@ -8,9 +8,10 @@ buildPlugin(useContainerAgent: true, configurations: [
   [ platform: 'linux', jdk: '8' ],
 
   // Test the common case (i.e., a recent LTS release) on both Linux and Windows.
-  [ platform: 'linux', jdk: '11', jenkins: '2.332.1' ],
-  [ platform: 'windows', jdk: '11', jenkins: '2.332.1' ],
+  [ platform: 'linux', jdk: '11', jenkins: '2.346.3' ],
+  [ platform: 'windows', jdk: '11', jenkins: '2.346.3' ],
 
   // Test the bleeding edge of the compatibility spectrum (i.e., the latest supported Java runtime).
-  [ platform: 'linux', jdk: '17', jenkins: '2.342' ],
+  // see also https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/
+  [ platform: 'linux', jdk: '17', jenkins: '2.361.1' ],
 ])
