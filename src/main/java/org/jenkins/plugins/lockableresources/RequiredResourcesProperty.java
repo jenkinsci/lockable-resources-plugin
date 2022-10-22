@@ -14,18 +14,22 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.Item;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
 import hudson.util.FormValidation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
@@ -148,9 +152,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       return null;
     }
 
+    @RequirePOST
     public FormValidation doCheckResourceNames(@QueryParameter String value,
       @QueryParameter String labelName,
-      @QueryParameter boolean script) {
+      @QueryParameter boolean script,
+      @AncestorInPath Item item) {
+      // check permission, security first
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      }
+
       String labelVal = Util.fixEmptyAndTrim(labelName);
       String names = Util.fixEmptyAndTrim(value);
 
@@ -183,10 +194,17 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       }
     }
 
+    @RequirePOST
     public FormValidation doCheckLabelName(
       @QueryParameter String value,
       @QueryParameter String resourceNames,
-      @QueryParameter boolean script) {
+      @QueryParameter boolean script,
+      @AncestorInPath Item item) {
+      // check permission, security first
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      }
+
       String label = Util.fixEmptyAndTrim(value);
       String names = Util.fixEmptyAndTrim(resourceNames);
 
@@ -205,11 +223,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       }
     }
 
+    @RequirePOST
     public FormValidation doCheckResourceNumber(@QueryParameter String value,
       @QueryParameter String resourceNames,
       @QueryParameter String labelName,
-      @QueryParameter String resourceMatchScript)
-    {
+      @QueryParameter String resourceMatchScript,
+      @AncestorInPath Item item) {
+      // check permission, security first
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      }
 
       String number = Util.fixEmptyAndTrim(value);
       String names = Util.fixEmptyAndTrim(resourceNames);
@@ -243,8 +266,15 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       return FormValidation.ok();
     }
 
+    @RequirePOST
     public AutoCompletionCandidates doAutoCompleteLabelName(
-      @QueryParameter String value) {
+      @QueryParameter String value,
+      @AncestorInPath Item item) {
+      // check permission, security first
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      }
+
       AutoCompletionCandidates c = new AutoCompletionCandidates();
 
       value = Util.fixEmptyAndTrim(value);
@@ -256,8 +286,15 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       return c;
     }
 
+    @RequirePOST
     public static AutoCompletionCandidates doAutoCompleteResourceNames(
-      @QueryParameter String value) {
+      @QueryParameter String value,
+      @AncestorInPath Item item) {
+      // check permission, security first
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      }
+
       AutoCompletionCandidates c = new AutoCompletionCandidates();
 
       value = Util.fixEmptyAndTrim(value);
