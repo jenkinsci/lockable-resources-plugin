@@ -5,6 +5,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
 import java.io.Serializable;
@@ -17,9 +18,11 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class LockStep extends Step implements Serializable {
 
@@ -103,18 +106,26 @@ public class LockStep extends Step implements Serializable {
       return true;
     }
 
-    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
-      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
+    @RequirePOST
+    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value,
+      @AncestorInPath Item item) {
+      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
     }
 
+    @RequirePOST
     public static FormValidation doCheckLabel(
-      @QueryParameter String value, @QueryParameter String resource) {
-      return LockStepResource.DescriptorImpl.doCheckLabel(value, resource);
+      @QueryParameter String value,
+      @QueryParameter String resource,
+      @AncestorInPath Item item) {
+      return LockStepResource.DescriptorImpl.doCheckLabel(value, resource, item);
     }
 
+    @RequirePOST
     public static FormValidation doCheckResource(
-      @QueryParameter String value, @QueryParameter String label) {
-      return LockStepResource.DescriptorImpl.doCheckLabel(label, value);
+      @QueryParameter String value,
+      @QueryParameter String label,
+      @AncestorInPath Item item) {
+      return LockStepResource.DescriptorImpl.doCheckLabel(label, value, item);
     }
 
     @Override
