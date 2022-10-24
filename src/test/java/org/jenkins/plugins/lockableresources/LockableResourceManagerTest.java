@@ -20,24 +20,24 @@ public class LockableResourceManagerTest {
 
     assertEquals(
       "Only label, groovy expression, or resources can be defined, not more than one.",
-      d.doCheckResourceNames("resource1", null, true).getMessage());
+      d.doCheckResourceNames("resource1", null, true, null).getMessage());
     assertEquals(
       "Only label, groovy expression, or resources can be defined, not more than one.",
-      d.doCheckResourceNames("resource1", "some-label", false).getMessage());
+      d.doCheckResourceNames("resource1", "some-label", false, null).getMessage());
     assertEquals(
       "Only label, groovy expression, or resources can be defined, not more than one.",
-      d.doCheckResourceNames("resource1", "some-label", true).getMessage());
+      d.doCheckResourceNames("resource1", "some-label", true, null).getMessage());
     assertEquals(
       "Only label, groovy expression, or resources can be defined, not more than one.",
-      d.doCheckLabelName("some-label", "resource1", false).getMessage());
+      d.doCheckLabelName("some-label", "resource1", false, null).getMessage());
     assertEquals(
       "Only label, groovy expression, or resources can be defined, not more than one.",
-      d.doCheckLabelName("some-label", null, true).getMessage());
+      d.doCheckLabelName("some-label", null, true, null).getMessage());
     assertEquals(
       "Only label, groovy expression, or resources can be defined, not more than one.",
-      d.doCheckLabelName("some-label", "resource1", true).getMessage());
+      d.doCheckLabelName("some-label", "resource1", true, null).getMessage());
 
-    assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false));
-    assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false));
+    assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false, null));
+    assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false, null));
   }
 }
