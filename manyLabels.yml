@@ -1,0 +1,1138 @@
+jenkins:
+  agentProtocols:
+  - "JNLP4-connect"
+  - "Ping"
+  authorizationStrategy:
+    globalMatrix:
+      permissions:
+      - "USER:Agent/Build:adm"
+      - "USER:Agent/Configure:adm"
+      - "USER:Agent/Connect:adm"
+      - "USER:Agent/Create:adm"
+      - "USER:Agent/Delete:adm"
+      - "USER:Agent/Disconnect:adm"
+      - "USER:Job/Build:adm"
+      - "USER:Job/Cancel:adm"
+      - "USER:Job/Configure:adm"
+      - "USER:Job/Create:adm"
+      - "USER:Job/Delete:adm"
+      - "USER:Job/Discover:adm"
+      - "USER:Job/Read:adm"
+      - "USER:Job/Read:view"
+      - "USER:Job/Workspace:adm"
+      - "USER:Lockable Resources/Reserve:adm"
+      - "USER:Lockable Resources/Reserve:view"
+      - "USER:Lockable Resources/Steal:adm"
+      - "USER:Lockable Resources/Unlock:adm"
+      - "USER:Lockable Resources/View:adm"
+      - "USER:Overall/Administer:adm"
+      - "USER:Overall/Read:adm"
+      - "USER:Overall/Read:view"
+      - "USER:Run/Delete:adm"
+      - "USER:Run/Replay:adm"
+      - "USER:Run/Update:adm"
+      - "USER:View/Configure:adm"
+      - "USER:View/Create:adm"
+      - "USER:View/Delete:adm"
+      - "USER:View/Read:adm"
+      - "USER:View/Read:view"
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: false
+  disableRememberMe: false
+  labelAtoms:
+  - name: "built-in"
+  markupFormatter: "plainText"
+  mode: NORMAL
+  myViewsTabBar: "standard"
+  numExecutors: 2
+  primaryView:
+    all:
+      name: "all"
+  projectNamingStrategy: "standard"
+  quietPeriod: 5
+  remotingSecurity:
+    enabled: true
+  scmCheckoutRetryCount: 0
+  securityRealm:
+    local:
+      allowsSignup: false
+      enableCaptcha: false
+      users:
+      - id: "adm"
+        name: "Some adm"
+        properties:
+        - "apiToken"
+        - "myView"
+        - preferredProvider:
+            providerId: "default"
+        - "timezone"
+        - mailer:
+            emailAddress: "m@m.sk"
+      - id: "view"
+        name: "view"
+        properties:
+        - "apiToken"
+        - "myView"
+        - preferredProvider:
+            providerId: "default"
+        - "timezone"
+        - mailer:
+            emailAddress: "v.m@p.sk"
+  slaveAgentPort: 0
+  updateCenter:
+    sites:
+    - id: "default"
+      url: "https://updates.jenkins.io/update-center.json"
+  views:
+  - all:
+      name: "all"
+  viewsTabBar: "standard"
+security:
+  apiToken:
+    creationOfLegacyTokenEnabled: false
+    tokenGenerationOnCreationEnabled: false
+    usageStatisticsEnabled: true
+  sSHD:
+    port: -1
+unclassified:
+  buildDiscarders:
+    configuredBuildDiscarders:
+    - "jobBuildDiscarder"
+  fingerprints:
+    fingerprintCleanupDisabled: false
+    storage: "file"
+  junitTestResultStorage:
+    storage: "file"
+  location:
+    adminAddress: "address not configured yet <nobody@nowhere>"
+    url: "http://localhost:8080/jenkins/"
+  lockableResourcesManager:
+    declaredResources:
+    - description: "asd"
+      labels: "os:Windows version:3.19 tool:R.latest tool:doxygen.1.8.25"
+      name: "asd"
+      note: "jiosajd asjd"
+    - description: "second reource"
+      labels: "os:RHEL8 version:3.19 version:3.18 version:3.17 version:3.16"
+      name: "res2"
+    - description: "die dritte"
+      name: "third"
+      reservedBy: "unknown-user and-one-space"
+    - name: "without description"
+      reservedBy: "adm"
+    - description: "Configuration node to build test workspace"
+      name: "test_build_node"
+    - description: "TST-P-152-230-W CP1616 Karte suite_DriverPROFINET suite_DriverPROFIsafe"
+      name: "TST-P-152-230-W"
+    - description: "DNP3 driver simulator suite_DriverDNP3"
+      name: "simulator-DNP3"
+    - description: "ITC-V3 for remote UI tests"
+      name: "ITC-V3"
+    - description: "SIPROTEC used for IEC61850 tests. Location: Team DRV IED Name:\
+        \ D51_7SJ82 IP + Port: 192.168.154.76:102 Managed Switch Team DRV (http://192.168.154.215/)\
+        \ Port 17"
+      name: "7SJ82_primary"
+    - description: "SIPROTEC used for IEC61850 tests. Location: Team DRV IED Name:\
+        \ D52_7SJ82 IP + Port: 192.168.154.194:102 Managed Switch Team DRV (http://192.168.154.215/)\
+        \ Port 18"
+      name: "7SJ82_secondary"
+    - description: "Ressource Locking für DriverEIP: 192.168.154.48"
+      name: "EIP_MicroLogix_IP_154_48"
+    - description: "Ressource Locking für DriverEIP: 192.168.154.49"
+      name: "EIP_CompactLogix_IP_154_49"
+    - description: "Ressource Locking für DriverEIP: 192.168.154.223"
+      name: "EIP_ControlLogix_IP_154_223"
+    - description: "S7 PLC"
+      name: "S7_1200_IP_154_99"
+    - description: "S7 PLC"
+      name: "S7_1515SP_IP_154_106"
+    - description: "S7 PLC"
+      name: "S7_1518F_IP_154_187"
+    - description: "S7 PLC"
+      name: "S7_1516_IP_154_50"
+    - description: "S7 PLC"
+      name: "S7_315_IP_154_37"
+    - description: "S7 PLC"
+      name: "S7_319_IP_154_62"
+    - description: "S7 PLC"
+      name: "S7_319_IP_154_63"
+    - description: "S7 PLC"
+      name: "S7_400_IP_154_34"
+    - description: "S7 PLC"
+      name: "S7_417H_IP_154_35"
+    - description: "S7 PLC"
+      name: "S7_417H_IP_154_168"
+    - description: "S7 PLC"
+      name: "S7_417H_IP_154_36"
+    - description: "S7 PLC"
+      name: "S7_417H_IP_154_169"
+    - description: "S7 PLC"
+      name: "S7_319_IP_154_64"
+    - description: "suite_SNMP_REDU_Agent_Support"
+      name: "MGSIM"
+    - description: "suite_DriverIEC61850"
+      name: "anvil_eitst108"
+    - description: "native Ind-OS display"
+      name: "IPC447E"
+    - description: "Native CentOS8 CP1616 Karte suite_DriverPROFINET suite_DriverPROFIsafe"
+      name: "TST-P-152-005-U"
+    - description: "Coverage Report Build Machine"
+      name: "TST-P-152-187-W"
+    - labels: "__intern__"
+      name: "__Configuration_Node_01"
+    - labels: "__intern__"
+      name: "__getNodes-Windows"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows10CB21H2_01"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___1"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___2"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___3"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___4"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___5"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___6"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___7"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___8"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___9"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___10"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___11"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___12"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___13"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___14"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___15"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___16"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___17"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___18"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___19"
+    - labels: "__oaSetup__ __intern__"
+      name: "__oaSetup___20"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___1"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___2"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___3"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___4"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___5"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___6"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___7"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___8"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___9"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___10"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___11"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___12"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___13"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___14"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___15"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___16"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___17"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___18"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___19"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___20"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___21"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___22"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___23"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___24"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___25"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___26"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___27"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___28"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___29"
+    - labels: "__oaReboots__ __intern__"
+      name: "__oaReboots___30"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows10LTSC2021_01"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows11CB_01"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows11CB_02"
+    - labels: "__intern__"
+      name: "__getNodes-OracleServer"
+    - labels: "node os:OracleServer version:3.19"
+      name: "OracleServer9_01"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows11CB_03"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows11CB_04"
+    - labels: "node os:Windows version:3.17 version:3.18"
+      name: "Windows10CB20H2_01"
+    - labels: "node os:Windows version:3.17 version:3.18"
+      name: "Windows10CB20H2_02"
+    - labels: "node os:Windows version:3.17 version:3.18"
+      name: "Windows10CB20H2_03"
+    - labels: "node os:Windows version:3.17 version:3.18"
+      name: "Windows10CB20H2_04"
+    - labels: "node os:CentOS version:3.15 version:3.16"
+      name: "CentOS7_05"
+    - labels: "node os:Debian version:3.19"
+      name: "Debian11_02"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18"
+      name: "IndustrialOS2_02"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18"
+      name: "IndustrialOS2_04"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18"
+      name: "IndustrialOS2_10"
+    - labels: "node os:OracleServer version:3.17 version:3.18"
+      name: "OracleServer8_05"
+    - labels: "node os:SLES version:3.17"
+      name: "SLES15_04"
+    - name: "updateIgnoreLogs"
+    - labels: "__intern__"
+      name: "__getNodes-Debian"
+    - labels: "node os:Debian version:3.19"
+      name: "Debian11_01"
+    - labels: "__intern__"
+      name: "__getNodes-IndustrialOS"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18"
+      name: "IndustrialOS2_01"
+    - labels: "__intern__"
+      name: "__getNodes-RHEL"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:1"
+      name: "RHEL8_2NwCard_01"
+    - labels: "node os:Debian version:3.19"
+      name: "Debian11_03"
+    - name: "test_user"
+    - labels: "node os:Debian version:3.19"
+      name: "Debian11_04"
+    - labels: "node dockerBuild arm64 os:Debian"
+      name: "Docker_Debian_01"
+    - labels: "node os:Windows version:3.17 version:3.18 ignoreMe team:UI"
+      name: "TEAM_UI_Windows10CB20H2_01"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ ignoreMe team:UI"
+      name: "TEAM_UI_Windows2019Server_01"
+    - labels: "node os:Windows version:3.19"
+      name: "Windows11CB_05"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindows11Enterprise\
+        \ platform:windows"
+      name: "Windows11CB_06"
+    - name: "wibu-license-container"
+    - labels: "node os:Windows version:3.19 ignoreMe"
+      name: "Windows2022Server_13"
+      reservedBy: "Romano Herrera, Luis Miguel (DI FA HMI ISW ETM PC TST)"
+    - labels: "node os:Windows version:3.19 ignoreMe"
+      name: "Windows2022Server_14"
+      reservedBy: "Romano Herrera, Luis Miguel (DI FA HMI ISW ETM PC TST)"
+    - labels: "node os:Windows version:3.19 nwCard:2 nwCut ignoreMe"
+      name: "Windows2022Server_2NwCard_06"
+      reservedBy: "Romano Herrera, Luis Miguel (DI FA HMI ISW ETM PC TST)"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_10"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:2 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_02"
+    - name: "trigger_pipe_configure_jobs"
+    - name: "QSSRV"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ framework:Squish SSA nwCard:2 osDetail:MicrosoftWindows10Enterprise platform:windows"
+      name: "SSA_Windows_Client"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ framework:Squish SSA nwCard:2 osDetail:MicrosoftWindows10Enterprise platform:windows"
+      name: "SSA_Windows_Server1"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ framework:Squish SSA nwCard:2 osDetail:MicrosoftWindows10Enterprise platform:windows"
+      name: "SSA_Windows_Server2"
+    - labels: "node os:Debian version:3.19 exclusiveNode framework:Squish SSA nwCard:2\
+        \ osDetail:Debian[11] platform:unix"
+      name: "SSA_Debian_Client"
+    - labels: "node os:Debian version:3.19 exclusiveNode framework:Squish SSA nwCard:2\
+        \ osDetail:Debian[11] platform:unix"
+      name: "SSA_Debian_Server1"
+    - labels: "node os:Debian version:3.19 exclusiveNode framework:Squish SSA nwCard:2\
+        \ osDetail:Debian[11] platform:unix"
+      name: "SSA_Debian_Server2"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindows11Enterprise\
+        \ platform:windows"
+      name: "Windows11CB_07"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindows11Enterprise\
+        \ platform:windows"
+      name: "Windows11CB_08"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindows11Enterprise\
+        \ platform:windows"
+      name: "Windows11CB_09"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindows11Enterprise\
+        \ platform:windows"
+      name: "Windows11CB_10"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_01"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_02"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_03"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_04"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_05"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_06"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_07"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_08"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_02"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_03"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_04"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_05"
+    - labels: "node os:OracleServer version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "OracleServer9_06"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_07"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_08"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_09"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_10"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_11"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_12"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_13"
+    - labels: "node os:OracleServer version:3.19 osDetail:OracleServer[9.0] platform:unix"
+      name: "OracleServer9_14"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[11] platform:unix"
+      name: "Docker_Debian_02"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_03"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_04"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_05"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_06"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[11] platform:unix"
+      name: "Docker_Debian_07"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_08"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_09"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_10"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_11"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_12"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_13"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_14"
+    - labels: "node dockerBuild arm64 os:Debian osDetail:Debian[10] platform:unix"
+      name: "Docker_Debian_15"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:1 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_2NwCard_01"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:2 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_2NwCard_02"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:3 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_2NwCard_03"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:4 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_2NwCard_04"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_10"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix\
+        \ tool:dos2unix tool:CrashDumps.latest"
+      name: "Docker_Oracle_01"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_02"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_03"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_04"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.4] platform:unix"
+      name: "Docker_Oracle_05"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_06"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_07"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_08"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_09"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_10"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_11"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_12"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.6] platform:unix"
+      name: "Docker_Oracle_13"
+    - labels: "node dockerBuild amd64 os:OracleServer osDetail:OracleServer[8.4] platform:unix"
+      name: "Docker_Oracle_14"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_05"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_06"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_07"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_08"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_09"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_10"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_11"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_12"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_13"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_14"
+    - labels: "node os:Debian version:3.19 osDetail:Debian[11] platform:unix"
+      name: "Debian11_15"
+    - labels: "node os:Debian version:3.19 nwCard:2 nwCut uniqueHWServer ESXI:1 osDetail:Debian[11]\
+        \ platform:unix"
+      name: "Debian11_2NwCard_01"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_09"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_10"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:WINDOWS platform:windows"
+      name: "Windows2019Server_11"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_12"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:5 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_2NwCard_05"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:6 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_2NwCard_06"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:7 osDetail:WINDOWS platform:windows"
+      name: "Windows2019Server_2NwCard_07"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:8 osDetail:Industrial-Os[2.4] platform:unix"
+      name: "Windows2019Server_2NwCard_08"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:RedHatEnterprise[8.6] platform:unix"
+      name: "Windows2019Server_2NwCard_11"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_13"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_14"
+    - labels: "node os:Debian version:3.19 nwCard:2 nwCut uniqueHWServer ESXI:2 osDetail:Debian[11]\
+        \ platform:unix"
+      name: "Debian11_2NwCard_02"
+    - labels: "node os:Debian version:3.19 nwCard:2 nwCut uniqueHWServer ESXI:3 osDetail:Debian[11]\
+        \ platform:unix"
+      name: "Debian11_2NwCard_03"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_15"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_16"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_17"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_01"
+    - labels: "node os:Debian version:3.19 nwCard:2 nwCut uniqueHWServer ESXI:4 osDetail:Debian[11]\
+        \ platform:unix"
+      name: "Debian11_2NwCard_04"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ uniqueHWServer DRS-NW osDetail:MicrosoftWindowsServer2016Standard platform:windows"
+      name: "TST-V-152-152-W_DRS"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ uniqueHWServer DRS-NW osDetail:MicrosoftWindowsServer2016Standard platform:windows"
+      name: "TST-V-152-153-W_DRS"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ uniqueHWServer DRS-NW osDetail:MicrosoftWindowsServer2016Standard platform:windows"
+      name: "TST-V-152-160-W_DRS"
+    - labels: "node os:Windows version:3.17 version:3.18 version:3.19 exclusiveNode\
+        \ uniqueHWServer DRS-NW osDetail:MicrosoftWindowsServer2016Standard platform:windows"
+      name: "TST-V-152-161-W_DRS"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_12"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_13"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_14"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_15"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_16"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_17"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_18"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "Windows2019Server_2NwCard_19"
+    - labels: "node os:Windows version:3.19 nwCard:2 nwCut osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_2NwCard_01"
+    - labels: "node os:Windows version:3.19 nwCard:2 nwCut osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_2NwCard_02"
+    - labels: "node os:Windows version:3.19 nwCard:2 nwCut osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_2NwCard_03"
+    - labels: "node os:Windows version:3.19 nwCard:2 nwCut osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_2NwCard_04"
+    - labels: "node os:Debian version:3.19 nwCard:2 nwCut uniqueHWServer ESXI:5 osDetail:Debian[11]\
+        \ platform:unix"
+      name: "Debian11_2NwCard_05"
+    - name: "MindSphere"
+    - labels: "node os:Windows version:3.15 version:3.16 version:3.17 osDetail:MicrosoftWindowsServer2016Standard\
+        \ platform:windows"
+      name: "Windows2016Server_01"
+    - labels: "node os:Windows version:3.15 version:3.16 version:3.17 osDetail:MicrosoftWindowsServer2016Standard\
+        \ platform:windows"
+      name: "Windows2016Server_02"
+    - labels: "node os:Windows version:3.15 version:3.16 version:3.17 osDetail:MicrosoftWindowsServer2016Standard\
+        \ platform:windows"
+      name: "Windows2016Server_03"
+    - labels: "node os:Windows version:3.15 version:3.16 version:3.17 osDetail:MicrosoftWindowsServer2016Standard\
+        \ platform:windows"
+      name: "Windows2016Server_04"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ nwCard:2 nwCut uniqueHWServer ESXI:9 osDetail:Debian[11] platform:unix"
+      name: "Windows2019Server_2NwCard_09"
+    - labels: "__intern__"
+      name: "__getNodes-CentOS"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_01"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_02"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_03"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_04"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_06"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_07"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_08"
+    - labels: "node os:CentOS version:3.15 version:3.16 osDetail:CentOS[7.9.2009]\
+        \ platform:unix"
+      name: "CentOS7_09"
+    - labels: "__intern__"
+      name: "__getNodes-SLES"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_01"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_02"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_03"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_04"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_05"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_06"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_07"
+    - labels: "node os:SLES version:3.15 version:3.16 osDetail:SUSE[12.5] platform:unix"
+      name: "SLES12_08"
+    - name: "SIM_BACNET"
+    - name: "NTCIP_DMS"
+    - name: "DNP3SIM"
+    - name: "DNP3SIM2"
+    - name: "7SJ82_primary_production"
+    - name: "dtm_iec61850_ctrlTf_static_production"
+    - name: "7SJ82_secondary_production"
+    - name: "TST-P-152-047-W:48010"
+    - name: "PLC_SIM_MQTT_PUB"
+    - name: "S7_200_IP_154_60"
+    - name: "S7_LOGO_IP_154_186"
+    - name: "S7-1214_IP_154_55"
+    - name: "SAIA_IP_154_44"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_05"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_06"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_07"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_08"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_09"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_10"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_11"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_12"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_13"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_14"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_15"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_16"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_17"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_18"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_19"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_20"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_03"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_05"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_06"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_07"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_08"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_09"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_11"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_12"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_13"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.4]\
+        \ platform:unix"
+      name: "IndustrialOS2_14"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.4]\
+        \ platform:unix"
+      name: "IndustrialOS2_15"
+    - name: "EIP_Omron_IP_154_52"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_01"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_02"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_03"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_04"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_06"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_07"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_08"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_09"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_10"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_11"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_12"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_13"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_14"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_15"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_16"
+    - labels: "node os:SLES version:3.17 osDetail:SUSE[15.2] platform:unix"
+      name: "SLES15_01"
+    - labels: "node os:SLES version:3.17 osDetail:OracleServer[9.0] platform:unix"
+      name: "SLES15_02"
+    - labels: "node os:SLES version:3.17 osDetail:SUSE[15.2] platform:unix"
+      name: "SLES15_03"
+    - labels: "node os:SLES version:3.17 osDetail:SUSE[15.2] platform:unix"
+      name: "SLES15_05"
+    - labels: "node os:SLES version:3.17 osDetail:SUSE[15.2] platform:unix"
+      name: "SLES15_06"
+    - labels: "node os:SLES version:3.17 osDetail:SUSE[15.2] platform:unix"
+      name: "SLES15_07"
+    - labels: "node os:SLES version:3.17 osDetail:SUSE[15.2] platform:unix"
+      name: "SLES15_08"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:1 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_01"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:2 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_02"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:3 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_03"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:4 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_04"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_2NwCard_10"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:5 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_05"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:6 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_06"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:7 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_07"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:8 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_08"
+    - labels: "node os:OracleServer version:3.17 version:3.18 nwCard:2 nwCut uniqueHWServer\
+        \ ESXI:9 osDetail:OracleServer[8.6] platform:unix"
+      name: "OracleServer8_2NwCard_09"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_17"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_18"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_21"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_22"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_19"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_20"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_23"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_24"
+    - labels: "node os:Windows version:3.17 version:3.18 ALM osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_25"
+    - name: "copySetup"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_21"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_22"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_23"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_24"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_25"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_26"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_27"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_28"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_30"
+    - labels: "node os:OracleServer version:3.17 version:3.18 osDetail:OracleServer[8.6]\
+        \ platform:unix"
+      name: "OracleServer8_31"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:3 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_03"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:4 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_04"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:5 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_05"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:6 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_06"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:7 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_07"
+    - labels: "node os:RHEL version:3.18 nwCard:2 nwCut uniqueHWServer ESXI:8 osDetail:RedHatEnterprise[8.6]\
+        \ platform:unix"
+      name: "RHEL8_2NwCard_08"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_16"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_17"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_18"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_19"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_01"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_02"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_03"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_04"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_05"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_06"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_07"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_08"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_26"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_27"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_28"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_29"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows10CB20H2_30"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_31"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_32"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 nwCard:2 nwCut osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_2NwCard_09"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_33"
+    - labels: "node os:Windows version:3.17 version:3.18 osDetail:MicrosoftWindows10Enterprise\
+        \ platform:windows"
+      name: "Windows10CB20H2_34"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ ignoreMe team:DATA osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "TEAM_DATA_Windows2019Server_04"
+    - name: "TEAM_BL_Windows11_01"
+    - labels: "node os:OracleServer version:3.19 ignoreMe team:BL osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "TEAM_BL_OracleServer9_01"
+    - labels: "node os:Windows version:3.19 ignoreMe team:BL"
+      name: "TEAM_BL_Windows11CB_01"
+    - name: "2"
+    - labels: "node os:Debian version:3.19 NFR exclusiveNode osDetail:Debian[11] platform:unix"
+      name: "Debian11_16"
+    - labels: "node os:OracleServer version:3.19 NFR exclusiveNode osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "OracleServer9_15"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ NFR exclusiveNode userAccount:done tool:zip.latest tool:python.3.10.6 tool:CrashDumps.latest\
+        \ tool:jenkins-cli.latest tool:SysInternals.latest osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "Windows2019Server_18"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_02"
+    - labels: "node os:OracleServer version:3.17 version:3.18 NFR exclusiveNode osDetail:OracleServer[8.4]\
+        \ platform:unix"
+      name: "OracleServer8_29"
+    - labels: "node os:IndustrialOS version:3.17 version:3.18 NFR exclusiveNode osDetail:Industrial-Os[2.2]\
+        \ platform:unix"
+      name: "IndustrialOS2_20"
+    - labels: "node os:Windows version:3.19 nwCard:2 nwCut osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_2NwCard_05"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ ignoreMe team:DATA osDetail:MicrosoftWindowsServer2019Standard platform:windows"
+      name: "TEAM_DATA_Windows2019Server_05"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_03"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_04"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_05"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_06"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_07"
+    - labels: "node os:Windows version:3.19 osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "Windows2022Server_08"
+    - labels: "node os:Windows version:3.19 ignoreMe team:BL osDetail:MicrosoftWindowsServer2022Standard\
+        \ platform:windows"
+      name: "TEAM_BL_Windows2022Server_01"
+    - labels: "node os:OracleServer version:3.19 ignoreMe team:UI osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "TEAM_UI_OracleServer9_01"
+    - labels: "node os:Windows version:3.19 ignoreMe team:UI nwCard:2 osDetail:MicrosoftWindows11Enterprise\
+        \ platform:windows"
+      name: "TEAM_UI_Windows11CB_01"
+    - name: "Oracle9_02"
+    - labels: "node os:Windows version:3.16 version:3.17 version:3.18 version:3.19\
+        \ ignoreMe team:DATA nwCard:1 osDetail:MicrosoftWindowsServer2019Standard\
+        \ platform:windows"
+      name: "TEAM_DATA_Windows2019Server_02"
+    - labels: "node os:OracleServer version:3.19 nwCut nwCard:2 osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "OracleServer9_2NwCard_01"
+    - labels: "node os:OracleServer version:3.19 nwCut nwCard:2 osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "OracleServer9_2NwCard_02"
+    - labels: "node os:OracleServer version:3.19 nwCut nwCard:2 osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "OracleServer9_2NwCard_03"
+    - labels: "node os:OracleServer version:3.19 nwCut nwCard:2 osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "OracleServer9_2NwCard_04"
+    - labels: "node os:OracleServer version:3.19 nwCut nwCard:2 osDetail:OracleServer[9.0]\
+        \ platform:unix"
+      name: "OracleServer9_2NwCard_05"
+  mailer:
+    charset: "UTF-8"
+    useSsl: false
+    useTls: false
+  pollSCM:
+    pollingThreadCount: 10
+tool:
+  mavenGlobalConfig:
+    globalSettingsProvider: "standard"
+    settingsProvider: "standard"
