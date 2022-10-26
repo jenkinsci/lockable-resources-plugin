@@ -20,8 +20,8 @@
     <j:set var="build" value="${request.findAncestorObject(buildClass)}" />
     <st:include page="sidepanel.jelly" it="${build}" />
     <l:main-panel>
-      <h1>${%Locked Resources}</h1>
-      <p>This build has locked the following resources:</p>
+      <h1>${%header.resources}</h1>
+      <p>${%header.resources.list}</p>
       <ul>
         <j:forEach var="resource" items="${it.lockedResources}" varStatus="loop">
           <li>

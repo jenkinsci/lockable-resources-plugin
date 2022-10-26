@@ -11,16 +11,16 @@
  -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
   xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <f:entry title="${%Name}" field="name">
+  <f:entry title="${%entry.name.title}" field="name">
     <f:textbox/>
   </f:entry>
-  <f:entry title="${%Description}" field="description">
+  <f:entry title="${%entry.description.title}" field="description">
     <f:textbox/>
   </f:entry>
-  <f:entry title="${%Labels}" field="labels">
+  <f:entry title="${%entry.labels.title}" field="labels">
     <f:textbox/>
   </f:entry>
-  <f:entry title="${%Reserved by}" field="reservedBy">
+  <f:entry title="${%entry.reservedBy.title}" field="reservedBy">
     <f:textbox/>
   </f:entry>
 </j:jelly>
