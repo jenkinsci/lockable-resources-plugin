@@ -14,4 +14,8 @@ buildPlugin(useContainerAgent: true, configurations: [
   // Test the bleeding edge of the compatibility spectrum (i.e., the latest supported Java runtime).
   // see also https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/
   [ platform: 'linux', jdk: '17', jenkins: '2.361.1' ],
+  // check style
+  checkstyle: [qualityGates: [[threshold: 1, type: 'NEW', unstable: true]]],
+  // pmd
+  pmd: [trendChartType: 'TOOLS_ONLY', qualityGates: [[threshold: 1, type: 'NEW', unstable: true]]
 ])
