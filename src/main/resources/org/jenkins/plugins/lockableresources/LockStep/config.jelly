@@ -1,26 +1,26 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
   xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <f:entry title="${%Resource}" field="resource">
+  <f:entry title="${%entry.resource.title}" field="resource">
     <f:textbox/>
   </f:entry>
-  <f:entry title="${%Label}" field="label">
+  <f:entry title="${%entry.label.title}" field="label">
     <f:textbox/>
   </f:entry>
-  <f:entry title="${%Quantity}" field="quantity">
+  <f:entry title="${%entry.quantity.title}" field="quantity">
     <f:number/>
   </f:entry>
-  <f:entry title="${%Result variable}" field="variable">
+  <f:entry title="${%entry.variable.title}" field="variable">
     <f:textbox/>
   </f:entry>
   <f:entry field="inversePrecedence">
-    <f:checkbox title="${%Inverse precedence}"/>
+    <f:checkbox title="${%entry.inversePrecedence.checkbox.title}"/>
   </f:entry>
   <f:entry field="skipIfLocked">
-    <f:checkbox title="${%Skip queue}"/>
+    <f:checkbox title="${%entry.inversePrecedence.skipIfLocked.title}"/>
   </f:entry>
-  <f:entry title="${%Extra resources}">
-    <f:repeatable field="extra" header="" minimum="0" add="${%Add Resource}">
+  <f:entry title="${%entry.extra.title}">
+    <f:repeatable field="extra" header="" minimum="0" add="${%entry.extra.add}">
       <table width="100%">
         <st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockStepResource"/>
         <f:entry title="">
