@@ -11,21 +11,21 @@
  -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
   xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <f:optionalBlock title="${%This build requires lockable resources}"
+  <f:optionalBlock title="${%optionalBlock.title}"
     name="required-lockable-resources"
     checked="${instance!=null}">
     <f:nested>
-      <f:entry title="${%Resources}" field="resourceNames">
+      <f:entry title="${%entry.resourceNames.title}" field="resourceNames">
         <f:textbox autoCompleteDelimChar=" "/>
       </f:entry>
-      <f:entry title="${%Label}" field="labelName">
+      <f:entry title="${%entry.labelName.title}" field="labelName">
         <f:textbox autoCompleteDelimChar=" "/>
       </f:entry>
-      <f:optionalProperty title="${%Groovy Expression}" field="resourceMatchScript"/>
-      <f:entry title="${%Reserved resources variable name}" field="resourceNamesVar">
+      <f:optionalProperty title="${%optionalProperty.resourceMatchScript.title}" field="resourceMatchScript"/>
+      <f:entry title="${%entry.resourceNamesVar.title}" field="resourceNamesVar">
         <f:textbox/>
       </f:entry>
-      <f:entry title="${%Number of resources to request}" field="resourceNumber">
+      <f:entry title="${%entry.resourceNumber.title}" field="resourceNumber">
         <f:textbox/>
       </f:entry>
     </f:nested>
