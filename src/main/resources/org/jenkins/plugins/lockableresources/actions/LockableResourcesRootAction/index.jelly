@@ -18,7 +18,7 @@
       <j:choose>
         <j:when test="${it.resources.size() == 0}">
           <p>
-            There are no resources configured at the moment.
+            ${%resources.not_configured}<br/>
             You can configure it <a href="${rootURL}/configure">here</a>.
           </p>
         </j:when>
