@@ -5,4 +5,4 @@ files:
     ignore_settings: 1
     ignore:
       - /src/main/resources/org/jenkins/plugins/lockableresources/**/%file_name%_%two_letters_code%.properties
-    translation: /src/main/resources/io/jenkins/plugins/lockableresources/**/%file_name%_%two_letters_code%.properties
+    translation: /src/main/resources/org/jenkins/plugins/lockableresources/**/%file_name%_%two_letters_code%.properties
