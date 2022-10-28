@@ -12,7 +12,7 @@ import hudson.Extension;
 import hudson.model.Api;
 import hudson.model.RootAction;
 import hudson.model.User;
-import hudson.security.AccessDeniedException2;
+import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
@@ -204,7 +204,7 @@ public class LockableResourcesRootAction implements RootAction {
         || (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)
             && !Jenkins.get().hasPermission(STEAL))
     ) {
-      throw new AccessDeniedException2(Jenkins.getAuthentication(), STEAL);
+      throw new AccessDeniedException3(Jenkins.getAuthentication2(), STEAL);
     }
 
     if (userName.equals(r.getReservedBy())) {
@@ -239,7 +239,7 @@ public class LockableResourcesRootAction implements RootAction {
     if ((userName == null || !userName.equals(r.getReservedBy()))
         && !Jenkins.get().hasPermission(Jenkins.ADMINISTER)
     ) {
-      throw new AccessDeniedException2(Jenkins.getAuthentication(), RESERVE);
+      throw new AccessDeniedException3(Jenkins.getAuthentication2(), RESERVE);
     }
 
     List<LockableResource> resources = new ArrayList<>();

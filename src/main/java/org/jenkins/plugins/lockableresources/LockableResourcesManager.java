@@ -47,11 +47,6 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-  /** @deprecated Leftover of queue sorter support (since 1.7) */
-  @Deprecated private transient int defaultPriority;
-  /** @deprecated Leftover of queue sorter support (since 1.7) */
-  @Deprecated private transient String priorityParameterName;
-
   private List<LockableResource> resources;
   private transient Cache<Long,List<LockableResource>> cachedCandidates = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
 

@@ -21,7 +21,6 @@ import hudson.model.JobPropertyDescriptor;
 import hudson.util.FormValidation;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;

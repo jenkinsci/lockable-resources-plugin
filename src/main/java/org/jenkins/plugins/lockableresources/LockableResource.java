@@ -308,16 +308,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return build;
   }
 
-  /**
-   * @see WithBridgeMethods
-   * @deprecated Return value of {@link #getBuild()} was widened from AbstractBuild to Run (since
-   *     1.8)
-   */
-  @Deprecated
-  private Object getAbstractBuild(final Run<?, ?> owner, final Class<?> targetClass) {
-    return owner instanceof AbstractBuild ? (AbstractBuild<?, ?>) owner : null;
-  }
-
   @Exported
   public String getBuildName() {
     if (getBuild() != null) return getBuild().getFullDisplayName();
