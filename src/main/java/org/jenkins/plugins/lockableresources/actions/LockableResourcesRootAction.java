@@ -19,6 +19,7 @@ import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
@@ -110,12 +111,25 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().getFreeResourceAmount(label);
   }
 
+  public int getFreeResourcePercentage(String label) {
+    final int allCount = this.getAssignedResourceAmount(label);
+    if (allCount == 0) {
+      return allCount;
+    }
+    return (int)((double)this.getFreeResourceAmount(label) / (double)allCount * 100);
+  }
+
   public Set<String> getAllLabels() {
     return LockableResourcesManager.get().getAllLabels();
   }
 
   public int getNumberOfAllLabels() {
     return LockableResourcesManager.get().getAllLabels().size();
+  }
+
+  public int getAssignedResourceAmount(String label) {
+    Map<String, Object> params = null;
+    return LockableResourcesManager.get().getResourcesWithLabel(label, params).size();
   }
 
   @RequirePOST
