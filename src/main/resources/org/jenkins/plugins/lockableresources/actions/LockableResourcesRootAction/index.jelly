@@ -283,7 +283,7 @@
                   [1, "desc"],
                   [0, "asc"]
                 ] // Sort by status and name
-              })
+              });
             </script>
           </j:otherwise>
 
@@ -352,9 +352,10 @@
               <script type="text/javascript">
                 jQuery3("#lockable-resources-labels").DataTable({
                   order: [
-                    [1, "asc"], // sort by perecentage usage
-                    [0, "asc"]  // sort by name
-                })
+                    [1, "asc"], 
+                    [0, "asc"]
+                  ]
+                });
               </script>
             </div>
           </j:if>
