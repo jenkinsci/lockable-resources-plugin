@@ -58,11 +58,11 @@ English text's are mandatory for new entries.
 
 - [ ] The Jira / Github issue, if it exists, is well-described.
 - [ ] The changelog entries and upgrade guidelines are appropriate for the audience affected by the change (users or developers, depending on the change) and are in the imperative mood (see [examples](https://github.com/jenkins-infra/jenkins.io/blob/master/content/_data/changelogs/weekly.yml)).
-  - Fill in the **Proposed upgrade guidelines** section only if there are breaking changes or changes that may require extra steps from users during upgrade.
-- [ ] There is automated testing or an explanation as to why this change has no tests.
+  - Fill in the **Proposed upgrade guidelines** section only if there are breaking changes or changes that may require extra steps from users during the upgrade.
+- [ ] There is automated testing or an explanation for why this change has no tests.
 - [ ] New public classes, fields, and methods are annotated with `@Restricted` or have `@since TODO` Javadocs, as appropriate.
 - [ ] New deprecations are annotated with `@Deprecated(since = "TODO")` or `@Deprecated(forRemoval = true, since = "TODO")`, if applicable.
-- [ ] New or substantially changed JavaScript is not defined inline and does not call `eval` to ease future introduction of Content Security Policy (CSP) directives (see [documentation](https://www.jenkins.io/doc/developer/security/csp/)).
+- [ ] New or substantially changed JavaScript is not defined inline and does not call `eval` to ease the future introduction of Content Security Policy (CSP) directives (see [documentation](https://www.jenkins.io/doc/developer/security/csp/)).
 - [ ] For dependency updates, there are links to external changelogs and, if possible, full differentials.
 - [ ] For new APIs and extension points, there is a link to at least one consumer.
 - [ ] Any localizations are transfered to *.properties files.
