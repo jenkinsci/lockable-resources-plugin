@@ -2,11 +2,11 @@
 A great PR typically begins with the line below.
 -->
 
-<!-- in case you works on Jira issue, replace XXXXX with the numeric part of the issue ID you created in Jira -->
+<!-- in case you work on a Jira issue, replace XXXXX with the numeric part of the issue ID you created in Jira -->
 See [JENKINS-XXXXX](https://issues.jenkins.io/browse/JENKINS-XXXXX).
-<!-- in case you works on github issue -->
+<!-- in case you work on github issue -->
 See #XXXXX
-<!-- in case this PR will complete Github issue use close #### ->
+<!-- in case this PR solves Github issue use close #### or closes, closed, fix, fixes, fixed, resolve, resolves, resolved -->
 
 <!-- Comment:
 If the issue is not fully described in Jira / Github, add more information here (justification, pull request links, etc.).
@@ -45,10 +45,10 @@ N/A
 ### Localizations
 
 <!-- Comment:
-To translate this plugin are used awesome tool named Crowdin. At the moment there are limited users permitted to use it.
-Be sure any localizations are moved ot *.properties files.
+To translate this plugin we used an awesome tool named [Crowdin](https://crowdin.jenkins.io/lockable-resources-plugin). At the moment there is a limited number of users allowed to validate the proposed translations, but anybody having a Crowdin account (created in a heartbeat) can participate in the translation effort.
+Be sure any localization files are moved to *.properties files.
 Please describe here which language has been translated by you.
-English text's are mandatory
+English text's are mandatory for new entries.
 -->
 
 - [ ] English
@@ -58,11 +58,11 @@ English text's are mandatory
 
 - [ ] The Jira / Github issue, if it exists, is well-described.
 - [ ] The changelog entries and upgrade guidelines are appropriate for the audience affected by the change (users or developers, depending on the change) and are in the imperative mood (see [examples](https://github.com/jenkins-infra/jenkins.io/blob/master/content/_data/changelogs/weekly.yml)).
-  - Fill in the **Proposed upgrade guidelines** section only if there are breaking changes or changes that may require extra steps from users during upgrade.
-- [ ] There is automated testing or an explanation as to why this change has no tests.
+  - Fill in the **Proposed upgrade guidelines** section only if there are breaking changes or changes that may require extra steps from users during the upgrade.
+- [ ] There is automated testing or an explanation that explains why this change has no tests.
 - [ ] New public classes, fields, and methods are annotated with `@Restricted` or have `@since TODO` Javadocs, as appropriate.
 - [ ] New deprecations are annotated with `@Deprecated(since = "TODO")` or `@Deprecated(forRemoval = true, since = "TODO")`, if applicable.
-- [ ] New or substantially changed JavaScript is not defined inline and does not call `eval` to ease future introduction of Content Security Policy (CSP) directives (see [documentation](https://www.jenkins.io/doc/developer/security/csp/)).
+- [ ] New or substantially changed JavaScript is not defined inline and does not call `eval` to ease the future introduction of Content Security Policy (CSP) directives (see [documentation](https://www.jenkins.io/doc/developer/security/csp/)).
 - [ ] For dependency updates, there are links to external changelogs and, if possible, full differentials.
 - [ ] For new APIs and extension points, there is a link to at least one consumer.
 - [ ] Any localizations are transfered to *.properties files.
