@@ -127,9 +127,13 @@ unclassified:
   for recent versions.
 * See the [old changelog](CHANGELOG.old.md) for versions 2.5 and older.
 
+## Report an Issue
+
+Please report issues and enhancements through the [Jenkins issue tracker in GitHub](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose)
+
 ## Contributing
 
-Contributions are welcome, please 
+Contributions are welcome, please
 refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
 for details on how to proceed!
 
