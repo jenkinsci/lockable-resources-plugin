@@ -2,7 +2,7 @@
 ## Contributing
 
 If you want to contribute to this plugin, you probably will need a Jenkins plugin development
-environment. This basically means a current version of Java (Java 8 should probably be okay for now)
+environment. This basically means a current version of Java (Java 11 should probably be okay for now)
 and [Apache Maven]. See the [Jenkins Plugin Tutorial] for details.
 
 If you have the proper environment, typing:
@@ -11,7 +11,7 @@ If you have the proper environment, typing:
 
 should create a plugin as `target/*.hpi`, which you can install in your Jenkins instance. Running
 
-    $ mvn hpi:run -Djenkins.version=2.249.1
+    $ mvn hpi:run -Djenkins.version=2.361.1
 
 allows you to spin up a test Jenkins instance on [localhost] to test your
 local changes before committing.
