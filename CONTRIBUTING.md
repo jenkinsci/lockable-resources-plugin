@@ -1,5 +1,5 @@
 
-## Contributing
+# Contributing
 
 If you want to contribute to this plugin, you probably will need a Jenkins plugin development
 environment. This basically means a current version of Java (Java 8 should probably be okay for now)
@@ -20,7 +20,7 @@ local changes before committing.
 [Jenkins Plugin Tutorial]: https://jenkins.io/doc/developer/tutorial/prepare/
 [localhost]: http://localhost:8080/jenkins/
 
-### Code Style
+## Code Style
 
 This plugin tries to migrate to [Google Java Code Style], please try to adhere to that style
 whenever adding new files or making big changes to existing files. If your IDE doesn't support
@@ -43,3 +43,27 @@ The MIT License (MIT)
 - Copyright 2017-2022 Jim Klimov
 
 See [LICENSE](LICENSE.txt)
+
+## Localization
+
+[![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin)
+
+Internationalization documentation for Jelly, Java and Groovy can be found [here](https://www.jenkins.io/doc/developer/internationalization/).
+
+To translate this plugin is recommended to use [Crowdin](https://jenkins.crowdin.com/lockable-resources-plugin).
+
+Read on [how to use the crowdin web interface](https://www.jenkins.io/doc/developer/crowdin/) to translate plugins.
+
+When you want to helps us, please create a new feature request with following content
+
+Title:
+l10n: \<language\>
+Description
+I would provide new (or update) translations for \<language\>
+
+We will add you to project.
+
+For short translations / updates we can also send you invitation (time limited)
+
+**Privacy policy notice**
+When you start translating via Crowdin service, your browsers will send cookies to Crowdin so that Crowdin can identify translators contributing to the project. You might need to update the privacy policy to reflect this aspect of cookies usage.
