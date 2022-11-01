@@ -67,6 +67,8 @@ public class LockableResourceRootActionSEC1361Test {
     final AtomicReference<String> lastAlertReceived = new AtomicReference<>();
     wc.setAlertHandler((page, s) -> lastAlertReceived.set(s));
 
+    // disable exceptions, otherwise it will not parse jQuery scripts (used ba DataTable plugin)
+    wc.getOptions().setThrowExceptionOnScriptError(false);
     HtmlPage htmlPage = wc.goTo("lockable-resources");
     assertThat(lastAlertReceived.get(), nullValue());
 

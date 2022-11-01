@@ -77,6 +77,8 @@ public final class TestHelpers {
 
   // Currently assumes one resource or only clicks the button for the first resource
   public static void clickButton(JenkinsRule.WebClient wc, String action) throws Exception {
+    // disable exceptions, otherwise it will not parse jQuery scripts (used ba DataTable plugin)
+    wc.getOptions().setThrowExceptionOnScriptError(false);
     HtmlPage htmlPage = wc.goTo("lockable-resources");
     List<HtmlElement> allButtons = htmlPage.getDocumentElement().getElementsByTagName("button");
 
