@@ -21,8 +21,6 @@
       src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"
     />
     <l:main-panel>
-      <st:adjunct includes="io.jenkins.plugins.jquery3" />
-      <st:adjunct includes="io.jenkins.plugins.bootstrap5" />
       <st:adjunct includes="io.jenkins.plugins.data-tables" />
 
       <h1>${%header.resources}</h1>
