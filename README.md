@@ -129,7 +129,7 @@ unclassified:
 
 ## Report an Issue
 
-Please report issues and enhancements through the [Jenkins issue tracker](https://www.jenkins.io/participate/report-issue/redirect/#18222) or the [Jenkins issue tracker in GitHub](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose)
+Please report issues and enhancements through the [Jenkins issue tracker in GitHub](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose)
 
 ## Contributing
 
