@@ -4,6 +4,7 @@
 If you want to contribute to this plugin, you probably will need a Jenkins plugin development
 environment. This basically means a current version of Java (Java 11 should probably be okay for now)
 and [Apache Maven]. See the [Jenkins Plugin Tutorial] for details.
+You could also go the [GitPod](https://gitpod.io/#https://github.com/jenkinsci/lockable-resources-plugin) way.
 
 If you have the proper environment, typing:
 
@@ -68,18 +69,18 @@ See [LICENSE](LICENSE.txt)
 
 Internationalization documentation for Jelly, Java and Groovy can be found [here](https://www.jenkins.io/doc/developer/internationalization/).
 
-To translate this plugin is recommended to use [Crowdin](https://jenkins.crowdin.com/lockable-resources-plugin).
+To translate this plugin we recommend to use [Crowdin](https://jenkins.crowdin.com/lockable-resources-plugin).
 
 Read on [how to use the crowdin web interface](https://www.jenkins.io/doc/developer/crowdin/) to translate plugins.
 
-When you want to helps us, please create a new feature request with following content
+When you want to help us, please create a new [feature request](https://github.com/jenkinsci/lockable-resources-plugin/issues/new?assignees=&labels=enhancement&template=2-feature-request.yml) with following content
 
 Title:
 l10n: \<language\>
 Description
 I would provide new (or update) translations for \<language\>
 
-We will add you to project.
+We will then add you to the Crowdin project.
 
 For short translations / updates we can also send you invitation (time limited)
 
