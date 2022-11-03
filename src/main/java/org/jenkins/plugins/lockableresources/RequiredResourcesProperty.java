@@ -78,6 +78,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
    * @deprecated groovy script was added (since 2.0)
    */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public RequiredResourcesProperty(String resourceNames,
     String resourceNamesVar, String resourceNumber,
     String labelName) {
