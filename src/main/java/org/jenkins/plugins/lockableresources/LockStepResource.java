@@ -8,11 +8,14 @@ import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Descriptor;
+import hudson.model.Item;
 import hudson.util.FormValidation;
 import java.io.Serializable;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {
 
@@ -100,11 +103,21 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
       return "Resource";
     }
 
-    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
-      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
+    @RequirePOST
+    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value,
+      @AncestorInPath Item item) {
+      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
     }
 
-    public static FormValidation doCheckLabel(@QueryParameter String value, @QueryParameter String resource) {
+    @RequirePOST
+    public static FormValidation doCheckLabel(@QueryParameter String value,
+      @QueryParameter String resource,
+      @AncestorInPath Item item) {
+      // check permission, security first
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      }
+
       String resourceLabel = Util.fixEmpty(value);
       String resourceName = Util.fixEmpty(resource);
       if (resourceLabel != null && resourceName != null) {
@@ -119,9 +132,11 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
       return FormValidation.ok();
     }
 
-    public static FormValidation doCheckResource(@QueryParameter String value, @QueryParameter String label) {
-      return doCheckLabel(label, value);
+    @RequirePOST
+    public static FormValidation doCheckResource(@QueryParameter String value,
+      @QueryParameter String label,
+      @AncestorInPath Item item) {
+      return doCheckLabel(label, value, item);
     }
   }
-
 }

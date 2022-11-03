@@ -13,31 +13,27 @@
     <script type="text/javascript"
       src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
     <l:main-panel>
-      <h1>${%Lockable Resources}</h1>
+      <h1>${%header.resources}</h1>
 
       <table class="jenkins-table sortable jenkins-!-margin-bottom-0">
         <thead>
-          <th>Resource</th>
-          <th>Status</th>
-          <th>Labels</th>
-          <th>Ephemeral</th>
-          <th>Action</th>
+          <th>${%resources.table.column.resource}</th>
+          <th>${%resources.table.column.status}</th>
+          <th>${%resources.table.column.labels}</th>
+          <th>${%resources.table.column.ephemeral}</th>
+          <th>${%resources.table.column.action}</th>
         </thead>
         <tbody>
           <j:forEach var="resource" items="${it.resources}" indexVar="i">
             <tr data-resource-name="${resource.name}">
               <td>
-                <strong>${resource.name}</strong><l:copyButton message="${%Resource name copied to clipboard}" text="${resource.name}" tooltip="${%Copy resource name to clipboard}"/>
+                <strong>${resource.name}</strong><l:copyButton message="${%btn.copy.message}" text="${resource.name}" tooltip="${%btn.copy.detail}"/>
                 <br/>
                 <em>${resource.description}</em>
               </td>
               <j:if test="${resource.locked}">
                 <td style="color: red;">
-                  <strong>LOCKED</strong>
-                  by
-                  <a href="${rootURL}/${resource.build.url}">
-                    ${resource.build.fullDisplayName}
-                  </a>
+                  ${%resource.status.locked(rootURL + '/' + resource.build.url, resource.build.fullDisplayName)}
                   <j:if test="${resource.reservedTimestamp != null}">
                     <br/>
                     <em><i:formatDate value="${resource.reservedTimestamp}" type="both" dateStyle="medium" timeStyle="short"/></em>
@@ -47,19 +43,17 @@
                 <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                 <td>
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
-                    <button onClick="resource_action(this, 'unlock');" class="jenkins-button">Unlock</button>
+                    <button onClick="resource_action(this, 'unlock');" class="jenkins-button" tooltip="${%btn.unlock.detail}">${%btn.unlock}</button>
                   </j:if>
                   <j:if test="${h.hasPermission(it.STEAL) or h.hasPermission(app.ADMINISTER)}">
-                    <button onClick="resource_action(this, 'steal');" class="jenkins-button">Steal Lock</button>
+                    <button onClick="resource_action(this, 'steal');" class="jenkins-button" tooltip="${%btn.steal.detail}">${%btn.steal}</button>
                   </j:if>
                 </td>
               </j:if>
               <j:if test="${!resource.locked}">
                 <j:if test="${resource.reservedBy != null}">
-                  <td style="color: red;">
-                    <strong>RESERVED</strong>
-                    by
-                    <strong>${resource.reservedBy}</strong>
+                  <td style="color: red;" tooltip="${%resource.status.reservedBy.tooltip(resource.reservedBy, h.getTimeSpanString(resource.reservedTimestamp))}">
+                    ${%resource.status.reservedBy(resource.reservedBy)}
                     <j:if test="${resource.reservedTimestamp != null}">
                       <br/>
                       <em><i:formatDate value="${resource.reservedTimestamp}" type="both" dateStyle="medium" timeStyle="short"/></em>
@@ -71,27 +65,19 @@
                     <j:if test="${h.hasPermission(it.RESERVE)}">
                       <j:if
                         test="${it.UserName == resource.reservedBy or h.hasPermission(app.ADMINISTER)}">
-                        <button onClick="resource_action(this, 'unreserve');" class="jenkins-button" style="margin-top:3px; margin-bottom:3px;">UnReserve</button>
+                        <button onClick="resource_action(this, 'unreserve');" class="jenkins-button" style="margin-top:3px; margin-bottom:3px;" tooltip="${%btn.unReserve.detail}">${%btn.unReserve}</button>
                       </j:if>
                       <j:if
                         test="${it.UserName != null and it.UserName != resource.reservedBy and ( h.hasPermission(it.STEAL) or h.hasPermission(app.ADMINISTER) )}">
-                        <j:choose>
-                          <j:when
-                            test="${resource.reservedBy.contains('#')}">
-                            <br/><button onClick="resource_action(this, 'reassign');" class="jenkins-button" style="margin-top:3px; margin-bottom:3px;">Reassign from a job</button>
-                          </j:when>
-                          <j:otherwise> <!-- TODO: Want to need any rights here vs. for jobs? -->
-                            <br/><button onClick="resource_action(this, 'reassign');" class="jenkins-button" style="margin-top:3px; margin-bottom:3px;">Reassign from a user</button>
-                          </j:otherwise>
-                        </j:choose>
+                          <br/><button onClick="resource_action(this, 'reassign');" class="jenkins-button" style="margin-top:3px; margin-bottom:3px;" tooltip="${%btn.reassign.detail}">${%btn.reassign}</button>
                       </j:if>
                     </j:if>
                   </td>
                 </j:if>
                 <j:if test="${resource.reservedBy == null}">
                   <j:if test="${resource.queued}">
-                    <td style="color: yellow;">
-                      QUEUED by "${resource.queueItemProject} ${resource.queueItemId}"
+                    <td style="color: yellow;" tooltip="${%resource.status.queuedBy.tooltip(resource.queueItemProject, h.getTimeSpanString(resource.reservedTimestamp))}">
+                      ${%resource.status.queuedBy(resource.queueItemProject, resource.queueItemId)}
                       <j:if test="${resource.reservedTimestamp != null}">
                         <br/>
                         <em><i:formatDate value="${resource.reservedTimestamp}" type="both" dateStyle="medium" timeStyle="short"/></em>
@@ -101,19 +87,19 @@
                     <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td>
                       <j:if test="${h.hasPermission(it.UNLOCK)}">
-                        <button onClick="resource_action(this, 'reset');" class="jenkins-button">ResetResource</button>
+                        <button onClick="resource_action(this, 'reset');" class="jenkins-button" tooltip="${btn.reset.detail}">${%btn.reset=Reset}</button>
                       </j:if>
                     </td>
                   </j:if>
                   <j:if test="${!resource.queued}">
                     <td style="color: green;">
-                      <strong>FREE</strong>
+                      ${%resource.status.free}
                     </td>
                     <td>${resource.labels}</td>
                     <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td>
                       <j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
-                        <button onClick="resource_action(this, 'reserve');" class="jenkins-button">Reserve</button>
+                        <button onClick="resource_action(this, 'reserve');" class="jenkins-button" tooltip="${%btn.reserve.detail}">${%btn.reserve}</button>
                       </j:if>
                     </td>
                   </j:if>
@@ -130,14 +116,7 @@
                   <l:hasPermission permission="${it.RESERVE}">
                     <div align="right"><a id="note-link" href="editNote" onclick="return replaceNote(this, '${resource.name}');">
                       <l:icon class="icon-notepad icon-sm"/>
-                      <j:choose>
-                        <j:when test="${empty(resource.note)}">
-                          ${%Add note}
-                        </j:when>
-                        <j:otherwise>
-                          ${%Edit note}
-                        </j:otherwise>
-                      </j:choose>
+                      ${%btn.editNote}
                     </a></div>
                   </l:hasPermission>
                 </div>
@@ -147,11 +126,11 @@
         </tbody>
       </table>
       <j:if test="${it.getNumberOfAllLabels() != 0}">
-        <h3 style="padding-top:20px;">Labels</h3>
+        <h3 style="padding-top:20px;">${%header.labels}</h3>
         <table class="jenkins-table sortable jenkins-!-margin-bottom-0">
           <thead>
-            <th>Label</th>
-            <th>Free resources</th>
+            <th>${%labels.table.column.labels}</th>
+            <th>${%labels.table.column.free}</th>
           </thead>
           <tbody>
             <j:forEach var="label" items="${it.getAllLabels()}">

@@ -6,6 +6,7 @@
 [![Build Status](https://ci.jenkins.io/buildStatus/icon?job=Plugins%2Flockable-resources-plugin%2Fmaster)](https://ci.jenkins.io/job/Plugins/job/lockable-resources-plugin/job/master/)
 [![GitHub license](https://img.shields.io/github/license/jenkinsci/lockable-resources-plugin.svg)](https://github.com/jenkinsci/lockable-resources-plugin/blob/master/LICENSE.txt)
 [![Maintenance](https://img.shields.io/maintenance/yes/2022.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
+[![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin)
 
 This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
@@ -127,47 +128,17 @@ unclassified:
   for recent versions.
 * See the [old changelog](CHANGELOG.old.md) for versions 2.5 and older.
 
+## Report an Issue
+
+Please report issues and enhancements through the [Jenkins issue tracker in GitHub](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose)
+
 ## Contributing
 
-If you want to contribute to this plugin, you probably will need a Jenkins plugin development
-environment. This basically means a current version of Java (Java 8 should probably be okay for now)
-and [Apache Maven]. See the [Jenkins Plugin Tutorial] for details.
-
-If you have the proper environment, typing:
-
-    $ mvn verify
-
-should create a plugin as `target/*.hpi`, which you can install in your Jenkins instance. Running
-
-    $ mvn hpi:run -Djenkins.version=2.249.1
-
-allows you to spin up a test Jenkins instance on [localhost] to test your
-local changes before committing.
-
-[Apache Maven]: https://maven.apache.org/
-[Jenkins Plugin Tutorial]: https://jenkins.io/doc/developer/tutorial/prepare/
-[localhost]: http://localhost:8080/jenkins/
-
-### Code Style
-
-This plugin tries to migrate to [Google Java Code Style], please try to adhere to that style
-whenever adding new files or making big changes to existing files. If your IDE doesn't support
-this style, you can use the [fmt-maven-plugin], like this:
-
-    $ mvn fmt:format -DfilesNamePattern=ChangedFile\.java
-
-to reformat Java code in the proper style.
-
-[Google Java Code Style]: https://google.github.io/styleguide/javaguide.html
-[fmt-maven-plugin]: https://github.com/coveo/fmt-maven-plugin
+Contributions are welcome, please
+refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
+for details on how to proceed!
 
 ## License
 
-The MIT License (MIT)
-
-- Copyright 2013-2015 6WIND
-- Copyright 2016-2018 Antonio Muñiz
-- Copyright 2019 TobiX
-- Copyright 2017-2022 Jim Klimov
-
+All source code is licensed under the MIT license.
 See [LICENSE](LICENSE.txt)
