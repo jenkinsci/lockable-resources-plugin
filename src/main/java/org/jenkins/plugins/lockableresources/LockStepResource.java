@@ -11,6 +11,7 @@ import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.util.FormValidation;
 import java.io.Serializable;
+import jenkins.model.Jenkins;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -116,6 +117,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
       // check permission, security first
       if (item != null) {
         item.checkPermission(Item.CONFIGURE);
+      } else {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
       }
 
       String resourceLabel = Util.fixEmpty(value);

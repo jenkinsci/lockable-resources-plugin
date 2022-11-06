@@ -104,6 +104,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** @deprecated Use single-argument constructor instead (since 1.8) */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public LockableResource(String name, String description, String labels, String reservedBy, String note) {
     this.name = name;
     this.description = description;
@@ -126,6 +127,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11) */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public List<StepContext> getQueuedContexts() {
     return this.queuedContexts;
   }

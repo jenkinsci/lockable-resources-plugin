@@ -119,6 +119,7 @@ public class LockableResourcesStruct implements Serializable {
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {
     if (resourceMatchScript == null && serializableResourceMatchScript != null) {
+      // this is probably high defensive code, because
       resourceMatchScript = serializableResourceMatchScript.rehydrate();
     }
     return resourceMatchScript;

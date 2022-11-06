@@ -222,6 +222,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @Deprecated
   @CheckForNull
+  @ExcludeFromJacocoGeneratedReport
   public synchronized List<LockableResource> queue(
     LockableResourcesStruct requiredResources,
     long queueItemId,
