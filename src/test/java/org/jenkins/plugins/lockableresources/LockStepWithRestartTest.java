@@ -137,7 +137,6 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     sessions.then(
       j -> {
         WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
-        FreeStyleProject f = j.jenkins.getItemByFullName("f", FreeStyleProject.class);
         WorkflowRun b1 = p.getBuildByNumber(1);
 
         LockableResourcesManager manager = LockableResourcesManager.get();

@@ -15,7 +15,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.concurrent.CyclicBarrier;
-import java.util.stream.Collectors;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;

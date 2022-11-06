@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -32,7 +33,10 @@ public class LockableResourcesStruct implements Serializable {
 
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
+  @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
   @CheckForNull private transient SecureGroovyScript resourceMatchScript;
+
+  private static final long serialVersionUID = 1L;
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
     required = new ArrayList<>();
@@ -115,6 +119,7 @@ public class LockableResourcesStruct implements Serializable {
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {
     if (resourceMatchScript == null && serializableResourceMatchScript != null) {
+      // this is probably high defensive code, because
       resourceMatchScript = serializableResourceMatchScript.rehydrate();
     }
     return resourceMatchScript;
@@ -133,6 +138,4 @@ public class LockableResourcesStruct implements Serializable {
       + ", Number of resources: "
       + this.requiredNumber;
   }
-
-  private static final long serialVersionUID = 1L;
 }
