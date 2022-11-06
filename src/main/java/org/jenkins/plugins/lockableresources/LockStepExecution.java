@@ -8,9 +8,10 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -59,7 +60,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     }
 
     // determine if there are enough resources available to proceed
-    List<LockableResource> available =
+    Set<LockableResource> available =
       LockableResourcesManager.get()
         .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
     Run<?, ?> run = getContext().get(Run.class);
@@ -98,7 +99,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   }
 
   public static void proceed(
-    final List<String> resourceNames,
+    final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
     StepContext context,
     String resourceDescription,
     final String variable,
@@ -123,7 +124,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       BodyInvoker bodyInvoker =
         context
           .newBodyInvoker()
-          .withCallback(new Callback(resourceNames, resourceDescription, inversePrecedence));
+          .withCallback(new Callback(new ArrayList<>(lockedResources.keySet()), resourceDescription, inversePrecedence));
       if (variable != null && variable.length() > 0) {
         // set the variable for the duration of the block
         bodyInvoker.withContext(
@@ -134,11 +135,18 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
               @Override
               public void expand(@NonNull EnvVars env) {
-                final Map<String, String> variables = new HashMap<>();
-                final String resources = String.join(",", resourceNames);
-                variables.put(variable, resources);
-                for (int index = 0; index < resourceNames.size(); ++index) {
-                  variables.put(variable + index, resourceNames.get(index));
+                final LinkedHashMap<String, String> variables = new LinkedHashMap<>();
+                final String resourceNames = lockedResources.keySet().stream().collect(Collectors.joining(","));
+                variables.put(variable, resourceNames);
+                int index = 0;
+                for (Entry<String, List<LockableResourceProperty>> lockResourceEntry : lockedResources.entrySet()) {
+                  String lockEnvName = variable + index;
+                  variables.put(lockEnvName, lockResourceEntry.getKey());
+                  for (LockableResourceProperty lockProperty : lockResourceEntry.getValue()) {
+                    String propEnvName = lockEnvName + "_" + lockProperty.getName();
+                    variables.put(propEnvName, lockProperty.getValue());
+                  }
+                  ++index;
                 }
                 LOGGER.finest("Setting "
                   + variables.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "))
