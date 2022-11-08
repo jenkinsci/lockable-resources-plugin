@@ -13,6 +13,7 @@ import com.google.common.cache.CacheBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
 import hudson.model.Run;
@@ -47,11 +48,6 @@ import org.kohsuke.stapler.StaplerRequest;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
-
-  /** @deprecated Leftover of queue sorter support (since 1.7) */
-  @Deprecated private transient int defaultPriority;
-  /** @deprecated Leftover of queue sorter support (since 1.7) */
-  @Deprecated private transient String priorityParameterName;
 
   private List<LockableResource> resources;
   private transient Cache<Long,List<LockableResource>> cachedCandidates = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
@@ -227,6 +223,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @Deprecated
   @CheckForNull
+  @ExcludeFromJacocoGeneratedReport
   public synchronized List<LockableResource> queue(
     LockableResourcesStruct requiredResources,
     long queueItemId,
@@ -495,6 +492,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
   }
 
+  @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
   public synchronized void unlockNames(
     @Nullable List<String> resourceNamesToUnLock,
     @Nullable Run<?, ?> build,
@@ -785,6 +783,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
   public synchronized void unreserve(List<LockableResource> resources) {
     // make sure there is a list of resources to unreserve
     if (resources == null || resources.isEmpty()) {

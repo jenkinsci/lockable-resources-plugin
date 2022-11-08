@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
@@ -98,6 +99,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     return false;
   }
 
+  @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
   public static void proceed(
     final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
     StepContext context,
