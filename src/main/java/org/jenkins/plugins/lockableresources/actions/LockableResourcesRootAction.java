@@ -128,8 +128,7 @@ public class LockableResourcesRootAction implements RootAction {
   }
 
   public int getAssignedResourceAmount(String label) {
-    Map<String, Object> params = null;
-    return LockableResourcesManager.get().getResourcesWithLabel(label, params).size();
+    return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
   }
 
   @RequirePOST
