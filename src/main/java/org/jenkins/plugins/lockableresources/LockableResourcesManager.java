@@ -24,7 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -407,13 +408,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean lock(
-    List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+    Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
     return lock(resources, build, context, null, null, false);
   }
 
   /** Try to lock the resource and return true if locked. */
   public synchronized boolean lock(
-    List<LockableResource> resources,
+    Set<LockableResource> resources,
     Run<?, ?> build,
     @Nullable StepContext context,
     @Nullable String logmessage,
@@ -434,10 +435,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
       if (context != null) {
         // since LockableResource contains transient variables, they cannot be correctly serialized
-        // hence we use their unique resource names
-        List<String> resourceNames = new ArrayList<>();
+        // hence we use their unique resource names and properties
+        LinkedHashMap<String, List<LockableResourceProperty>> resourceNames = new LinkedHashMap<>();
         for (LockableResource resource : resources) {
-          resourceNames.add(resource.getName());
+          resourceNames.put(resource.getName(), resource.getProperties());
         }
         LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
       }
@@ -519,7 +520,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return;
       }
 
-      List<LockableResource> requiredResourceForNextContext =
+      Set<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
           nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
@@ -546,13 +547,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // remove context from queue and process it
         unqueueContext(nextContext.getContext());
 
-        List<String> resourceNamesToLock = new ArrayList<>();
+        LinkedHashMap<String, List<LockableResourceProperty>> resourcesToLock = new LinkedHashMap<>();
 
         // lock all (old and new resources)
         for (LockableResource requiredResource : requiredResourceForNextContext) {
           try {
             requiredResource.setBuild(nextContext.getContext().get(Run.class));
-            resourceNamesToLock.add(requiredResource.getName());
+            resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
           } catch (Exception e) {
             // skip this context, as the build cannot be retrieved (maybe it was deleted while
             // running?)
@@ -591,7 +592,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         // continue with next context
         LockStepExecution.proceed(
-          resourceNamesToLock,
+          resourcesToLock,
           nextContext.getContext(),
           nextContext.getResourceDescription(),
           nextContext.getVariableName(),
@@ -689,6 +690,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (existent == null) {
         LockableResource resource = new LockableResource(name);
         resource.setLabels(label);
+        getResources().add(resource);
+        save();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public synchronized boolean createResourceWithLabelAndProperties(String name, String label, Map<String, String> properties) {
+    if (name != null && label != null && properties != null) {
+      LockableResource existent = fromName(name);
+      if (existent == null) {
+        LockableResource resource = new LockableResource(name);
+        resource.setLabels(label);
+        resource.setProperties(
+          properties.entrySet().stream().map(e -> {
+            LockableResourceProperty p = new LockableResourceProperty();
+            p.setName(e.getKey());
+            p.setValue(e.getValue());
+            return p;
+          }).collect(Collectors.toList()));
         getResources().add(resource);
         save();
         return true;
@@ -800,7 +822,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // remove context from queue and process it
-    List<LockableResource> requiredResourceForNextContext =
+    Set<LockableResource> requiredResourceForNextContext =
       checkResourcesAvailability(
         nextContext.getResources(), nextContextLogger,
         null, resourceNamesToUnreserve);
@@ -826,13 +848,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return;
     } else {
       unreserveResources(resources);
-      List<String> resourceNamesToLock = new ArrayList<>();
+      LinkedHashMap<String, List<LockableResourceProperty>> resourcesToLock = new LinkedHashMap<>();
 
       // lock all (old and new resources)
       for (LockableResource requiredResource : requiredResourceForNextContext) {
         try {
           requiredResource.setBuild(nextContext.getContext().get(Run.class));
-          resourceNamesToLock.add(requiredResource.getName());
+          resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
         } catch (Exception e) {
           // skip this context, as the build cannot be retrieved (maybe it was deleted while
           // running?)
@@ -850,7 +872,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       // continue with next context
       LockStepExecution.proceed(
-        resourceNamesToLock,
+        resourcesToLock,
         nextContext.getContext(),
         nextContext.getResourceDescription(),
         nextContext.getVariableName(),
@@ -919,7 +941,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
@@ -929,7 +951,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
       List<LockableResourcesStruct> requiredResourcesList,
       @Nullable PrintStream logger,
       @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -939,7 +961,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -958,7 +980,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * requiredResources and returns the necessary available resources. If not enough resources are
    * available, returns null.
    */
-  public synchronized List<LockableResource> checkResourcesAvailability(
+  public synchronized Set<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -1084,7 +1106,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Find remaining resources
-    LinkedHashSet<LockableResource> allSelected = new LinkedHashSet<>();
+    Set<LockableResource> allSelected = new HashSet<>();
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
       List<LockableResource> candidates = requiredResources.candidates;
@@ -1133,7 +1155,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       allSelected.addAll(selected);
     }
 
-    return new ArrayList<>(allSelected);
+    return allSelected;
   }
 
   /*

@@ -20,6 +20,7 @@
           <th>${%resources.table.column.resource}</th>
           <th>${%resources.table.column.status}</th>
           <th>${%resources.table.column.labels}</th>
+          <th>${%resources.table.column.properties}</th>
           <th>${%resources.table.column.ephemeral}</th>
           <th>${%resources.table.column.action}</th>
         </thead>
@@ -40,6 +41,11 @@
                   </j:if>
                 </td>
                 <td>${resource.labels}</td>
+                <td>
+                  <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                    <strong>${property.name}</strong>: ${property.value}<br/>
+                  </j:forEach>
+                </td>
                 <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                 <td>
                   <j:if test="${h.hasPermission(it.UNLOCK)}">
@@ -60,6 +66,11 @@
                     </j:if>
                   </td>
                   <td>${resource.labels}</td>
+                  <td>
+                   <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                     <strong>${property.name}</strong>: ${property.value}<br/>
+                   </j:forEach>
+                 </td>
                   <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                   <td>
                     <j:if test="${h.hasPermission(it.RESERVE)}">
@@ -84,6 +95,11 @@
                       </j:if>
                     </td>
                     <td>${resource.labels}</td>
+                    <td>
+                      <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                        <strong>${property.name}</strong>: ${property.value}<br/>
+                      </j:forEach>
+                    </td>
                     <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td>
                       <j:if test="${h.hasPermission(it.UNLOCK)}">
@@ -96,6 +112,11 @@
                       ${%resource.status.free}
                     </td>
                     <td>${resource.labels}</td>
+                    <td>
+                      <j:forEach var="property" items="${resource.properties}" indexVar="i">
+                        <strong>${property.name}</strong>: ${property.value}<br/>
+                      </j:forEach>
+                    </td>
                     <td><f:checkbox checked="${resource.ephemeral}" readonly="true"/></td>
                     <td>
                       <j:if test="${h.hasPermission(it.RESERVE) and it.UserName != null}">
