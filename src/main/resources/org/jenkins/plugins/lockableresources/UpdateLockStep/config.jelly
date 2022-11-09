@@ -1,0 +1,25 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+  xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  <f:entry title="${%Resource}" field="resource">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Set Labels}" field="setLabels">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Add Labels}" field="addLabels">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Remove Labels}" field="removeLabels">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%Set Note}" field="setNote">
+    <f:textbox/>
+  </f:entry>
+  <f:entry field="createResource">
+    <f:checkbox title="${%Create if Missing}"/>
+  </f:entry>
+  <f:entry field="deleteResource">
+    <f:checkbox title="${%Delete Existing}"/>
+  </f:entry>
+</j:jelly>

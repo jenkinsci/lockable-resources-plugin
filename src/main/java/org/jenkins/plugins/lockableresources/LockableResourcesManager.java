@@ -116,6 +116,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
     this.resources = mergedResources;
   }
 
+  public void deleteResource(String name) {
+    LockableResource resource = fromName(name);
+    if (resource == null) {
+      return;
+    }
+
+    if (resource.isLocked()) {
+      // Removed locks became ephemeral.
+      resource.setDescription("");
+      resource.setLabels("");
+      resource.setNote("");
+      resource.setEphemeral(true);
+    }
+    else {
+      this.resources.remove(resource);
+    }
+
+    save();
+  }
+
   public List<LockableResource> getResourcesFromProject(String fullName) {
     List<LockableResource> matching = new ArrayList<>();
     for (LockableResource r : resources) {
