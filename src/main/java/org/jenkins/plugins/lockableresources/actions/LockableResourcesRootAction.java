@@ -19,13 +19,14 @@ import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -107,10 +108,24 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().fromName(resourceName);
   }
 
+  /**
+   * Get amount of free resources assigned to given *label*
+   * @param label Label to search.
+   * @return Amount of free labels.
+   */
   public int getFreeResourceAmount(String label) {
     return LockableResourcesManager.get().getFreeResourceAmount(label);
   }
 
+  /** 
+   * Get percentage (0-100) usage of resources assigned to given *label*
+   * 
+   * @since TODO
+   * @param label Label to search.
+   * @return Percentage usages of *label* around all resources
+   * @note used by Jelly
+   */
+  @Restricted(NoExternalUse.class)
   public int getFreeResourcePercentage(String label) {
     final int allCount = this.getAssignedResourceAmount(label);
     if (allCount == 0) {
@@ -119,14 +134,30 @@ public class LockableResourcesRootAction implements RootAction {
     return (int)((double)this.getFreeResourceAmount(label) / (double)allCount * 100);
   }
 
+  /**
+   * Get all existing labels as list.
+   * @return All possible labels.
+   */
   public Set<String> getAllLabels() {
     return LockableResourcesManager.get().getAllLabels();
   }
 
+  /**
+   * Get amount of all labels.
+   * @return Amount of all labels.
+   */
   public int getNumberOfAllLabels() {
     return LockableResourcesManager.get().getAllLabels().size();
   }
 
+  /**
+   * Get amount of resources assigned to given *label*
+   * 
+   * @param label Label to search.
+   * @return Amount of assigned resources.
+   * @note used by Jelly
+   */
+  @Restricted(NoExternalUse.class)
   public int getAssignedResourceAmount(String label) {
     return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
   }
