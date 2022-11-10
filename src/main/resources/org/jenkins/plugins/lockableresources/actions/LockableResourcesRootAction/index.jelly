@@ -296,6 +296,7 @@
                 <thead>
                   <th>${%labels.table.column.labels}</th>
                   <th>${%labels.table.column.free}</th>
+                  <th>${%labels.table.column.assigned}</th>
                 </thead>
                 <tbody>
                   <j:forEach var="label" items="${it.getAllLabels()}">
@@ -311,7 +312,6 @@
                       var="percentage"
                       value="${it.getFreeResourcePercentage(label)}"
                     />
-                    <j:set var="text" value="${freeCount} / ${allCount}" />
                     <j:choose>
                       <j:when test="${percentage lt 5}">
                         <j:set var="cssClass" value="danger" />
@@ -341,7 +341,10 @@
                         data-order="${percentage}"
                         tooltip="${%labels.free.tooltip(percentage)}"
                       >
-                        ${text}
+                        ${freeCount}
+                      </td>
+                      <td>
+                        ${allCount}
                       </td>
                     </tr>
                   </j:forEach>
