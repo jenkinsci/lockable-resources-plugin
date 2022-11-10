@@ -64,7 +64,7 @@ English text's are mandatory for new entries.
   - Fill in the **Proposed upgrade guidelines** section only if there are breaking changes or changes that may require extra steps from users during the upgrade.
 - [ ] There is automated testing or an explanation that explains why this change has no tests.
 - [ ] New public classes, fields, and methods are annotated with `@Restricted` or have `@since TODO` Javadocs, as appropriate.
-- [ ] New public functions for internal use only are annotated with `@NoExternalUse`. In case it is used by non java code the `@note Used by Jelly` Javadocs are annotated.
+- [ ] New public functions for internal use only are annotated with `@NoExternalUse`. In case it is used by non java code the `Used by {@code <panel>.jelly}` Javadocs are annotated.
 - [ ] New deprecations are annotated with `@Deprecated(since = "TODO")` or `@Deprecated(forRemoval = true, since = "TODO")`, if applicable.
 - [ ] New or substantially changed JavaScript is not defined inline and does not call `eval` to ease the future introduction of Content Security Policy (CSP) directives (see [documentation](https://www.jenkins.io/doc/developer/security/csp/)).
 - [ ] For dependency updates, there are links to external changelogs and, if possible, full differentials.

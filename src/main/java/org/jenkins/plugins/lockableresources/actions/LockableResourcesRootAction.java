@@ -120,10 +120,10 @@ public class LockableResourcesRootAction implements RootAction {
   /** 
    * Get percentage (0-100) usage of resources assigned to given *label*
    * 
+   * Used by {@code actions/LockableResourcesRootAction/index.jelly}
    * @since TODO
    * @param label Label to search.
    * @return Percentage usages of *label* around all resources
-   * @note used by Jelly
    */
   @Restricted(NoExternalUse.class)
   public int getFreeResourcePercentage(String label) {
@@ -153,9 +153,9 @@ public class LockableResourcesRootAction implements RootAction {
   /**
    * Get amount of resources assigned to given *label*
    * 
+   * Used by {@code actions/LockableResourcesRootAction/index.jelly}
    * @param label Label to search.
    * @return Amount of assigned resources.
-   * @note used by Jelly
    */
   @Restricted(NoExternalUse.class)
   public int getAssignedResourceAmount(String label) {
