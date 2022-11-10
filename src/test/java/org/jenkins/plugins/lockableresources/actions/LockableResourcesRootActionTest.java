@@ -54,6 +54,8 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
   private User reserve_user2;
   private final String USER_WITH_STEAL_PERM = "steal_user";
   private User steal_user;
+  private final String USER_WITH_UNLOCK_PERM = "unlock_user";
+  private User unlock_user;
   private final String ADMIN = "admin";
   private User admin;
 
@@ -69,6 +71,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     this.reserve_user1 = User.getById(this.USER_WITH_RESERVE_PERM, true);
     this.reserve_user2 = User.getById(this.USER_WITH_RESERVE_PERM_2, true);
     this.steal_user = User.getById(this.USER_WITH_STEAL_PERM, true);
+    this.unlock_user = User.getById(this.USER_WITH_UNLOCK_PERM, true);
     this.admin = User.getById(this.ADMIN, true);
 
     j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
@@ -78,6 +81,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
       .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.RESERVE).everywhere().to(this.USER_WITH_RESERVE_PERM)
       .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.RESERVE).everywhere().to(this.USER_WITH_RESERVE_PERM_2)
       .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.STEAL).everywhere().to(this.USER_WITH_STEAL_PERM)
+      .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.UNLOCK).everywhere().to(this.USER_WITH_UNLOCK_PERM)
       .grant(Jenkins.ADMINISTER).everywhere().to(this.ADMIN)
     );
 
@@ -162,7 +166,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     // system must be permitted to create resource
     resource = this.createResource("resource1");
     action.doReserve(req, rsp);
-    assertTrue("is reserved by system ", resource.isReserved());
+    assertTrue("is reserved by system", resource.isReserved());
 
     // somebody
     SecurityContextHolder.getContext().setAuthentication(this.user.impersonate2());
@@ -208,27 +212,150 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     action.doReserve(req, rsp);
     when(req.getParameter("resource")).thenReturn("some-dangerous_characters-like:\n\t$%ÖÜä?=+ľšť");
     action.doReserve(req, rsp);
+  }
 
-    // defensive tests
+  //---------------------------------------------------------------------------
+  @Test
+  public void testDoReset() throws IOException, ServletException {
+
+    when(req.getMethod()).thenReturn("POST");
+    LockableResourcesRootAction action = new LockableResourcesRootAction();
+    LockableResource resource = null;
+
+    // nobody (system user)
+    // system must be permitted to create resource
+    resource = this.createResource("resource1");
+    action.doReserve(req, rsp);
+    assertTrue("is reserved by system", resource.isReserved());
+    action.doReset(req, rsp);
+    assertFalse("is reset by system ", resource.isReserved());
+
+    // somebody
+    SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
+    action.doReserve(req, rsp);
+    assertTrue("is reserved by user1 ", resource.isReserved());
+    assertThrows(AccessDeniedException3.class, () -> action.doReset(req, rsp));
+    assertTrue("still reserved by user1", resource.isReserved());
+
+    // switch to user with unlock permission
+    SecurityContextHolder.getContext().setAuthentication(this.unlock_user.impersonate2());
+    action.doReset(req, rsp);
+    assertFalse("unreserved", resource.isReserved());
+
+    // invalid params. Just check if it crash here
     when(req.getParameter("resource")).thenReturn("this-one-does-not-exists");
-    action.doReassign(req, rsp);
+    action.doReset(req, rsp);
+    when(req.getParameter("resource")).thenReturn("this one does not exists");
+    action.doReset(req, rsp);
+    when(req.getParameter("resource")).thenReturn(null);
+    action.doReset(req, rsp);
+    when(req.getParameter("resource")).thenReturn("");
+    action.doReset(req, rsp);
+    when(req.getParameter("resource")).thenReturn("some-dangerous_characters-like:\n\t$%ÖÜä?=+ľšť");
+    action.doReset(req, rsp);
   }
 
   //---------------------------------------------------------------------------
   @Test
-  public void testDoReset() {
+  public void testDoSaveNote() throws IOException, ServletException {
+
+    when(req.getMethod()).thenReturn("POST");
+    LockableResourcesRootAction action = new LockableResourcesRootAction();
+    LockableResource resource = null;
+
+    // nobody (system user)
+    // system must be permitted to create resource
+    resource = this.createResource("resource1");
+    assertEquals("default note", "", resource.getNote());
+    when(req.getParameter("note")).thenReturn("this is my note");
+    action.doSaveNote(req, rsp);
+    assertEquals("default note", "this is my note", resource.getNote());
+
+    // somebody
+    SecurityContextHolder.getContext().setAuthentication(this.user.impersonate2());
+    assertThrows(AccessDeniedException3.class, () -> action.doSaveNote(req, rsp));
+    assertEquals("default note", "this is my note", resource.getNote());
+
+    // switch to user with reserve permission
+    SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
+    when(req.getParameter("note")).thenReturn("this is my note from user1");
+    action.doSaveNote(req, rsp);
+    assertEquals("default note", "this is my note from user1", resource.getNote());
+
+    // switch to other user with reserve permission
+    SecurityContextHolder.getContext().setAuthentication(this.reserve_user2.impersonate2());
+    when(req.getParameter("note")).thenReturn("this is my note from user2");
+    action.doSaveNote(req, rsp);
+    assertEquals("default note", "this is my note from user2", resource.getNote());
+
+    // invalid params. Just check if it crash here
+    SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
+    when(req.getParameter("note")).thenReturn("");
+    action.doSaveNote(req, rsp);
+    when(req.getParameter("note")).thenReturn(null);
+    action.doSaveNote(req, rsp);
+
+    when(req.getParameter("resource")).thenReturn("this-one-does-not-exists");
+    action.doSaveNote(req, rsp);
+    when(req.getParameter("resource")).thenReturn("this one does not exists");
+    action.doSaveNote(req, rsp);
+    when(req.getParameter("resource")).thenReturn(null);
+    action.doSaveNote(req, rsp);
+    when(req.getParameter("resource")).thenReturn("");
+    action.doSaveNote(req, rsp);
+    when(req.getParameter("resource")).thenReturn("some-dangerous_characters-like:\n\t$%ÖÜä?=+ľšť");
+    action.doSaveNote(req, rsp);
+
   }
 
   //---------------------------------------------------------------------------
   @Test
-  public void testDoSaveNote() {
+  public void testDoSteal() throws IOException, ServletException {
 
-  }
+    when(req.getMethod()).thenReturn("POST");
+    LockableResourcesRootAction action = new LockableResourcesRootAction();
+    LockableResource resource = null;
 
-  //---------------------------------------------------------------------------
-  @Test
-  public void testDoSteal() {
+    // nobody (system user)
+    // system must be permitted to create resource
+    resource = this.createResource("resource1");
+    // when the resource is not reserved, the doSteal action reserve it for you
+    action.doSteal(req, rsp);
+    assertTrue("is reserved by system", resource.isReserved());
 
+    // somebody
+    SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
+    action.doReserve(req, rsp);
+    assertTrue("is reserved by user1 ", resource.isReserved());
+    assertThrows(AccessDeniedException3.class, () -> action.doSteal(req, rsp));
+    assertTrue("still reserved by user1", resource.isReserved());
+
+    // switch as admin and reset
+    SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
+    action.doReset(req, rsp);
+    assertFalse("unreserved", resource.isReserved());
+
+    // switch to user1 and reserve it
+    action.doReserve(req, rsp);
+    assertTrue("is reserved by user1", resource.isReserved());
+
+    // switch to user with STEAL permission
+    SecurityContextHolder.getContext().setAuthentication(this.steal_user.impersonate2());
+    action.doSteal(req, rsp);
+    assertEquals("reserved by user", this.steal_user.getId(), resource.getReservedBy());
+
+    // invalid params. Just check if it crash here
+    SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
+    when(req.getParameter("resource")).thenReturn("this-one-does-not-exists");
+    action.doSteal(req, rsp);
+    when(req.getParameter("resource")).thenReturn("this one does not exists");
+    action.doSteal(req, rsp);
+    when(req.getParameter("resource")).thenReturn(null);
+    action.doSteal(req, rsp);
+    when(req.getParameter("resource")).thenReturn("");
+    action.doSteal(req, rsp);
+    when(req.getParameter("resource")).thenReturn("some-dangerous_characters-like:\n\t$%ÖÜä?=+ľšť");
+    action.doSteal(req, rsp);
   }
 
   //---------------------------------------------------------------------------
