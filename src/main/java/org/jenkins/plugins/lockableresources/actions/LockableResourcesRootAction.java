@@ -121,7 +121,7 @@ public class LockableResourcesRootAction implements RootAction {
    * Get percentage (0-100) usage of resources assigned to given *label*
    * 
    * Used by {@code actions/LockableResourcesRootAction/index.jelly}
-   * @since TODO
+   * @since 2.19
    * @param label Label to search.
    * @return Percentage usages of *label* around all resources
    */
