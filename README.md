@@ -22,15 +22,16 @@ which is already locked, it will wait for the resource to be free.
 
 Each lockable resource has the following properties:
 
-- **Name** - A name (not containing spaces!) for this particular resource, i.e.
+- **Name** - A mandatory name (not containing spaces!) for this particular resource, i.e.
   `DK_Printer_ColorA3_2342`
-- **Description** - A verbose description of this particular resource,
-  i.e. ` Printers in the Danish Office`
-- **Labels** - Space-delimited list of Labels (Not containing spaces) used to
-  identify a pool of resources. i.e. `DK_Printers_Office`,
+- **Description** - Optional verbose description of this particular resource,
+  i.e. `Printers in the Danish Office`
+- **Labels** - Optional space-delimited list of Labels (A label can not containing spaces) used to
+  identify a pool of resources. i.e. `DK_Printers_Office Country:DK device:printer`,
   `DK_Printer_Production`, `DK_Printer_Engineering`
-- **Reserved by** - If non-empty, the resource will be unavailable for jobs.
-  i.e. `All printers are currently not available due to maintenance.`
+- **Reserved by** - Optional reserved / locked cause. If non-empty,
+  the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
+  This option is still possible, but we recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
 
 ### Using a resource in a freestyle job
 
@@ -46,7 +47,7 @@ them.
 
 Examples:
 
-*Acquire lock*
+#### Acquire lock
 
 ```groovy
 echo 'Starting'
@@ -57,7 +58,7 @@ lock('my-resource-name') {
 echo 'Finish'
 ```
 
-*Take first position in queue*
+#### Take first position in queue
 
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
@@ -68,7 +69,7 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 }
 ```
 
-*Resolve a variable configured with the resource name*
+#### Resolve a variable configured with the resource name
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
@@ -91,9 +92,7 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
 }
 ```
 
-
-
-*Skip executing the block if there is a queue*
+#### Skip executing the block if there is a queue
 
 ```groovy
 lock(resource: 'some_resource', skipIfLocked: true) {
@@ -105,6 +104,30 @@ Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
 documentation.
 
+#### Multiple resource lock
+
+```groovy
+lock(label: 'label1', extra: [[resource: 'resource1']]) {
+	echo 'Do something now or never!'
+}
+echo 'Finish'"
+```
+
+```groovy
+lock(
+  variable: 'var',
+  extra: [
+    [resource: 'resource4'],
+    [resource: 'resource2'],
+    [label: 'label1', quantity: 2]
+  ]
+) {
+  def lockedResources = env.var.split(',').sort()
+  echo "Resources locked: ${lockedResources}"
+}
+echo 'Finish'
+```
+
 ## Configuration as Code
 
 This plugin can be configured via
@@ -112,21 +135,41 @@ This plugin can be configured via
 
 ### Example configuration
 
-```
+```yml
 unclassified:
   lockableResourcesManager:
     declaredResources:
-      - name: "Resource_A"
-        description: "Description_A"
-        labels: "Label_A"
-        reservedBy: "Reserved_A"
+      - name: "S7_1200_1 "
+        description: "S7 PLC model 1200"
+        labels: "plc:S7 model:1200"
+        reservedBy: "Reserved due maintenance window"
+    declaredResources:
+      - name: "S7_1200_2"
+        labels: "plc:S7 model:1200"
 ```
+
+Properties *description*, *labels* and *reservedBy* are optional.
+
+## lockable-resources overview
+
+The page `<jenkinsRootUrl>/lockable-resources/` provides an overview over all resources and actions to change resource status.
+
+Name | Permission | Description
+-----|------------|------------
+Reserve | RESERVE | Reserves an available resource for currently logged user indefinitely (until that person, or some explicit scripted action, decides to release the resource).
+Unreserve | RESERVE | Un-reserves a resource that may be reserved by some person already. The user can unreserve only own resource. Administrator can unreserve any resource.
+Unlock | UNLOCK | Unlocks a resource that may be or not be locked by some job (or reserved by some user) already.
+Steal lock | STEAL | Reserves a resource that may be or not be locked by some job (or reserved by some user) already. Giving it away to currently logged user indefinitely (until that person, or some explicit scripted action, later decides to release the resource).
+Reassign | STEAL | Reserves a resource that may be or not be reserved by some person already. Giving it away to currently logged user indefinitely (until that person, or some explicit scripted action, decides to release the resource).
+Reset | UNLOCK | Reset a resource that may be reserved, locked or queued.
+Note | RESERVE | Add or edit resource note.
+
 
 ## Changelog
 
-* See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
+- See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
   for recent versions.
-* See the [old changelog](CHANGELOG.old.md) for versions 2.5 and older.
+- See the [old changelog](CHANGELOG.old.md) for versions 2.5 and older.
 
 ## Report an Issue
 
