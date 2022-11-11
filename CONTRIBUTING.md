@@ -8,13 +8,13 @@ You could also go the [GitPod](https://gitpod.io/#https://github.com/jenkinsci/l
 
 If you have the proper environment, typing:
 
-```
+```sh
     mvn verify
 ```
 
 should create a plugin as `target/*.hpi`, which you can install in your Jenkins instance. Running
 
-```
+```sh
     mvn hpi:run -Djenkins.version=2.361.1
 ```
 
@@ -31,7 +31,7 @@ This plugin tries to migrate to [Google Java Code Style], please try to adhere t
 whenever adding new files or making big changes to existing files. If your IDE doesn't support
 this style, you can use the [fmt-maven-plugin], like this:
 
-```
+```sh
     mvn fmt:format -DfilesNamePattern=ChangedFile\.java
 ```
 
@@ -46,7 +46,7 @@ Test coverage is a percentage measure of the degree to which the source code of 
 
 To get local liny-by-line coverage report execute this command
 
-```
+```sh
     mvn -Djenkins.version=2.361.1 -P enable-jacoco clean verify jacoco:report
 ```
 
