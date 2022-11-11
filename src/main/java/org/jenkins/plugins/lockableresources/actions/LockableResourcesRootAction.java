@@ -234,12 +234,14 @@ public class LockableResourcesRootAction implements RootAction {
   public void doReassign(StaplerRequest req, StaplerResponse rsp)
     throws IOException, ServletException
   {
+    Jenkins.get().checkPermission(STEAL);
+
     String userName = getUserName();
     if (userName == null) {
+      // defensive: this can not happens because we check you permissions few lines before
+      // therefore you must be logged in
       throw new AccessDeniedException3(Jenkins.getAuthentication2(), STEAL);
     }
-
-    Jenkins.get().checkAnyPermission(STEAL, Jenkins.ADMINISTER);
 
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
