@@ -24,14 +24,14 @@ Each lockable resource has the following properties:
 
 - **Name** - A mandatory name (not containing spaces!) for this particular resource, i.e.
   `DK_Printer_ColorA3_2342`
-- **Description** - A optional verbose description of this particular resource,
+- **Description** - Optional verbose description of this particular resource,
   i.e. `Printers in the Danish Office`
 - **Labels** - Optional space-delimited list of Labels (A label can not containing spaces) used to
   identify a pool of resources. i.e. `DK_Printers_Office Country:DK device:printer`,
   `DK_Printer_Production`, `DK_Printer_Engineering`
-- **Reserved by** - If non-empty, the resource will be unavailable for jobs.
-  i.e. `All printers are currently not available due to maintenance.` This option is still possible, but we
-  recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
+- **Reserved by** - Optional reserved / locked cause. If non-empty,
+  the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
+  This option is still possible, but we recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
 
 ### Using a resource in a freestyle job
 
