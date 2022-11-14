@@ -122,6 +122,10 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>io.jenkins.plugins</groupId>
+      <artifactId>data-tables-api</artifactId>
+    </dependency>
 
     <!-- Testing scope -->
     <dependency>
@@ -153,6 +157,11 @@
     <dependency>
       <groupId>io.jenkins.configuration-as-code</groupId>
       <artifactId>test-harness</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

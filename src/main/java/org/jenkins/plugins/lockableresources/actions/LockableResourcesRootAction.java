@@ -25,6 +25,8 @@ import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -106,16 +108,58 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().fromName(resourceName);
   }
 
+  /**
+   * Get amount of free resources assigned to given *label*
+   * @param label Label to search.
+   * @return Amount of free labels.
+   */
   public int getFreeResourceAmount(String label) {
     return LockableResourcesManager.get().getFreeResourceAmount(label);
   }
 
+  /** 
+   * Get percentage (0-100) usage of resources assigned to given *label*
+   * 
+   * Used by {@code actions/LockableResourcesRootAction/index.jelly}
+   * @since 2.19
+   * @param label Label to search.
+   * @return Percentage usages of *label* around all resources
+   */
+  @Restricted(NoExternalUse.class)
+  public int getFreeResourcePercentage(String label) {
+    final int allCount = this.getAssignedResourceAmount(label);
+    if (allCount == 0) {
+      return allCount;
+    }
+    return (int)((double)this.getFreeResourceAmount(label) / (double)allCount * 100);
+  }
+
+  /**
+   * Get all existing labels as list.
+   * @return All possible labels.
+   */
   public Set<String> getAllLabels() {
     return LockableResourcesManager.get().getAllLabels();
   }
 
+  /**
+   * Get amount of all labels.
+   * @return Amount of all labels.
+   */
   public int getNumberOfAllLabels() {
     return LockableResourcesManager.get().getAllLabels().size();
+  }
+
+  /**
+   * Get amount of resources assigned to given *label*
+   * 
+   * Used by {@code actions/LockableResourcesRootAction/index.jelly}
+   * @param label Label to search.
+   * @return Amount of assigned resources.
+   */
+  @Restricted(NoExternalUse.class)
+  public int getAssignedResourceAmount(String label) {
+    return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
   }
 
   @RequirePOST
@@ -192,19 +236,18 @@ public class LockableResourcesRootAction implements RootAction {
   {
     Jenkins.get().checkPermission(STEAL);
 
+    String userName = getUserName();
+    if (userName == null) {
+      // defensive: this can not happens because we check you permissions few lines before
+      // therefore you must be logged in
+      throw new AccessDeniedException3(Jenkins.getAuthentication2(), STEAL);
+    }
+
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
       rsp.sendError(404, "Resource not found " + name);
       return;
-    }
-
-    String userName = getUserName();
-    if (userName == null
-        || (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)
-            && !Jenkins.get().hasPermission(STEAL))
-    ) {
-      throw new AccessDeniedException3(Jenkins.getAuthentication2(), STEAL);
     }
 
     if (userName.equals(r.getReservedBy())) {
