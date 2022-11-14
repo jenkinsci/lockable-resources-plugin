@@ -57,6 +57,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
+  @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
+                      justification = "Common Jenkins pattern to call method that can be overridden")
   public LockableResourcesManager() {
     resources = new ArrayList<>();
     load();
