@@ -25,6 +25,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
  * @deprecated Migration code for field introduced in 1.8 (since 1.11)
  */
 @Deprecated
+@ExcludeFromJacocoGeneratedReport
 public final class BackwardCompatibility {
   private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
 

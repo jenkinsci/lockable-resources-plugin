@@ -91,6 +91,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String buildExternalizableId = null;
   private long queuingStarted = 0;
 
+  private static final long serialVersionUID = 1L;
+
   /**
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
    * but became deprecated once several resources could be locked at once. See queuedContexts in
@@ -102,6 +104,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** @deprecated Use single-argument constructor instead (since 1.8) */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public LockableResource(String name, String description, String labels, String reservedBy, String note) {
     this.name = name;
     this.description = description;
@@ -124,6 +127,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11) */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public List<StepContext> getQueuedContexts() {
     return this.queuedContexts;
   }
@@ -308,16 +312,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return build;
   }
 
-  /**
-   * @see WithBridgeMethods
-   * @deprecated Return value of {@link #getBuild()} was widened from AbstractBuild to Run (since
-   *     1.8)
-   */
-  @Deprecated
-  private Object getAbstractBuild(final Run<?, ?> owner, final Class<?> targetClass) {
-    return owner instanceof AbstractBuild ? (AbstractBuild<?, ?>) owner : null;
-  }
-
   @Exported
   public String getBuildName() {
     if (getBuild() != null) return getBuild().getFullDisplayName();
@@ -464,6 +458,4 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
       return "Resource";
     }
   }
-
-  private static final long serialVersionUID = 1L;
 }

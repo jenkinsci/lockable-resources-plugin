@@ -21,7 +21,7 @@ import hudson.model.JobPropertyDescriptor;
 import hudson.util.FormValidation;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
@@ -78,6 +78,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
    * @deprecated groovy script was added (since 2.0)
    */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public RequiredResourcesProperty(String resourceNames,
     String resourceNamesVar, String resourceNumber,
     String labelName) {
@@ -158,9 +159,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       @QueryParameter boolean script,
       @AncestorInPath Item item) {
       // check permission, security first
-      if (item != null) {
-        item.checkPermission(Item.CONFIGURE);
-      }
+      checkPermission(item);
 
       String labelVal = Util.fixEmptyAndTrim(labelName);
       String names = Util.fixEmptyAndTrim(value);
@@ -201,9 +200,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       @QueryParameter boolean script,
       @AncestorInPath Item item) {
       // check permission, security first
-      if (item != null) {
-        item.checkPermission(Item.CONFIGURE);
-      }
+      checkPermission(item);
 
       String label = Util.fixEmptyAndTrim(value);
       String names = Util.fixEmptyAndTrim(resourceNames);
@@ -230,9 +227,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       @QueryParameter String resourceMatchScript,
       @AncestorInPath Item item) {
       // check permission, security first
-      if (item != null) {
-        item.checkPermission(Item.CONFIGURE);
-      }
+      checkPermission(item);
 
       String number = Util.fixEmptyAndTrim(value);
       String names = Util.fixEmptyAndTrim(resourceNames);
@@ -271,9 +266,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       @QueryParameter String value,
       @AncestorInPath Item item) {
       // check permission, security first
-      if (item != null) {
-        item.checkPermission(Item.CONFIGURE);
-      }
+      checkPermission(item);
 
       AutoCompletionCandidates c = new AutoCompletionCandidates();
 
@@ -291,9 +284,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       @QueryParameter String value,
       @AncestorInPath Item item) {
       // check permission, security first
-      if (item != null) {
-        item.checkPermission(Item.CONFIGURE);
-      }
+      checkPermission(item);
 
       AutoCompletionCandidates c = new AutoCompletionCandidates();
 
@@ -308,6 +299,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       }
 
       return c;
+    }
+
+    private static void checkPermission(Item item) {
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      } else {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      }
     }
   }
 }
