@@ -11,7 +11,7 @@
 
   <groupId>org.6wind.jenkins</groupId>
   <artifactId>lockable-resources</artifactId>
-  <version>2.19</version>
+  <version>${revision}${changelist}</version>
   <packaging>hpi</packaging>
 
   <name>Lockable Resources plugin</name>
@@ -55,7 +55,7 @@
   </scm>
 
   <properties>
-    <revision>2.19</revision>
+    <revision>2.20</revision>
     <changelist>-SNAPSHOT</changelist>
     <jenkins.version>2.361.1</jenkins.version>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
