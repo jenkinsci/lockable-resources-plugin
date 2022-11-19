@@ -33,6 +33,9 @@ Each lockable resource has the following properties:
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
   This option is still possible, but we recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
 
+A resource is always the one thing that is locked (or free or reserved), it exists once and has an unique name (if we take the hardware example, this may be office_printer_14). Every resource can have multiple labels (the printer could be labeled dot-matrix-printer, in-office-printer, a4-printer, etc.). All resources with the same label form a "pool", so if you try to lock 1x a4-printer, you might get a random resource which has the label a4-printer - if all resources with the label a4-printer are in use, your job waits until one is available.
+This is similar to node and node-labels.
+
 ### Using a resource in a freestyle job
 
 When configuring the job, select **This build requires lockable resources**.
