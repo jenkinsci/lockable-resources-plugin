@@ -139,11 +139,10 @@ This plugin can be configured via
 unclassified:
   lockableResourcesManager:
     declaredResources:
-      - name: "S7_1200_1 "
+      - name: "S7_1200_1"
         description: "S7 PLC model 1200"
         labels: "plc:S7 model:1200"
         reservedBy: "Reserved due maintenance window"
-    declaredResources:
       - name: "S7_1200_2"
         labels: "plc:S7 model:1200"
 ```
