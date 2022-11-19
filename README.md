@@ -128,6 +128,8 @@ lock(
 echo 'Finish'
 ```
 
+More examples are [here](src/doc/examples/readme.md)
+
 ## Configuration as Code
 
 This plugin can be configured via
