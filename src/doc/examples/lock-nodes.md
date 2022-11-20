@@ -129,7 +129,7 @@ it might happen, that some other job allocate one of the nodes. This will leads 
 - no body can grant how long will be the node allocated
 - ... and many others
 
-Possible solution weill be to locked the nodes.
+Instead, we lock both nodes with a single call to `lock`.
 
 Therefore you need to create 2 resources
 name           | Labels |
