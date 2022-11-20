@@ -182,4 +182,4 @@ lock(variable: 'locked_resources',
 ...
 ```
 
-Keep in mind, that *lock()* helps only when you use it in other jobs too.
+Keep in mind, that `lock()` only helps when locks are consistently requested for resources.
