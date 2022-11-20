@@ -10,7 +10,7 @@ That means a job must pick a target node that has the requested resource availab
 node('some-build-node') {
   // Lock resource named *whatever-resource-some-build-node*
   lock("whatever-resource-${env.NODE_NAME}") {
-    echo "I am no node ${env.NODE_NAME} and locked resource ${env.LOCKED_RESOURCE}"
+    echo "Running on node ${env.NODE_NAME} with locked resource ${env.LOCKED_RESOURCE}"
   }
 }
 ```
