@@ -35,7 +35,7 @@ Each lockable resource has the following properties:
 
 A resource is always the one thing that is locked (or free or reserved).
 It exists once and has an unique name (if we take the hardware example, this may be `office_printer_14`).
-Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.). 
+Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.).
 All resources with the same label form a "pool", so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
 If all resources with the label `a4-printer` are in use, your job waits until one is available.
 This is similar to nodes and node labels.
@@ -135,7 +135,7 @@ lock(
 echo 'Finish'
 ```
 
-More examples are [here](src/doc/examples/readme.md)
+More examples are [here](src/doc/examples/readme.md).
 
 ## Configuration as Code
 
