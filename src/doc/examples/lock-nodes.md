@@ -131,7 +131,7 @@ it might happen, that some other job allocate one of the nodes. This will leads 
 
 Instead, we lock both nodes with a single call to `lock`.
 
-Therefore you need to create 2 resources
+Create two resources:
 name           | Labels |
 ---------------|--------|
 nodes-server-1 | server-node |
