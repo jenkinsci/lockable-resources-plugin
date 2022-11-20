@@ -6,7 +6,8 @@
 [![Build Status](https://ci.jenkins.io/buildStatus/icon?job=Plugins%2Flockable-resources-plugin%2Fmaster)](https://ci.jenkins.io/job/Plugins/job/lockable-resources-plugin/job/master/)
 [![GitHub license](https://img.shields.io/github/license/jenkinsci/lockable-resources-plugin.svg)](https://github.com/jenkinsci/lockable-resources-plugin/blob/master/LICENSE.txt)
 [![Maintenance](https://img.shields.io/maintenance/yes/2022.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
-[![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin) [![Join the chat at https://gitter.im/jenkinsci/lockable-resources](https://badges.gitter.im/jenkinsci/lockable-resources.svg)](https://gitter.im/jenkinsci/lockable-resources?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin)
+[![Join the chat at https://gitter.im/jenkinsci/lockable-resources](https://badges.gitter.im/jenkinsci/lockable-resources.svg)](https://gitter.im/jenkinsci/lockable-resources?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
