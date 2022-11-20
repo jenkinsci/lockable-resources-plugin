@@ -38,7 +38,7 @@ It exists once and has an unique name (if we take the hardware example, this may
 Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.). 
 All resources with the same label form a "pool", so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
 If all resources with the label `a4-printer` are in use, your job waits until one is available.
-This is similar to node and node-labels.
+This is similar to nodes and node labels.
 
 ### Using a resource in a freestyle job
 
