@@ -1,6 +1,6 @@
 # Examples
 
-## Node depended resources
+## Node dependent resources
 
 Create resources that are node depended is in many cases very helpful. That means a job must pick a target node where the requested resource is available.
 
