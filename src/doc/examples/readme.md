@@ -1,6 +1,6 @@
 # Examples
 
-List with examples, how can be lockable.resources used.
+Examples of lockable resources include:
 
 If you have an example to share, please create a [new documentation issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/new?assignees=&labels=documentation&template=3-documentation.yml) and provide additional examples as a [pull request](https://github.com/jenkinsci/lockable-resources-plugin/pulls) to the repository.
 If you have a question, please open a [GitHub issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose) with your question.
