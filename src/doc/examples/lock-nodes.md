@@ -2,7 +2,8 @@
 
 ## Node dependent resources
 
-Create resources that are node depended is in many cases very helpful. That means a job must pick a target node where the requested resource is available.
+Locking a resource that depends on a specific node can be very helpful in many cases.
+That means a job must pick a target node that has the requested resource available.
 
 ```groovy
 // allocate node
