@@ -179,9 +179,9 @@ Please report issues and enhancements through the [Jenkins issue tracker in GitH
 
 Contributions are welcome, please
 refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
-for details on how to proceed!
+for details on how to proceed! Join [Gitter channel](https://gitter.im/jenkinsci/lockable-resources) to discuss your ideas with the community.
 
 ## License
-
+https://gitter.im/jenkinsci/lockable-resources
 All source code is licensed under the MIT license.
 See [LICENSE](LICENSE.txt)
