@@ -112,7 +112,7 @@
     <dependency>
       <groupId>com.infradna.tool</groupId>
       <artifactId>bridge-method-annotation</artifactId>
-      <version>1.23</version>
+      <version>1.25</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
