@@ -352,6 +352,9 @@
               </table>
               <script type="text/javascript">
                 jQuery3("#lockable-resources-labels").DataTable({
+                  pagingType: 'numbers', // Page number button only
+                  stateSave: true,
+                 
                   order: [
                     [1, "asc"], 
                     [0, "asc"]
