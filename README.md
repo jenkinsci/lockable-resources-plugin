@@ -34,6 +34,13 @@ Each lockable resource has the following properties:
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
   This option is still possible, but we recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
 
+A resource is always the one thing that is locked (or free or reserved).
+It exists once and has an unique name (if we take the hardware example, this may be `office_printer_14`).
+Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.).
+All resources with the same label form a "pool", so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
+If all resources with the label `a4-printer` are in use, your job waits until one is available.
+This is similar to nodes and node labels.
+
 ### Using a resource in a freestyle job
 
 When configuring the job, select **This build requires lockable resources**.
@@ -176,6 +183,8 @@ lock(
 echo 'Finish'
 ```
 
+More examples are [here](src/doc/examples/readme.md).
+
 ## Configuration as Code
 
 This plugin can be configured via
@@ -187,11 +196,10 @@ This plugin can be configured via
 unclassified:
   lockableResourcesManager:
     declaredResources:
-      - name: "S7_1200_1 "
+      - name: "S7_1200_1"
         description: "S7 PLC model 1200"
         labels: "plc:S7 model:1200"
         reservedBy: "Reserved due maintenance window"
-    declaredResources:
       - name: "S7_1200_2"
         labels: "plc:S7 model:1200"
 ```
@@ -228,8 +236,8 @@ Please report issues and enhancements through the [Jenkins issue tracker in GitH
 Contributions are welcome, please
 refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
 for details on how to proceed!
+Join [Gitter channel](https://gitter.im/jenkinsci/lockable-resources) to discuss your ideas with the community.
 
 ## License
-
 All source code is licensed under the MIT license.
 See [LICENSE](LICENSE.txt)
