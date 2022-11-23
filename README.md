@@ -51,12 +51,32 @@ Examples:
 #### Acquire lock
 
 ```groovy
-echo 'Starting'
-lock('my-resource-name') {
-  echo 'Do something here that requires unique access to the resource'
-  // any other build will wait until the one locking the resource leaves this block
+pipeline {
+  agent any
+  resource: ('my-resource-name')
+
+  stages {
+    stage('Build') {
+      steps {
+        echo 'Do something here that requires unique access to the resource'
+        // any other build will wait until the one locking the resource leaves this block
+
+      }
+    }
+    stage('Test'){
+      steps {
+        sh 'make check'
+        junit 'reports/**/*.xml'
+      }
+    }
+    stage('Deploy') {
+      steps {
+        sh 'make publish'
+        echo 'Finish'
+      }
+    }
+  }
 }
-echo 'Finish'
 ```
 
 #### Take first position in queue
@@ -67,6 +87,33 @@ lock(resource: 'staging-server', inversePrecedence: true) {
         servers.deploy 'staging'
     }
     input message: "Does ${jettyUrl}staging/ look good?"
+}
+
+pipeline {
+  agent any
+  resource: ('staging-server')
+
+  stages {
+    stage('Build') {
+      steps {
+        echo 'Do something here that requires unique access to the resource'
+        // any other build will wait until the one locking the resource leaves this block
+
+      }
+    }
+    stage('Test'){
+      steps {
+        sh 'make check'
+        junit 'reports/**/*.xml'
+      }
+    }
+    stage('Deploy') {
+      steps {
+        sh 'make publish'
+        input message: "Does ${jettyUrl}staging/ look good?"
+      }
+    }
+  }
 }
 ```
 
