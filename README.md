@@ -50,6 +50,20 @@ Examples:
 
 #### Acquire lock
 
+Example for scripted pipeline:
+
+```groovy
+echo 'Starting'
+lock('my-resource-name') {
+  echo 'Do something here that requires unique access to the resource'
+  // any other build will wait until the one locking the resource leaves this block
+}
+echo 'Finish'
+
+```
+
+Example for declarative pipeline:
+
 ```groovy
 pipeline {
   agent any
@@ -80,6 +94,19 @@ pipeline {
 ```
 
 #### Take first position in queue
+
+Example for scripted pipeline:
+
+```groovy
+lock(resource: 'staging-server', inversePrecedence: true) {
+    node {
+        servers.deploy 'staging'
+    }
+    input message: "Does ${jettyUrl}staging/ look good?"
+}
+```
+
+Example for declarative pipeline:
 
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
@@ -126,6 +153,7 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 ```
 
 When multiple locks are acquired, each will be assigned to a numbered variable:
+
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
