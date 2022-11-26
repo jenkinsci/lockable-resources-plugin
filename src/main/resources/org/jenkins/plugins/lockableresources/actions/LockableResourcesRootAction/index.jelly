@@ -16,11 +16,8 @@
   xmlns:st="jelly:stapler"
 >
   <l:layout title="${it.displayName}" type="one-column">
-    <script
-      type="text/javascript"
-      src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"
-    />
     <l:main-panel>
+
       <st:adjunct includes="io.jenkins.plugins.data-tables" />
 
       <h1>${%header.resources}</h1>
@@ -38,9 +35,11 @@
           <j:otherwise>
             <div class="table-responsive">
               <table
-                class="table table-hover table-striped display"
+                class="table table-hover table-striped display data-table"
                 id="lockable-resources"
                 isLoaded="true"
+                data-columns-definition="[null, null, null, null, null]"
+                data-table-configuration="{}"
               >
                 <colgroup>
                   <!-- resouce -->
@@ -153,9 +152,20 @@
                       </j:if>
                       <j:if test="${!resource.locked}">
                         <j:if test="${resource.reservedBy != null}">
+                          <j:set
+                            var="tooltip"
+                              value="${%resource.status.reservedBy(resource.reservedBy)}"
+                          />
+                          <j:if test="${resource.reservedTimestamp != null}">
+                          <j:set
+                            var="tooltip"
+                              value="${%resource.status.reservedBy.tooltip(resource.reservedBy, h.getTimeSpanString(resource.reservedTimestamp))}"
+                          />
+                          </j:if>
+
                           <td
                             class="table-danger"
-                            tooltip="${%resource.status.reservedBy.tooltip(resource.reservedBy, resource.reservedTimestamp != null ? h.getTimeSpanString(resource.reservedTimestamp) : '')}"
+                            tooltip="${tooltip}"
                           >
                             ${%resource.status.reservedBy(resource.reservedBy)}
                             <j:if test="${resource.reservedTimestamp != null}">
@@ -275,28 +285,23 @@
                 </tbody>
               </table>
             </div>
-            <script type="text/javascript">
-              jQuery3("#lockable-resources").DataTable({
-                order: [
-                  [1, "desc"],
-                  [0, "asc"]
-                ] // Sort by status and name
-              });
-            </script>
           </j:otherwise>
 
           <j:if test="${it.getNumberOfAllLabels() != 0}">
             <h2 class="jenkins-!-padding-1">${%header.labels}</h2>
             <div class="table-responsive">
               <table
-                class="table table-hover table-striped display"
+                class="table table-hover table-striped display data-table"
                 id="lockable-resources-labels"
                 isLoaded="true"
+                data-columns-definition="[null, null, null, null]"
+                data-table-configuration="{}"
               >
                 <thead>
                   <th>${%labels.table.column.labels}</th>
-                  <th>${%labels.table.column.free}</th>
                   <th>${%labels.table.column.assigned}</th>
+                  <th>${%labels.table.column.free}</th>
+                  <th>${%labels.table.column.percentage}</th>
                 </thead>
                 <tbody>
                   <j:forEach var="label" items="${it.getAllLabels()}">
@@ -336,35 +341,35 @@
                           ></button
                         ></a>
                       </td>
-                      <td
-                        class="table-${cssClass}"
-                        data-order="${percentage}"
-                        tooltip="${%labels.free.tooltip(percentage)}"
+                      <td>
+                        ${allCount}
+                      </td>
+                      <td tooltip="${%labels.free.tooltip(percentage)}"
                       >
                         ${freeCount}
                       </td>
-                      <td>
-                        ${allCount}
+                      <td class="table-${cssClass}"
+                      >
+                        ${percentage}
                       </td>
                     </tr>
                   </j:forEach>
                 </tbody>
               </table>
-              <script type="text/javascript">
-                jQuery3("#lockable-resources-labels").DataTable({
-                  pagingType: 'numbers', // Page number button only
-                  stateSave: true,
-                 
-                  order: [
-                    [1, "asc"], 
-                    [0, "asc"]
-                  ]
-                });
-              </script>
             </div>
           </j:if>
+
         </j:choose>
       </div>
+
+    <script
+      type="text/javascript"
+      src="${resURL}/plugin/data-tables-api/js/table.js"
+    />
+    <script
+      type="text/javascript"
+      src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"
+    />
     </l:main-panel>
   </l:layout>
 </j:jelly>
