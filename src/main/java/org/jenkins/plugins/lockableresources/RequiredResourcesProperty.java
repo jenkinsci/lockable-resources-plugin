@@ -137,7 +137,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     @NonNull
     @Override
     public String getDisplayName() {
-      return "Required Lockable Resources";
+      return Messages.RequiredResourcesProperty_displayName();
     }
 
     @Override

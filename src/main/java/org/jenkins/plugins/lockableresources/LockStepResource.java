@@ -101,7 +101,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     @NonNull
     @Override
     public String getDisplayName() {
-      return "Resource";
+      return Messages.LockStepResource_displayName();
     }
 
     @RequirePOST

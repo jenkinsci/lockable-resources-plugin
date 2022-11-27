@@ -863,7 +863,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @NonNull
   @Override
   public String getDisplayName() {
-    return "External Resources";
+    return Messages.LockableResourcesManager_displayName();
   }
 
   public synchronized void reset(List<LockableResource> resources) {
