@@ -362,14 +362,14 @@
         </j:choose>
       </div>
 
-    <script
-      type="text/javascript"
-      src="${resURL}/plugin/data-tables-api/js/table.js"
-    />
-    <script
-      type="text/javascript"
-      src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"
-    />
+      <script
+        type="text/javascript"
+        src="${resURL}/plugin/data-tables-api/js/table.js"
+      />
+      <script
+        type="text/javascript"
+        src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"
+      />
     </l:main-panel>
   </l:layout>
 </j:jelly>
