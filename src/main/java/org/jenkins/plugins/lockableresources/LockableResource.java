@@ -157,6 +157,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return labels;
   }
 
+  /**
+   * Get labels of this resource
+   * @return List of assigned labels.
+   */
+  @Exported
+  public List<String> getLabelsAsList() {
+    return Arrays.asList(labels.split("\\s+"));
+  }
+
+  /**
+   * Checks if the resource has label *labelToFind*
+   * @param labelToFind Label to find.
+   * @return {@code true} if this resource contains the label.
+   */
+  @Exported
+  public boolean hasLabel(String labelToFind) {
+    return this.labelsContain(labelToFind);
+  }
+
   @Exported
   public String getNote() {
     return this.note;
@@ -181,12 +200,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return labelsContain(candidate);
   }
 
+  /**
+   * Checks if the resource contain label *candidate*.
+   * @param candidate Labels to find.
+   * @return {@code true} if resource contains label *candidate*
+   */
   private boolean labelsContain(String candidate) {
-    return makeLabelsList().contains(candidate);
-  }
-
-  private List<String> makeLabelsList() {
-    return Arrays.asList(labels.split("\\s+"));
+    return this.getLabelsAsList().contains(candidate);
   }
 
   /**
@@ -205,7 +225,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     Binding binding = new Binding(params);
     binding.setVariable("resourceName", name);
     binding.setVariable("resourceDescription", description);
-    binding.setVariable("resourceLabels", makeLabelsList());
+    binding.setVariable("resourceLabels", this.getLabelsAsList());
     binding.setVariable("resourceNote", note);
     try {
       Object result =
