@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -279,6 +280,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   @Restricted(NoExternalUse.class)
+  @CheckForNull
   public static String getUserName() {
     User current = User.current();
     if (current != null) {
@@ -294,7 +296,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class) // called by jelly
   public boolean isReservedByCurrentUser() {
-    return (this.reservedBy != null && getUserName().equals(this.reservedBy));
+    return (this.reservedBy != null && StringUtils.equals(getUserName(), this.reservedBy));
   }
 
   @Exported
