@@ -34,7 +34,7 @@ THE SOFTWARE.
   <l:ajax>
     <f:block>
       <form action="saveNote?resource=${resource}" method="post" style="flex-grow: 1;">
-        <div>
+        <div class="jenkins-!-padding-right-4">
           <f:entry help="${app.markupFormatter.helpUrl}">
             <f:textarea name="note" value="${note}"
               codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>

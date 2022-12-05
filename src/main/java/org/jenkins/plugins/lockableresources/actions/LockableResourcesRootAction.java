@@ -11,7 +11,6 @@ package org.jenkins.plugins.lockableresources.actions;
 import hudson.Extension;
 import hudson.model.Api;
 import hudson.model.RootAction;
-import hudson.model.User;
 import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
@@ -81,12 +80,7 @@ public class LockableResourcesRootAction implements RootAction {
   }
 
   public String getUserName() {
-    User current = User.current();
-    if (current != null) {
-      return current.getFullName();
-    } else {
-      return null;
-    }
+    return LockableResource.getUserName();
   }
 
   @Override

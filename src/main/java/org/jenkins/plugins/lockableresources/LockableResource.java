@@ -248,6 +248,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return reservedBy != null;
   }
 
+  @Restricted(NoExternalUse.class)
+  public static String getUserName() {
+    User current = User.current();
+    if (current != null) {
+      return current.getFullName();
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Function check if the resources is reserved by currently logged user
+   * @return true when reserved by current user, false otherwise.
+   */
+  @Restricted(NoExternalUse.class) // called by jelly
+  public boolean isReservedByCurrentUser() {
+    return (this.reservedBy != null && getUserName() == this.reservedBy);
+  }
+
   @Exported
   public String getReservedByEmail() {
     if (isReserved()) {
