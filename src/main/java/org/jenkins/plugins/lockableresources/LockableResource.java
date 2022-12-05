@@ -284,7 +284,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class) // called by jelly
   public boolean isReservedByCurrentUser() {
-    return (this.reservedBy != null && getUserName() == this.reservedBy);
+    return (this.reservedBy != null && getUserName().equals(this.reservedBy));
   }
 
   @Exported
