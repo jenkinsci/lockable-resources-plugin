@@ -147,9 +147,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
     for (LockableResource r : this.resources) {
-      String rl = r.getLabels();
-      if (rl == null || "".equals(rl)) continue;
-      labels.addAll(Arrays.asList(rl.split("\\s+")));
+      labels.addAll(r.getLabelsAsList());
     }
     return labels;
   }
@@ -157,8 +155,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public int getFreeResourceAmount(String label) {
     int free = 0;
     for (LockableResource r : this.resources) {
-      if (r.isLocked() || r.isQueued() || r.isReserved()) continue;
-      if (Arrays.asList(r.getLabels().split("\\s+")).contains(label)) free += 1;
+      if (r.isLocked() || r.isQueued() || r.isReserved()) {
+       continue;
+      }
+      if (r.hasLabel(label)) {
+        free ++;
+      }
     }
     return free;
   }
