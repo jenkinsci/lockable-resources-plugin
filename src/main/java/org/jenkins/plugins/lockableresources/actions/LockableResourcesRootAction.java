@@ -69,7 +69,7 @@ public class LockableResourcesRootAction implements RootAction {
       Jenkins.ADMINISTER,
       PermissionScope.JENKINS);
 
-  public static final String ICON = "/plugin/lockable-resources/img/device.svg";
+  public static final String ICON = "symbol-lock-closed";
 
   @Override
   public String getIconFileName() {

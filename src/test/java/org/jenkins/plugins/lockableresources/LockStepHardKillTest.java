@@ -25,18 +25,34 @@ public class LockStepHardKillTest extends LockStepTestBase {
     WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
     p1.setDefinition(
       new CpsFlowDefinition(
-        "lock('resource1') { echo 'locked!'; semaphore 'wait-inside'; echo 'Semaphore 1 unblocked'; }", true));
+        "lock('resource1') {" +
+        "  echo 'JOB 1 inside'\n" +
+        // this looks strange, but don not panic
+        // the job will be killed later
+        // I use here sleep instead of semaphore, because the
+        // semaphore step is very instable (slowly ?)
+        "  sleep 600;" +
+        "  echo 'JOB 1 unblocked';" +
+       "}", true));
     WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("locked!", b1);
-    SemaphoreStep.waitForStart("wait-inside/1", b1);
+    j.waitForMessage("JOB 1 inside", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
       new CpsFlowDefinition(
-        "lock('resource1') {\n" +
-          "  semaphore 'wait-inside'\n" +
-          "  echo 'Semaphore 2 unblocked'\n" +
-          "}", true));
+        "try {\n" +
+          "lock('resource1') {\n" +
+          "  echo 'JOB 2 inside'\n" +
+          // also here use long sleep time
+          // the job will be stopped later (but not killed)
+          "  sleep 600;" +
+          "}\n" +
+        "}\n" +
+        "catch(error) {\n" +
+        "  echo 'JOB 2 unblocked';\n"+
+        "  echo 'error:' + error;\n"+
+        "}"
+        , true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
     // Make sure that b2 is blocked on b1's lock.
@@ -49,9 +65,10 @@ public class LockStepHardKillTest extends LockStepTestBase {
     p3.setDefinition(
       new CpsFlowDefinition(
         "lock('resource1') {\n" +
-          "  semaphore 'wait-inside'\n" +
-          "  echo 'Semaphore 3 unblocked'\n" +
-          "}", true));
+        "  echo 'JOB 3 inside'\n" +
+        "}\n" +
+        "echo 'JOB 3 unblocked'",
+        true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
     // Make sure that b3 is also blocked still on b1's lock.
@@ -66,15 +83,21 @@ public class LockStepHardKillTest extends LockStepTestBase {
 
     // Verify that b2 gets the lock.
     j.waitForMessage("Lock acquired on [resource1]", b2);
-    SemaphoreStep.success("wait-inside/2", b2);
+    j.waitForMessage("JOB 2 inside", b2);
+    j.assertLogNotContains("JOB 3 inside", b3);
+
+    // terminate current step
+    b2.doTerm();
     // Verify that b2 releases the lock and finishes successfully.
     j.waitForMessage("Lock released on resource [resource1]", b2);
+    j.waitForMessage("JOB 2 unblocked", b2);
     j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
 
     // Now b3 should get the lock and do its thing.
     j.waitForMessage("Lock acquired on [resource1]", b3);
-    SemaphoreStep.success("wait-inside/3", b3);
+    j.waitForMessage("Lock released on resource [resource1]", b3);
+    j.waitForMessage("JOB 3 unblocked", b3);
     j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b3, 1, 0);
   }

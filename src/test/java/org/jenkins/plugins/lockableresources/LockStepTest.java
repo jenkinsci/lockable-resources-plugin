@@ -516,18 +516,16 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
       new CpsFlowDefinition(
-        "retry(99) {\n"
-          + "    lock('resource1') {\n"
-          + "        semaphore('wait-inside')\n"
-          + "     }\n"
-          + "}",
+        "lock('resource1') {\n" +
+        "    echo('I am inside')\n" +
+        "}\n",
         true));
 
     WorkflowRun r = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1] is locked, waiting...", r);
+    j.assertLogNotContains("I am inside", r);
     TestHelpers.clickButton(wc, "unreserve");
-    SemaphoreStep.waitForStart("wait-inside/1", r);
-    SemaphoreStep.success("wait-inside/1", null);
+    j.waitForMessage("I am inside", r);
     j.assertBuildStatusSuccess(j.waitForCompletion(r));
   }
 
