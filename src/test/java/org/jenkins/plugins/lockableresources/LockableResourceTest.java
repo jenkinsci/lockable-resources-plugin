@@ -2,8 +2,11 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.util.Date;
 import org.junit.Test;
 
 public class LockableResourceTest {
@@ -16,7 +19,9 @@ public class LockableResourceTest {
     assertEquals("r1", instance.getName());
     assertEquals("", instance.getDescription());
     assertEquals("", instance.getLabels());
+    assertEquals("", instance.getNote());
     assertNull(instance.getReservedBy());
+    assertNull(instance.getReservedTimestamp());
     assertFalse(instance.isReserved());
     assertFalse(instance.isQueued());
     assertFalse(instance.isQueued(0));
@@ -25,6 +30,22 @@ public class LockableResourceTest {
     assertNull(instance.getBuild());
     assertEquals(0, instance.getQueueItemId());
     assertNull(instance.getQueueItemProject());
+  }
+
+  @Test
+  public void testNote() {
+    final LockableResource resource = new LockableResource("Name 1");
+
+    assertEquals("", resource.getNote());
+
+    resource.setNote("Note 1");
+    assertEquals("Note 1", resource.getNote());
+
+    resource.setNote("Note B");
+    assertEquals("Note B", resource.getNote());
+
+    resource.setNote("");
+    assertEquals("", resource.getNote());
   }
 
   @Test
@@ -43,8 +64,27 @@ public class LockableResourceTest {
   }
 
   @Test
+  public void testReservedTimestamp() {
+    instance.setReservedTimestamp(null);
+    assertNull(instance.getReservedTimestamp());
+
+    final Date date = new Date();
+    instance.setReservedTimestamp(date);
+    assertEquals(date, instance.getReservedTimestamp());
+  }
+
+  @Test
+  public void testReserve() {
+    instance.reserve("testUser1");
+    assertEquals("testUser1", instance.getReservedBy());
+    assertNotNull(instance.getReservedTimestamp());
+  }
+
+  @Test
   public void testUnReserve() {
     instance.unReserve();
+    assertNull(instance.getReservedBy());
+    assertNull(instance.getReservedTimestamp());
   }
 
   @Test
@@ -59,6 +99,6 @@ public class LockableResourceTest {
 
   @Test
   public void testEquals() {
-    assertFalse(instance.equals(null));
+    assertNotEquals(null, instance);
   }
 }

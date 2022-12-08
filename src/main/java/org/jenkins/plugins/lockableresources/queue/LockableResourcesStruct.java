@@ -8,12 +8,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.CheckForNull;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -32,7 +33,10 @@ public class LockableResourcesStruct implements Serializable {
 
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
+  @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
   @CheckForNull private transient SecureGroovyScript resourceMatchScript;
+
+  private static final long serialVersionUID = 1L;
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
     required = new ArrayList<>();
@@ -70,13 +74,13 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   public LockableResourcesStruct(
-      @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
+    @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
     this(resources, label, quantity);
     requiredVar = variable;
   }
 
   public LockableResourcesStruct(
-      @Nullable List<String> resources, @Nullable String label, int quantity) {
+    @Nullable List<String> resources, @Nullable String label, int quantity) {
     required = new ArrayList<>();
     if (resources != null) {
       for (String resource : resources) {
@@ -115,23 +119,23 @@ public class LockableResourcesStruct implements Serializable {
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {
     if (resourceMatchScript == null && serializableResourceMatchScript != null) {
+      // this is probably high defensive code, because
       resourceMatchScript = serializableResourceMatchScript.rehydrate();
     }
     return resourceMatchScript;
   }
 
+  @Override
   public String toString() {
     return "Required resources: "
-        + this.required
-        + ", Required label: "
-        + this.label
-        + ", Required label script: "
-        + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
-        + ", Variable name: "
-        + this.requiredVar
-        + ", Number of resources: "
-        + this.requiredNumber;
+      + this.required
+      + ", Required label: "
+      + this.label
+      + ", Required label script: "
+      + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
+      + ", Variable name: "
+      + this.requiredVar
+      + ", Number of resources: "
+      + this.requiredNumber;
   }
-
-  private static final long serialVersionUID = 1L;
 }

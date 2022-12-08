@@ -8,8 +8,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources;
 
+import static java.text.DateFormat.MEDIUM;
+import static java.text.DateFormat.SHORT;
+
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import groovy.lang.Binding;
 import hudson.Extension;
 import hudson.Util;
@@ -23,14 +27,16 @@ import hudson.model.Run;
 import hudson.model.User;
 import hudson.tasks.Mailer.UserProperty;
 import java.io.Serializable;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -43,7 +49,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource>
-    implements Serializable {
+  implements Serializable {
 
   private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
   public static final int NOT_QUEUED = 0;
@@ -54,6 +60,28 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private String description = "";
   private String labels = "";
   private String reservedBy = null;
+  private Date reservedTimestamp = null;
+  private String note = "";
+
+  /**
+   * Track that a currently reserved resource was originally reserved
+   * for someone else, or locked for some other job, and explicitly
+   * taken away - e.g. for SUT post-mortems while a test job runs.
+   * Currently this does not track "who" it was taken from nor intend
+   * to give it back - just for bookkeeping and UI button naming.
+   * Cleared when the resource is unReserve'd.
+   */
+  private boolean stolen = false;
+
+  /**
+   * We can use arbitrary identifier in a temporary lock (e.g. a commit hash of
+   * built/tested sources), and not overwhelm Jenkins with lots of "garbage" locks.
+   * Such locks will be automatically removed when freed, if they were not
+   * explicitly declared in the Jenkins Configure System page.
+   * If an originally ephemeral lock is later defined in configuration, it becomes
+   * a usual persistent lock. If a "usual" lock definition is deleted while it is
+   * being held, it becomes ephemeral and will disappear when freed.
+   */
   private boolean ephemeral;
 
   private long queueItemId = NOT_QUEUED;
@@ -62,6 +90,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   // Needed to make the state non-transient
   private String buildExternalizableId = null;
   private long queuingStarted = 0;
+
+  private static final long serialVersionUID = 1L;
 
   /**
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
@@ -74,11 +104,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** @deprecated Use single-argument constructor instead (since 1.8) */
   @Deprecated
-  public LockableResource(String name, String description, String labels, String reservedBy) {
+  @ExcludeFromJacocoGeneratedReport
+  public LockableResource(String name, String description, String labels, String reservedBy, String note) {
     this.name = name;
     this.description = description;
     this.labels = labels;
     this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
+    this.note = note;
   }
 
   @DataBoundConstructor
@@ -95,6 +127,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /** @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11) */
   @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public List<StepContext> getQueuedContexts() {
     return this.queuedContexts;
   }
@@ -124,6 +157,35 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return labels;
   }
 
+  /**
+   * Get labels of this resource
+   * @return List of assigned labels.
+   */
+  @Exported
+  public List<String> getLabelsAsList() {
+    return Arrays.asList(labels.split("\\s+"));
+  }
+
+  /**
+   * Checks if the resource has label *labelToFind*
+   * @param labelToFind Label to find.
+   * @return {@code true} if this resource contains the label.
+   */
+  @Exported
+  public boolean hasLabel(String labelToFind) {
+    return this.labelsContain(labelToFind);
+  }
+
+  @Exported
+  public String getNote() {
+    return this.note;
+  }
+
+  @DataBoundSetter
+  public void setNote(String note) {
+    this.note = note;
+  }
+
   @DataBoundSetter
   public void setEphemeral(boolean ephemeral) {
     this.ephemeral = ephemeral;
@@ -138,12 +200,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return labelsContain(candidate);
   }
 
+  /**
+   * Checks if the resource contain label *candidate*.
+   * @param candidate Labels to find.
+   * @return {@code true} if resource contains label *candidate*
+   */
   private boolean labelsContain(String candidate) {
-    return makeLabelsList().contains(candidate);
-  }
-
-  private List<String> makeLabelsList() {
-    return Arrays.asList(labels.split("\\s+"));
+    return this.getLabelsAsList().contains(candidate);
   }
 
   /**
@@ -157,30 +220,42 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class)
   public boolean scriptMatches(
-      @Nonnull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
-      throws ExecutionException {
+    @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+    throws ExecutionException {
     Binding binding = new Binding(params);
     binding.setVariable("resourceName", name);
     binding.setVariable("resourceDescription", description);
-    binding.setVariable("resourceLabels", makeLabelsList());
+    binding.setVariable("resourceLabels", this.getLabelsAsList());
+    binding.setVariable("resourceNote", note);
     try {
-      Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding);
+      Object result =
+        script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
       if (LOGGER.isLoggable(Level.FINE)) {
         LOGGER.fine(
-            "Checked resource "
-                + name
-                + " for "
-                + script.getScript()
-                + " with "
-                + binding
-                + " -> "
-                + result);
+          "Checked resource "
+            + name
+            + " for "
+            + script.getScript()
+            + " with "
+            + binding
+            + " -> "
+            + result);
       }
       return (Boolean) result;
     } catch (Exception e) {
       throw new ExecutionException(
-          "Cannot get boolean result out of groovy expression. See system log for more info", e);
+        "Cannot get boolean result out of groovy expression. See system log for more info", e);
     }
+  }
+
+  @Exported
+  public Date getReservedTimestamp() {
+    return reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
+  }
+
+  @DataBoundSetter
+  public void setReservedTimestamp(final Date reservedTimestamp) {
+    this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
   }
 
   @Exported
@@ -195,7 +270,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getReservedByEmail() {
-    if (reservedBy != null) {
+    if (isReserved()) {
       UserProperty email = null;
       User user = Jenkins.get().getUser(reservedBy);
       if (user != null) email = user.getProperty(UserProperty.class);
@@ -238,11 +313,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @CheckForNull
   public String getLockCause() {
+    final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+    final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
     if (isReserved()) {
-      return String.format("[%s] is reserved by %s", name, reservedBy);
+      return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
     }
     if (isLocked()) {
-      return String.format("[%s] is locked by %s", name, buildExternalizableId);
+      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
     }
     return null;
   }
@@ -255,16 +332,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return build;
   }
 
-  /**
-   * @see WithBridgeMethods
-   * @deprecated Return value of {@link #getBuild()} was widened from AbstractBuild to Run (since
-   *     1.8)
-   */
-  @Deprecated
-  private Object getAbstractBuild(final Run owner, final Class targetClass) {
-    return owner instanceof AbstractBuild ? (AbstractBuild) owner : null;
-  }
-
   @Exported
   public String getBuildName() {
     if (getBuild() != null) return getBuild().getFullDisplayName();
@@ -275,8 +342,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.build = lockedBy;
     if (lockedBy != null) {
       this.buildExternalizableId = lockedBy.getExternalizableId();
+      setReservedTimestamp(new Date());
     } else {
       this.buildExternalizableId = null;
+      setReservedTimestamp(null);
     }
   }
 
@@ -321,14 +390,58 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.reservedBy = Util.fixEmptyAndTrim(userName);
   }
 
+  public void setStolen() {
+    this.stolen = true;
+  }
+
+  @Exported
+  public boolean isStolen() {
+    return this.stolen;
+  }
+
+  public void reserve(String userName) {
+    setReservedBy(userName);
+    setReservedTimestamp(new Date());
+  }
+
   public void unReserve() {
-    this.reservedBy = null;
+    setReservedBy(null);
+    setReservedTimestamp(null);
+    this.stolen = false;
   }
 
   public void reset() {
     this.unReserve();
     this.unqueue();
     this.setBuild(null);
+  }
+
+  /**
+   * Copy unconfigurable properties from another instance. Normally, called after "lockable resource" configuration change.
+   * @param sourceResource resource with properties to copy from
+   */
+  public void copyUnconfigurableProperties(final LockableResource sourceResource) {
+    if (sourceResource != null) {
+      setReservedTimestamp(sourceResource.getReservedTimestamp());
+      setNote(sourceResource.getNote());
+    }
+  }
+
+  /** Tell LRM to recycle this resource, including notifications for
+   * whoever may be waiting in the queue so they can proceed immediately.
+   * WARNING: Do not use this from inside the lock step closure which
+   * originally locked this resource, to avoid nasty surprises!
+   * Just stick with unReserve() and close the closure, if needed.
+   */
+  public void recycle() {
+    try {
+      List<LockableResource> resources = new ArrayList<>();
+      resources.add(this);
+      org.jenkins.plugins.lockableresources.LockableResourcesManager.get().
+        recycle(resources);
+    } catch (Exception e) {
+      this.reset();
+    }
   }
 
   @Override
@@ -359,11 +472,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Extension
   public static class DescriptorImpl extends Descriptor<LockableResource> {
 
+    @NonNull
     @Override
     public String getDisplayName() {
       return "Resource";
     }
   }
-
-  private static final long serialVersionUID = 1L;
 }

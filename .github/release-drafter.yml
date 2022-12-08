@@ -1,2 +1,0 @@
-_extends: .github
-tag-template: lockable-resources-$NEXT_MINOR_VERSION

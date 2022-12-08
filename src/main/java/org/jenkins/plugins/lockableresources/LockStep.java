@@ -1,8 +1,11 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
 import java.io.Serializable;
@@ -15,9 +18,11 @@ import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class LockStep extends Step implements Serializable {
 
@@ -42,7 +47,7 @@ public class LockStep extends Step implements Serializable {
   // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
   // is not required)
   @DataBoundConstructor
-  public LockStep(String resource) {
+  public LockStep(@Nullable String resource) {
     if (resource != null && !resource.isEmpty()) {
       this.resource = resource;
     }
@@ -78,7 +83,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   @DataBoundSetter
-  public void setExtra(List<LockStepResource> extra) {
+  public void setExtra(@CheckForNull List<LockStepResource> extra) {
     this.extra = extra;
   }
 
@@ -90,6 +95,7 @@ public class LockStep extends Step implements Serializable {
       return "lock";
     }
 
+    @NonNull
     @Override
     public String getDisplayName() {
       return "Lock shared resource";
@@ -100,18 +106,26 @@ public class LockStep extends Step implements Serializable {
       return true;
     }
 
-    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value) {
-      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value);
+    @RequirePOST
+    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value,
+      @AncestorInPath Item item) {
+      return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
     }
 
+    @RequirePOST
     public static FormValidation doCheckLabel(
-        @QueryParameter String value, @QueryParameter String resource) {
-      return LockStepResource.DescriptorImpl.doCheckLabel(value, resource);
+      @QueryParameter String value,
+      @QueryParameter String resource,
+      @AncestorInPath Item item) {
+      return LockStepResource.DescriptorImpl.doCheckLabel(value, resource, item);
     }
 
+    @RequirePOST
     public static FormValidation doCheckResource(
-        @QueryParameter String value, @QueryParameter String label) {
-      return LockStepResource.DescriptorImpl.doCheckLabel(label, value);
+      @QueryParameter String value,
+      @QueryParameter String label,
+      @AncestorInPath Item item) {
+      return LockStepResource.DescriptorImpl.doCheckLabel(label, value, item);
     }
 
     @Override
@@ -124,8 +138,8 @@ public class LockStep extends Step implements Serializable {
   public String toString() {
     if (extra != null && !extra.isEmpty()) {
       return getResources().stream()
-          .map(res -> "{" + res.toString() + "}")
-          .collect(Collectors.joining(","));
+        .map(res -> "{" + res.toString() + "}")
+        .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
       return LockStepResource.toString(resource, label, quantity);
     } else {
@@ -134,7 +148,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   /** Label and resource are mutual exclusive. */
-  public void validate() throws Exception {
+  public void validate() {
     LockStepResource.validate(resource, label, quantity);
   }
 
@@ -151,7 +165,7 @@ public class LockStep extends Step implements Serializable {
   }
 
   @Override
-  public StepExecution start(StepContext context) throws Exception {
+  public StepExecution start(StepContext context) {
     return new LockStepExecution(this, context);
   }
 }

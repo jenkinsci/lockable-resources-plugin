@@ -1,0 +1,8 @@
+project_id_env: CROWDIN_PROJECT_ID
+api_token_env: CROWDIN_PERSONAL_TOKEN
+files:
+  - source: /src/main/resources/org/jenkins/plugins/lockableresources/**/*.properties
+    ignore_settings: 1
+    ignore:
+      - /src/main/resources/org/jenkins/plugins/lockableresources/**/%file_name%_%two_letters_code%.properties
+    translation: /src/main/resources/org/jenkins/plugins/lockableresources/**/%file_name%_%two_letters_code%.properties
