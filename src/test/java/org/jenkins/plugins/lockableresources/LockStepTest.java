@@ -81,19 +81,27 @@ public class LockStepTest extends LockStepTestBase {
 
   @Test
   public void lockOrderLabel() throws Exception {
-    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
-    LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
-    LockableResourcesManager.get().createResourceWithLabel("resource3", "label1");
+
+    LockableResourcesManager lm = LockableResourcesManager.get();
+
+    lm.createResourceWithLabel("resource1", "label1");
+    lm.createResourceWithLabel("resource2", "label1");
+    lm.createResourceWithLabel("resource3", "label1");
+    lm.createResourceWithLabel("semaphore", "semaphore");
+
+    lm.reserve(Collections.singletonList(lm.fromName("semaphore")), "test");
+    
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
       new CpsFlowDefinition(
         "lock(label: 'label1', quantity: 2) {\n"
-          + "	semaphore 'wait-inside'\n"
+          + " echo 'I am inside label1'\n"
+          + "	lock('semaphore') { echo 'I am inside semaphore' }\n"
           + "}\n"
           + "echo 'Finish'",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    SemaphoreStep.waitForStart("wait-inside/1", b1);
+    j.waitForMessage("I am inside label1", b1);
 
     WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
     // Ensure that b2 reaches the lock before b3
@@ -107,23 +115,23 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b3, 1, 1);
 
     // Unlock Label: label1, Quantity: 2
-    SemaphoreStep.success("wait-inside/1", null);
+    b1.doTerm();
     j.waitForMessage("Lock released on resource [Label: label1, Quantity: 2]", b1);
     isPaused(b1, 1, 0);
 
     // #2 gets the lock before #3 (in the order as they requested the lock)
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
-    SemaphoreStep.success("wait-inside/2", null);
+    j.assertLogNotContains("Finish", b3);
+    lm.recycle(Collections.singletonList(lm.fromName("semaphore")));
     j.waitForMessage("Finish", b2);
     isPaused(b2, 1, 0);
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b3);
-    SemaphoreStep.success("wait-inside/3", null);
     j.waitForMessage("Finish", b3);
     isPaused(b3, 1, 0);
 
-    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
-    assertNotNull(LockableResourcesManager.get().fromName("resource2"));
-    assertNotNull(LockableResourcesManager.get().fromName("resource3"));
+    assertNotNull(lm.fromName("resource1"));
+    assertNotNull(lm.fromName("resource2"));
+    assertNotNull(lm.fromName("resource3"));
   }
 
   @Test
@@ -566,7 +574,7 @@ public class LockStepTest extends LockStepTestBase {
           + "Random random = new Random(0);\n"
           + "lock(label: 'label1') {\n"
           + "  echo 'Resource locked'\n"
-          + "  sleep random.nextInt(10)*100\n"
+          + "  sleep random.nextInt(10)*10\n"
           + "}\n"
           + "echo 'Finish'",
         true));
