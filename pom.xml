@@ -55,8 +55,8 @@
   </scm>
 
   <properties>
-    <changelist>999999-SNAPSHOT</changelist>
-    <jenkins.version>2.361.1</jenkins.version>
+    <changelist>999999-SNAPSHOT</changelist> 
+    <jenkins.version>2.361.4</jenkins.version>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
     <spotbugs.effort>Max</spotbugs.effort>
     <spotbugs.threshold>Low</spotbugs.threshold>
