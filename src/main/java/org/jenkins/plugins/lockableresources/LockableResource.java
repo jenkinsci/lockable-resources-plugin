@@ -107,15 +107,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @ExcludeFromJacocoGeneratedReport
   public LockableResource(String name, String description, String labels, String reservedBy, String note) {
     this.name = name;
-    this.description = description;
-    this.labels = labels;
-    this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
-    this.note = note;
+    this.description = Util.fixNull(description);
+    this.setLabels(labels);
+    this.setReservedBy(reservedBy);
+    this.note = Util.fixNull(note);
   }
 
   @DataBoundConstructor
   public LockableResource(String name) {
-    this.name = name;
+    this.name = Util.fixNull(name);
   }
 
   protected Object readResolve() {
@@ -134,12 +134,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @DataBoundSetter
   public void setDescription(String description) {
-    this.description = description;
+    this.description = Util.fixNull(description);
   }
 
   @DataBoundSetter
   public void setLabels(String labels) {
-    this.labels = labels;
+    this.labels = Util.fixNull(labels).trim();
   }
 
   @Exported
@@ -163,6 +163,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public List<String> getLabelsAsList() {
+    if (labels.isEmpty()) {
+      return new ArrayList<>();
+    }
     return Arrays.asList(labels.split("\\s+"));
   }
 
@@ -183,7 +186,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @DataBoundSetter
   public void setNote(String note) {
-    this.note = note;
+    this.note = Util.fixNull(note);
   }
 
   @DataBoundSetter
