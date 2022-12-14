@@ -178,16 +178,21 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Reserved / locked timestamp column
             -->
-            <td>
-              <j:if test="${resource.reservedTimestamp != null}">
-                <i:formatDate
-                  value="${resource.reservedTimestamp}"
-                  type="both"
-                  dateStyle="medium"
-                  timeStyle="short"
-                />
-              </j:if>
-            </td>
+            <j:choose>
+              <j:when test="${resource.reservedTimestamp != null}">
+                <td data-order="${logEntry.getDate().getTime()}">
+                  <i:formatDate
+                    value="${resource.reservedTimestamp}"
+                    type="both"
+                    dateStyle="medium"
+                    timeStyle="short"
+                  />
+                </td>
+              </j:when>
+              <j:otherwise>
+                <td></td>
+              </j:otherwise>
+            </j:choose>
 
 
             <!-- **************************************************************
