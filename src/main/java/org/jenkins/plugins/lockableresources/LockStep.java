@@ -98,7 +98,7 @@ public class LockStep extends Step implements Serializable {
     @NonNull
     @Override
     public String getDisplayName() {
-      return "Lock shared resource";
+      return Messages.LockStep_displayName();
     }
 
     @Override

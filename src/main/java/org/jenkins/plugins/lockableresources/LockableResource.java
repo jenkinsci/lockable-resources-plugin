@@ -475,7 +475,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     @NonNull
     @Override
     public String getDisplayName() {
-      return "Resource";
+      return Messages.LockableResource_displayName();
     }
   }
 }
