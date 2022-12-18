@@ -110,18 +110,6 @@
       <artifactId>script-security</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.infradna.tool</groupId>
-      <artifactId>bridge-method-annotation</artifactId>
-      <version>1.25</version>
-      <scope>provided</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.jenkins-ci</groupId>
-          <artifactId>annotation-indexer</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>io.jenkins.plugins</groupId>
       <artifactId>data-tables-api</artifactId>
     </dependency>
