@@ -200,7 +200,7 @@ THE SOFTWARE.
             -->
             <td>
               <!--todo replace it by getLabelsAsList() -->
-              <j:forEach var="label" items="${resource.labels.split(' ')}" indexVar="i">
+              <j:forEach var="label" items="${resource.getLabelsAsList()}" indexVar="i">
                 <a class="jenkins-table__link model-link" href="${rootURL}/label/${label}">
                   ${label}
                   <button class="jenkins-menu-dropdown-chevron"></button
