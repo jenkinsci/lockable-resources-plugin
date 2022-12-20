@@ -30,7 +30,6 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +57,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private final String name;
   private String description = "";
-  private String labels = "";
+  private List<String> labels = new ArrayList<>();
   private String reservedBy = null;
   private Date reservedTimestamp = null;
   private String note = "";
@@ -106,16 +105,20 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Deprecated
   @ExcludeFromJacocoGeneratedReport
   public LockableResource(String name, String description, String labels, String reservedBy, String note) {
+    // todo throw exception, when the name is empty
+    // todo check if the name contains only valid characters (no spaces, new lines ...)
     this.name = name;
-    this.description = description;
-    this.labels = labels;
-    this.reservedBy = Util.fixEmptyAndTrim(reservedBy);
-    this.note = note;
+    this.setDescription(description);
+    this.setLabels(labels);
+    this.setReservedBy(reservedBy);
+    this.setNote(note);
   }
 
   @DataBoundConstructor
   public LockableResource(String name) {
-    this.name = name;
+    this.name = Util.fixNull(name);
+    // todo throw exception, when the name is empty
+    // todo check if the name contains only valid characters (no spaces, new lines ...)
   }
 
   protected Object readResolve() {
@@ -132,16 +135,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return this.queuedContexts;
   }
 
-  @DataBoundSetter
-  public void setDescription(String description) {
-    this.description = description;
-  }
-
-  @DataBoundSetter
-  public void setLabels(String labels) {
-    this.labels = labels;
-  }
-
   @Exported
   public String getName() {
     return name;
@@ -152,28 +145,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return description;
   }
 
-  @Exported
-  public String getLabels() {
-    return labels;
-  }
-
-  /**
-   * Get labels of this resource
-   * @return List of assigned labels.
-   */
-  @Exported
-  public List<String> getLabelsAsList() {
-    return Arrays.asList(labels.split("\\s+"));
-  }
-
-  /**
-   * Checks if the resource has label *labelToFind*
-   * @param labelToFind Label to find.
-   * @return {@code true} if this resource contains the label.
-   */
-  @Exported
-  public boolean hasLabel(String labelToFind) {
-    return this.labelsContain(labelToFind);
+  @DataBoundSetter
+  public void setDescription(String description) {
+    this.description = Util.fixNull(description);
   }
 
   @Exported
@@ -183,7 +157,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @DataBoundSetter
   public void setNote(String note) {
-    this.note = note;
+    this.note = Util.fixNull(note);
   }
 
   @DataBoundSetter
@@ -194,6 +168,42 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Exported
   public boolean isEphemeral() {
     return ephemeral;
+  }
+
+  @Exported
+  public String getLabels() {
+    return String.join(" ", this.labels);
+  }
+
+  @DataBoundSetter
+  public void setLabels(String labels) {
+    // todo use label parser from Jenkins.Label to allow the same syntax
+    this.labels = new ArrayList<>();
+    for(String label : labels.split("\\s+")) {
+      if (label == null || label.isEmpty()) {
+        continue;
+      }
+      this.labels.add(label);
+    }
+  }
+
+  /**
+   * Get labels of this resource
+   * @return List of assigned labels.
+   */
+  @Exported
+  public List<String> getLabelsAsList() {
+    return this.labels;
+  }
+
+  /**
+   * Checks if the resource has label *labelToFind*
+   * @param labelToFind Label to find.
+   * @return {@code true} if this resource contains the label.
+   */
+  @Exported
+  public boolean hasLabel(String labelToFind) {
+    return this.labelsContain(labelToFind);
   }
 
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
@@ -266,6 +276,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Exported
   public boolean isReserved() {
     return reservedBy != null;
+  }
+
+  @Restricted(NoExternalUse.class)
+  public static String getUserName() {
+    User current = User.current();
+    if (current != null) {
+      return current.getFullName();
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Function check if the resources is reserved by currently logged user
+   * @return true when reserved by current user, false otherwise.
+   */
+  @Restricted(NoExternalUse.class) // called by jelly
+  public boolean isReservedByCurrentUser() {
+    return (this.reservedBy != null && getUserName().equals(this.reservedBy));
   }
 
   @Exported
