@@ -46,8 +46,6 @@ public final class BackwardCompatibility {
         }
         queuedContexts.clear();
       }
-
-      resource.repairLabels();
     }
   }
 }

@@ -58,7 +58,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private final String name;
   private String description = "";
-  /** @deprecated use labelsAsList instead */
+  /** @deprecated use labelsAsList instead due performance.
+   */
   @Deprecated private transient String labels = null;
   private List<String> labelsAsList = new ArrayList<>();
   private String reservedBy = null;
@@ -132,8 +133,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return this;
   }
 
-  @Restricted(NoExternalUse.class)
-  public void repairLabels() {
+  private void repairLabels() {
     if (this.labels == null) {
       return;
     }
@@ -185,6 +185,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return ephemeral;
   }
 
+  /** Use getLabelsAsList instead
+   * todo This function is marked as deprecated but it is still used in tests ans
+   * jelly (config) files.
+  */
+  @Deprecated
   @Exported
   public String getLabels() {
     if (this.labelsAsList == null) {
@@ -193,6 +198,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return String.join(" ", this.labelsAsList);
   }
 
+  /** @deprecated no equivalent at the time.
+   * todo It shall be created new one function selLabelsAsList() and us that one.
+   * But it must be checked and changed all config.jelly files and
+   * this might takes more time as expected.
+   * That the reason why a deprecated function/property is still data-bound-setter
+   */
+  // @Deprecated can not be used, because of JCaC
   @DataBoundSetter
   public void setLabels(String labels) {
     // todo use label parser from Jenkins.Label to allow the same syntax
