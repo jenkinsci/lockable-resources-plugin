@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -57,7 +58,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private final String name;
   private String description = "";
-  private List<String> labels = new ArrayList<>();
+  /** @deprecated use labelsAsList instead */
+  @Deprecated private transient String labels = null;
+  private List<String> labelsAsList = new ArrayList<>();
   private String reservedBy = null;
   private Date reservedTimestamp = null;
   private String note = "";
@@ -125,7 +128,19 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     if (queuedContexts == null) { // this field was added after the initial version if this class
       queuedContexts = new ArrayList<>();
     }
+    this.repairLabels();
     return this;
+  }
+
+  @Restricted(NoExternalUse.class)
+  public void repairLabels() {
+    if (this.labels == null) {
+      return;
+    }
+
+    LOGGER.fine("Repair labels for resource " + this);
+    this.setLabels(this.labels);
+    this.labels = null;
   }
 
   /** @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11) */
@@ -172,18 +187,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getLabels() {
-    return String.join(" ", this.labels);
+    if (this.labelsAsList == null) {
+      return "";
+    }
+    return String.join(" ", this.labelsAsList);
   }
 
   @DataBoundSetter
   public void setLabels(String labels) {
     // todo use label parser from Jenkins.Label to allow the same syntax
-    this.labels = new ArrayList<>();
+    this.labelsAsList = new ArrayList<>();
     for(String label : labels.split("\\s+")) {
       if (label == null || label.isEmpty()) {
         continue;
       }
-      this.labels.add(label);
+      this.labelsAsList.add(label);
     }
   }
 
@@ -193,7 +211,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public List<String> getLabelsAsList() {
-    return this.labels;
+    return this.labelsAsList;
   }
 
   /**
@@ -279,6 +297,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   @Restricted(NoExternalUse.class)
+  @CheckForNull
   public static String getUserName() {
     User current = User.current();
     if (current != null) {
@@ -294,7 +313,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class) // called by jelly
   public boolean isReservedByCurrentUser() {
-    return (this.reservedBy != null && getUserName().equals(this.reservedBy));
+    return (this.reservedBy != null && StringUtils.equals(getUserName(), this.reservedBy));
   }
 
   @Exported
