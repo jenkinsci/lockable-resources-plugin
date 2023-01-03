@@ -199,7 +199,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   /** @deprecated no equivalent at the time.
-   * todo It shall be created new one function selLabelsAsList() and us that one.
+   * todo It shall be created new one function selLabelsAsList() and use that one.
    * But it must be checked and changed all config.jelly files and
    * this might takes more time as expected.
    * That the reason why a deprecated function/property is still data-bound-setter
