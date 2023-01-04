@@ -9,10 +9,7 @@ import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -39,6 +36,8 @@ public class LockStep extends Step implements Serializable {
 
   public boolean inversePrecedence = false;
 
+  public ResourceSelectStrategy resourceSelectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
   public boolean skipIfLocked = false;
 
   @CheckForNull public List<LockStepResource> extra = null;
@@ -56,6 +55,15 @@ public class LockStep extends Step implements Serializable {
   @DataBoundSetter
   public void setInversePrecedence(boolean inversePrecedence) {
     this.inversePrecedence = inversePrecedence;
+  }
+
+  @DataBoundSetter
+  public void setResourceSelectStrategy(String resourceSelectStrategy) {
+    try {
+      this.resourceSelectStrategy = ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("The provided resourceSelectStrategy is not valid. Possible options are " + Arrays.stream(ResourceSelectStrategy.values()).map(strategy -> strategy.toString()).collect(Collectors.joining(", ")), e);
+    }
   }
 
   @DataBoundSetter

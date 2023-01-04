@@ -62,10 +62,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     // determine if there are enough resources available to proceed
     List<LockableResource> available =
       LockableResourcesManager.get()
-        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
+        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, step.resourceSelectStrategy);
     Run<?, ?> run = getContext().get(Run.class);
-    if (available == null
-      || !LockableResourcesManager.get()
+
+    if (available != null && LockableResourcesManager.get()
       .lock(
         available,
         run,
@@ -73,28 +73,32 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         step.toString(),
         step.variable,
         step.inversePrecedence)) {
-      // if the resource is known, we could output the active/blocking job/build
-      LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
-      boolean buildNameKnown = resource != null && resource.getBuildName() != null;
-      if (step.skipIfLocked) {
-        if (buildNameKnown) {
-          logger.println(
-            "[" + step + "] is locked by " + resource.getBuildName() + ", skipping execution...");
-        } else {
-          logger.println("[" + step + "] is locked, skipping execution...");
-        }
-        getContext().onSuccess(null);
-        return true;
+      return false;
+    }
+
+    // No available resources, or we failed to lock available resources
+    // if the resource is known, we could output the active/blocking job/build
+    LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
+    boolean buildNameKnown = resource != null && resource.getBuildName() != null;
+    if (step.skipIfLocked) {
+      if (buildNameKnown) {
+        logger.println(
+          "[" + step + "] is locked by " + resource.getBuildName() + ", skipping execution...");
       } else {
-        if (buildNameKnown) {
-          logger.println("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
-        } else {
-          logger.println("[" + step + "] is locked, waiting...");
-        }
-        LockableResourcesManager.get()
-          .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
+        logger.println("[" + step + "] is locked, skipping execution...");
       }
-    } // proceed is called inside lock if execution is possible
+      getContext().onSuccess(null);
+      return true;
+    } else {
+      if (buildNameKnown) {
+        logger.println("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
+      } else {
+        logger.println("[" + step + "] is locked, waiting...");
+      }
+      LockableResourcesManager.get()
+        .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
+    }
+
     return false;
   }
 

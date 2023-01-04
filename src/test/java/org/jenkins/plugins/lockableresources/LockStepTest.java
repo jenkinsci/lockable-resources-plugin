@@ -80,6 +80,27 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  public void lockRandomWithLabel() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var', resourceSelectStrategy: 'random') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("Lock released on resource [Label: label1]", b1);
+    j.assertLogContains("Resource locked: resource1", b1);
+    isPaused(b1, 1, 0);
+
+    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
   public void lockOrderLabel() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");

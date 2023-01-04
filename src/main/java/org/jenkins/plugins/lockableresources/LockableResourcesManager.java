@@ -21,14 +21,7 @@ import hudson.model.TaskListener;
 import hudson.Util;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -424,31 +417,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Nullable String logmessage,
     final String variable,
     boolean inversePrecedence) {
-    boolean needToWait = false;
-
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked()) {
-        needToWait = true;
-        break;
+        return false;
       }
     }
-    if (!needToWait) {
-      for (LockableResource r : resources) {
-        r.unqueue();
-        r.setBuild(build);
-      }
-      if (context != null) {
-        // since LockableResource contains transient variables, they cannot be correctly serialized
-        // hence we use their unique resource names
-        List<String> resourceNames = new ArrayList<>();
-        for (LockableResource resource : resources) {
-          resourceNames.add(resource.getName());
-        }
-        LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
-      }
-      save();
+
+    for (LockableResource r : resources) {
+      r.unqueue();
+      r.setBuild(build);
     }
-    return !needToWait;
+    if (context != null) {
+      // since LockableResource contains transient variables, they cannot be correctly serialized
+      // hence we use their unique resource names
+      List<String> resourceNames = new ArrayList<>();
+      for (LockableResource resource : resources) {
+        resourceNames.add(resource.getName());
+      }
+      LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
+    }
+    save();
+
+    return true;
   }
 
   private synchronized void freeResources(
@@ -927,39 +917,55 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
   public synchronized List<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
     boolean skipIfLocked = false;
+    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
     return this.checkResourcesAvailability(
-      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
   public synchronized List<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      boolean skipIfLocked) {
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    boolean skipIfLocked) {
+    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
     return this.checkResourcesAvailability(
-      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
+  public synchronized List<LockableResource> checkResourcesAvailability(
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    boolean skipIfLocked,ResourceSelectStrategy selectStrategy) {
+    return this.checkResourcesAvailability(
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
+  }
+
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
   public synchronized List<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
     @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
     boolean skipIfLocked = false;
+    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
     return this.checkResourcesAvailability(
       requiredResourcesList,
       logger,
       lockedResourcesAboutToBeUnlocked,
       reservedResourcesAboutToBeUnreserved,
-      skipIfLocked);
+      skipIfLocked,selectStrategy);
   }
 
   /**
@@ -972,7 +978,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
     @Nullable List<String> reservedResourcesAboutToBeUnreserved,
-    boolean skipIfLocked) {
+    boolean skipIfLocked,
+    ResourceSelectStrategy selectStrategy) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
@@ -1012,6 +1019,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     int totalReserved = 0;
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
+      if (selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
+        Collections.shuffle(requiredResources.candidates);
+      }
       // start with an empty set of selected resources
       List<LockableResource> selected = new ArrayList<>();
 
