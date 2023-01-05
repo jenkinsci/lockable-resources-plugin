@@ -9,13 +9,13 @@ You could also go the [GitPod](https://gitpod.io/#https://github.com/jenkinsci/l
 If you have the proper environment, typing:
 
 ```sh
-    mvn verify
+mvn verify
 ```
 
 should create a plugin as `target/*.hpi`, which you can install in your Jenkins instance. Running
 
 ```sh
-    mvn hpi:run -Djenkins.version=2.361.1
+mvn hpi:run
 ```
 
 allows you to spin up a test Jenkins instance on [localhost] to test your

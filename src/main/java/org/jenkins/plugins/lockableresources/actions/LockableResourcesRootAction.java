@@ -32,6 +32,8 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+
 @Extension
 @ExportedBean
 public class LockableResourcesRootAction implements RootAction {
@@ -79,6 +81,7 @@ public class LockableResourcesRootAction implements RootAction {
     return new Api(this);
   }
 
+  @CheckForNull
   public String getUserName() {
     return LockableResource.getUserName();
   }
@@ -111,9 +114,9 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().getFreeResourceAmount(label);
   }
 
-  /** 
+  /**
    * Get percentage (0-100) usage of resources assigned to given *label*
-   * 
+   *
    * Used by {@code actions/LockableResourcesRootAction/index.jelly}
    * @since 2.19
    * @param label Label to search.
@@ -146,7 +149,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   /**
    * Get amount of resources assigned to given *label*
-   * 
+   *
    * Used by {@code actions/LockableResourcesRootAction/index.jelly}
    * @param label Label to search.
    * @return Amount of assigned resources.
