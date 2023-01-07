@@ -58,7 +58,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private final String name;
   private String description = "";
-  private List<String> labels = new ArrayList<>();
+  /** @deprecated use labelsAsList instead due performance.
+   */
+  @Deprecated private transient String labels = null;
+  private List<String> labelsAsList = new ArrayList<>();
   private String reservedBy = null;
   private Date reservedTimestamp = null;
   private String note = "";
@@ -126,7 +129,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     if (queuedContexts == null) { // this field was added after the initial version if this class
       queuedContexts = new ArrayList<>();
     }
+    this.repairLabels();
     return this;
+  }
+
+  private void repairLabels() {
+    if (this.labels == null) {
+      return;
+    }
+
+    LOGGER.fine("Repair labels for resource " + this);
+    this.setLabels(this.labels);
+    this.labels = null;
   }
 
   /** @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11) */
@@ -171,20 +185,35 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return ephemeral;
   }
 
+  /** Use getLabelsAsList instead
+   * todo This function is marked as deprecated but it is still used in tests ans
+   * jelly (config) files.
+  */
+  @Deprecated
   @Exported
   public String getLabels() {
-    return String.join(" ", this.labels);
+    if (this.labelsAsList == null) {
+      return "";
+    }
+    return String.join(" ", this.labelsAsList);
   }
 
+  /** @deprecated no equivalent at the time.
+   * todo It shall be created new one function selLabelsAsList() and use that one.
+   * But it must be checked and changed all config.jelly files and
+   * this might takes more time as expected.
+   * That the reason why a deprecated function/property is still data-bound-setter
+   */
+  // @Deprecated can not be used, because of JCaC
   @DataBoundSetter
   public void setLabels(String labels) {
     // todo use label parser from Jenkins.Label to allow the same syntax
-    this.labels = new ArrayList<>();
+    this.labelsAsList = new ArrayList<>();
     for(String label : labels.split("\\s+")) {
       if (label == null || label.isEmpty()) {
         continue;
       }
-      this.labels.add(label);
+      this.labelsAsList.add(label);
     }
   }
 
@@ -194,7 +223,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public List<String> getLabelsAsList() {
-    return this.labels;
+    return this.labelsAsList;
   }
 
   /**
