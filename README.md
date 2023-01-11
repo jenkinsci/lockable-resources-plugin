@@ -173,6 +173,28 @@ Reassign | STEAL | Reserves a resource that may be or not be reserved by some pe
 Reset | UNLOCK | Reset a resource that may be reserved, locked or queued.
 Note | RESERVE | Add or edit resource note.
 
+## Upgrading from 1102.vde5663d777cf
+
+Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434) is no more possible to read resource-labels from config file org.jenkins.plugins.lockableresources.LockableResourcesManager.xml generated in the release [1102.vde5663d777cf](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1102.vde5663d777cf)
+
+This does not effect instances used [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
+
+A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml`config file manually, before you upgrade to new version (Keep in mind that a backup is still good idea).
+
+Example:
+
+this one
+```
+<labels>
+  <string>tests-integration-installation</string>
+</labels>
+```
+to
+```
+<labels>
+  tests-integration-installation
+</labels>
+```
 
 ## Changelog
 
