@@ -175,15 +175,16 @@ Note | RESERVE | Add or edit resource note.
 
 ## Upgrading from 1102.vde5663d777cf
 
-Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434) is no more possible to read resource-labels from config file org.jenkins.plugins.lockableresources.LockableResourcesManager.xml generated in the release [1102.vde5663d777cf](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1102.vde5663d777cf)
+Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434) *is not possible anymore to read resource-labels* from the config file org.jenkins.plugins.lockableresources.LockableResourcesManager.xml, *which is generated in the release* [1102.vde5663d777cf](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1102.vde5663d777cf)
 
-This issue does not effected instances used [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
+This issue does not *effect* instances used in [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
 
 A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml`config file manually, before you upgrade to new version (Keep in mind, that a backup is still good idea).
 
+
 Example:
 
-this one
+change this one
 ```
 <labels>
   <string>tests-integration-installation</string>
