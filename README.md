@@ -177,9 +177,9 @@ Note | RESERVE | Add or edit resource note.
 
 Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434) is no more possible to read resource-labels from config file org.jenkins.plugins.lockableresources.LockableResourcesManager.xml generated in the release [1102.vde5663d777cf](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1102.vde5663d777cf)
 
-This does not effect instances used [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
+This issue does not effected instances used [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
 
-A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml`config file manually, before you upgrade to new version (Keep in mind that a backup is still good idea).
+A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml`config file manually, before you upgrade to new version (Keep in mind, that a backup is still good idea).
 
 Example:
 
