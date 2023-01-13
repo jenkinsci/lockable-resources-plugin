@@ -25,10 +25,11 @@ THE SOFTWARE.
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler">
   <j:if test="${it.getNumberOfAllLabels() != 0}">
     <st:adjunct includes="io.jenkins.plugins.data-tables"/>
+    <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
     <h2 class="jenkins-!-padding-1">${%header.labels}</h2>
     <div class="table-responsive">
       <table
-        class="table table-hover table-striped display data-table"
+        class="jenkins-table jenkins-!-margin-bottom-4 data-table"
         id="lockable-resources-labels"
         isLoaded="true"
         data-columns-definition="[null, null, null, null]"
@@ -56,16 +57,16 @@ THE SOFTWARE.
             />
             <j:choose>
               <j:when test="${percentage lt 5}">
-                <j:set var="cssClass" value="danger" />
+                <j:set var="cssClass" value="jenkins-!-color-red" />
               </j:when>
               <j:when test="${percentage lt 10}">
-                <j:set var="cssClass" value="warning" />
+                <j:set var="cssClass" value="jenkins-!-warning-color" />
               </j:when>
               <j:when test="${percentage eq 100}">
-                <j:set var="cssClass" value="success" />
+                <j:set var="cssClass" value="jenkins-!-success-color" />
               </j:when>
               <j:otherwise>
-                <j:set var="cssClass" value="info" />
+                <j:set var="cssClass" value="" />
               </j:otherwise>
             </j:choose>
             <tr>
@@ -85,7 +86,7 @@ THE SOFTWARE.
               >
                 ${freeCount}
               </td>
-              <td class="table-${cssClass}"
+              <td class="${cssClass}"
               >
                 ${percentage}
               </td>

@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
-<j:jelly 
+<j:jelly
   xmlns:j="jelly:core"
   xmlns:l="/lib/layout"
   xmlns:f="/lib/form"
@@ -33,9 +33,8 @@ THE SOFTWARE.
   <st:adjunct includes="io.jenkins.plugins.data-tables"/>
   <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
-
   <div class="table-responsive">
-    <table class="table table-hover table-striped display data-table"
+    <table class="jenkins-table jenkins-!-margin-bottom-4 data-table"
            id="lockable-resources"
           isLoaded="true"
           data-columns-definition="[null, null, null, null, null]"
@@ -75,7 +74,7 @@ THE SOFTWARE.
                     <span class="static-label">${%ephemeral}</span>
                   </j:if>
                 </div>
-                <div class="col-auto">
+                <div class="col-auto jenkins-!-margin-right-2">
                   <l:hasPermission permission="${it.RESERVE}">
                     <a class="jenkins-table__link" id="note-link" href="editNote" onclick="return replaceNote(this, '${resource.name}');">
                       <l:icon class="symbol-edit-note icon-sm" />
@@ -98,7 +97,7 @@ THE SOFTWARE.
                 <div id="note-${resource.name}">
                   <j:if test="${resource.note != null and !resource.note.isEmpty()}">
                   <div class="note-wrapper jenkins-!-padding-2 jenkins-!-margin-right-1 overflow-auto">
-                    <j:out value="${resource.note !=null ? app.markupFormatter.translate(resource.note) : ''}"/>                
+                    <j:out value="${resource.note !=null ? app.markupFormatter.translate(resource.note) : ''}"/>
                   </div>
                   </j:if>
                 </div>
@@ -137,7 +136,7 @@ THE SOFTWARE.
                 <j:set var="cssClass" value="success"/>
               </j:otherwise>
             </j:choose>
-          
+
             <td class="jenkins-!-${cssClass}-color">
               <j:choose>
             <!-- Reserved by user, config or API.
@@ -166,7 +165,7 @@ THE SOFTWARE.
                 ${%resource.status.free}
               </j:otherwise>
             </j:choose>
-          
+
             <!-- add timestamp when possible -->
               <j:if test="${resource.reservedTimestamp != null}">
                 <br />
@@ -219,7 +218,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button
                       onClick="resource_action(this, 'unlock');"
-                      class="btn jenkins-!-margin-top-1 btn-light btn-sm btn-outline-warning"
+                      class="jenkins-button j.jenkins-!-warning-color"
                       tooltip="${%btn.unlock.detail}"
                     >
                       ${%btn.unlock}
@@ -228,7 +227,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.STEAL}">
                     <button
                       onClick="resource_action(this, 'steal');"
-                      class="btn jenkins-!-margin-top-1 btn-light btn-sm btn-outline-danger"
+                      class="jenkins-button jenkins-!-destructive-color"
                       tooltip="${%btn.steal.detail}"
                     >
                       ${%btn.steal}
@@ -240,7 +239,7 @@ THE SOFTWARE.
                     <j:if test="${resource.isReservedByCurrentUser() or h.hasPermission(app.ADMINISTER)}">
                       <button
                         onClick="resource_action(this, 'unreserve');"
-                        class="btn jenkins-!-margin-top-1 btn-light btn-sm btn-outline-success"
+                        class="jenkins-button jenkins-!-success-color"
                         tooltip="${%btn.unReserve.detail}"
                       >
                         ${%btn.unReserve}
@@ -251,7 +250,7 @@ THE SOFTWARE.
                     <j:if test="${!resource.isReservedByCurrentUser()}">
                       <button
                         onClick="resource_action(this, 'reassign');"
-                        class="btn jenkins-!-margin-top-1 btn-light btn-sm btn-outline-primary"
+                        class="jenkins-button jenkins-button--primary"
                         tooltip="${%btn.reassign.detail}"
                       >
                         ${%btn.reassign}
@@ -263,7 +262,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button
                       onClick="resource_action(this, 'reset');"
-                      class="btn jenkins-!-margin-top-1 btn-light btn-sm btn-outline-danger"
+                      class="jenkins-button jenkins-!-destructive-color"
                       tooltip="${%btn.reset.detail}"
                     >
                       ${%btn.reset}
@@ -274,7 +273,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.RESERVE}">
                     <button
                       onClick="resource_action(this, 'reserve');"
-                      class="btn jenkins-!-margin-top-1 btn-light btn-sm btn-outline-primary"
+                      class="jenkins-button jenkins-button--primary"
                       tooltip="${%btn.reserve.detail}"
                     >
                       ${%btn.reserve}

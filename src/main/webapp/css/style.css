@@ -19,3 +19,24 @@ span.static-label {
   font-size: small;
   flex-grow: 1;
 }
+
+.dataTable .jenkins-button {
+    margin: 2px;
+}
+
+.dataTable.jenkins-table > tbody > tr > td {
+    vertical-align: top;
+}
+
+table.dataTable {
+  border-spacing: 0 2px;
+}
+
+table.dataTable > tbody > tr {
+  background-color: var(--table-body-background);
+}
+
+table.dataTable td, table.dataTable th {
+    -webkit-box-sizing: inherit;
+    box-sizing: content-inherit;
+}
