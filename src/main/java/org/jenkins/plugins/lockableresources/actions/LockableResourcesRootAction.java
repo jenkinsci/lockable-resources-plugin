@@ -33,8 +33,6 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import edu.umd.cs.findbugs.annotations.CheckForNull;
-
 @Extension
 @ExportedBean
 public class LockableResourcesRootAction implements RootAction {
