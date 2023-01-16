@@ -8,10 +8,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.actions;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
 import hudson.model.Api;
 import hudson.model.RootAction;
-import hudson.model.User;
 import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
@@ -69,7 +69,7 @@ public class LockableResourcesRootAction implements RootAction {
       Jenkins.ADMINISTER,
       PermissionScope.JENKINS);
 
-  public static final String ICON = "/plugin/lockable-resources/img/device.svg";
+  public static final String ICON = "symbol-lock-closed";
 
   @Override
   public String getIconFileName() {
@@ -80,13 +80,9 @@ public class LockableResourcesRootAction implements RootAction {
     return new Api(this);
   }
 
+  @CheckForNull
   public String getUserName() {
-    User current = User.current();
-    if (current != null) {
-      return current.getFullName();
-    } else {
-      return null;
-    }
+    return LockableResource.getUserName();
   }
 
   @Override
@@ -117,9 +113,9 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().getFreeResourceAmount(label);
   }
 
-  /** 
+  /**
    * Get percentage (0-100) usage of resources assigned to given *label*
-   * 
+   *
    * Used by {@code actions/LockableResourcesRootAction/index.jelly}
    * @since 2.19
    * @param label Label to search.
@@ -152,7 +148,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   /**
    * Get amount of resources assigned to given *label*
-   * 
+   *
    * Used by {@code actions/LockableResourcesRootAction/index.jelly}
    * @param label Label to search.
    * @return Amount of assigned resources.
@@ -171,7 +167,7 @@ public class LockableResourcesRootAction implements RootAction {
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
-      rsp.sendError(404, "Resource not found " + name);
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
       return;
     }
 
@@ -191,7 +187,7 @@ public class LockableResourcesRootAction implements RootAction {
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
-      rsp.sendError(404, "Resource not found " + name);
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
       return;
     }
 
@@ -200,7 +196,7 @@ public class LockableResourcesRootAction implements RootAction {
     String userName = getUserName();
     if (userName != null) {
       if (!LockableResourcesManager.get().reserve(resources, userName)) {
-        rsp.sendError(423, "Resource '" + name + "' already reserved or locked!");
+        rsp.sendError(423, Messages.error_resourceAlreadyLocked(name));
         return;
       }
     }
@@ -216,7 +212,7 @@ public class LockableResourcesRootAction implements RootAction {
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
-      rsp.sendError(404, "Resource not found " + name);
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
       return;
     }
 
@@ -246,7 +242,7 @@ public class LockableResourcesRootAction implements RootAction {
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
-      rsp.sendError(404, "Resource not found " + name);
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
       return;
     }
 
@@ -274,7 +270,7 @@ public class LockableResourcesRootAction implements RootAction {
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
-      rsp.sendError(404, "Resource not found " + name);
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
       return;
     }
 
@@ -302,7 +298,7 @@ public class LockableResourcesRootAction implements RootAction {
     String name = req.getParameter("resource");
     LockableResource r = LockableResourcesManager.get().fromName(name);
     if (r == null) {
-      rsp.sendError(404, "Resource not found " + name);
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
       return;
     }
 
@@ -325,7 +321,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     final LockableResource resource = getResource(resourceName);
     if (resource == null) {
-      rsp.sendError(404, "Resource not found: '" + resourceName + "'!");
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(resourceName));
     } else {
       String resourceNote = req.getParameter("note");
       if (resourceNote == null) {

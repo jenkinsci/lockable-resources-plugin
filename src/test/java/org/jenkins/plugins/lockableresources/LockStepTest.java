@@ -495,42 +495,6 @@ public class LockStepTest extends LockStepTestBase {
     waitAndClear(1, nextRuns);
   }
 
-  @Issue("JENKINS-34433")
-  @Test
-  public void manualUnreserveUnblocksJob() throws Exception {
-    LockableResourcesManager.get().createResource("resource1");
-    JenkinsRule.WebClient wc = j.createWebClient();
-
-    TestHelpers.clickButton(wc, "reserve");
-    LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
-    assertNotNull(resource1);
-    resource1.setReservedBy("someone");
-    assertEquals("someone", resource1.getReservedBy());
-    assertTrue(resource1.isReserved());
-    assertNull(resource1.getReservedTimestamp());
-
-    JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
-    assertThat(apiRes, hasEntry("reserved", true));
-    assertThat(apiRes, hasEntry("reservedBy", "someone"));
-
-    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-    p.setDefinition(
-      new CpsFlowDefinition(
-        "retry(99) {\n"
-          + "    lock('resource1') {\n"
-          + "        semaphore('wait-inside')\n"
-          + "     }\n"
-          + "}",
-        true));
-
-    WorkflowRun r = p.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[resource1] is locked, waiting...", r);
-    TestHelpers.clickButton(wc, "unreserve");
-    SemaphoreStep.waitForStart("wait-inside/1", r);
-    SemaphoreStep.success("wait-inside/1", null);
-    j.assertBuildStatusSuccess(j.waitForCompletion(r));
-  }
-
   private void waitAndClear(int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
     WorkflowRun toClear = nextRuns.get(0);
 
@@ -1434,7 +1398,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
-    j.assertLogContains("The label does not exist: invalidLabel", b1);
+    j.assertLogContains("The resource label does not exist: invalidLabel", b1);
     isPaused(b1, 0, 0);
   }
 

@@ -376,9 +376,9 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     when(req.getMethod()).thenReturn("POST");
     LockableResourcesRootAction action = new LockableResourcesRootAction();
 
-    this.LRM.createResourceWithLabel("resource-A", "resource-label-1");
+    this.LRM.createResourceWithLabel("resource-A", "resource-label-1 ");
     this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
-    this.LRM.createResourceWithLabel("resource-C", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(" resource-C", "resource-label-1 \n \t \r resource-label-2 resource-label-3");
 
 
     Set<String> expectedLabels = new HashSet<>();
@@ -387,12 +387,12 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     expectedLabels.add("resource-label-3");
 
     Set<String> labels = action.getAllLabels();
-    assertEquals("initial check", expectedLabels, labels);
+    assertEquals("check all labels", expectedLabels, labels);
 
 
     LockableResource getter = action.getResource("resource-C");
-    assertEquals("initial check", "resource-label-1 resource-label-2 resource-label-3", getter.getLabels());
-    assertEquals("initial check", "resource-C", getter.getName());
+    assertEquals("check labels from resource-C", "resource-label-1 resource-label-2 resource-label-3", getter.getLabels());
+    assertEquals("check resource name", "resource-C", getter.getName());
   }
 
   //---------------------------------------------------------------------------
