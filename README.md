@@ -89,7 +89,6 @@ pipeline {
 
 #### Take first position in queue
 
-Example for scripted pipeline:
 
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
