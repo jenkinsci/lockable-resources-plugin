@@ -57,6 +57,8 @@ Examples:
 
 #### Acquire lock
 
+Example for scripted pipeline:
+
 ```groovy
 echo 'Starting'
 lock('my-resource-name') {
@@ -64,9 +66,29 @@ lock('my-resource-name') {
   // any other build will wait until the one locking the resource leaves this block
 }
 echo 'Finish'
+
+```
+
+Example for declarative pipeline:
+
+```groovy
+pipeline {
+  agent any
+
+  stages {
+    stage("Build") {
+      steps {
+        lock(label: 'printer', quantity: 1, resource : null) {
+          echo 'printer locked'
+        }
+      }
+    }
+  }
+}
 ```
 
 #### Take first position in queue
+
 
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
@@ -86,6 +108,7 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 ```
 
 When multiple locks are acquired, each will be assigned to a numbered variable:
+
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
