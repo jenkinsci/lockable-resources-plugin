@@ -74,26 +74,13 @@ Example for declarative pipeline:
 ```groovy
 pipeline {
   agent any
-  resource: ('my-resource-name')
 
   stages {
-    stage('Build') {
+    stage("Build") {
       steps {
-        echo 'Do something here that requires unique access to the resource'
-        // any other build will wait until the one locking the resource leaves this block
-
-      }
-    }
-    stage('Test'){
-      steps {
-        sh 'make check'
-        junit 'reports/**/*.xml'
-      }
-    }
-    stage('Deploy') {
-      steps {
-        sh 'make publish'
-        echo 'Finish'
+        lock(label: 'printer', quantity: 1, resource : null) {
+          echo 'printer locked'
+        }
       }
     }
   }
@@ -110,44 +97,6 @@ lock(resource: 'staging-server', inversePrecedence: true) {
         servers.deploy 'staging'
     }
     input message: "Does ${jettyUrl}staging/ look good?"
-}
-```
-
-Example for declarative pipeline:
-
-```groovy
-lock(resource: 'staging-server', inversePrecedence: true) {
-    node {
-        servers.deploy 'staging'
-    }
-    input message: "Does ${jettyUrl}staging/ look good?"
-}
-
-pipeline {
-  agent any
-  resource: ('staging-server')
-
-  stages {
-    stage('Build') {
-      steps {
-        echo 'Do something here that requires unique access to the resource'
-        // any other build will wait until the one locking the resource leaves this block
-
-      }
-    }
-    stage('Test'){
-      steps {
-        sh 'make check'
-        junit 'reports/**/*.xml'
-      }
-    }
-    stage('Deploy') {
-      steps {
-        sh 'make publish'
-        input message: "Does ${jettyUrl}staging/ look good?"
-      }
-    }
-  }
 }
 ```
 
