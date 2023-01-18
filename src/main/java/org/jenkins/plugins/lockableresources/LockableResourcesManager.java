@@ -965,7 +965,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       logger,
       lockedResourcesAboutToBeUnlocked,
       reservedResourcesAboutToBeUnreserved,
-      skipIfLocked,selectStrategy);
+      skipIfLocked,
+      selectStrategy);
   }
 
   /**

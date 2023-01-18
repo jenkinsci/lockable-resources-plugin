@@ -47,7 +47,7 @@ Test coverage is a percentage measure of the degree to which the source code of 
 To get local line-by-line coverage report execute this command
 
 ```sh
-    mvn -Djenkins.version=2.375.1 -P enable-jacoco clean verify jacoco:report
+mvn -P enable-jacoco clean verify jacoco:report
 ```
 
 The report is then located in *target/site/jacoco/index.html*.
