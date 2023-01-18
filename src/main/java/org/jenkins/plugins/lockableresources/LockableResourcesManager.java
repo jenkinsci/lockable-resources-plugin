@@ -425,28 +425,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Nullable String logmessage,
     final String variable,
     boolean inversePrecedence) {
+    boolean needToWait = false;
+
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked()) {
-        return false;
+        needToWait = true;
+        break;
       }
     }
 
-    for (LockableResource r : resources) {
-      r.unqueue();
-      r.setBuild(build);
-    }
-    if (context != null) {
-      // since LockableResource contains transient variables, they cannot be correctly serialized
-      // hence we use their unique resource names
-      List<String> resourceNames = new ArrayList<>();
-      for (LockableResource resource : resources) {
-        resourceNames.add(resource.getName());
+    if (!needToWait) {
+      for (LockableResource r : resources) {
+        r.unqueue();
+        r.setBuild(build);
       }
-      LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
+      if (context != null) {
+        // since LockableResource contains transient variables, they cannot be correctly serialized
+        // hence we use their unique resource names
+        List<String> resourceNames = new ArrayList<>();
+        for (LockableResource resource : resources) {
+          resourceNames.add(resource.getName());
+        }
+        LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
+      }
+      save();
     }
-    save();
 
-    return true;
+    return !needToWait;
   }
 
   private synchronized void freeResources(
@@ -954,7 +959,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-    boolean skipIfLocked,ResourceSelectStrategy selectStrategy) {
+    boolean skipIfLocked,
+    ResourceSelectStrategy selectStrategy) {
     return this.checkResourcesAvailability(
       requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
   }
