@@ -23,7 +23,7 @@ lock('some-build-node') {
   // allocate node
   node(env.LOCKED_RESOURCE) {
 
-    echo "I am no node ${env.NODE_NAME} and locked resource ${env.LOCKED_RESOURCE}"
+    echo "I am on node ${env.NODE_NAME} and locked resource ${env.LOCKED_RESOURCE}"
   }
 }
 ```

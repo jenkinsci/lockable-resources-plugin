@@ -11,6 +11,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,10 +60,17 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         new LockableResourcesStruct(resources, resource.label, resource.quantity));
     }
 
+    ResourceSelectStrategy resourceSelectStrategy;
+    try {
+      resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+    } catch (IllegalArgumentException e) {
+      logger.println("Error: invalid resourceSelectStrategy: " + step.resourceSelectStrategy);
+      return true;
+    }
     // determine if there are enough resources available to proceed
     List<LockableResource> available =
       LockableResourcesManager.get()
-        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, step.resourceSelectStrategy);
+        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
     Run<?, ?> run = getContext().get(Run.class);
 
     if (available != null && LockableResourcesManager.get()
