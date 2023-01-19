@@ -7,4 +7,5 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 
 - [Node depended resources](lock-nodes.md)
 - [Locking multiple stages in declarative pipeline](locking-multiple-stages-in-declarative-pipeline.md)
+- [Locking a random free resource](locking-random-free-resource.md)
 - [Scripted vs declarative pipeline](scripted-vs-declarative-pipeline.md)
