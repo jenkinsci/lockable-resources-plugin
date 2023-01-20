@@ -71,6 +71,13 @@ public class LockStep extends Step implements Serializable {
   }
 
   @DataBoundSetter
+  public void setResource(String resource) {
+    if (resource != null && !resource.isEmpty()) {
+      this.resource = resource;
+    }
+  }
+
+  @DataBoundSetter
   public void setVariable(String variable) {
     if (variable != null && !variable.isEmpty()) {
       this.variable = variable;

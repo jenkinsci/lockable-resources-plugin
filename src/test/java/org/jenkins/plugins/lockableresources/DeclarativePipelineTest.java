@@ -87,6 +87,29 @@ public class DeclarativePipelineTest {
     j.assertLogContains("Lock acquired: resource1", b1);
   }
 
+  @Test
+  public void missingLabel() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(m("pipeline {",
+        " agent none",
+        " stages {",
+        "  stage('test') {",
+        "   steps {",
+        "     lock() {",
+        "       echo \"Lock acquired: ${LABEL_LOCKED}\"",
+        "     }",
+        "   }",
+        "  }",
+        " }",
+        "}"), true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("Lock acquired: resource1", b1);
+  }
+
   private String m(String... lines) {
     return Joiner.on('\n').join(lines);
   }
