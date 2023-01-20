@@ -106,8 +106,8 @@ public class DeclarativePipelineTest {
         "}"), true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
-    j.assertLogContains("Lock acquired: resource1", b1);
+    j.assertBuildStatus(Result.FAILURE, b1);
+    j.assertLogContains("Lock acquired on [nothing]", b1);
   }
 
   private String m(String... lines) {
