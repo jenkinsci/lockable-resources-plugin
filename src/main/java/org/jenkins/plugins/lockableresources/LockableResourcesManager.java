@@ -44,6 +44,8 @@ import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -414,13 +416,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean lock(
-    Set<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
+    List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
     return lock(resources, build, context, null, null, false);
   }
 
   /** Try to lock the resource and return true if locked. */
   public synchronized boolean lock(
-    Set<LockableResource> resources,
+    List<LockableResource> resources,
     Run<?, ?> build,
     @Nullable StepContext context,
     @Nullable String logmessage,
@@ -529,7 +531,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return;
       }
 
-      Set<LockableResource> requiredResourceForNextContext =
+      List<LockableResource> requiredResourceForNextContext =
         checkResourcesAvailability(
           nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
@@ -709,6 +711,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return false;
   }
 
+  @Restricted(NoExternalUse.class)
   public synchronized boolean createResourceWithLabelAndProperties(String name, String label, Map<String, String> properties) {
     if (name != null && label != null && properties != null) {
       LockableResource existent = fromName(name);
@@ -834,7 +837,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // remove context from queue and process it
-    Set<LockableResource> requiredResourceForNextContext =
+    List<LockableResource> requiredResourceForNextContext =
       checkResourcesAvailability(
         nextContext.getResources(), nextContextLogger,
         null, resourceNamesToUnreserve);
@@ -1010,7 +1013,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * requiredResources and returns the necessary available resources. If not enough resources are
    * available, returns null.
    */
-  public synchronized Set<LockableResource> checkResourcesAvailability(
+  public synchronized List<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
@@ -1140,7 +1143,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // Find remaining resources
-    Set<LockableResource> allSelected = new HashSet<>();
+    List<LockableResource> allSelected = new ArrayList<>();
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
       List<LockableResource> candidates = requiredResources.candidates;

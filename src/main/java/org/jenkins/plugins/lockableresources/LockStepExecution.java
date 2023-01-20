@@ -11,7 +11,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-// import java.util.Map.Entry;
+import java.util.Map.Entry;
 // import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
@@ -70,7 +70,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       return true;
     }
     // determine if there are enough resources available to proceed
-    Set<LockableResource> available =
+    List<LockableResource> available =
       LockableResourcesManager.get()
         .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
     Run<?, ?> run = getContext().get(Run.class);
