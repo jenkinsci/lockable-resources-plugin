@@ -9,13 +9,13 @@ You could also go the [GitPod](https://gitpod.io/#https://github.com/jenkinsci/l
 If you have the proper environment, typing:
 
 ```sh
-    mvn verify
+mvn verify
 ```
 
 should create a plugin as `target/*.hpi`, which you can install in your Jenkins instance. Running
 
 ```sh
-    mvn hpi:run -Djenkins.version=2.361.1
+mvn hpi:run
 ```
 
 allows you to spin up a test Jenkins instance on [localhost] to test your
@@ -44,10 +44,10 @@ to reformat Java code in the proper style.
 
 Test coverage is a percentage measure of the degree to which the source code of a program is executed when a test is run. A program with high test coverage has more of its source code executed during testing, which suggests it has a lower chance of containing undetected software bugs compared to a program with low test coverage. The best way to improve code coverage is writing of automated tests.
 
-To get local liny-by-line coverage report execute this command
+To get local line-by-line coverage report execute this command
 
 ```sh
-    mvn -Djenkins.version=2.361.1 -P enable-jacoco clean verify jacoco:report
+mvn -P enable-jacoco clean verify jacoco:report
 ```
 
 The report is then located in *target/site/jacoco/index.html*.

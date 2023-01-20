@@ -137,7 +137,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     @NonNull
     @Override
     public String getDisplayName() {
-      return "Required Lockable Resources";
+      return Messages.RequiredResourcesProperty_displayName();
     }
 
     @Override
@@ -167,8 +167,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       if (names == null) {
         return FormValidation.ok();
       } else if (labelVal != null || script) {
-        return FormValidation.error(
-          "Only label, groovy expression, or resources can be defined, not more than one.");
+        return FormValidation.error(Messages.error_labelAndNameOrGroovySpecified());
       } else {
         List<String> wrongNames = new ArrayList<>();
         for (String name : names.split("\\s+")) {
@@ -187,8 +186,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
           return FormValidation.ok();
         } else {
           return FormValidation
-            .error("The following resources do not exist: "
-              + wrongNames);
+            .error(Messages.error_resourceDoesNotExist(wrongNames));
         }
       }
     }
@@ -209,13 +207,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
         return FormValidation.ok();
       } else if (names != null || script) {
         return FormValidation.error(
-          "Only label, groovy expression, or resources can be defined, not more than one.");
+          Messages.error_labelAndNameOrGroovySpecified());
       } else {
         if (LockableResourcesManager.get().isValidLabel(label)) {
           return FormValidation.ok();
         } else {
           return FormValidation.error(
-            "The label does not exist: " + label);
+            Messages.error_labelDoesNotExist(label));
         }
       }
     }
@@ -243,7 +241,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
         numAsInt = Integer.parseInt(number);
       } catch(NumberFormatException e)  {
         return FormValidation.error(
-          "Could not parse the given value as integer.");
+          Messages.error_couldNotParseToint());
       }
       int numResources = 0;
       if (names != null) {
@@ -254,7 +252,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
       if (numResources < numAsInt) {
         return FormValidation.error(String.format(
-          "Given amount %d is greater than amount of resources: %d.",
+          Messages.error_givenAmountIsGreaterThatResurcesAmount(),
           numAsInt,
           numResources));
       }
