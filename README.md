@@ -7,6 +7,7 @@
 [![GitHub license](https://img.shields.io/github/license/jenkinsci/lockable-resources-plugin.svg)](https://github.com/jenkinsci/lockable-resources-plugin/blob/master/LICENSE.txt)
 [![Maintenance](https://img.shields.io/maintenance/yes/2022.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
 [![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin)
+[![Join the chat at https://gitter.im/jenkinsci/lockable-resources](https://badges.gitter.im/jenkinsci/lockable-resources.svg)](https://gitter.im/jenkinsci/lockable-resources?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
@@ -33,6 +34,13 @@ Each lockable resource has the following properties:
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
   This option is still possible, but we recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
 
+A resource is always the one thing that is locked (or free or reserved).
+It exists once and has an unique name (if we take the hardware example, this may be `office_printer_14`).
+Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.).
+All resources with the same label form a "pool", so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
+If all resources with the label `a4-printer` are in use, your job waits until one is available.
+This is similar to nodes and node labels.
+
 ### Using a resource in a freestyle job
 
 When configuring the job, select **This build requires lockable resources**.
@@ -49,6 +57,8 @@ Examples:
 
 #### Acquire lock
 
+Example for scripted pipeline:
+
 ```groovy
 echo 'Starting'
 lock('my-resource-name') {
@@ -56,9 +66,29 @@ lock('my-resource-name') {
   // any other build will wait until the one locking the resource leaves this block
 }
 echo 'Finish'
+
+```
+
+Example for declarative pipeline:
+
+```groovy
+pipeline {
+  agent any
+
+  stages {
+    stage("Build") {
+      steps {
+        lock(label: 'printer', quantity: 1, resource : null) {
+          echo 'printer locked'
+        }
+      }
+    }
+  }
+}
 ```
 
 #### Take first position in queue
+
 
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
@@ -79,6 +109,7 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 ```
 
 When multiple locks are acquired, each will be assigned to a numbered variable:
+
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
@@ -131,6 +162,8 @@ lock(
 echo 'Finish'
 ```
 
+More examples are [here](src/doc/examples/readme.md).
+
 ## Configuration as Code
 
 This plugin can be configured via
@@ -142,20 +175,16 @@ This plugin can be configured via
 unclassified:
   lockableResourcesManager:
     declaredResources:
-      - name: "Resource_A"
-        description: "Description_A"
-        labels: "Label_A"
-        reservedBy: "Reserved_A"
-        properties:
-          - name: "Property_A"
-            value: "Value"
-      - name: "S7_1200_1 "
+      - name: "S7_1200_1"
         description: "S7 PLC model 1200"
         labels: "plc:S7 model:1200"
         reservedBy: "Reserved due maintenance window"
-    declaredResources:
       - name: "S7_1200_2"
         labels: "plc:S7 model:1200"
+      - name: "Resource-with-properties"
+        properties:
+          - name: "Property-A"
+            value: "Value"
 ```
 
 Properties *description*, *labels* and *reservedBy* are optional.
@@ -174,6 +203,29 @@ Reassign | STEAL | Reserves a resource that may be or not be reserved by some pe
 Reset | UNLOCK | Reset a resource that may be reserved, locked or queued.
 Note | RESERVE | Add or edit resource note.
 
+## Upgrading from 1102.vde5663d777cf
+
+Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434) **is not possible anymore to read resource-labels** from the config file org.jenkins.plugins.lockableresources.LockableResourcesManager.xml, **which is generated in the release** [1102.vde5663d777cf](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1102.vde5663d777cf)
+
+This issue does not **effect** instances configured by [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
+
+A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml`config file manually, before you upgrade to new version (Keep in mind, that a backup is still good idea).
+
+
+Example:
+
+change this one
+```
+<labels>
+  <string>tests-integration-installation</string>
+</labels>
+```
+to
+```
+<labels>
+  tests-integration-installation
+</labels>
+```
 
 ## Changelog
 
@@ -190,8 +242,8 @@ Please report issues and enhancements through the [Jenkins issue tracker in GitH
 Contributions are welcome, please
 refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
 for details on how to proceed!
+Join [Gitter channel](https://gitter.im/jenkinsci/lockable-resources) to discuss your ideas with the community.
 
 ## License
-
 All source code is licensed under the MIT license.
 See [LICENSE](LICENSE.txt)

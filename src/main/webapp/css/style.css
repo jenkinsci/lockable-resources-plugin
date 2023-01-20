@@ -1,0 +1,42 @@
+span.static-label {
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: var(--orange);
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin: 0.25rem 0.5rem;
+  padding: 0 0.5rem;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.note-wrapper {
+  max-height: 300px;
+  color: darkgray;
+  font-size: small;
+  flex-grow: 1;
+}
+
+.dataTable .jenkins-button {
+    margin: 2px;
+}
+
+.dataTable.jenkins-table > tbody > tr > td {
+    vertical-align: top;
+}
+
+table.dataTable {
+  border-spacing: 0 2px;
+}
+
+table.dataTable > tbody > tr {
+  background-color: var(--table-body-background);
+}
+
+table.dataTable td, table.dataTable th {
+    -webkit-box-sizing: inherit;
+    box-sizing: content-inherit;
+}

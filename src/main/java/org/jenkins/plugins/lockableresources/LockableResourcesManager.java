@@ -18,10 +18,11 @@ import hudson.BulkChange;
 import hudson.Extension;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.Util;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -58,6 +59,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
+  @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
+                      justification = "Common Jenkins pattern to call method that can be overridden")
   public LockableResourcesManager() {
     resources = new ArrayList<>();
     load();
@@ -146,9 +149,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
     for (LockableResource r : this.resources) {
-      String rl = r.getLabels();
-      if (rl == null || "".equals(rl)) continue;
-      labels.addAll(Arrays.asList(rl.split("\\s+")));
+      List<String> toAdd = r.getLabelsAsList();
+      if (toAdd.isEmpty()) {
+        continue;
+      }
+      labels.addAll(toAdd);
     }
     return labels;
   }
@@ -156,8 +161,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public int getFreeResourceAmount(String label) {
     int free = 0;
     for (LockableResource r : this.resources) {
-      if (r.isLocked() || r.isQueued() || r.isReserved()) continue;
-      if (Arrays.asList(r.getLabels().split("\\s+")).contains(label)) free += 1;
+      if (r.isLocked() || r.isQueued() || r.isReserved()) {
+       continue;
+      }
+      if (r.hasLabel(label)) {
+        free ++;
+      }
     }
     return free;
   }
@@ -425,6 +434,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         break;
       }
     }
+
     if (!needToWait) {
       for (LockableResource r : resources) {
         r.unqueue();
@@ -441,6 +451,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
       save();
     }
+
     return !needToWait;
   }
 
@@ -669,6 +680,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   /** Creates the resource if it does not exist. */
   public synchronized boolean createResource(String name) {
+    name = Util.fixEmptyAndTrim(name);
     if (name != null) {
       LockableResource existent = fromName(name);
       if (existent == null) {
@@ -683,6 +695,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public synchronized boolean createResourceWithLabel(String name, String label) {
+    name = Util.fixEmptyAndTrim(name);
     if (name != null && label != null) {
       LockableResource existent = fromName(name);
       if (existent == null) {
@@ -883,7 +896,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @NonNull
   @Override
   public String getDisplayName() {
-    return "External Resources";
+    return Messages.LockableResourcesManager_displayName();
   }
 
   public synchronized void reset(List<LockableResource> resources) {
@@ -939,39 +952,57 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized Set<LockableResource> checkResourcesAvailability(
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
+  public synchronized List<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
     boolean skipIfLocked = false;
+    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
     return this.checkResourcesAvailability(
-      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized Set<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      boolean skipIfLocked) {
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
+  public synchronized List<LockableResource> checkResourcesAvailability(
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    boolean skipIfLocked) {
+    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
     return this.checkResourcesAvailability(
-      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked);
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
   }
 
-  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean) */
-  public synchronized Set<LockableResource> checkResourcesAvailability(
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
+  public synchronized List<LockableResource> checkResourcesAvailability(
+    List<LockableResourcesStruct> requiredResourcesList,
+    @Nullable PrintStream logger,
+    @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+    boolean skipIfLocked,
+    ResourceSelectStrategy selectStrategy) {
+    return this.checkResourcesAvailability(
+      requiredResourcesList, logger, lockedResourcesAboutToBeUnlocked, null, skipIfLocked, selectStrategy);
+  }
+
+  /** @see #checkResourcesAvailability(List, PrintStream, List, List, boolean, ResourceSelectStrategy) */
+  public synchronized List<LockableResource> checkResourcesAvailability(
     List<LockableResourcesStruct> requiredResourcesList,
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
     @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
     boolean skipIfLocked = false;
+    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+
     return this.checkResourcesAvailability(
       requiredResourcesList,
       logger,
       lockedResourcesAboutToBeUnlocked,
       reservedResourcesAboutToBeUnreserved,
-      skipIfLocked);
+      skipIfLocked,
+      selectStrategy);
   }
 
   /**
@@ -984,7 +1015,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Nullable PrintStream logger,
     @Nullable List<String> lockedResourcesAboutToBeUnlocked,
     @Nullable List<String> reservedResourcesAboutToBeUnreserved,
-    boolean skipIfLocked) {
+    boolean skipIfLocked,
+    ResourceSelectStrategy selectStrategy) {
 
     List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
 
@@ -1024,6 +1056,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     int totalReserved = 0;
 
     for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
+      if (selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
+        Collections.shuffle(requiredResources.candidates);
+      }
       // start with an empty set of selected resources
       List<LockableResource> selected = new ArrayList<>();
 

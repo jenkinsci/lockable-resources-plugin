@@ -11,6 +11,9 @@ import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.util.FormValidation;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -77,19 +80,26 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
    * Label and resource are mutual exclusive.
    */
   public void validate() {
-    validate(resource, label, quantity);
+    validate(resource, label, null);
   }
 
   /**
    * Label and resource are mutual exclusive.
    * The label, if provided, must be configured (at least one resource must have this label).
    */
-  public static void validate(String resource, String label, int quantity) {
+  public static void validate(String resource, String label, String resourceSelectStrategy) {
     if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
-      throw new IllegalArgumentException("Label and resource name cannot be specified simultaneously.");
+      throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
     }
     if (label != null && !LockableResourcesManager.get().isValidLabel( label ) ) {
-      throw new IllegalArgumentException("The label does not exist: " + label);
+      throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
+    }
+    if (resourceSelectStrategy != null ) {
+      try {
+        ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(Messages.error_invalidResourceSelectionStrategy(resourceSelectStrategy, Arrays.stream(ResourceSelectStrategy.values()).map(Enum::toString).map(strategy -> strategy.toLowerCase(Locale.ENGLISH)).collect(Collectors.joining(", "))));
+      }
     }
   }
 
@@ -101,7 +111,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     @NonNull
     @Override
     public String getDisplayName() {
-      return "Resource";
+      return Messages.LockStepResource_displayName();
     }
 
     @RequirePOST
@@ -124,13 +134,13 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
       String resourceLabel = Util.fixEmpty(value);
       String resourceName = Util.fixEmpty(resource);
       if (resourceLabel != null && resourceName != null) {
-        return FormValidation.error("Label and resource name cannot be specified simultaneously.");
+        return FormValidation.error(Messages.error_labelAndNameSpecified());
       }
       if ((resourceLabel == null) && (resourceName == null)) {
-        return FormValidation.error("Either label or resource name must be specified.");
+        return FormValidation.error(Messages.error_labelOrNameMustBeSpecified());
       }
       if (resourceLabel != null && !LockableResourcesManager.get().isValidLabel(resourceLabel)) {
-        return FormValidation.error("The label does not exist: " + resourceLabel);
+        return FormValidation.error(Messages.error_labelDoesNotExist(resourceLabel));
       }
       return FormValidation.ok();
     }
