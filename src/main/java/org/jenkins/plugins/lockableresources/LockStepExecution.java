@@ -11,6 +11,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,11 +60,19 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         new LockableResourcesStruct(resources, resource.label, resource.quantity));
     }
 
+    ResourceSelectStrategy resourceSelectStrategy;
+    try {
+      resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+    } catch (IllegalArgumentException e) {
+      logger.println("Error: invalid resourceSelectStrategy: " + step.resourceSelectStrategy);
+      return true;
+    }
     // determine if there are enough resources available to proceed
     List<LockableResource> available =
       LockableResourcesManager.get()
-        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked);
+        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
     Run<?, ?> run = getContext().get(Run.class);
+
     if (available == null
       || !LockableResourcesManager.get()
       .lock(
@@ -73,6 +82,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         step.toString(),
         step.variable,
         step.inversePrecedence)) {
+      // No available resources, or we failed to lock available resources
       // if the resource is known, we could output the active/blocking job/build
       LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
       boolean buildNameKnown = resource != null && resource.getBuildName() != null;
@@ -95,6 +105,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
           .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
       }
     } // proceed is called inside lock if execution is possible
+
     return false;
   }
 
