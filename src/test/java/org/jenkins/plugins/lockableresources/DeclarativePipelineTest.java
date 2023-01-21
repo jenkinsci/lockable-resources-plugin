@@ -16,7 +16,7 @@ public class DeclarativePipelineTest {
   public JenkinsRule j = new JenkinsRule();
 
   @Test
-  public void basicTest() throws Exception {
+  public void lockByIdInOptionsSection() throws Exception {
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
       new CpsFlowDefinition(m("pipeline {",
@@ -37,6 +37,30 @@ public class DeclarativePipelineTest {
     j.assertBuildStatus(Result.SUCCESS, b1);
     j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
     assertNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
+  public void lockByLabelInOptionsSection() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(m("pipeline {",
+        " agent none",
+        " options {",
+        "  lock label: 'label1'",
+        " }",
+        " stages {",
+        "  stage('test') {",
+        "   steps {",
+        "    echo 'foo'",
+        "   }",
+        "  }",
+        " }",
+        "}"), true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("Lock acquired on [Label: label1]", b1);
   }
 
   @Test
@@ -89,7 +113,6 @@ public class DeclarativePipelineTest {
 
   @Test
   public void missingLabel() throws Exception {
-    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
       new CpsFlowDefinition(m("pipeline {",
@@ -98,7 +121,7 @@ public class DeclarativePipelineTest {
         "  stage('test') {",
         "   steps {",
         "     lock() {",
-        "       echo \"Lock acquired: ${LABEL_LOCKED}\"",
+        "       echo \"This will still be executed\"",
         "     }",
         "   }",
         "  }",
@@ -106,7 +129,7 @@ public class DeclarativePipelineTest {
         "}"), true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.FAILURE, b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
     j.assertLogContains("Lock acquired on [nothing]", b1);
   }
 
