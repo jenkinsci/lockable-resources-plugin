@@ -78,7 +78,7 @@ pipeline {
   stages {
     stage("Build") {
       steps {
-        lock(label: 'printer', quantity: 1, resource : null) {
+        lock(label: 'printer', quantity: 1) {
           echo 'printer locked'
         }
       }
@@ -86,6 +86,7 @@ pipeline {
   }
 }
 ```
+
 
 #### Take first position in queue
 

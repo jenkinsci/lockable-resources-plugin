@@ -18,7 +18,7 @@ pipeline {
     stages {
         stage("Build") {
             steps {
-                lock(label: "account", resourceSelectStrategy: 'random', resource: null, quantity: 1, variable: "account") {
+                lock(label: "account", resourceSelectStrategy: 'random', quantity: 1, variable: "account") {
                     echo "Using account " + env.account
                     // do your thing using the resource
                 }

@@ -5,11 +5,11 @@ You can lock the entire job in the options block of the pipeline:
 
 ```groovy
 pipeline {
-options {
-      lock 'lockable-resource'
+    options {
+        lock 'lockable-resource'
     }
 
- agent any
+    agent any
 
     stages {
         stage('Build') {
