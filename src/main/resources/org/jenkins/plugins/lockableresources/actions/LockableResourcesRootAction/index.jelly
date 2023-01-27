@@ -29,8 +29,29 @@
       </j:when>
       <j:otherwise>
         <div class="fluid-container">
-          <st:include page="tableResources/table"/>
-          <st:include page="tableLabels/table"/>
+          <!-- Nav tabs -->
+          <ul class="nav nav-tabs" id="lockable-resources-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resources"
+                type="button" role="tab" aria-controls="resources" aria-selected="true">${%tab.resources}</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="labels-tab" data-bs-toggle="tab" data-bs-target="#labels" type="button"
+                role="tab" aria-controls="labels" aria-selected="false">${%tab.labels}</button>
+            </li>
+            <!-- more tabs like logs, queue can be added here -->
+          </ul>
+          <!-- Tab panes -->
+          <div class="tab-content">
+            <div class="tab-pane active jenkins-!-margin-top-1" id="resources" role="tabpanel" aria-labelledby="resources-tab">
+              <st:include page="tableResources/table"/>
+            </div>
+          </div>
+          <div class="tab-content">
+            <div class="tab-pane jenkins-!-margin-top-1" id="labels" role="tabpanel" aria-labelledby="labels-tab">
+              <st:include page="tableLabels/table"/>
+            </div>
+          </div>
         </div>
 
         <script type="text/javascript" src="${resURL}/plugin/data-tables-api/js/table.js"/>
