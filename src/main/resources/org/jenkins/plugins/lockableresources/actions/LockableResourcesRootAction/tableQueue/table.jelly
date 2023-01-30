@@ -82,7 +82,7 @@ THE SOFTWARE.
               <td>
                 <j:choose>
                   <j:when test="${build != null}">
-                    <a class="jenkins-table__link model-link jenkins-table__badge" href="${rootURL + '/' + build.url}">${build.fullDisplayName}</a>
+                    <a class="jenkins-table__link jenkins-table__badge model-link inside" href="${rootURL + '/' + build.url}">${build.fullDisplayName}</a>
                   </j:when>
                   <j:otherwise>
                     ${%N/A}
