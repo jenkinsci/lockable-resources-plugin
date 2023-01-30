@@ -63,7 +63,7 @@ public class QueuedContextStruct implements Serializable {
 
   /** Return build, where is the resource used.*/
   @CheckForNull
-  @Restricted(NoExternalUse.class)NoExternalUse // used by jelly
+  @Restricted(NoExternalUse.class) // used by jelly
   public Run<?, ?> getBuild() {
     try {
       return this.getContext().get(Run.class);

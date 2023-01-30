@@ -680,7 +680,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   /** Returns current queue */
-  @Restricted(NoExternalUse.class)NoExternalUse // used by jelly
+  @Restricted(NoExternalUse.class) // used by jelly
   public List<QueuedContextStruct> getCurrentQueuedContext() {
     return Collections.unmodifiableList(this.queuedContexts);
   }

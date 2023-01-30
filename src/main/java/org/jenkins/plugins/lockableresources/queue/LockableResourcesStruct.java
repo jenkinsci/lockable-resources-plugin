@@ -142,12 +142,23 @@ public class LockableResourcesStruct implements Serializable {
       + ", Variable name: "
       + this.requiredVar
       + ", Number of resources: "
-      + this.requiredNumber;
+      + this.requiredNumber
+      + ", Ticks: "
+      + this.ticks;
   }
 
   /** Returns timestamp when the resource has been added into queue.*/
-  @Restricted(NoExternalUse.class)NoExternalUse // used by jelly
+  @Restricted(NoExternalUse.class) // used by jelly
   public Date getQueuedTimestamp() {
     return new Date(this.ticks);
+  }
+
+  /** Check if the queue takes too long.
+    At the moment "too long" means over 1 hour.
+  */
+  @Restricted(NoExternalUse.class) // used by jelly
+  public boolean takeTooLong() {
+    long now = new Date().getTime();
+    return (now - this.ticks) > 3600000L;
   }
 }
