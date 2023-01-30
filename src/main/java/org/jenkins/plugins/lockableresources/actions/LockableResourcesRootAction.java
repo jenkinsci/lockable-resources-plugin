@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
@@ -156,6 +157,12 @@ public class LockableResourcesRootAction implements RootAction {
   @Restricted(NoExternalUse.class)
   public int getAssignedResourceAmount(String label) {
     return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
+  }
+
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  public List<QueuedContextStruct> getCurrentQueuedContext() {
+    return LockableResourcesManager.get().getCurrentQueuedContext();
   }
 
   @RequirePOST

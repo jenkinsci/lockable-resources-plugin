@@ -39,7 +39,11 @@
               <button class="nav-link" id="labels-tab" data-bs-toggle="tab" data-bs-target="#labels" type="button"
                 role="tab" aria-controls="labels" aria-selected="false">${%tab.labels}</button>
             </li>
-            <!-- more tabs like logs, queue can be added here -->
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="queue-tab" data-bs-toggle="tab" data-bs-target="#queue" type="button"
+                role="tab" aria-controls="queue" aria-selected="false">${%tab.queue}</button>
+            </li>
+            <!-- more tabs like logs can be added here -->
           </ul>
           <!-- Tab panes -->
           <div class="tab-content">
@@ -50,6 +54,11 @@
           <div class="tab-content">
             <div class="tab-pane jenkins-!-margin-top-1" id="labels" role="tabpanel" aria-labelledby="labels-tab">
               <st:include page="tableLabels/table"/>
+            </div>
+          </div>
+          <div class="tab-content">
+            <div class="tab-pane jenkins-!-margin-top-1" id="queue" role="tabpanel" aria-labelledby="queue-tab">
+              <st:include page="tableQueue/table"/>
             </div>
           </div>
         </div>

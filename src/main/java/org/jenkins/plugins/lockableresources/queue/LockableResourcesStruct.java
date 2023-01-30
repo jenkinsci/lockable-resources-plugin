@@ -14,12 +14,15 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 public class LockableResourcesStruct implements Serializable {
 
@@ -30,6 +33,7 @@ public class LockableResourcesStruct implements Serializable {
   public String label;
   public String requiredVar;
   public String requiredNumber;
+  public long ticks = 0;
 
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
@@ -39,6 +43,7 @@ public class LockableResourcesStruct implements Serializable {
   private static final long serialVersionUID = 1L;
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
+    ticks = new Date().getTime();
     required = new ArrayList<>();
 
     LockableResourcesManager resourcesManager = LockableResourcesManager.get();
@@ -81,6 +86,7 @@ public class LockableResourcesStruct implements Serializable {
 
   public LockableResourcesStruct(
     @Nullable List<String> resources, @Nullable String label, int quantity) {
+    ticks = new Date().getTime();
     required = new ArrayList<>();
     if (resources != null) {
       for (String resource : resources) {
@@ -137,5 +143,11 @@ public class LockableResourcesStruct implements Serializable {
       + this.requiredVar
       + ", Number of resources: "
       + this.requiredNumber;
+  }
+
+  /** Returns timestamp when the resource has been added into queue.*/
+  @Restricted(NoExternalUse.class)NoExternalUse // used by jelly
+  public Date getQueuedTimestamp() {
+    return new Date(this.ticks);
   }
 }
