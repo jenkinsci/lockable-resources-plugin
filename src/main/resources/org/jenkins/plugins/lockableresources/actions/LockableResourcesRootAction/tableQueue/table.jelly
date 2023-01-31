@@ -94,7 +94,7 @@ THE SOFTWARE.
                   ${%ago(h.getTimeSpanString(queuedResource.getQueuedTimestamp()))}
                 </j:if>
               </td>
-              <td><st:include page="reason/cell" it="${queuedResource}"/></td>
+              <td><st:include page="reason/cell" from="${queuedResource}"/></td>
             </tr>
           </j:forEach>
         </j:forEach>

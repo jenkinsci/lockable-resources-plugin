@@ -34,6 +34,9 @@ THE SOFTWARE.
     </j:when>
     <!-- groovy expression -->
     <j:when test="${it.getResourceMatchScript() != null}">
+      <!-- Groovy expressions are currently supported only in free-style jobs.
+           Free-style jobs does not update this queue and therefore can not be shown here.
+           This lines are prepared in case we want to support it in pipeline as well -->
       ${%type.groovy}
     </j:when>
     <j:otherwise>

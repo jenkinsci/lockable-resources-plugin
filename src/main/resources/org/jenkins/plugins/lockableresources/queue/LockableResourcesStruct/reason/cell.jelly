@@ -26,8 +26,8 @@
     <j:choose>
 
       <!-- *************** resources *************** -->
-      <j:when test="${!it.required.isEmpty()}">
-        <j:forEach var="resource" items="${it.required}">
+      <j:when test="${!from.required.isEmpty()}">
+        <j:forEach var="resource" items="${from.required}">
           <j:choose>
             <j:when test="${resource.reservedBy != null}">
               ${%resource.status.reservedBy(resource.reservedBy)}
@@ -50,7 +50,7 @@
       </j:when>
 
       <!-- *************** labels *************** -->
-      <j:when test="${!it.label.isEmpty()}">
+      <j:when test="${!from.label.isEmpty()}">
         <j:choose>
           <j:when test="${queuedResource.requiredNumber gt 0}">
             ${%label.requiredNumber(queuedResource.requiredNumber)}
@@ -59,14 +59,14 @@
             ${%label.requiredAll}
           </j:otherwise>
         </j:choose>
-        <!-- TODO
-        ${%label.status(it.getAssignedResourceAmount(queuedResource.label), it.getFreeResourceAmount(label))}
-        -->
+        ${%label.status(it.getFreeResourceAmount(queuedResource.label), it.getAssignedResourceAmount(queuedResource.label))}
       </j:when>
 
       <!-- *************** groovy expression *************** -->
-      <j:when test="${it.getResourceMatchScript() != null}">
-        <!-- TODO -->
+      <j:when test="${from.getResourceMatchScript() != null}">
+        <!-- Groovy expressions are currently supported only in free-style jobs.
+           Free-style jobs does not update this queue and therefore can not be shown here.
+           This lines are prepared in case we want to support it in pipeline as well -->
         ${%groovy.status}
       </j:when>
 
