@@ -612,6 +612,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  /** Returns names (IDs) of given *resources*.
+  */
+  @Restricted(NoExternalUse.class)
+  public static List<String> getResourcesNames(List<LockableResource> resources) {
+    List<String> resourceNames = new ArrayList<>();
+    if (resources != null) {
+      for (LockableResource resource : resources) {
+        resourceNames.add(resource.getName());
+      }
+    }
+    return resourceNames;
+  }
+
   /** @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct) */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
