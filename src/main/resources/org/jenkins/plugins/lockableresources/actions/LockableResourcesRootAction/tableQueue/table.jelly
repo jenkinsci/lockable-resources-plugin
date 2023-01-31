@@ -35,7 +35,7 @@ THE SOFTWARE.
         <j:set var="oldestQueue" value="${it.getOldestQueue()}"/>
         <j:if test="${oldestQueue != null and oldestQueue.takeTooLong()}">
           <script type="text/javascript">notificationBar.show('${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}', notificationBar.WARNING)</script>
-          <h3 class="jenkins-!-warning-color">${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}</h3>
+          <p class="jenkins-!-warning-color">${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}</p>
           <pre>${%queue.warning.count.detail}</pre>
        </j:if>
       </j:otherwise>
@@ -63,11 +63,11 @@ THE SOFTWARE.
         <!-- requested.at  -->
         <col class="col-width-1 text-end" />
         <!-- reason -->
-        <col class="col-width-5 text-end" />
+        <col class="col-width-3 text-end" />
       </colgroup>
       <thead>
         <th>${%queue.table.column.request.type}</th>
-        <th>${%queue.table.column.request}</th>
+        <th>${%queue.table.column.request.info}</th>
         <th>${%queue.table.column.requested.by}</th>
         <th>${%queue.table.column.requested.at}</th>
         <th>${%queue.table.column.reason}</th>
