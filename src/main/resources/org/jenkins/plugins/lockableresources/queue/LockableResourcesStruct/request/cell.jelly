@@ -35,7 +35,7 @@ THE SOFTWARE.
             </div>
             <div class="col">
               <j:if test="${resource.ephemeral}">
-                <span class="static-label">${%ephemeral}</span>
+                <span class="static-label">${%resources.ephemeral}</span>
               </j:if>
             </div>
           </div>
@@ -60,8 +60,7 @@ THE SOFTWARE.
 
     <!-- *************** groovy expression *************** -->
     <j:when test="${it.getResourceMatchScript() != null}">
-      <!-- TODO -->
-      ${%groovy.code ??}
+      ${%groovy.code}
     </j:when>
 
     <j:otherwise>

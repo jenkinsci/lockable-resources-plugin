@@ -26,15 +26,15 @@ THE SOFTWARE.
   <j:choose>
     <!-- resources -->
     <j:when test="${!it.required.isEmpty()}">
-      ${%Resources}
+      ${%type.resources}
     </j:when>
     <!-- labels -->
     <j:when test="${!it.label.isEmpty()}">
-      ${%Labels}
+      ${%type.label}
     </j:when>
     <!-- groovy expression -->
     <j:when test="${it.getResourceMatchScript() != null}">
-      ${%Groovy expression}
+      ${%type.groovy}
     </j:when>
     <j:otherwise>
       <!-- when you hit this, it is a bug -->
