@@ -14,10 +14,14 @@
   xmlns:f="/lib/form"
   xmlns:i="jelly:fmt"
   xmlns:st="jelly:stapler"
+  xmlns:t="/lib/hudson"
 >
   <l:layout title="${it.displayName}" type="one-column">
+    <l:app-bar title="${%header.resources}">
+      <t:help href="https://github.com/jenkinsci/lockable-resources-plugin#lockable-resources-overview" />
+    </l:app-bar>
+
     <l:main-panel>
-      <h1>${%header.resources}</h1>
       <j:choose>
         <j:when test="${it.resources.size() == 0}">
           <p>
