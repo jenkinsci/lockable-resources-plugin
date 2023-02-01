@@ -205,7 +205,7 @@ Note | RESERVE | Add or edit resource note.
 
 ### Labels
 
-Provide an overview over all lockable-resources labels.
+Provides an overview over all lockable-resources labels.
 
 > *Note:* Please keep in mind, that lockable-resource-label is not the same as node-label!
 
