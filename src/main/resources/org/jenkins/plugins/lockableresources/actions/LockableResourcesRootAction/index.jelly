@@ -14,10 +14,14 @@
   xmlns:f="/lib/form"
   xmlns:i="jelly:fmt"
   xmlns:st="jelly:stapler"
+  xmlns:t="/lib/hudson"
 >
   <l:layout title="${it.displayName}" type="one-column">
+    <l:app-bar title="${%header.resources}">
+      <t:help href="https://github.com/jenkinsci/lockable-resources-plugin#lockable-resources-overview" />
+    </l:app-bar>
+
     <l:main-panel>
-      <h1>${%header.resources}</h1>
       <j:choose>
         <j:when test="${it.resources.size() == 0}">
           <p>
@@ -39,7 +43,11 @@
               <button class="nav-link" id="labels-tab" data-bs-toggle="tab" data-bs-target="#labels" type="button"
                 role="tab" aria-controls="labels" aria-selected="false">${%tab.labels}</button>
             </li>
-            <!-- more tabs like logs, queue can be added here -->
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="queue-tab" data-bs-toggle="tab" data-bs-target="#queue" type="button"
+                role="tab" aria-controls="queue" aria-selected="false">${%tab.queue}</button>
+            </li>
+            <!-- more tabs like logs can be added here -->
           </ul>
           <!-- Tab panes -->
           <div class="tab-content">
@@ -50,6 +58,11 @@
           <div class="tab-content">
             <div class="tab-pane jenkins-!-margin-top-1" id="labels" role="tabpanel" aria-labelledby="labels-tab">
               <st:include page="tableLabels/table"/>
+            </div>
+          </div>
+          <div class="tab-content">
+            <div class="tab-pane jenkins-!-margin-top-1" id="queue" role="tabpanel" aria-labelledby="queue-tab">
+              <st:include page="tableQueue/table"/>
             </div>
           </div>
         </div>

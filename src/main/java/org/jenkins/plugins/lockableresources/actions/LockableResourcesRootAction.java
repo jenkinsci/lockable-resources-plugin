@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
@@ -156,6 +158,32 @@ public class LockableResourcesRootAction implements RootAction {
   @Restricted(NoExternalUse.class)
   public int getAssignedResourceAmount(String label) {
     return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
+  }
+
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  public List<QueuedContextStruct> getCurrentQueuedContext() {
+    return LockableResourcesManager.get().getCurrentQueuedContext();
+  }
+
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  @CheckForNull
+  public LockableResourcesStruct getOldestQueue() {
+    LockableResourcesStruct oldest = null;
+    for (QueuedContextStruct context : this.getCurrentQueuedContext()) {
+      for(LockableResourcesStruct resourceStruct : context.getResources()) {
+        if (resourceStruct.queuedAt == 0) {
+          // Older versions of this plugin might miss this information.
+          // Therefore skip it here.
+          continue;
+        }
+        if (oldest == null || oldest.queuedAt > resourceStruct.queuedAt) {
+          oldest = resourceStruct;
+        }
+      }
+    }
+    return oldest;
   }
 
   @RequirePOST

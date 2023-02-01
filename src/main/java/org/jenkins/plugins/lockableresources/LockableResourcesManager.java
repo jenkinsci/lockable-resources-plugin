@@ -692,6 +692,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return newestEntry;
   }
 
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  public List<QueuedContextStruct> getCurrentQueuedContext() {
+    return Collections.unmodifiableList(this.queuedContexts);
+  }
+
   /** Creates the resource if it does not exist. */
   public synchronized boolean createResource(String name) {
     name = Util.fixEmptyAndTrim(name);
