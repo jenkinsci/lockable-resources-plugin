@@ -89,8 +89,8 @@ THE SOFTWARE.
                   </j:otherwise>
                 </j:choose>
               </td>
-              <td data-order="${queuedResource.ticks}">
-                <j:if test="${queuedResource.ticks gt 0}">
+              <td data-order="${queuedResource.queuedAt}">
+                <j:if test="${queuedResource.queuedAt gt 0}">
                   ${%ago(h.getTimeSpanString(queuedResource.getQueuedTimestamp()))}
                 </j:if>
               </td>

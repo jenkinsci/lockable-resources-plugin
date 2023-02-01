@@ -173,12 +173,12 @@ public class LockableResourcesRootAction implements RootAction {
     LockableResourcesStruct oldest = null;
     for (QueuedContextStruct context : this.getCurrentQueuedContext()) {
       for(LockableResourcesStruct resourceStruct : context.getResources()) {
-        if (resourceStruct.ticks == 0) {
+        if (resourceStruct.queuedAt == 0) {
           // Older versions of this plugin might miss this information.
           // Therefore skip it here.
           continue;
         }
-        if (oldest == null || oldest.ticks > resourceStruct.ticks) {
+        if (oldest == null || oldest.queuedAt > resourceStruct.queuedAt) {
           oldest = resourceStruct;
         }
       }

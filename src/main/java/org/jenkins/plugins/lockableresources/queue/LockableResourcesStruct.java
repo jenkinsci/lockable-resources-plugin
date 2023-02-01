@@ -33,7 +33,7 @@ public class LockableResourcesStruct implements Serializable {
   public String label;
   public String requiredVar;
   public String requiredNumber;
-  public long ticks = 0;
+  public long queuedAt = 0;
 
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
@@ -43,7 +43,7 @@ public class LockableResourcesStruct implements Serializable {
   private static final long serialVersionUID = 1L;
 
   public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
-    ticks = new Date().getTime();
+    queuedAt = new Date().getTime();
     required = new ArrayList<>();
 
     LockableResourcesManager resourcesManager = LockableResourcesManager.get();
@@ -86,7 +86,7 @@ public class LockableResourcesStruct implements Serializable {
 
   public LockableResourcesStruct(
     @Nullable List<String> resources, @Nullable String label, int quantity) {
-    ticks = new Date().getTime();
+    queuedAt = new Date().getTime();
     required = new ArrayList<>();
     if (resources != null) {
       for (String resource : resources) {
@@ -142,15 +142,13 @@ public class LockableResourcesStruct implements Serializable {
       + ", Variable name: "
       + this.requiredVar
       + ", Number of resources: "
-      + this.requiredNumber
-      + ", Ticks: "
-      + this.ticks;
+      + this.requiredNumber;
   }
 
   /** Returns timestamp when the resource has been added into queue.*/
   @Restricted(NoExternalUse.class) // used by jelly
   public Date getQueuedTimestamp() {
-    return new Date(this.ticks);
+    return new Date(this.queuedAt);
   }
 
   /** Check if the queue takes too long.
@@ -158,7 +156,6 @@ public class LockableResourcesStruct implements Serializable {
   */
   @Restricted(NoExternalUse.class) // used by jelly
   public boolean takeTooLong() {
-    long now = new Date().getTime();
-    return (now - this.ticks) > 3600000L;
+    return (new Date().getTime() - this.queuedAt) > 3600000L;
   }
 }
