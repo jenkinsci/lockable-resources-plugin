@@ -211,18 +211,17 @@ Provide an overview over all lockable-resources labels.
 
 ### Queue
 
-Provide an overview over currently queued requests.
-An request is queued by pipeline step `lock()`. When the requested resource(s) is currently in use (not free), will be this request added into queue.
+Provides an overview over currently queued requests.
+A request is queued by the pipeline step `lock()`. When the requested resource(s) is currently in use (not free), then any new request for this resource will be added into the queue.
 
-An resource may be requested by:
+A resource may be requested by:
 
-- name `lock('ABC') { ... }`
-- label `lock(label : 'COFFEE_MACHINE')`
+- name, such as in `lock('ABC') { ... }`
+- label, such as in `lock(label : 'COFFEE_MACHINE')`
 
-> *Note:* Please keep in mind, that groovy expressions are currently supported only in free-style jobs. Free-style jobs does not update this queue and therefore can not be shown in this view.
+> *Note:* Please keep in mind that groovy expressions are currently supported only in free-style jobs. Free-style jobs do not update this queue and therefore can not be shown in this view.
 
-> *Note:* An empty value in the column 'Requested at' means, that this build has been started in older plugin version - [1117.v157231b_03882](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1117.v157231b_03882) and early. In this case we can
-not recognize the timestamp.
+> *Note:* An empty value in the column 'Requested at' means that this build has been started in an older plugin version - [1117.v157231b_03882](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1117.v157231b_03882) and early. In this case we cannot recognize the timestamp.
 
 ----
 
