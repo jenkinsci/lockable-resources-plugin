@@ -232,7 +232,7 @@ Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434
 
 This issue does not **effect** instances configured by [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
 
-A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml` config file manually, before you upgrade to new version (Keep in mind, that a backup is still good idea).
+A possible solution is to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml` config file manually, before you upgrade to new version (Keep in mind that a backup is still good idea).
 
 Example:
 
