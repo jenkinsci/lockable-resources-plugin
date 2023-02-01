@@ -178,11 +178,7 @@ public class LockableResourcesRootAction implements RootAction {
           // Therefore skip it here.
           continue;
         }
-        if (oldest == null) {
-          oldest = resourceStruct;
-          continue;
-        }
-        if (oldest.ticks > resourceStruct.ticks) {
+        if (oldest == null || oldest.ticks > resourceStruct.ticks) {
           oldest = resourceStruct;
         }
       }
