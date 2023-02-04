@@ -1,0 +1,104 @@
+<!--
+The MIT License
+
+Copyright 2023 Martin Pokorny.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-->
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+
+  <j:set var="queue" value="${it.getCurrentQueuedContext()}"/>
+
+  <div class="row py-3">
+    <j:choose>
+      <j:when test="${queue.size() == 0}">
+        <h2>${%queue.isEmpty}</h2>
+      </j:when>
+      <j:otherwise>
+        <j:set var="oldestQueue" value="${it.getOldestQueue()}"/>
+        <j:if test="${oldestQueue != null and oldestQueue.takeTooLong()}">
+          <script type="text/javascript">notificationBar.show('${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}', notificationBar.WARNING)</script>
+          <p class="jenkins-!-warning-color">${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}</p>
+          <pre>${%queue.warning.count.detail}</pre>
+       </j:if>
+      </j:otherwise>
+    </j:choose>
+  </div>
+
+
+  <st:adjunct includes="io.jenkins.plugins.data-tables"/>
+  <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
+  <div class="table-responsive">
+    <table
+      class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+      id="lockable-resources-queue"
+      isLoaded="true"
+      data-columns-definition="[null, null, null, null, null]"
+      data-table-configuration="{}"
+    >
+      <colgroup>
+        <!-- request-type -->
+        <col class="col-width-1 text-end" />
+        <!-- resouce -->
+        <col class="col-width-4 text-end" />
+        <!-- requested.by -->
+        <col class="col-width-2 text-end" />
+        <!-- requested.at  -->
+        <col class="col-width-1 text-end" />
+        <!-- reason -->
+        <col class="col-width-3 text-end" />
+      </colgroup>
+      <thead>
+        <th>${%queue.table.column.request.type}</th>
+        <th>${%queue.table.column.request.info}</th>
+        <th>${%queue.table.column.requested.by}</th>
+        <th>${%queue.table.column.requested.at}</th>
+        <th>${%queue.table.column.reason}</th>
+      </thead>
+      <tbody>
+        <j:forEach var="queuedItem" items="${queue}">
+          <j:set var="build" value="${queuedItem.getBuild()}"/>
+          <j:forEach var="queuedResource" items="${queuedItem.getResources()}">
+            <tr>
+              <td><st:include page="request_type/cell" it="${queuedResource}"/></td>
+              <td><st:include page="request/cell" it="${queuedResource}"/></td>
+              <td>
+                <j:choose>
+                  <j:when test="${build != null}">
+                    <a class="jenkins-table__link jenkins-table__badge model-link inside" href="${rootURL + '/' + build.url}">${build.fullDisplayName}</a>
+                  </j:when>
+                  <j:otherwise>
+                    ${%N/A}
+                  </j:otherwise>
+                </j:choose>
+              </td>
+              <td data-order="${queuedResource.queuedAt}">
+                <j:if test="${queuedResource.queuedAt gt 0}">
+                  ${%ago(h.getTimeSpanString(queuedResource.getQueuedTimestamp()))}
+                </j:if>
+              </td>
+              <td><st:include page="reason/cell" from="${queuedResource}"/></td>
+            </tr>
+          </j:forEach>
+        </j:forEach>
+      </tbody>
+    </table>
+  </div>
+</j:jelly>

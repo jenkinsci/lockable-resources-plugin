@@ -26,7 +26,6 @@ THE SOFTWARE.
   <j:if test="${it.getNumberOfAllLabels() != 0}">
     <st:adjunct includes="io.jenkins.plugins.data-tables"/>
     <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
-    <h2 class="jenkins-!-padding-1">${%header.labels}</h2>
     <div class="table-responsive">
       <table
         class="jenkins-table jenkins-!-margin-bottom-4 data-table"

@@ -613,6 +613,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
     save();
   }
 
+  /** Returns names (IDs) of given *resources*.
+  */
+  @Restricted(NoExternalUse.class)
+  public static List<String> getResourcesNames(List<LockableResource> resources) {
+    List<String> resourceNames = new ArrayList<>();
+    if (resources != null) {
+      for (LockableResource resource : resources) {
+        resourceNames.add(resource.getName());
+      }
+    }
+    return resourceNames;
+  }
+
   /** @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct) */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
@@ -678,6 +691,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     return newestEntry;
+  }
+
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  public List<QueuedContextStruct> getCurrentQueuedContext() {
+    return Collections.unmodifiableList(this.queuedContexts);
   }
 
   /** Creates the resource if it does not exist. */
