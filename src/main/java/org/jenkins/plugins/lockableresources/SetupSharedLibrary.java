@@ -26,7 +26,6 @@ public final class SetupSharedLibrary {
 
   @Initializer(after = InitMilestone.SYSTEM_CONFIG_LOADED)
   public static void setSharedLib() {
-    List<LockableResource> resources = LockableResourcesManager.get().getResources();
     LOG.log(Level.FINE, "lockable-resources-plugin configure shared libraries");
     
     final String preferredLibName = "lockable-resources-shared-library";
