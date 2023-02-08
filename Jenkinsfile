@@ -27,7 +27,7 @@ configs.each { c ->
   }
 }
 
-parallel(configs)
+parallel(stages)
 
 void testSharedLib(Map config) {
   String platform = config.platform
