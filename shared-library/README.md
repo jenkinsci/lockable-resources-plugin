@@ -52,7 +52,7 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 
 ## Contributing
 
-Contributions are welcome, please refer to the separate [CONTRIBUTING](../CONTRIBUTING.md) document for details on how to proceed!
+Contributions are welcome, please refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document for details on how to proceed!
 
 Join [Gitter channel](https://gitter.im/jenkinsci/lockable-resources) to discuss your ideas with the community.
 

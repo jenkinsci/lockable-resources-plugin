@@ -2,26 +2,31 @@
 
 Fork this repository. Make your changes, tests it and provide a pull-request. That`s it.
 
-## Git workflow
-
-To eliminate weird and often changes in master branch we provide long time **develop** branch.
-That means all changes (feature requests, bug fixing) must be merged in to **develop** branch first
-and not into **master**.
-The branch **develop** will be merged in to master on demand.
-
-```
-                             R1              R2               Rn
---- master ----------------------------------------- ... ------------
-            \--- develop ---/\--- develop ---/\--- develop ---/
-              \-feature1-/ /     /
-              \-feature2--/     /
-                    \-feature3-/
-```
-
 ## Setup environment
 
-Lockable resource plugin shall setup everything you need on demand.
+General you need same setup as to builf the plugin.
+Please refer to the plugin [CONTRIBUTING](../CONTRIBUTING.md) document for details on how to proceed!
 
 ## Build and test
 
-TBD
+If you have the proper environment, typing:
+
+```sh
+mvn clean verify
+```
+
+should provide tests for shared library
+
+```sh
+mvn hpi:run -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
+```
+
+allows you to spin up a test Jenkins instance on [localhost] to test your
+local changes before committing.
+
+The plugin shall set everything you need on demand.
+
+> Keep in mind, that shared library works only with committed changes.
+
+The option `hudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true` allows you to load changes from locale repository without pushing to remote repository.
+d
