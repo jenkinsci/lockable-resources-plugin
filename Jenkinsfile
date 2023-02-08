@@ -43,7 +43,7 @@ void testSharedLib(Map config, String stageIdentifier) {
 
     node(label) {
       stage("Checkout (${stageIdentifier})") {
-        infra.checkoutSCM(repo)
+        infra.checkoutSCM(null)
       }
 
       stage('Test shared lib') {
