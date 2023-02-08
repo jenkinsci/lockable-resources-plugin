@@ -10,11 +10,13 @@ function find_resource_name(element) {
 function resource_action(button, action) {
   // TODO: Migrate to form:link after Jenkins 2.233 (for button-styled links)
   var form = document.createElement('form');
+  var resourceName = find_resource_name(button);
   form.setAttribute('method', 'POST');
-  form.setAttribute('action', action + "?resource=" + encodeURIComponent(find_resource_name(button)));
+  form.setAttribute('action', action + "?resource=" + encodeURIComponent(resourceName));
   crumb.appendToForm(form);
   document.body.appendChild(form);
   form.submit();
+  notificationBar.show(action + ' was successfully performed on ' + resourceName, notificationBar.SUCCESS);
 }
 
 function replaceNote(element, resourceName) {
