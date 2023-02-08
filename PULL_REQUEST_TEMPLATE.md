@@ -67,14 +67,12 @@ This steps need additional automation in release management. Therefore are comme
 - [ ] For dependency updates, there are links to external changelogs and, if possible, full differentials.
 - [ ] For new APIs and extension points, there is a link to at least one consumer.
 - [ ] Any localizations are transferred to *.properties files.
-- [ ] Changes in the interface are documented also as [examples](src/doc/examples/readme.md).
+- [ ] Changes in the interface are documented also as [examples](src/doc/examples/readme.md), [groovy/examples](src/doc/examples/readme.md).
 
 ### Maintainer checklist
 
 Before the changes are marked as `ready-for-merge`:
 
-- [ ] There is at least one (1) approval for the pull request and no outstanding requests for change.
-- [ ] Conversations in the pull request are over, or it is explicit that a reviewer is not blocking the change.
 - [ ] Changelog entries in the **pull request title** and/or **Proposed changelog entries** are accurate, human-readable, and in the imperative mood.
 - [ ] Proper changelog labels are set so that the changelog can be generated automatically. See also [release-drafter-labels](https://github.com/jenkinsci/.github/blob/ce466227c534c42820a597cb8e9cac2f2334920a/.github/release-drafter.yml#L9-L50).
 - [ ] If the change needs additional upgrade steps from users, the `upgrade-guide-needed` label is set and there is a **Proposed upgrade guidelines** section in the pull request title (see [example](https://github.com/jenkinsci/jenkins/pull/4387)).

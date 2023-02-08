@@ -926,6 +926,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     try (BulkChange bc = new BulkChange(this)) {
       // reset resources to default which are not currently locked
+      // TODO what about reserved, and queued ?
       this.resources.removeIf(resource -> !resource.isLocked());
       req.bindJSON(this, json);
       bc.commit();
