@@ -21,15 +21,15 @@ def configs = [
 def stages = [failFast: true]
 
 configs.each { c ->
-  String stagName = "${c.platform}-${c.jdk}"
-  stages[stagName] = {
-    testSharedLib(c)
+  final String stageIdentifier = "${c.platform}-${c.jdk}"
+  stages[stageIdentifier] = {
+    testSharedLib(c, stageIdentifier)
   }
 }
 
 parallel(stages)
 
-void testSharedLib(Map config) {
+void testSharedLib(Map config, String stageIdentifier) {
   String platform = config.platform
   String jdk = config.jdk == null ? '11' : config.jdk
   def timeoutValue = config.timeoutValue == null ? 120 : config.timeoutValue
@@ -42,16 +42,14 @@ void testSharedLib(Map config) {
   timestamps() {
 
     node(label) {
-      timeout(timeoutValue) {
-        stage("Checkout (${stageIdentifier})") {
-          infra.checkoutSCM(repo)
-        }
+      stage("Checkout (${stageIdentifier})") {
+        infra.checkoutSCM(repo)
+      }
 
-        stage('Test shared lib') {
-          dir('shared-library') {
-            sh 'mvn --no-transfer-progress -B clean verify'
-            junit(keepLongStdio: true, testResults: 'tests/target/surefire-reports/TEST-*.xml')
-          }
+      stage('Test shared lib') {
+        dir('shared-library') {
+          sh 'mvn --no-transfer-progress -B clean verify'
+          junit(keepLongStdio: true, testResults: 'tests/target/surefire-reports/TEST-*.xml')
         }
       }
     }
