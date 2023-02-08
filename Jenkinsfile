@@ -48,7 +48,12 @@ void testSharedLib(Map config, String stageIdentifier) {
 
       stage('Test shared lib') {
         dir('shared-library') {
-          sh 'mvn --no-transfer-progress -B clean verify'
+          String cmd = 'mvn --no-transfer-progress -B clean verify'
+          if (isUnix()) {
+            sh cmd
+          } else {
+            bat cmd
+          }
           junit(keepLongStdio: true, testResults: 'tests/target/surefire-reports/TEST-*.xml')
         }
       }
