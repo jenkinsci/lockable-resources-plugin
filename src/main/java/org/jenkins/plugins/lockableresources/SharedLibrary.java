@@ -19,26 +19,30 @@ import org.jenkinsci.plugins.workflow.libs.SCMSourceRetriever;
  *
  * Setup global shared library, so the end-user (administrator) has nothing to do.
  */
-public final class SetupSharedLibrary {
-  private static final Logger LOG = Logger.getLogger(SetupSharedLibrary.class.getName());
+public final class SharedLibrary {
 
-  private SetupSharedLibrary() {}
+  public final static String LIBRARY_NAME = "lockable-resources-shared-library";
+  public final static String DEVELOP_VERSION = "999999-SNAPSHOT";
+
+  private static final Logger LOG = Logger.getLogger(SharedLibrary.class.getName());
+
+  private SharedLibrary() {}
 
   @Initializer(after = InitMilestone.SYSTEM_CONFIG_LOADED)
   public static void setSharedLib() {
     LOG.log(Level.FINE, "lockable-resources-plugin configure shared libraries");
     
-    final String preferredLibName = "lockable-resources-shared-library";
+    
     GlobalLibraries gl = GlobalLibraries.get();
     List<LibraryConfiguration> libs = gl.getLibraries();
     boolean isAdded = false;
     for (LibraryConfiguration lib : libs) {
-      if (lib != null && lib.getName().equals(preferredLibName)) {
+      if (lib != null && lib.getName().equals(LIBRARY_NAME)) {
         // our release tags contains ., git branch can not contains .
         // this check will allow to set as default som branch like 'hot-fix-nr1'
         // or 'master' or what ever.
         if (lib.getDefaultVersion().contains(".")) {
-          lib.setDefaultVersion(myCurrentVersion());
+          lib.setDefaultVersion(getCurrentVersion());
         }
         isAdded = true;
         return;
@@ -49,20 +53,20 @@ public final class SetupSharedLibrary {
       GitSCMSource scm = new GitSCMSource("https://github.com/jenkinsci/lockable-resources-plugin");
       SCMSourceRetriever retriever = new SCMSourceRetriever(scm);
       retriever.setLibraryPath("shared-library/");
-      LibraryConfiguration ourSharedLib = new LibraryConfiguration(preferredLibName, retriever);
+      LibraryConfiguration ourSharedLib = new LibraryConfiguration(LIBRARY_NAME, retriever);
       // scm.setDefaultVersion("master");
-      ourSharedLib.setDefaultVersion(myCurrentVersion());
+      ourSharedLib.setDefaultVersion(getCurrentVersion());
       ourSharedLib.setAllowVersionOverride(true);
       libs.add(ourSharedLib);
     }
     gl.setLibraries(libs);
   }
 
-  private static String myCurrentVersion() {
+  public static String getCurrentVersion() {
     String myVersion = "";
     for (PluginWrapper plugin : Jenkins.get().pluginManager.getPlugins()) {
       if (plugin.getShortName().equals("lockable-resources")) {
-        if (!plugin.getVersion().startsWith("999999-SNAPSHOT")) {
+        if (!plugin.getVersion().startsWith(DEVELOP_VERSION)) {
           myVersion = plugin.getVersion();
         }
       }
