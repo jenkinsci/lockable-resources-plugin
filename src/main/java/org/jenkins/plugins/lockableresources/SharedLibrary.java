@@ -38,10 +38,10 @@ public final class SharedLibrary {
     boolean isAdded = false;
     for (LibraryConfiguration lib : libs) {
       if (lib != null && lib.getName().equals(LIBRARY_NAME)) {
-        // our release tags contains ., git branch can not contains .
-        // this check will allow to set as default som branch like 'hot-fix-nr1'
-        // or 'master' or what ever.
-        if (lib.getDefaultVersion().contains(".")) {
+        // our release tags contains . (dot) and git branch can not contains .
+        // this check will allow to set as default some branch like 'hot-fix-nr1'
+        // or 'master' or 'what/ever'.
+        if ((lib.getDefaultVersion() == null) || lib.getDefaultVersion().contains(".")) {
           lib.setDefaultVersion(getCurrentVersion());
         }
         isAdded = true;
