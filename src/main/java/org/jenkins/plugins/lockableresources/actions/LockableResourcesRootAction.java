@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
@@ -158,21 +160,43 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
   }
 
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  public List<QueuedContextStruct> getCurrentQueuedContext() {
+    return LockableResourcesManager.get().getCurrentQueuedContext();
+  }
+
+  /** Returns current queue */
+  @Restricted(NoExternalUse.class) // used by jelly
+  @CheckForNull
+  public LockableResourcesStruct getOldestQueue() {
+    LockableResourcesStruct oldest = null;
+    for (QueuedContextStruct context : this.getCurrentQueuedContext()) {
+      for(LockableResourcesStruct resourceStruct : context.getResources()) {
+        if (resourceStruct.queuedAt == 0) {
+          // Older versions of this plugin might miss this information.
+          // Therefore skip it here.
+          continue;
+        }
+        if (oldest == null || oldest.queuedAt > resourceStruct.queuedAt) {
+          oldest = resourceStruct;
+        }
+      }
+    }
+    return oldest;
+  }
+
   @RequirePOST
   public void doUnlock(StaplerRequest req, StaplerResponse rsp)
     throws IOException, ServletException
   {
     Jenkins.get().checkPermission(UNLOCK);
 
-    String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+    List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+    if (resources == null) {
       return;
     }
 
-    List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
     LockableResourcesManager.get().unlock(resources, null);
 
     rsp.forwardToPreviousPage(req);
@@ -184,19 +208,15 @@ public class LockableResourcesRootAction implements RootAction {
   {
     Jenkins.get().checkPermission(RESERVE);
 
-    String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+    List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+    if (resources == null) {
       return;
     }
 
-    List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
     String userName = getUserName();
     if (userName != null) {
       if (!LockableResourcesManager.get().reserve(resources, userName)) {
-        rsp.sendError(423, Messages.error_resourceAlreadyLocked(name));
+        rsp.sendError(423, Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
         return;
       }
     }
@@ -209,15 +229,11 @@ public class LockableResourcesRootAction implements RootAction {
   {
     Jenkins.get().checkPermission(STEAL);
 
-    String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+    List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+    if (resources == null) {
       return;
     }
 
-    List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
     String userName = getUserName();
     if (userName != null) {
       LockableResourcesManager.get().steal(resources, userName);
@@ -239,23 +255,21 @@ public class LockableResourcesRootAction implements RootAction {
       throw new AccessDeniedException3(Jenkins.getAuthentication2(), STEAL);
     }
 
-    String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+    List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+    if (resources == null) {
       return;
     }
 
-    if (userName.equals(r.getReservedBy())) {
-      // Can not achieve much by re-assigning the
-      // resource I already hold to myself again,
-      // that would just burn the compute resources.
-      // ...unless something catches the event? (TODO?)
-      return;
+    for (LockableResource resource : resources) {
+      if (userName.equals(resource.getReservedBy())) {
+        // Can not achieve much by re-assigning the
+        // resource I already hold to myself again,
+        // that would just burn the compute resources.
+        // ...unless something catches the event? (TODO?)
+        return;
+      }
     }
 
-    List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
     LockableResourcesManager.get().reassign(resources, userName);
 
     rsp.forwardToPreviousPage(req);
@@ -267,22 +281,20 @@ public class LockableResourcesRootAction implements RootAction {
   {
     Jenkins.get().checkPermission(RESERVE);
 
-    String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+    List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+    if (resources == null) {
       return;
     }
 
     String userName = getUserName();
-    if ((userName == null || !userName.equals(r.getReservedBy()))
-        && !Jenkins.get().hasPermission(Jenkins.ADMINISTER)
-    ) {
-      throw new AccessDeniedException3(Jenkins.getAuthentication2(), RESERVE);
+    for (LockableResource resource : resources) {
+      if ((userName == null || !userName.equals(resource.getReservedBy()))
+          && !Jenkins.get().hasPermission(Jenkins.ADMINISTER)
+      ) {
+        throw new AccessDeniedException3(Jenkins.getAuthentication2(), RESERVE);
+      }
     }
 
-    List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
     LockableResourcesManager.get().unreserve(resources);
 
     rsp.forwardToPreviousPage(req);
@@ -295,15 +307,11 @@ public class LockableResourcesRootAction implements RootAction {
     Jenkins.get().checkPermission(UNLOCK);
     // Should this also be permitted by "STEAL"?..
 
-    String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+    List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+    if (resources == null) {
       return;
     }
 
-    List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
     LockableResourcesManager.get().reset(resources);
 
     rsp.forwardToPreviousPage(req);
@@ -332,5 +340,21 @@ public class LockableResourcesRootAction implements RootAction {
 
       rsp.forwardToPreviousPage(req);
     }
+  }
+
+  private List<LockableResource> getResourcesFromRequest(final StaplerRequest req, final StaplerResponse rsp) throws IOException, ServletException {
+    // todo, when you try to improve the API to use multiple resources (a list instead of single one)
+    // this will be the best place to change it. Probably it will be enough to add a code piece here
+    // like req.getParameter("resources"); And split the content by some delimiter like ' ' (space)
+    String name = req.getParameter("resource");
+    LockableResource r = LockableResourcesManager.get().fromName(name);
+    if (r == null) {
+      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+      return null;
+    }
+
+    List<LockableResource> resources = new ArrayList<>();
+    resources.add(r);
+    return resources;
   }
 }

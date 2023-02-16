@@ -71,7 +71,7 @@ THE SOFTWARE.
                 </div>
                 <div class="col">
                   <j:if test="${resource.ephemeral}">
-                    <span class="static-label">${%ephemeral}</span>
+                    <span class="static-label">${%resources.ephemeral}</span>
                   </j:if>
                 </div>
                 <div class="col-auto jenkins-!-margin-right-2">

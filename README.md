@@ -13,6 +13,8 @@ This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
 which is already locked, it will wait for the resource to be free.
 
+----
+
 ## Usage
 
 ### Adding lockable resources
@@ -90,7 +92,6 @@ pipeline {
 
 #### Take first position in queue
 
-
 ```groovy
 lock(resource: 'staging-server', inversePrecedence: true) {
     node {
@@ -109,7 +110,6 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
 ```
 
 When multiple locks are acquired, each will be assigned to a numbered variable:
-
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
@@ -162,6 +162,7 @@ echo 'Finish'
 
 More examples are [here](src/doc/examples/readme.md).
 
+----
 ## Configuration as Code
 
 This plugin can be configured via
@@ -183,9 +184,15 @@ unclassified:
 
 Properties *description*, *labels* and *reservedBy* are optional.
 
+----
+
 ## lockable-resources overview
 
-The page `<jenkinsRootUrl>/lockable-resources/` provides an overview over all resources and actions to change resource status.
+The page `<jenkinsRootUrl>/lockable-resources/` provides an overview over all lockable-resources.
+
+### Resources
+
+Provides an status overview over all resources and actions to change resource status.
 
 Name | Permission | Description
 -----|------------|------------
@@ -197,29 +204,55 @@ Reassign | STEAL | Reserves a resource that may be or not be reserved by some pe
 Reset | UNLOCK | Reset a resource that may be reserved, locked or queued.
 Note | RESERVE | Add or edit resource note.
 
+### Labels
+
+Provides an overview over all lockable-resources labels.
+
+> *Note:* Please keep in mind, that lockable-resource-label is not the same as node-label!
+
+### Queue
+
+Provides an overview over currently queued requests.
+A request is queued by the pipeline step `lock()`. When the requested resource(s) is currently in use (not free), then any new request for this resource will be added into the queue.
+
+A resource may be requested by:
+
+- name, such as in `lock('ABC') { ... }`
+- label, such as in `lock(label : 'COFFEE_MACHINE')`
+
+> *Note:* Please keep in mind that groovy expressions are currently supported only in free-style jobs. Free-style jobs do not update this queue and therefore can not be shown in this view.
+
+> *Note:* An empty value in the column 'Requested at' means that this build has been started in an older plugin version - [1117.v157231b_03882](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1117.v157231b_03882) and early. In this case we cannot recognize the timestamp.
+
+----
+
 ## Upgrading from 1102.vde5663d777cf
 
 Due an [issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/434) **is not possible anymore to read resource-labels** from the config file org.jenkins.plugins.lockableresources.LockableResourcesManager.xml, **which is generated in the release** [1102.vde5663d777cf](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1102.vde5663d777cf)
 
 This issue does not **effect** instances configured by [Configuration-as-Code](https://github.com/jenkinsci/configuration-as-code-plugin) plugin.
 
-A possible solution is, to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml`config file manually, before you upgrade to new version (Keep in mind, that a backup is still good idea).
-
+A possible solution is to remove the `<string>` tags from your `org.jenkins.plugins.lockableresources.LockableResourcesManager.xml` config file manually, before you upgrade to new version (Keep in mind that a backup is still good idea).
 
 Example:
 
 change this one
-```
+
+```xml
 <labels>
   <string>tests-integration-installation</string>
 </labels>
 ```
+
 to
-```
+
+```xml
 <labels>
   tests-integration-installation
 </labels>
 ```
+
+----
 
 ## Changelog
 
@@ -227,9 +260,13 @@ to
   for recent versions.
 - See the [old changelog](CHANGELOG.old.md) for versions 2.5 and older.
 
+----
+
 ## Report an Issue
 
 Please report issues and enhancements through the [Jenkins issue tracker in GitHub](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose)
+
+----
 
 ## Contributing
 
@@ -238,6 +275,9 @@ refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
 for details on how to proceed!
 Join [Gitter channel](https://gitter.im/jenkinsci/lockable-resources) to discuss your ideas with the community.
 
+----
+
 ## License
+
 All source code is licensed under the MIT license.
 See [LICENSE](LICENSE.txt)
