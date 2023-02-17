@@ -8,9 +8,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.queue;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import hudson.model.Run;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 /*
  * This class is used to queue pipeline contexts
@@ -54,6 +59,18 @@ public class QueuedContextStruct implements Serializable {
    */
   public StepContext getContext() {
     return this.context;
+  }
+
+  /** Return build, where is the resource used.*/
+  @CheckForNull
+  @Restricted(NoExternalUse.class) // used by jelly
+  public Run<?, ?> getBuild() {
+    try {
+      return this.getContext().get(Run.class);
+    } catch (IOException | InterruptedException e) {
+      // for some reason there is no Run object for this context
+      return null;
+    }
   }
 
   /*

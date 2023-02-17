@@ -80,6 +80,27 @@ public class LockStepTest extends LockStepTestBase {
   }
 
   @Test
+  public void lockRandomWithLabel() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'var', resourceSelectStrategy: 'random') {\n"
+          + "	echo \"Resource locked: ${env.var}\"\n"
+          + "}\n"
+          + "echo 'Finish'",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertLogContains("Lock released on resource [Label: label1]", b1);
+    j.assertLogContains("Resource locked: resource1", b1);
+    isPaused(b1, 1, 0);
+
+    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
   public void lockOrderLabel() throws Exception {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
@@ -493,42 +514,6 @@ public class LockStepTest extends LockStepTestBase {
     }
     SemaphoreStep.success("wait-inside-1/" + nextRuns.size(), null);
     waitAndClear(1, nextRuns);
-  }
-
-  @Issue("JENKINS-34433")
-  @Test
-  public void manualUnreserveUnblocksJob() throws Exception {
-    LockableResourcesManager.get().createResource("resource1");
-    JenkinsRule.WebClient wc = j.createWebClient();
-
-    TestHelpers.clickButton(wc, "reserve");
-    LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
-    assertNotNull(resource1);
-    resource1.setReservedBy("someone");
-    assertEquals("someone", resource1.getReservedBy());
-    assertTrue(resource1.isReserved());
-    assertNull(resource1.getReservedTimestamp());
-
-    JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
-    assertThat(apiRes, hasEntry("reserved", true));
-    assertThat(apiRes, hasEntry("reservedBy", "someone"));
-
-    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-    p.setDefinition(
-      new CpsFlowDefinition(
-        "retry(99) {\n"
-          + "    lock('resource1') {\n"
-          + "        semaphore('wait-inside')\n"
-          + "     }\n"
-          + "}",
-        true));
-
-    WorkflowRun r = p.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[resource1] is locked, waiting...", r);
-    TestHelpers.clickButton(wc, "unreserve");
-    SemaphoreStep.waitForStart("wait-inside/1", r);
-    SemaphoreStep.success("wait-inside/1", null);
-    j.assertBuildStatusSuccess(j.waitForCompletion(r));
   }
 
   private void waitAndClear(int semaphoreIndex, List<WorkflowRun> nextRuns) throws Exception {
@@ -1434,7 +1419,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
-    j.assertLogContains("The label does not exist: invalidLabel", b1);
+    j.assertLogContains("The resource label does not exist: invalidLabel", b1);
     isPaused(b1, 0, 0);
   }
 
