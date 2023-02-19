@@ -60,8 +60,8 @@ List<Resource> findNodesByLabel(String labelExpression, Map opts) {
   if (opts.randomize == null) {
     opts.randomize = true; // make sense to randomize the node usage per default
   }
-  if (opts.orderBy == null) {
-    opts.orderBy = true;
+  if (opts.sort == null) {
+    opts.sort = true;
   }
 
   return lockableResource.find(opts) {it -> return it.hasLabel(ResourceLabel.NODE_LABEL) && it.matches(parsed)};

@@ -90,7 +90,7 @@ class ResourcesManager  implements Serializable {
     List<Resource> matches = [];
 
     for(Resource resource : getAllResources()) {
-      echo resource + ' closure ' + closure.toString()
+      Utils.echo resource + ' closure ' + closure.toString()
       boolean match = closure(resource);
       if (match) {
         matches.push(resource);
@@ -136,9 +136,11 @@ class ResourcesManager  implements Serializable {
     final int minCount = opts.minCount != null ? opts.minCount : quantity;
 
     if ((quantity > 0) && (minCount > quantity)) {
+      // TODO make specific Exception class
       throw(new Exception("Parameter mismatch minCount $minCount vs quantity $quantity"));
     }
     if (minCount > allMatches.size()) {
+      // TODO make specific Exception class
       throw(new Exception("You has expected $quantity resource(s), but there are currently only " + allMatches.size()));
     }
 
