@@ -90,6 +90,7 @@ class ResourcesManager  implements Serializable {
     List<Resource> matches = [];
 
     for(Resource resource : getAllResources()) {
+      echo resource + ' closure ' + closure.toString()
       boolean match = closure(resource);
       if (match) {
         matches.push(resource);
@@ -145,7 +146,7 @@ class ResourcesManager  implements Serializable {
       Collections.shuffle(allMatches);
     }
 
-    if (opts.orderBy != null) {
+    if (opts.sort != null) {
       allMatches = sort(allMatches);
     }
 
@@ -187,7 +188,7 @@ class ResourcesManager  implements Serializable {
   }
 
   //----------------------------------------------------------------------------
-  // NonCps because sort is NON-CPS. See https://issues.jenkins.io/browse/JENKINS-44924
+  // NonCps because list.sort() is NON-CPS. See https://issues.jenkins.io/browse/JENKINS-44924
   @NonCPS
   private static _sort(List<Map>list) {
     list.sort(new OrderBy([
