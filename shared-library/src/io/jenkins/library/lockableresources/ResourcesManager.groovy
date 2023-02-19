@@ -90,8 +90,8 @@ class ResourcesManager  implements Serializable {
     List<Resource> matches = [];
 
     for(Resource resource : getAllResources()) {
-      Utils.echo resource + ' closure ' + closure.toString()
       boolean match = closure(resource);
+      Utils.echo resource.toString() + 'match: ' + match + ', closure ' + closure.toString()
       if (match) {
         matches.push(resource);
       }
