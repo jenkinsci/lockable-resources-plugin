@@ -1,4 +1,6 @@
 *.iml
 .DS_Store
 /.idea/
+/target/
+/work/
 .vscode/launch.json

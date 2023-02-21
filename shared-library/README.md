@@ -20,7 +20,7 @@ This shall helps to all Jenkins administrators to interact with lockable-resourc
 
 ## Usage
 
-The lockable-resources-plugin will setup on your Jenkins instace new  global shared library named **lockable-resources-shared-library**.
+The lockable-resources-plugin will setup on your Jenkins instance new global shared library named **lockable-resources-shared-library**.
 
 **Default version** of branch use release-IDs. It will be automatically updated on every plugin update. That means you does not care about that in normal case.
 This grants you, that the plugin and shared library works together.

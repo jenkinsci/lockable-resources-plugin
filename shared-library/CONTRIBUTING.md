@@ -4,8 +4,8 @@ Fork this repository. Make your changes, tests it and provide a pull-request. Th
 
 ## Setup environment
 
-General you need same setup as to builf the plugin.
-Please refer to the plugin [CONTRIBUTING](../CONTRIBUTING.md) document for details on how to proceed!
+General you need same setup as to build the plugin.
+Please refer to the plugin [CONTRIBUTING](../plugin/CONTRIBUTING.md) document for details on how to proceed!
 
 ## Build and test
 
@@ -29,4 +29,3 @@ The plugin shall set everything you need on demand.
 > Keep in mind, that shared library works only with committed changes.
 
 The option `hudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true` allows you to load changes from locale repository without pushing to remote repository.
-d

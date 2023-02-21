@@ -67,7 +67,7 @@ This steps need additional automation in release management. Therefore are comme
 - [ ] For dependency updates, there are links to external changelogs and, if possible, full differentials.
 - [ ] For new APIs and extension points, there is a link to at least one consumer.
 - [ ] Any localizations are transferred to *.properties files.
-- [ ] Changes in the interface are documented also as [examples](src/doc/examples/readme.md), [groovy/examples](src/doc/examples/readme.md).
+- [ ] Changes in the interface are documented also as [examples](plugin/doc/examples/readme.md), [groovy/examples](shared-library/doc/examples/readme.md).
 
 ### Maintainer checklist
 
