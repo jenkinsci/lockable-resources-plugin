@@ -11,3 +11,52 @@ buildPlugin(useContainerAgent: true, configurations: [
   // see also https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/
   [ platform: 'linux', jdk: '17', jenkins: '2.361.4' ],
 ])
+
+def configs = [
+  [platform: 'linux', jdk: '11'],
+  [platform: 'windows', jdk: '11'],
+  [platform: 'linux', jdk: '17']
+]
+
+def stages = [failFast: true]
+
+configs.each { c ->
+  final String stageIdentifier = "${c.platform}-${c.jdk}"
+  stages[stageIdentifier] = {
+    testSharedLib(c, stageIdentifier)
+  }
+}
+
+parallel(stages)
+
+void testSharedLib(Map config, String stageIdentifier) {
+  String platform = config.platform
+  String jdk = config.jdk == null ? '11' : config.jdk
+  def timeoutValue = config.timeoutValue == null ? 120 : config.timeoutValue
+  String label = 'maven-' + jdk
+
+  if (platform == 'windows') {
+    label += '-windows'
+  }
+
+  timestamps() {
+
+    node(label) {
+      stage("Checkout (${stageIdentifier})") {
+        infra.checkoutSCM(null)
+      }
+
+      stage('Test shared lib') {
+        dir('shared-library') {
+          String cmd = 'mvn --no-transfer-progress -B clean verify'
+          if (isUnix()) {
+            sh cmd
+          } else {
+            bat cmd
+          }
+          junit(keepLongStdio: true, testResults: 'tests/target/surefire-reports/TEST-*.xml')
+        }
+      }
+    }
+  }
+}

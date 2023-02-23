@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.sample</groupId>
+  <artifactId>lockable-resources-shared-lib</artifactId>
+  <version>${changelist}</version>
+  <name>lockable-resources-plugin Global Shared Library- Tests</name>
+  <description>Tests for lockable-resources-plugin global Shared Library </description>
+  <url>https://jenkins.io/doc/book/pipeline/shared-libraries/</url>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+    </license>
+  </licenses>
+  <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <!-- Dependency versions -->
+    <groovy.version>2.4.21</groovy.version>
+    <junit.version>4.13.2</junit.version>
+    <jenkins-pipeline-unit.version>1.1</jenkins-pipeline-unit.version>
+    <groovy-eclipse-compiler.version>3.7.0</groovy-eclipse-compiler.version>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>org.codehaus.groovy</groupId>
+      <artifactId>groovy-all</artifactId>
+      <version>${groovy.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.lesfurets</groupId>
+      <artifactId>jenkins-pipeline-unit</artifactId>
+      <version>${jenkins-pipeline-unit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <testSourceDirectory>src/test/groovy</testSourceDirectory>
+    <resources>
+      <resource>
+        <directory>src/main/jenkins</directory>
+      </resource>
+    </resources>
+    <testResources>
+      <testResource>
+        <directory>../shared-library</directory>
+        <targetPath>libs/shared-library@master</targetPath>
+      </testResource>
+    </testResources>
+    <plugins>
+      <plugin>
+        <groupId>org.6wind.jenkins</groupId>
+        <artifactId>lockable-resources</artifactId>
+        <version>999999-SNAPSHOT</version>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.groovy</groupId>
+        <artifactId>groovy-eclipse-compiler</artifactId>
+        <version>${groovy-eclipse-compiler.version}</version>
+        <extensions>true</extensions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <compilerId>groovy-eclipse-compiler</compilerId>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-eclipse-compiler</artifactId>
+            <version>${groovy-eclipse-compiler.version}</version>
+          </dependency>
+          <!-- for 2.8.0-01 and later you must have an explicit dependency on groovy-eclipse-batch -->
+          <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-eclipse-batch</artifactId>
+            <version>3.0.7-02</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+    </plugins>
+  </build>
+</project>

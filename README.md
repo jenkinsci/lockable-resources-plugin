@@ -159,9 +159,10 @@ lock(
 echo 'Finish'
 ```
 
-More examples are [here](src/doc/examples/readme.md).
+More examples are [here](plugin/doc/examples/readme.md).
 
 ----
+
 ## Configuration as Code
 
 This plugin can be configured via
