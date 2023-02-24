@@ -293,13 +293,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       Long queueItemId = entry.getKey();
       List<LockableResource> candidates = entry.getValue();
       if (candidates != null && (candidates.size() == 0 || candidates.contains(candidate))) {
-        if (candidates.size() < 2) {
-          // Nothing is there, or would be after removing the one entry
-          cachedCandidates.invalidate(queueItemId);
-        } else {
-          // Reduce the referenced list
-          candidates.remove(candidate);
-        }
+        cachedCandidates.invalidate(queueItemId);
       }
     }
 
