@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
@@ -225,6 +226,51 @@ public class FreeStyleProjectTest {
     j.waitForCompletion(fb1);
 
     assertNull(LockableResourcesManager.get().fromName("resource1"));
+  }
+
+  @Test
+  public void competingLabelLocks() throws IOException, InterruptedException, ExecutionException {
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "group1");
+    LockableResourcesManager.get().createResourceWithLabel("resource2", "group2");
+    LockableResourcesManager.get().createResource("shared");
+    LockableResource shared = LockableResourcesManager.get().fromName("shared");
+    shared.setEphemeral(false);
+    shared.getLabelsAsList().addAll(List.of("group1", "group2"));
+    FreeStyleProject f0 = j.createFreeStyleProject("f0");
+    final Semaphore semaphore = new Semaphore(1);
+    f0.addProperty(new RequiredResourcesProperty("shared", null, null, null, null));
+    f0.getBuildersList()
+      .add(
+        new TestBuilder() {
+          @Override
+          public boolean perform(
+            AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+            throws InterruptedException {
+            semaphore.acquire();
+            return true;
+          }
+        });
+    FreeStyleProject f1 = j.createFreeStyleProject("f1");
+    f1.addProperty(new RequiredResourcesProperty(null, null, "0", "group1", null));
+    FreeStyleProject f2 = j.createFreeStyleProject("f2");
+    f2.addProperty(new RequiredResourcesProperty(null, null, "0", "group2", null));
+
+
+    semaphore.acquire();
+    FreeStyleBuild fb0 = f0.scheduleBuild2(0).waitForStart();
+    j.waitForMessage("acquired lock on [shared]", fb0);
+    QueueTaskFuture<FreeStyleBuild> fb1q = f1.scheduleBuild2(0);
+    QueueTaskFuture<FreeStyleBuild> fb2q = f2.scheduleBuild2(0);
+
+    semaphore.release();
+    j.waitForCompletion(fb0);
+    // fb1 or fb2 might run first, it shouldn't matter as long as they both get the resource
+    FreeStyleBuild fb1 = fb1q.waitForStart();
+    FreeStyleBuild fb2 = fb2q.waitForStart();
+    j.waitForMessage("acquired lock on [resource1, shared]", fb1);
+    j.waitForCompletion(fb1);
+    j.waitForMessage("acquired lock on [resource2, shared]", fb2);
+    j.waitForCompletion(fb2);
   }
 
   public static class PrinterBuilder extends TestBuilder {
