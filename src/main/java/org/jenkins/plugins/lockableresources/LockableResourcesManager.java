@@ -143,10 +143,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return matching;
   }
 
+  //----------------------------------------------------------------------------
   public Boolean isValidLabel(String label) {
-    return this.getAllLabels().contains(label);
+    if (this.getAllLabels().contains(label))
+      return true;
+
+    final Map<String, Object> params = null;
+    for (LockableResource r : this.resources) {
+      if (r.isValidLabel(label, params)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
+  //----------------------------------------------------------------------------
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
     for (LockableResource r : this.resources) {
