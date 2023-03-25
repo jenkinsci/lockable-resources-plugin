@@ -144,7 +144,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   //----------------------------------------------------------------------------
-  public Boolean isValidLabel(String label) {
+  @SuppressFBWarnings(value = "NP_LOAD_OF_KNOWN_NULL_VALUE",
+                      justification = "null value is checked correctly")
+  public Boolean isValidLabel(@Nullable String label) {
+    if (label == null || label.isEmpty()) {
+      return false;
+    }
     if (this.getAllLabels().contains(label))
       return true;
 
