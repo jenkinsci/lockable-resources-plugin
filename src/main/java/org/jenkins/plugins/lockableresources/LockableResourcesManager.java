@@ -186,6 +186,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
     List<LockableResource> found = new ArrayList<>();
+    if (label == null || label.isEmpty()) {
+      return found;
+    }
     for (LockableResource r : this.resources) {
       if (r.isValidLabel(label, params)) found.add(r);
     }
