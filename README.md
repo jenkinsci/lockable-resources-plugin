@@ -135,6 +135,26 @@ Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
 documentation.
 
+### Jenkins label parser allows sophisticated filtering
+
+```groovy
+lock(label: 'os:Windows && ALM', variable : 'someVar') {
+    echo 'os:Windows && ALM acquired by: ' + env.someVar;
+}
+
+lock(label: 'osDetail:Debian[11] && arm64', variable : 'someVar') {
+    echo 'osDetail:Debian[11] && arm64 acquired by: ' + env.someVar;
+}
+
+lock(label: 'os:Windows || osDetail:Debian[11]', variable : 'someVar') {
+    echo 'os:Windows || osDetail:Debian[11] acquired by: ' + env.someVar;
+}
+
+lock(label: 'os:Windows || osDetail:Debian[11]', variable : 'someVar', quantity : 100) {
+    echo 'os:Windows || osDetail:Debian[11] acquired by: ' + env.someVar;
+}
+```
+
 #### Multiple resource lock
 
 ```groovy
@@ -162,6 +182,7 @@ echo 'Finish'
 More examples are [here](src/doc/examples/readme.md).
 
 ----
+
 ## Configuration as Code
 
 This plugin can be configured via
