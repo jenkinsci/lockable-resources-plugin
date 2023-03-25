@@ -242,6 +242,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   //----------------------------------------------------------------------------
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
+    if (candidate == null || candidate.isEmpty()) {
+      return false;
+    }
+
     if (labelsContain(candidate)) {
       return true;
     }
