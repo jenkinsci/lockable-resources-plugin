@@ -140,20 +140,16 @@ documentation.
 The plugin uses the Jenkins-internal label parser for filtering lockable resources. A full list of supported operators and syntax examples can be found in the [official documentation](https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#node-allocate-node).
 
 ```groovy
-lock(label: 'os:Windows && ALM', variable : 'someVar') {
-    echo 'os:Windows && ALM acquired by: ' + env.someVar;
+lock(label: 'labelA && labelB', variable : 'someVar') {
+    echo 'labelA && labelB acquired by: ' + env.someVar;
 }
 
-lock(label: 'osDetail:Debian[11] && arm64', variable : 'someVar') {
-    echo 'osDetail:Debian[11] && arm64 acquired by: ' + env.someVar;
+lock(label: 'labelA || labelB', variable : 'someVar') {
+    echo 'labelA || labelB acquired by: ' + env.someVar;
 }
 
-lock(label: 'os:Windows || osDetail:Debian[11]', variable : 'someVar') {
-    echo 'os:Windows || osDetail:Debian[11] acquired by: ' + env.someVar;
-}
-
-lock(label: 'os:Windows || osDetail:Debian[11]', variable : 'someVar', quantity : 100) {
-    echo 'os:Windows || osDetail:Debian[11] acquired by: ' + env.someVar;
+lock(label: 'labelA || labelB || labelC', variable : 'someVar', quantity : 100) {
+    echo 'labelA || labelB || labelC acquired by: ' + env.someVar;
 }
 ```
 
