@@ -135,6 +135,24 @@ Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
 documentation.
 
+### Jenkins label parser allows sophisticated filtering
+
+The plugin uses the Jenkins-internal label parser for filtering lockable resources. A full list of supported operators and syntax examples can be found in the [official documentation](https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#node-allocate-node).
+
+```groovy
+lock(label: 'labelA && labelB', variable : 'someVar') {
+    echo 'labelA && labelB acquired by: ' + env.someVar;
+}
+
+lock(label: 'labelA || labelB', variable : 'someVar') {
+    echo 'labelA || labelB acquired by: ' + env.someVar;
+}
+
+lock(label: 'labelA || labelB || labelC', variable : 'someVar', quantity : 100) {
+    echo 'labelA || labelB || labelC acquired by: ' + env.someVar;
+}
+```
+
 #### Multiple resource lock
 
 ```groovy
@@ -162,6 +180,7 @@ echo 'Finish'
 More examples are [here](src/doc/examples/readme.md).
 
 ----
+
 ## Configuration as Code
 
 This plugin can be configured via

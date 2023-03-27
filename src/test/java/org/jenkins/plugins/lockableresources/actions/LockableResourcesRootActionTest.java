@@ -412,6 +412,13 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     assertEquals("initial check", 2, action.getAssignedResourceAmount("resource-label-2"));
     assertEquals("initial check", 1, action.getAssignedResourceAmount("resource-label-3"));
 
+    // check label parsing
+    assertEquals("check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
+    assertEquals("check after reservation", 1, action.getAssignedResourceAmount("resource-label-1 && resource-label-2 && resource-label-3"));
+    assertEquals("check after reservation", 2, action.getAssignedResourceAmount("resource-label-1 && resource-label-2"));
+    assertEquals("check after reservation", 2, action.getAssignedResourceAmount("resource-label-3 || resource-label-2"));
+
+
     // reserve one resource. Amount of assigned labels should change
     when(req.getParameter("resource")).thenReturn("resource-A");
     action.doReserve(req, rsp);
