@@ -137,6 +137,8 @@ documentation.
 
 ### Jenkins label parser allows sophisticated filtering
 
+The plugin uses the Jenkins-internal label parser for filtering lockable resources. A full list of supported operators and syntax examples can be found in the [official documentation](https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#node-allocate-node).
+
 ```groovy
 lock(label: 'os:Windows && ALM', variable : 'someVar') {
     echo 'os:Windows && ALM acquired by: ' + env.someVar;
