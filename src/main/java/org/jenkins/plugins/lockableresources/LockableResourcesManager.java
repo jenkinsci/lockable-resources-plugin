@@ -74,7 +74,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized List<LockableResource> getDeclaredResources() {
     ArrayList<LockableResource> declaredResources = new ArrayList<>();
     for (LockableResource r : resources) {
-      if (!r.isEphemeral()) {
+      if (!r.isEphemeral() && !r.isNodeResource()) {
         declaredResources.add(r);
       }
     }

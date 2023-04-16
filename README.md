@@ -181,6 +181,28 @@ More examples are [here](src/doc/examples/readme.md).
 
 ----
 
+## Node mirroring
+
+Lockable resources plugin allow to mirror nodes (agents) into lockable resources. This eliminate effort by re-creating resources on every node change.
+
+That means when you create new node, it will be also created new lockable-resource with the same name. When the node has been deleted, lockable-resource will be deleted too.
+
+Following properties are mirrored:
+
+- name.
+- labels. Please note, that labels still contains node-name self.
+- description.
+
+To allow this behavior start jenkins with option `-Dorg.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR=true` or run this groovy code.
+
+```groovy
+System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "true");
+```
+
+note: When the node has been deleted, during the lockable-resource is locked / reserved / queued, then the lockable-resource will be NOT deleted.
+
+----
+
 ## Configuration as Code
 
 This plugin can be configured via

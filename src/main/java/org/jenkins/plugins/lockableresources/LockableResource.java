@@ -100,6 +100,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private static final long serialVersionUID = 1L;
 
+  private transient boolean isNode = false;
+
   /**
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
    * but became deprecated once several resources could be locked at once. See queuedContexts in
@@ -152,6 +154,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @ExcludeFromJacocoGeneratedReport
   public List<StepContext> getQueuedContexts() {
     return this.queuedContexts;
+  }
+
+  public boolean isNodeResource() {
+    return isNode;
+  }
+
+  public void setNodeResource(boolean b) {
+    isNode = b;
   }
 
   @Exported
@@ -321,6 +331,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Exported
   public String getReservedBy() {
     return reservedBy;
+  }
+
+  /** Return true when resource is free. False otherwise*/
+  public boolean isFree() {
+    return (!this.isLocked() && !this.isReserved() && !this.isQueued());
   }
 
   @Exported
