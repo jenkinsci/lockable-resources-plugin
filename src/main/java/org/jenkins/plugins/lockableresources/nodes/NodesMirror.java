@@ -48,6 +48,36 @@ public class NodesMirror extends ComputerListener {
     if (!isNodeMirrorEnabled()) {
       return;
     }
+
+    deleteExistingNodes();
+
+    for (Node n : Jenkins.get().getNodes()) {
+      mirrorNode(n);
+    }
+  }
+
+  //---------------------------------------------------------------------------
+  private static void deleteExistingNodes() {
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
+    while (resourceIterator.hasNext()) {
+      LockableResource resource = resourceIterator.next();
+      if (!resource.isNodeResource()) {
+        continue;
+      }
+      if (resource.isFree()) {
+        // we can remove this resource. Is newer used currently
+        resourceIterator.remove();
+      } else {
+        LOG.log(Level.FINE, "lockable-resources-plugin skip node deletion of: " + nodeResource.getName() + ". Reason: Currenty locked");
+      }
+    }
+  }
+    
+  private static void mirrorNodes() {
+    if (!isNodeMirrorEnabled()) {
+      return;
+    }
     LockableResourcesManager lrm = LockableResourcesManager.get();
     Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
     while (resourceIterator.hasNext()) {
