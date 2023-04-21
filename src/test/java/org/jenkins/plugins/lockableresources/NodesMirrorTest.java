@@ -5,6 +5,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -20,7 +21,7 @@ public class NodesMirrorTest {
 
   @Test
   public void mirror_few_nodes() throws Exception {
-    System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "true");
+    System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
 
     j.createSlave("FirstAgent", "label label2", null);
     j.createSlave("SecondAgent", null, null);

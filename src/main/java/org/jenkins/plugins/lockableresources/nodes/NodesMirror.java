@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
+import org.jenkins.plugins.lockableresources.util.Constants;
 
 //-----------------------------------------------------------------------------
 /** Mirror Jenkins nodes to lockable-resources
@@ -27,7 +28,7 @@ public class NodesMirror extends ComputerListener {
 
   //---------------------------------------------------------------------------
   private static boolean isNodeMirrorEnabled() {
-    return SystemProperties.getBoolean("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR");
+    return SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR);
   }
 
   //---------------------------------------------------------------------------
@@ -69,27 +70,8 @@ public class NodesMirror extends ComputerListener {
         // we can remove this resource. Is newer used currently
         resourceIterator.remove();
       } else {
-        LOG.log(Level.FINE, "lockable-resources-plugin skip node deletion of: " + nodeResource.getName() + ". Reason: Currenty locked");
+        LOG.log(Level.FINE, "lockable-resources-plugin skip node deletion of: " + resource.getName() + ". Reason: Currently locked");
       }
-    }
-  }
-    
-  private static void mirrorNodes() {
-    if (!isNodeMirrorEnabled()) {
-      return;
-    }
-    LockableResourcesManager lrm = LockableResourcesManager.get();
-    Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
-    while (resourceIterator.hasNext()) {
-      LockableResource resource = resourceIterator.next();
-      if (resource.isNodeResource() && resource.isFree()) {
-        // we can remove this resource. Is newer used currently
-        resourceIterator.remove();
-      }
-    }
-
-    for (Node n : Jenkins.get().getNodes()) {
-      mirrorNode(n);
     }
   }
 
