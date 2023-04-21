@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.59</version>
+    <version>4.60</version>
     <relativePath />
   </parent>
 
@@ -67,7 +67,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-2.361.x</artifactId>
-        <version>1981.v17df70e84a_a_1</version>
+        <version>2000.v4677a_6e0ffea</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
@@ -148,7 +148,7 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-inline</artifactId>
+      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
