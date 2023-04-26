@@ -34,7 +34,7 @@ public final class BackwardCompatibility {
   @Initializer(after = InitMilestone.JOB_LOADED)
   public static void compatibilityMigration() {
     List<LockableResource> resources = LockableResourcesManager.get().getResources();
-    LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run for " + resources.size() + " resources");
+    LOG.log(Level.FINE, "lockable-resources-plugin compatibility migration task run for " + resources.size() + " resources");
     for (LockableResource resource : resources) {
       List<StepContext> queuedContexts = resource.getQueuedContexts();
       if (!queuedContexts.isEmpty()) {
