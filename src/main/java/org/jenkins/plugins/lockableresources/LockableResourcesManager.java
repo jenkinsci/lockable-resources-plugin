@@ -75,7 +75,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized List<LockableResource> getDeclaredResources() {
     ArrayList<LockableResource> declaredResources = new ArrayList<>();
     for (LockableResource r : resources) {
-      if (!r.isEphemeral()) {
+      if (!r.isEphemeral() && !r.isNodeResource()) {
         declaredResources.add(r);
       }
     }
@@ -144,10 +144,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return matching;
   }
 
-  public Boolean isValidLabel(String label) {
-    return this.getAllLabels().contains(label);
+  //----------------------------------------------------------------------------
+  @SuppressFBWarnings(value = "NP_LOAD_OF_KNOWN_NULL_VALUE",
+                      justification = "null value is checked correctly")
+  public Boolean isValidLabel(@Nullable String label) {
+    if (label == null || label.isEmpty()) {
+      return false;
+    }
+    if (this.getAllLabels().contains(label))
+      return true;
+
+    final Map<String, Object> params = null;
+    for (LockableResource r : this.resources) {
+      if (r.isValidLabel(label, params)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
+  //----------------------------------------------------------------------------
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
     for (LockableResource r : this.resources) {
@@ -175,6 +192,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
     List<LockableResource> found = new ArrayList<>();
+    if (label == null || label.isEmpty()) {
+      return found;
+    }
     for (LockableResource r : this.resources) {
       if (r.isValidLabel(label, params)) found.add(r);
     }
@@ -294,13 +314,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       Long queueItemId = entry.getKey();
       List<LockableResource> candidates = entry.getValue();
       if (candidates != null && (candidates.size() == 0 || candidates.contains(candidate))) {
-        if (candidates.size() < 2) {
-          // Nothing is there, or would be after removing the one entry
-          cachedCandidates.invalidate(queueItemId);
-        } else {
-          // Reduce the referenced list
-          candidates.remove(candidate);
-        }
+        cachedCandidates.invalidate(queueItemId);
       }
     }
 

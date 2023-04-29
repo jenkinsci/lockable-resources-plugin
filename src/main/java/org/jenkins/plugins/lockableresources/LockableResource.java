@@ -20,19 +20,23 @@ import hudson.Util;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.model.Label;
 import hudson.model.Queue;
 import hudson.model.Queue.Item;
 import hudson.model.Queue.Task;
 import hudson.model.Run;
 import hudson.model.User;
+import hudson.model.labels.LabelAtom;
 import hudson.tasks.Mailer.UserProperty;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -97,6 +101,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private static final long serialVersionUID = 1L;
 
+  private transient boolean isNode = false;
+
   /**
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
    * but became deprecated once several resources could be locked at once. See queuedContexts in
@@ -149,6 +155,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @ExcludeFromJacocoGeneratedReport
   public List<StepContext> getQueuedContexts() {
     return this.queuedContexts;
+  }
+
+  public boolean isNodeResource() {
+    return isNode;
+  }
+
+  public void setNodeResource(boolean b) {
+    isNode = b;
   }
 
   @Exported
@@ -237,10 +251,26 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return this.labelsContain(labelToFind);
   }
 
+  //----------------------------------------------------------------------------
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
-    return labelsContain(candidate);
+    if (candidate == null || candidate.isEmpty()) {
+      return false;
+    }
+
+    if (labelsContain(candidate)) {
+      return true;
+    }
+
+    final Label labelExpression = Label.parseExpression(candidate);
+    Set<LabelAtom> atomLabels = new HashSet<>();
+    for(String label : this.getLabelsAsList()) {
+      atomLabels.add(new LabelAtom(label));
+    }
+
+    return labelExpression.matches(atomLabels);
   }
 
+  //----------------------------------------------------------------------------
   /**
    * Checks if the resource contain label *candidate*.
    * @param candidate Labels to find.
@@ -312,6 +342,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Exported
   public String getReservedBy() {
     return reservedBy;
+  }
+
+  /** Return true when resource is free. False otherwise*/
+  public boolean isFree() {
+    return (!this.isLocked() && !this.isReserved() && !this.isQueued());
   }
 
   @Exported

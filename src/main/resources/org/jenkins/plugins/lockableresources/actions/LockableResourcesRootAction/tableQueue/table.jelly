@@ -50,6 +50,7 @@ THE SOFTWARE.
       class="jenkins-table jenkins-!-margin-bottom-4 data-table"
       id="lockable-resources-queue"
       isLoaded="true"
+      data-remember-search-text="true"
       data-columns-definition="[null, null, null, null, null]"
       data-table-configuration="{}"
     >

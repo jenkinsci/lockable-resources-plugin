@@ -33,12 +33,17 @@ THE SOFTWARE.
   <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
   <div class="table-responsive">
-    <table class="jenkins-table jenkins-!-margin-bottom-4 data-table"
-           id="lockable-resources"
-          isLoaded="true"
-          data-columns-definition="[null, null, null, null, null, null]"
-          data-table-configuration="{}">
+    <table
+      class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+      id="lockable-resources"
+      data-remember-search-text="true"
+      isLoaded="true"
+      data-columns-definition="[null, null, null, null, null, null, null]"
+      data-table-configuration="{}"
+    >
       <colgroup>
+        <!-- index -->
+        <col class="col-width-0 text-end" />
         <!-- resouce -->
         <col class="col-width-5 text-end" />
         <!-- status -->
@@ -53,6 +58,7 @@ THE SOFTWARE.
         <col action="col-width-1 text-end" />
       </colgroup>
       <thead>
+        <th>${%resources.table.column.index}</th>
         <th>${%resources.table.column.resource}</th>
         <th>${%resources.table.column.status}</th>
         <th>${%resources.table.column.timestamp}</th>
@@ -63,6 +69,11 @@ THE SOFTWARE.
       <tbody>
         <j:forEach var="resource" items="${it.resources}">
           <tr data-resource-name="${resource.name}">
+            <!-- **************************************************************
+                 Index
+            -->
+            <td>${i + 1}</td>
+
             <!-- **************************************************************
                  Column with common resource data
             -->
