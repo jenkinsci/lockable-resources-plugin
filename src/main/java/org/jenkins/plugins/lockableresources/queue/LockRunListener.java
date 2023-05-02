@@ -18,11 +18,13 @@ import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
@@ -44,52 +46,54 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
     if (build instanceof AbstractBuild) {
       Job<?, ?> proj = Utils.getProject(build);
       List<LockableResource> required = new ArrayList<>();
-        LockableResourcesStruct resources = Utils.requiredResources(proj);
+      LockableResourcesStruct resources = Utils.requiredResources(proj);
 
-        if (resources != null) {
-          if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
-            required.addAll(LockableResourcesManager.get().
-              getResourcesFromProject(proj.getFullName()));
-          } else {
-            required.addAll(resources.required);
-          }
-
-          // make sure each entry is unique
-          required = new ArrayList<>(new LinkedHashSet<>(required));
-
-          if (LockableResourcesManager.get().lock(required, build, null)) {
-            build.addAction(LockedResourcesBuildAction
-              .fromResources(required));
-            listener.getLogger().printf("%s acquired lock on %s%n",
-              LOG_PREFIX, required);
-            LOGGER.fine(build.getFullDisplayName()
-              + " acquired lock on " + required);
-            if (resources.requiredVar != null) {
-              List<StringParameterValue> envsToSet = new ArrayList<>();
-
-              // add the comma separated list of names acquired
-              envsToSet.add(new StringParameterValue(
-                resources.requiredVar,
-                required.stream()
-                  .map(LockableResource::getName)
-                  .collect(Collectors.joining(","))));
-
-              // also add a numbered variable for each acquired lock
-              int index = 0;
-              for (LockableResource lr : required) {
-                envsToSet.add(new StringParameterValue(resources.requiredVar + index, lr.getName()));
-                ++index;
-              }
-
-              build.addAction(new ResourceVariableNameAction(envsToSet));
-            }
-          } else {
-            listener.getLogger().printf("%s failed to lock %s%n",
-              LOG_PREFIX, required);
-            LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-              + required);
-          }
+      if (resources != null) {
+        if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
+          required.addAll(LockableResourcesManager.get().
+            getResourcesFromProject(proj.getFullName()));
+        } else {
+          required.addAll(resources.required);
         }
+
+        if (LockableResourcesManager.get().lock(required, build, null)) {
+          build.addAction(LockedResourcesBuildAction
+            .fromResources(required));
+          listener.getLogger().printf("%s acquired lock on %s%n",
+            LOG_PREFIX, required);
+          LOGGER.fine(build.getFullDisplayName()
+            + " acquired lock on " + required);
+          if (resources.requiredVar != null) {
+            List<StringParameterValue> envsToSet = new ArrayList<>();
+
+            // add the comma separated list of names acquired
+            envsToSet.add(new StringParameterValue(
+              resources.requiredVar,
+              required.stream()
+                .map(LockableResource::getName)
+                .collect(Collectors.joining(","))));
+
+            // also add a numbered variable for each acquired lock along with properties of the lock
+            int index = 0;
+            for (LockableResource lr : required) {
+              String lockEnvName = resources.requiredVar + index;
+              envsToSet.add(new StringParameterValue(lockEnvName, lr.getName()));
+              for (LockableResourceProperty lockProperty : lr.getProperties()) {
+                String propEnvName = lockEnvName + "_" + lockProperty.getName();
+                envsToSet.add(new StringParameterValue(propEnvName, lockProperty.getValue()));
+              }
+              ++index;
+            }
+
+            build.addAction(new ResourceVariableNameAction(envsToSet));
+          }
+        } else {
+          listener.getLogger().printf("%s failed to lock %s%n",
+            LOG_PREFIX, required);
+          LOGGER.fine(build.getFullDisplayName() + " failed to lock "
+            + required);
+        }
+      }
       
     }
   }

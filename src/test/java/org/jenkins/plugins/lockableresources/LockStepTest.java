@@ -8,6 +8,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 
+import com.google.common.collect.ImmutableMap;
 import hudson.Functions;
 import hudson.model.Result;
 import java.util.ArrayList;
@@ -836,7 +837,6 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("VAR2 IS null", b1);
   }
 
-
   @Test
   //@Issue("JENKINS-XXXXX")
   public void locksInVariablesAreInTheRequestedOrder() throws Exception {
@@ -1439,5 +1439,28 @@ public class LockStepTest extends LockStepTestBase {
     j.assertBuildStatus(Result.SUCCESS, b1);
     j.assertLogContains("[resource1] is locked, skipping execution...", b1);
     j.assertLogNotContains("Running body", b1);
+  }
+
+  @Test
+  //@Issue("JENKINS-XXXXX")
+  public void multipleLocksFillVariablesWithProperties() throws Exception {
+    LockableResourcesManager.get().createResourceWithLabelAndProperties("resource1", "label1", ImmutableMap.of("MYKEY", "MYVAL1"));
+    LockableResourcesManager.get().createResourceWithLabelAndProperties("resource2", "label1", ImmutableMap.of("MYKEY", "MYVAL2"));
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    p.setDefinition(
+      new CpsFlowDefinition(
+        "lock(label: 'label1', variable: 'someVar', quantity: 2) {\n"
+          + "  echo \"$env.someVar0 HAS MYKEY=$env.someVar0_MYKEY\"\n"
+          + "  echo \"$env.someVar1 HAS MYKEY=$env.someVar1_MYKEY\"\n"
+          + "  echo \"$env.someVar2 HAS MYKEY=$env.someVar2_MYKEY\"\n"
+          + "}",
+        true));
+    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+    j.waitForCompletion(b1);
+
+    // Variable should have been filled
+    j.assertLogContains("resource1 HAS MYKEY=MYVAL1", b1);
+    j.assertLogContains("resource2 HAS MYKEY=MYVAL2", b1);
+    j.assertLogContains("null HAS MYKEY=null", b1);
   }
 }
