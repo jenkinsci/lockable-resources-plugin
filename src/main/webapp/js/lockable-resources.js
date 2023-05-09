@@ -2,7 +2,7 @@
 // Copyright (c) 2020, Tobias Gruetzmacher
 
 function find_resource_name(element) {
-  var row = element.up('tr');
+  var row = element.closest('tr');
   var resourceName = row.getAttribute('data-resource-name');
   return resourceName;
 }
@@ -21,20 +21,24 @@ function resource_action(button, action) {
 
 function replaceNote(element, resourceName) {
   var d = document.getElementById("note-" + resourceName);
-  $(d).innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>loading...</div>";
-  new Ajax.Request(
-    "noteForm",
-    {
-      parameters: { resource: resourceName },
-      onComplete: function (x) {
-        d.innerHTML = x.responseText;
-        evalInnerHtmlScripts(x.responseText, function () {
+  d.innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>loading...</div>";
+  fetch("noteForm", {
+    method: "post",
+    headers: crumb.wrap({
+      "Content-Type": "application/x-www-form-urlencoded",
+    }),
+    body: new URLSearchParams({
+      resource: resourceName,
+    }),
+  }).then((rsp) => {
+      rsp.text().then((responseText) => {
+        d.innerHTML = responseText;
+        evalInnerHtmlScripts(responseText, function () {
           Behaviour.applySubtree(d);
           d.getElementsByTagName("TEXTAREA")[0].focus();
         });
         layoutUpdateCallback.call();
-      }
-    }
-  );
+      });
+  });
   return false;
 }
