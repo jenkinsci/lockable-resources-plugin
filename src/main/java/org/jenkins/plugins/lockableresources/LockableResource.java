@@ -103,9 +103,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private transient boolean isNode = false;
 
-  // dummy object to synchronize getters and setters
-  private final Object lock = new Object();
-
   /**
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
    * but became deprecated once several resources could be locked at once. See queuedContexts in
@@ -161,13 +158,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public boolean isNodeResource() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return isNode;
     }
   }
 
   public void setNodeResource(boolean b) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       isNode = b;
     }
   }
@@ -179,42 +176,42 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getDescription() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return description;
     }
   }
 
   @DataBoundSetter
   public void setDescription(String description) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.description = Util.fixNull(description);
     }
   }
 
   @Exported
   public String getNote() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return this.note;
     }
   }
 
   @DataBoundSetter
   public void setNote(String note) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.note = Util.fixNull(note);
     }
   }
 
   @DataBoundSetter
   public void setEphemeral(boolean ephemeral) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.ephemeral = ephemeral;
     }
   }
 
   @Exported
   public boolean isEphemeral() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return ephemeral;
     }
   }
@@ -226,7 +223,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Deprecated
   @Exported
   public String getLabels() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (this.labelsAsList == null) {
         return "";
       }
@@ -243,7 +240,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   // @Deprecated can not be used, because of JCaC
   @DataBoundSetter
   public void setLabels(String labels) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       // todo use label parser from Jenkins.Label to allow the same syntax
       this.labelsAsList = new ArrayList<>();
       for(String label : labels.split("\\s+")) {
@@ -261,7 +258,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public List<String> getLabelsAsList() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return this.labelsAsList;
     }
   }
@@ -273,14 +270,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public boolean hasLabel(String labelToFind) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return this.labelsContain(labelToFind);
     }
   }
 
   //----------------------------------------------------------------------------
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (candidate == null || candidate.isEmpty()) {
         return false;
       }
@@ -306,21 +303,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * @return {@code true} if resource contains label *candidate*
    */
   private boolean labelsContain(String candidate) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return this.getLabelsAsList().contains(candidate);
     }
   }
 
   @Exported
   public List<LockableResourceProperty> getProperties() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return properties;
     }
   }
 
   @DataBoundSetter
   public void setProperties(List<LockableResourceProperty> properties) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.properties = (properties == null ? new ArrayList<>() : properties);
     }
   }
@@ -338,7 +335,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   public boolean scriptMatches(
     @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
     throws ExecutionException {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       Binding binding = new Binding(params);
       binding.setVariable("resourceName", name);
       binding.setVariable("resourceDescription", description);
@@ -368,35 +365,35 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public Date getReservedTimestamp() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
     }
   }
 
   @DataBoundSetter
   public void setReservedTimestamp(final Date reservedTimestamp) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
     }
   }
 
   @Exported
   public String getReservedBy() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return reservedBy;
     }
   }
 
   /** Return true when resource is free. False otherwise*/
   public boolean isFree() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return (!this.isLocked() && !this.isReserved() && !this.isQueued());
     }
   }
 
   @Exported
   public boolean isReserved() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return reservedBy != null;
     }
   }
@@ -418,14 +415,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class) // called by jelly
   public boolean isReservedByCurrentUser() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return (this.reservedBy != null && StringUtils.equals(getUserName(), this.reservedBy));
     }
   }
 
   @Exported
   public String getReservedByEmail() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (isReserved()) {
         UserProperty email = null;
         User user = Jenkins.get().getUser(reservedBy);
@@ -437,7 +434,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public boolean isQueued() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.validateQueuingTimeout();
       return queueItemId != NOT_QUEUED;
     }
@@ -445,21 +442,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   // returns True if queued by any other task than the given one
   public boolean isQueued(long taskId) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.validateQueuingTimeout();
       return queueItemId != NOT_QUEUED && queueItemId != taskId;
     }
   }
 
   public boolean isQueuedByTask(long taskId) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.validateQueuingTimeout();
       return queueItemId == taskId;
     }
   }
 
   public void unqueue() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       queueItemId = NOT_QUEUED;
       queueItemProject = null;
       queuingStarted = 0;
@@ -468,7 +465,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public boolean isLocked() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return getBuild() != null;
     }
   }
@@ -480,7 +477,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @CheckForNull
   public String getLockCause() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
       final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
       if (isReserved()) {
@@ -495,7 +492,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuild")
   public Run<?, ?> getBuild() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (build == null && buildExternalizableId != null) {
         build = Run.fromExternalizableId(buildExternalizableId);
       }
@@ -505,7 +502,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getBuildName() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (getBuild() != null)
         return getBuild().getFullDisplayName();
       else
@@ -514,7 +511,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public void setBuild(Run<?, ?> lockedBy) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.build = lockedBy;
       if (lockedBy != null) {
         this.buildExternalizableId = lockedBy.getExternalizableId();
@@ -527,7 +524,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public Task getTask() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       Item item = Queue.getInstance().getItem(queueItemId);
       if (item != null) {
         return item.task;
@@ -538,35 +535,35 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public long getQueueItemId() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.validateQueuingTimeout();
       return queueItemId;
     }
   }
 
   public String getQueueItemProject() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.validateQueuingTimeout();
       return this.queueItemProject;
     }
   }
 
   public void setQueued(long queueItemId) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.queueItemId = queueItemId;
       this.queuingStarted = System.currentTimeMillis() / 1000;
     }
   }
 
   public void setQueued(long queueItemId, String queueProjectName) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.setQueued(queueItemId);
       this.queueItemProject = queueProjectName;
     }
   }
 
   private void validateQueuingTimeout() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (queuingStarted > 0) {
         long now = System.currentTimeMillis() / 1000;
         if (now - queuingStarted > QUEUE_TIMEOUT)
@@ -577,33 +574,33 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @DataBoundSetter
   public void setReservedBy(String userName) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.reservedBy = Util.fixEmptyAndTrim(userName);
     }
   }
 
   public void setStolen() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.stolen = true;
     }
   }
 
   @Exported
   public boolean isStolen() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       return this.stolen;
     }
   }
 
   public void reserve(String userName) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       setReservedBy(userName);
       setReservedTimestamp(new Date());
     }
   }
 
   public void unReserve() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       setReservedBy(null);
       setReservedTimestamp(null);
       this.stolen = false;
@@ -611,7 +608,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public void reset() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       this.unReserve();
       this.unqueue();
       this.setBuild(null);
@@ -623,7 +620,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * @param sourceResource resource with properties to copy from
    */
   public void copyUnconfigurableProperties(final LockableResource sourceResource) {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       if (sourceResource != null) {
         setReservedTimestamp(sourceResource.getReservedTimestamp());
         setNote(sourceResource.getNote());
@@ -638,7 +635,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * Just stick with unReserve() and close the closure, if needed.
    */
   public void recycle() {
-    synchronized (this.lock) {
+    synchronized (this.name) {
       try {
         List<LockableResource> resources = new ArrayList<>();
         resources.add(this);
