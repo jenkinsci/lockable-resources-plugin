@@ -52,7 +52,7 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-  private List<LockableResource> resources;
+  private List<LockableResource> resources = Collections.synchronizedList(new ArrayList<>());
   private transient Cache<Long,List<LockableResource>> cachedCandidates = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
 
   /**
@@ -64,19 +64,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
                       justification = "Common Jenkins pattern to call method that can be overridden")
   public LockableResourcesManager() {
-    resources = new ArrayList<>();
+    this.resources = new ArrayList<>();
     load();
   }
 
   public List<LockableResource> getResources() {
-    return resources;
+    return this.resources;
   }
 
-  public synchronized List<LockableResource> getDeclaredResources() {
+  public List<LockableResource> getDeclaredResources() {
     ArrayList<LockableResource> declaredResources = new ArrayList<>();
-    for (LockableResource r : resources) {
-      if (!r.isEphemeral() && !r.isNodeResource()) {
-        declaredResources.add(r);
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        if (!r.isEphemeral() && !r.isNodeResource()) {
+          declaredResources.add(r);
+        }
       }
     }
     return declaredResources;
@@ -84,50 +86,54 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @DataBoundSetter
   public synchronized void setDeclaredResources(List<LockableResource> declaredResources) {
-    Map<String, LockableResource> lockedResources = new HashMap<>();
-    for (LockableResource r : this.resources) {
-      if (!r.isLocked()) continue;
-      lockedResources.put(r.getName(), r);
-    }
-
-    // Removed from configuration locks became ephemeral.
-    ArrayList<LockableResource> mergedResources = new ArrayList<>();
-    Set<String> addedLocks = new HashSet<>();
-    for (LockableResource r : declaredResources) {
-      if (!addedLocks.add(r.getName())) {
-        continue;
+    synchronized (this.resources) {
+      Map<String, LockableResource> lockedResources = new HashMap<>();
+      for (LockableResource r : this.resources) {
+        if (!r.isLocked()) continue;
+        lockedResources.put(r.getName(), r);
       }
-      LockableResource locked = lockedResources.remove(r.getName());
-      if (locked != null) {
-        // Merge already locked lock.
-        locked.setDescription(r.getDescription());
-        locked.setLabels(r.getLabels());
-        locked.setEphemeral(false);
-        locked.setNote(r.getNote());
-        mergedResources.add(locked);
-        continue;
+  
+      // Removed from configuration locks became ephemeral.
+      ArrayList<LockableResource> mergedResources = new ArrayList<>();
+      Set<String> addedLocks = new HashSet<>();
+      for (LockableResource r : declaredResources) {
+        if (!addedLocks.add(r.getName())) {
+          continue;
+        }
+        LockableResource locked = lockedResources.remove(r.getName());
+        if (locked != null) {
+          // Merge already locked lock.
+          locked.setDescription(r.getDescription());
+          locked.setLabels(r.getLabels());
+          locked.setEphemeral(false);
+          locked.setNote(r.getNote());
+          mergedResources.add(locked);
+          continue;
+        }
+        mergedResources.add(r);
       }
-      mergedResources.add(r);
-    }
 
-    for (LockableResource r : lockedResources.values()) {
-      // Removed locks became ephemeral.
-      r.setDescription("");
-      r.setLabels("");
-      r.setNote("");
-      r.setEphemeral(true);
-      mergedResources.add(r);
-    }
+      for (LockableResource r : lockedResources.values()) {
+        // Removed locks became ephemeral.
+        r.setDescription("");
+        r.setLabels("");
+        r.setNote("");
+        r.setEphemeral(true);
+        mergedResources.add(r);
+      }
 
-    this.resources = mergedResources;
+      this.resources = mergedResources;
+    }
   }
 
   public List<LockableResource> getResourcesFromProject(String fullName) {
     List<LockableResource> matching = new ArrayList<>();
-    for (LockableResource r : resources) {
-      String rName = r.getQueueItemProject();
-      if (rName != null && rName.equals(fullName)) {
-        matching.add(r);
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        String rName = r.getQueueItemProject();
+        if (rName != null && rName.equals(fullName)) {
+          matching.add(r);
+        }
       }
     }
     return matching;
@@ -135,10 +141,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
     List<LockableResource> matching = new ArrayList<>();
-    for (LockableResource r : resources) {
-      Run<?, ?> rBuild = r.getBuild();
-      if (rBuild != null && rBuild == build) {
-        matching.add(r);
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        Run<?, ?> rBuild = r.getBuild();
+        if (rBuild != null && rBuild == build) {
+          matching.add(r);
+        }
       }
     }
     return matching;
@@ -155,9 +163,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return true;
 
     final Map<String, Object> params = null;
-    for (LockableResource r : this.resources) {
-      if (r.isValidLabel(label, params)) {
-        return true;
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        if (r.isValidLabel(label, params)) {
+          return true;
+        }
       }
     }
 
@@ -167,24 +177,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
   //----------------------------------------------------------------------------
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
-    for (LockableResource r : this.resources) {
-      List<String> toAdd = r.getLabelsAsList();
-      if (toAdd.isEmpty()) {
-        continue;
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        List<String> toAdd = r.getLabelsAsList();
+        if (toAdd.isEmpty()) {
+          continue;
+        }
+        labels.addAll(toAdd);
       }
-      labels.addAll(toAdd);
     }
     return labels;
   }
 
   public int getFreeResourceAmount(String label) {
     int free = 0;
-    for (LockableResource r : this.resources) {
-      if (r.isLocked() || r.isQueued() || r.isReserved()) {
-       continue;
-      }
-      if (r.hasLabel(label)) {
-        free ++;
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        if (r.isLocked() || r.isQueued() || r.isReserved()) {
+         continue;
+        }
+        if (r.hasLabel(label)) {
+          free ++;
+        }
       }
     }
     return free;
@@ -195,8 +209,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (label == null || label.isEmpty()) {
       return found;
     }
-    for (LockableResource r : this.resources) {
-      if (r.isValidLabel(label, params)) found.add(r);
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        if (r.isValidLabel(label, params))
+          found.add(r);
+      }
     }
     return found;
   }
@@ -216,19 +233,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
     throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
-    for (LockableResource r : this.resources) {
-      if (r.scriptMatches(script, params)) found.add(r);
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        if (r.scriptMatches(script, params)) found.add(r);
+      }
     }
     return found;
   }
 
-  public synchronized LockableResource fromName(String resourceName) {
-    if (resourceName != null) {
-      for (LockableResource r : resources) {
-        if (resourceName.equals(r.getName())) return r;
+  public LockableResource fromName(String resourceName) {
+    if (resourceName == null || resourceName.isEmpty()) {
+      return null;
+    }
+    LockableResource ret = null;
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        if (resourceName.equals(r.getName()))
+        {
+          ret = r;
+          break;
+        }
       }
     }
-    return null;
+    return ret;
   }
 
   public synchronized boolean queue(
@@ -359,7 +386,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       (requiredResources.label != null && !requiredResources.label.isEmpty())) {
       candidates = cachedCandidates.getIfPresent(queueItemId);
       if (candidates != null) {
-        candidates.retainAll(resources);
+        synchronized (this.resources) {
+          candidates.retainAll(this.resources);
+        }
       } else {
         candidates = (systemGroovyScript == null)
           ? getResourcesWithLabel(requiredResources.label, params)
@@ -392,9 +421,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         "{0} found {1} resource(s) to queue." + "Waiting for correct amount: {2}.",
         new Object[] {queueItemProject, selected.size(), required_amount});
       // just to be sure, clean up
-      for (LockableResource x : resources) {
-        if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject))
-          x.unqueue();
+      synchronized (this.resources) {
+        for (LockableResource x : this.resources) {
+          if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject))
+            x.unqueue();
+        }
       }
       return null;
     }
@@ -409,20 +440,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // Return false if another item queued for this project -> bail out
   private boolean checkCurrentResourcesStatus(
     List<LockableResource> selected, String project, long taskId, Logger log) {
-    for (LockableResource r : resources) {
-      // This project might already have something in queue
-      String rProject = r.getQueueItemProject();
-      if (rProject != null && rProject.equals(project)) {
-        if (r.isQueuedByTask(taskId)) {
-          // this item has queued the resource earlier
-          selected.add(r);
-        } else {
-          // The project has another buildable item waiting -> bail out
-          log.log(
-            Level.FINEST,
-            "{0} has another build " + "that already queued resource {1}. Continue queueing.",
-            new Object[] {project, r});
-          return false;
+    synchronized (this.resources) {
+      for (LockableResource r : this.resources) {
+        // This project might already have something in queue
+        String rProject = r.getQueueItemProject();
+        if (rProject != null && rProject.equals(project)) {
+          if (r.isQueuedByTask(taskId)) {
+            // this item has queued the resource earlier
+            selected.add(r);
+          } else {
+            // The project has another buildable item waiting -> bail out
+            log.log(
+              Level.FINEST,
+              "{0} has another build " + "that already queued resource {1}. Continue queueing.",
+              new Object[] {project, r});
+            return false;
+          }
         }
       }
     }
@@ -473,24 +506,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   private synchronized void freeResources(
     List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
-    for (String unlockResourceName : unlockResourceNames) {
-      Iterator<LockableResource> resourceIterator = this.resources.iterator();
-      while (resourceIterator.hasNext()) {
-        LockableResource resource = resourceIterator.next();
-        if (resource != null
-          && resource.getName() != null
-          && resource.getName().equals(unlockResourceName)) {
-          if (build == null
-            || (resource.getBuild() != null
-            && build
-            .getExternalizableId()
-            .equals(resource.getBuild().getExternalizableId()))) {
-            // No more contexts, unlock resource
-            resource.unqueue();
-            resource.setBuild(null);
-            uncacheIfFreeing(resource, true, false);
-            if (resource.isEphemeral()) {
-              resourceIterator.remove();
+    synchronized (this.resources) {
+      for (String unlockResourceName : unlockResourceNames) {
+        Iterator<LockableResource> resourceIterator = this.resources.iterator();
+        while (resourceIterator.hasNext()) {
+          LockableResource resource = resourceIterator.next();
+          if (resource != null
+            && resource.getName() != null
+            && resource.getName().equals(unlockResourceName)) {
+            if (build == null
+              || (resource.getBuild() != null
+              && build
+              .getExternalizableId()
+              .equals(resource.getBuild().getExternalizableId()))) {
+              // No more contexts, unlock resource
+              resource.unqueue();
+              resource.setBuild(null);
+              uncacheIfFreeing(resource, true, false);
+              if (resource.isEphemeral()) {
+                resourceIterator.remove();
+              }
             }
           }
         }
@@ -963,7 +998,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     try (BulkChange bc = new BulkChange(this)) {
       // reset resources to default which are not currently locked
-      this.resources.removeIf(resource -> !resource.isLocked());
+      synchronized (this.resources) {
+        this.resources.removeIf(resource -> !resource.isLocked());
+      }
       req.bindJSON(this, json);
       bc.commit();
     } catch (IOException exception) {

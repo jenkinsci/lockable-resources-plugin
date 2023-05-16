@@ -103,6 +103,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private transient boolean isNode = false;
 
+  // dummy object to synchronize getters and setters
+  private final Object lock = new Object();
+
   /**
    * Was used within the initial implementation of Pipeline functionality using {@link LockStep},
    * but became deprecated once several resources could be locked at once. See queuedContexts in
@@ -158,11 +161,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public boolean isNodeResource() {
-    return isNode;
+    synchronized (this.lock) {
+      return isNode;
+    }
   }
 
   public void setNodeResource(boolean b) {
-    isNode = b;
+    synchronized (this.lock) {
+      isNode = b;
+    }
   }
 
   @Exported
@@ -172,32 +179,44 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @Exported
   public String getDescription() {
-    return description;
+    synchronized (this.lock) {
+      return description;
+    }
   }
 
   @DataBoundSetter
   public void setDescription(String description) {
-    this.description = Util.fixNull(description);
+    synchronized (this.lock) {
+      this.description = Util.fixNull(description);
+    }
   }
 
   @Exported
   public String getNote() {
-    return this.note;
+    synchronized (this.lock) {
+      return this.note;
+    }
   }
 
   @DataBoundSetter
   public void setNote(String note) {
-    this.note = Util.fixNull(note);
+    synchronized (this.lock) {
+      this.note = Util.fixNull(note);
+    }
   }
 
   @DataBoundSetter
   public void setEphemeral(boolean ephemeral) {
-    this.ephemeral = ephemeral;
+    synchronized (this.lock) {
+      this.ephemeral = ephemeral;
+    }
   }
 
   @Exported
   public boolean isEphemeral() {
-    return ephemeral;
+    synchronized (this.lock) {
+      return ephemeral;
+    }
   }
 
   /** Use getLabelsAsList instead
@@ -207,10 +226,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @Deprecated
   @Exported
   public String getLabels() {
-    if (this.labelsAsList == null) {
-      return "";
+    synchronized (this.lock) {
+      if (this.labelsAsList == null) {
+        return "";
+      }
+      return String.join(" ", this.labelsAsList);
     }
-    return String.join(" ", this.labelsAsList);
   }
 
   /** @deprecated no equivalent at the time.
@@ -222,13 +243,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   // @Deprecated can not be used, because of JCaC
   @DataBoundSetter
   public void setLabels(String labels) {
-    // todo use label parser from Jenkins.Label to allow the same syntax
-    this.labelsAsList = new ArrayList<>();
-    for(String label : labels.split("\\s+")) {
-      if (label == null || label.isEmpty()) {
-        continue;
+    synchronized (this.lock) {
+      // todo use label parser from Jenkins.Label to allow the same syntax
+      this.labelsAsList = new ArrayList<>();
+      for(String label : labels.split("\\s+")) {
+        if (label == null || label.isEmpty()) {
+          continue;
+        }
+        this.labelsAsList.add(label);
       }
-      this.labelsAsList.add(label);
     }
   }
 
@@ -238,7 +261,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public List<String> getLabelsAsList() {
-    return this.labelsAsList;
+    synchronized (this.lock) {
+      return this.labelsAsList;
+    }
   }
 
   /**
@@ -248,26 +273,30 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Exported
   public boolean hasLabel(String labelToFind) {
-    return this.labelsContain(labelToFind);
+    synchronized (this.lock) {
+      return this.labelsContain(labelToFind);
+    }
   }
 
   //----------------------------------------------------------------------------
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
-    if (candidate == null || candidate.isEmpty()) {
-      return false;
+    synchronized (this.lock) {
+      if (candidate == null || candidate.isEmpty()) {
+        return false;
+      }
+  
+      if (labelsContain(candidate)) {
+        return true;
+      }
+  
+      final Label labelExpression = Label.parseExpression(candidate);
+      Set<LabelAtom> atomLabels = new HashSet<>();
+      for(String label : this.getLabelsAsList()) {
+        atomLabels.add(new LabelAtom(label));
+      }
+  
+      return labelExpression.matches(atomLabels);
     }
-
-    if (labelsContain(candidate)) {
-      return true;
-    }
-
-    final Label labelExpression = Label.parseExpression(candidate);
-    Set<LabelAtom> atomLabels = new HashSet<>();
-    for(String label : this.getLabelsAsList()) {
-      atomLabels.add(new LabelAtom(label));
-    }
-
-    return labelExpression.matches(atomLabels);
   }
 
   //----------------------------------------------------------------------------
@@ -277,17 +306,23 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * @return {@code true} if resource contains label *candidate*
    */
   private boolean labelsContain(String candidate) {
-    return this.getLabelsAsList().contains(candidate);
+    synchronized (this.lock) {
+      return this.getLabelsAsList().contains(candidate);
+    }
   }
 
   @Exported
   public List<LockableResourceProperty> getProperties() {
-    return properties;
+    synchronized (this.lock) {
+      return properties;
+    }
   }
 
   @DataBoundSetter
   public void setProperties(List<LockableResourceProperty> properties) {
-    this.properties = (properties == null ? new ArrayList<>() : properties);
+    synchronized (this.lock) {
+      this.properties = (properties == null ? new ArrayList<>() : properties);
+    }
   }
 
   /**
@@ -303,55 +338,67 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   public boolean scriptMatches(
     @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
     throws ExecutionException {
-    Binding binding = new Binding(params);
-    binding.setVariable("resourceName", name);
-    binding.setVariable("resourceDescription", description);
-    binding.setVariable("resourceLabels", this.getLabelsAsList());
-    binding.setVariable("resourceNote", note);
-    try {
-      Object result =
-        script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
-      if (LOGGER.isLoggable(Level.FINE)) {
-        LOGGER.fine(
-          "Checked resource "
-            + name
-            + " for "
-            + script.getScript()
-            + " with "
-            + binding
-            + " -> "
-            + result);
+    synchronized (this.lock) {
+      Binding binding = new Binding(params);
+      binding.setVariable("resourceName", name);
+      binding.setVariable("resourceDescription", description);
+      binding.setVariable("resourceLabels", this.getLabelsAsList());
+      binding.setVariable("resourceNote", note);
+      try {
+        Object result =
+          script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
+        if (LOGGER.isLoggable(Level.FINE)) {
+          LOGGER.fine(
+            "Checked resource "
+              + name
+              + " for "
+              + script.getScript()
+              + " with "
+              + binding
+              + " -> "
+              + result);
+        }
+        return (Boolean) result;
+      } catch (Exception e) {
+        throw new ExecutionException(
+          "Cannot get boolean result out of groovy expression. See system log for more info", e);
       }
-      return (Boolean) result;
-    } catch (Exception e) {
-      throw new ExecutionException(
-        "Cannot get boolean result out of groovy expression. See system log for more info", e);
     }
   }
 
   @Exported
   public Date getReservedTimestamp() {
-    return reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
+    synchronized (this.lock) {
+      return reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
+    }
   }
 
   @DataBoundSetter
   public void setReservedTimestamp(final Date reservedTimestamp) {
-    this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
+    synchronized (this.lock) {
+      this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
+    }
   }
 
   @Exported
   public String getReservedBy() {
-    return reservedBy;
+    synchronized (this.lock) {
+      return reservedBy;
+    }
   }
 
   /** Return true when resource is free. False otherwise*/
   public boolean isFree() {
-    return (!this.isLocked() && !this.isReserved() && !this.isQueued());
+    synchronized (this.lock) {
+      return (!this.isLocked() && !this.isReserved() && !this.isQueued());
+    }
   }
 
   @Exported
   public boolean isReserved() {
-    return reservedBy != null;
+    synchronized (this.lock) {
+      return reservedBy != null;
+    }
   }
 
   @Restricted(NoExternalUse.class)
@@ -371,45 +418,59 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class) // called by jelly
   public boolean isReservedByCurrentUser() {
-    return (this.reservedBy != null && StringUtils.equals(getUserName(), this.reservedBy));
+    synchronized (this.lock) {
+      return (this.reservedBy != null && StringUtils.equals(getUserName(), this.reservedBy));
+    }
   }
 
   @Exported
   public String getReservedByEmail() {
-    if (isReserved()) {
-      UserProperty email = null;
-      User user = Jenkins.get().getUser(reservedBy);
-      if (user != null) email = user.getProperty(UserProperty.class);
-      if (email != null) return email.getAddress();
+    synchronized (this.lock) {
+      if (isReserved()) {
+        UserProperty email = null;
+        User user = Jenkins.get().getUser(reservedBy);
+        if (user != null) email = user.getProperty(UserProperty.class);
+        if (email != null) return email.getAddress();
+      }
+      return null;
     }
-    return null;
   }
 
   public boolean isQueued() {
-    this.validateQueuingTimeout();
-    return queueItemId != NOT_QUEUED;
+    synchronized (this.lock) {
+      this.validateQueuingTimeout();
+      return queueItemId != NOT_QUEUED;
+    }
   }
 
   // returns True if queued by any other task than the given one
   public boolean isQueued(long taskId) {
-    this.validateQueuingTimeout();
-    return queueItemId != NOT_QUEUED && queueItemId != taskId;
+    synchronized (this.lock) {
+      this.validateQueuingTimeout();
+      return queueItemId != NOT_QUEUED && queueItemId != taskId;
+    }
   }
 
   public boolean isQueuedByTask(long taskId) {
-    this.validateQueuingTimeout();
-    return queueItemId == taskId;
+    synchronized (this.lock) {
+      this.validateQueuingTimeout();
+      return queueItemId == taskId;
+    }
   }
 
   public void unqueue() {
-    queueItemId = NOT_QUEUED;
-    queueItemProject = null;
-    queuingStarted = 0;
+    synchronized (this.lock) {
+      queueItemId = NOT_QUEUED;
+      queueItemProject = null;
+      queuingStarted = 0;
+    }
   }
 
   @Exported
   public boolean isLocked() {
-    return getBuild() != null;
+    synchronized (this.lock) {
+      return getBuild() != null;
+    }
   }
 
   /**
@@ -419,107 +480,142 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @CheckForNull
   public String getLockCause() {
-    final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
-    final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
-    if (isReserved()) {
-      return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
-    }
-    if (isLocked()) {
-      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
-    }
-    return null;
-  }
-
-  @WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuild")
-  public Run<?, ?> getBuild() {
-    if (build == null && buildExternalizableId != null) {
-      build = Run.fromExternalizableId(buildExternalizableId);
-    }
-    return build;
-  }
-
-  @Exported
-  public String getBuildName() {
-    if (getBuild() != null) return getBuild().getFullDisplayName();
-    else return null;
-  }
-
-  public void setBuild(Run<?, ?> lockedBy) {
-    this.build = lockedBy;
-    if (lockedBy != null) {
-      this.buildExternalizableId = lockedBy.getExternalizableId();
-      setReservedTimestamp(new Date());
-    } else {
-      this.buildExternalizableId = null;
-      setReservedTimestamp(null);
-    }
-  }
-
-  public Task getTask() {
-    Item item = Queue.getInstance().getItem(queueItemId);
-    if (item != null) {
-      return item.task;
-    } else {
+    synchronized (this.lock) {
+      final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+      final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
+      if (isReserved()) {
+        return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
+      }
+      if (isLocked()) {
+        return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
+      }
       return null;
     }
   }
 
+  @WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuild")
+  public Run<?, ?> getBuild() {
+    synchronized (this.lock) {
+      if (build == null && buildExternalizableId != null) {
+        build = Run.fromExternalizableId(buildExternalizableId);
+      }
+      return build;
+    }
+  }
+
+  @Exported
+  public String getBuildName() {
+    synchronized (this.lock) {
+      if (getBuild() != null)
+        return getBuild().getFullDisplayName();
+      else
+        return null;
+    }
+  }
+
+  public void setBuild(Run<?, ?> lockedBy) {
+    synchronized (this.lock) {
+      this.build = lockedBy;
+      if (lockedBy != null) {
+        this.buildExternalizableId = lockedBy.getExternalizableId();
+        setReservedTimestamp(new Date());
+      } else {
+        this.buildExternalizableId = null;
+        setReservedTimestamp(null);
+      }
+    }
+  }
+
+  public Task getTask() {
+    synchronized (this.lock) {
+      Item item = Queue.getInstance().getItem(queueItemId);
+      if (item != null) {
+        return item.task;
+      } else {
+        return null;
+      }
+    }
+  }
+
   public long getQueueItemId() {
-    this.validateQueuingTimeout();
-    return queueItemId;
+    synchronized (this.lock) {
+      this.validateQueuingTimeout();
+      return queueItemId;
+    }
   }
 
   public String getQueueItemProject() {
-    this.validateQueuingTimeout();
-    return this.queueItemProject;
+    synchronized (this.lock) {
+      this.validateQueuingTimeout();
+      return this.queueItemProject;
+    }
   }
 
   public void setQueued(long queueItemId) {
-    this.queueItemId = queueItemId;
-    this.queuingStarted = System.currentTimeMillis() / 1000;
+    synchronized (this.lock) {
+      this.queueItemId = queueItemId;
+      this.queuingStarted = System.currentTimeMillis() / 1000;
+    }
   }
 
   public void setQueued(long queueItemId, String queueProjectName) {
-    this.setQueued(queueItemId);
-    this.queueItemProject = queueProjectName;
+    synchronized (this.lock) {
+      this.setQueued(queueItemId);
+      this.queueItemProject = queueProjectName;
+    }
   }
 
   private void validateQueuingTimeout() {
-    if (queuingStarted > 0) {
-      long now = System.currentTimeMillis() / 1000;
-      if (now - queuingStarted > QUEUE_TIMEOUT) unqueue();
+    synchronized (this.lock) {
+      if (queuingStarted > 0) {
+        long now = System.currentTimeMillis() / 1000;
+        if (now - queuingStarted > QUEUE_TIMEOUT)
+          unqueue();
+      }
     }
   }
 
   @DataBoundSetter
   public void setReservedBy(String userName) {
-    this.reservedBy = Util.fixEmptyAndTrim(userName);
+    synchronized (this.lock) {
+      this.reservedBy = Util.fixEmptyAndTrim(userName);
+    }
   }
 
   public void setStolen() {
-    this.stolen = true;
+    synchronized (this.lock) {
+      this.stolen = true;
+    }
   }
 
   @Exported
   public boolean isStolen() {
-    return this.stolen;
+    synchronized (this.lock) {
+      return this.stolen;
+    }
   }
 
   public void reserve(String userName) {
-    setReservedBy(userName);
-    setReservedTimestamp(new Date());
+    synchronized (this.lock) {
+      setReservedBy(userName);
+      setReservedTimestamp(new Date());
+    }
   }
 
   public void unReserve() {
-    setReservedBy(null);
-    setReservedTimestamp(null);
-    this.stolen = false;
+    synchronized (this.lock) {
+      setReservedBy(null);
+      setReservedTimestamp(null);
+      this.stolen = false;
+    }
   }
 
   public void reset() {
-    this.unReserve();
-    this.unqueue();
-    this.setBuild(null);
+    synchronized (this.lock) {
+      this.unReserve();
+      this.unqueue();
+      this.setBuild(null);
+    }
   }
 
   /**
@@ -527,9 +623,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * @param sourceResource resource with properties to copy from
    */
   public void copyUnconfigurableProperties(final LockableResource sourceResource) {
-    if (sourceResource != null) {
-      setReservedTimestamp(sourceResource.getReservedTimestamp());
-      setNote(sourceResource.getNote());
+    synchronized (this.lock) {
+      if (sourceResource != null) {
+        setReservedTimestamp(sourceResource.getReservedTimestamp());
+        setNote(sourceResource.getNote());
+      }
     }
   }
 
@@ -540,13 +638,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    * Just stick with unReserve() and close the closure, if needed.
    */
   public void recycle() {
-    try {
-      List<LockableResource> resources = new ArrayList<>();
-      resources.add(this);
-      org.jenkins.plugins.lockableresources.LockableResourcesManager.get().
-        recycle(resources);
-    } catch (Exception e) {
-      this.reset();
+    synchronized (this.lock) {
+      try {
+        List<LockableResource> resources = new ArrayList<>();
+        resources.add(this);
+        org.jenkins.plugins.lockableresources.LockableResourcesManager.get().
+          recycle(resources);
+      } catch (Exception e) {
+        this.reset();
+      }
     }
   }
 
