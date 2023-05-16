@@ -52,7 +52,7 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-  private List<LockableResource> resources = Collections.synchronizedList(new ArrayList<>());
+  private List<LockableResource> resources;
   private transient Cache<Long,List<LockableResource>> cachedCandidates = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
 
   /**
@@ -72,12 +72,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   public List<LockableResource> getResources() {
-    return this.resources;
+    synchronized (this) {
+      return this.resources;
+    }
   }
 
   public synchronized List<LockableResource> getDeclaredResources() {
     ArrayList<LockableResource> declaredResources = new ArrayList<>();
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         if (!r.isEphemeral() && !r.isNodeResource()) {
           declaredResources.add(r);
@@ -89,7 +91,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @DataBoundSetter
   public synchronized void setDeclaredResources(List<LockableResource> declaredResources) {
-    synchronized (this.lock) {
+    synchronized (this) {
       Map<String, LockableResource> lockedResources = new HashMap<>();
       for (LockableResource r : this.resources) {
         if (!r.isLocked()) continue;
@@ -131,7 +133,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public List<LockableResource> getResourcesFromProject(String fullName) {
     List<LockableResource> matching = new ArrayList<>();
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         String rName = r.getQueueItemProject();
         if (rName != null && rName.equals(fullName)) {
@@ -144,7 +146,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
     List<LockableResource> matching = new ArrayList<>();
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         Run<?, ?> rBuild = r.getBuild();
         if (rBuild != null && rBuild == build) {
@@ -166,7 +168,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return true;
 
     final Map<String, Object> params = null;
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         if (r.isValidLabel(label, params)) {
           return true;
@@ -180,7 +182,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   //----------------------------------------------------------------------------
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         List<String> toAdd = r.getLabelsAsList();
         if (toAdd.isEmpty()) {
@@ -194,7 +196,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public int getFreeResourceAmount(String label) {
     int free = 0;
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         if (r.isLocked() || r.isQueued() || r.isReserved()) {
          continue;
@@ -212,7 +214,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (label == null || label.isEmpty()) {
       return found;
     }
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         if (r.isValidLabel(label, params))
           found.add(r);
@@ -236,7 +238,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
     throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         if (r.scriptMatches(script, params)) found.add(r);
       }
@@ -249,7 +251,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return null;
     }
     LockableResource ret = null;
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         if (resourceName.equals(r.getName()))
         {
@@ -389,7 +391,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       (requiredResources.label != null && !requiredResources.label.isEmpty())) {
       candidates = cachedCandidates.getIfPresent(queueItemId);
       if (candidates != null) {
-        synchronized (this.lock) {
+        synchronized (this) {
           candidates.retainAll(this.resources);
         }
       } else {
@@ -424,7 +426,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         "{0} found {1} resource(s) to queue." + "Waiting for correct amount: {2}.",
         new Object[] {queueItemProject, selected.size(), required_amount});
       // just to be sure, clean up
-      synchronized (this.lock) {
+      synchronized (this) {
         for (LockableResource x : this.resources) {
           if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject))
             x.unqueue();
@@ -443,7 +445,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // Return false if another item queued for this project -> bail out
   private boolean checkCurrentResourcesStatus(
     List<LockableResource> selected, String project, long taskId, Logger log) {
-    synchronized (this.lock) {
+    synchronized (this) {
       for (LockableResource r : this.resources) {
         // This project might already have something in queue
         String rProject = r.getQueueItemProject();
@@ -509,7 +511,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   private synchronized void freeResources(
     List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
-    synchronized (this.lock) {
+    synchronized (this) {
       for (String unlockResourceName : unlockResourceNames) {
         Iterator<LockableResource> resourceIterator = this.resources.iterator();
         while (resourceIterator.hasNext()) {
@@ -1001,7 +1003,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     try (BulkChange bc = new BulkChange(this)) {
       // reset resources to default which are not currently locked
-      synchronized (this.lock) {
+      synchronized (this) {
         this.resources.removeIf(resource -> !resource.isLocked());
       }
       req.bindJSON(this, json);
@@ -1305,8 +1307,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
       Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
   }
 
+  boolean enableSave = false;
   @Override
   public synchronized void save() {
+    if (!enableSave) {
+      return;
+    }
     if (BulkChange.contains(this)) return;
 
     try {
