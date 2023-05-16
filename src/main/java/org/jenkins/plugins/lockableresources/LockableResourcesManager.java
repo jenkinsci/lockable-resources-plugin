@@ -95,7 +95,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (!r.isLocked()) continue;
         lockedResources.put(r.getName(), r);
       }
-  
+
       // Removed from configuration locks became ephemeral.
       ArrayList<LockableResource> mergedResources = new ArrayList<>();
       Set<String> addedLocks = new HashSet<>();

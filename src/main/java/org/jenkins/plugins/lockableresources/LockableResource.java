@@ -281,17 +281,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
       if (candidate == null || candidate.isEmpty()) {
         return false;
       }
-  
+
       if (labelsContain(candidate)) {
         return true;
       }
-  
+
       final Label labelExpression = Label.parseExpression(candidate);
       Set<LabelAtom> atomLabels = new HashSet<>();
       for(String label : this.getLabelsAsList()) {
         atomLabels.add(new LabelAtom(label));
       }
-  
+
       return labelExpression.matches(atomLabels);
     }
   }
