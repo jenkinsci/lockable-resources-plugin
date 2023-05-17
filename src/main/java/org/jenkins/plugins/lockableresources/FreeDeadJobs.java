@@ -20,9 +20,9 @@ import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 /**
- * This class migrates "active" queuedContexts from LockableResource to LockableResourcesManager
- *
- * @deprecated Migration code for field introduced in 1.8 (since 1.11)
+ * Sometimes after re-starts (jenkins crashed or what ever) are resources still
+ * locked by build, but the build is no more running.
+ * This script will 'unlock' all resource assigned to dead builds
  */
 @Deprecated
 @ExcludeFromJacocoGeneratedReport
