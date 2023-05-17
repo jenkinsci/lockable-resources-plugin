@@ -34,12 +34,11 @@ public class NodesMirrorTest {
     LockableResource firstAgent = LockableResourcesManager.get().fromName("FirstAgent");
 
     assertEquals("FirstAgent", firstAgent.getName());
-    // ! jenkins add always the node name as a label
-    assertEquals("FirstAgent label label2", firstAgent.getLabels());
+    assertEquals("label label2", firstAgent.getLabels());
 
     LockableResource secondAgent = LockableResourcesManager.get().fromName("SecondAgent");
     assertEquals("SecondAgent", secondAgent.getName());
-    assertEquals("SecondAgent", secondAgent.getLabels());
+    assertEquals("", secondAgent.getLabels());
 
     // delete agent
     j.jenkins.removeNode(j.jenkins.getNode("FirstAgent"));

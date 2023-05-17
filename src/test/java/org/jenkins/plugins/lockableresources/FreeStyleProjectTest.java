@@ -40,21 +40,37 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.TestBuilder;
 
+
+import java.util.logging.Logger;
+
 public class FreeStyleProjectTest {
 
   @Rule public JenkinsRule j = new JenkinsRule();
+  private static final Logger LOGGER = Logger.getLogger(FreeStyleProjectTest.class.getName());
 
   @Test
   @Issue("JENKINS-34853")
   public void security170fix() throws Exception {
+    LOGGER.info("security170fix: start");
+    assertNull("create resources", null);
     LockableResourcesManager.get().createResource("resource1");
+    LOGGER.info("security170fix: resource da");
+    assertNotNull("resource created?", LockableResourcesManager.get().fromName("resource1"));
     FreeStyleProject p = j.createFreeStyleProject("p");
+    LOGGER.info("security170fix: project done");
+    assertNotNull("free style project created?", p);
     p.addProperty(new RequiredResourcesProperty("resource1", "resourceNameVar", null, null, null));
+    LOGGER.info("security170fix: p added");
     p.getBuildersList().add(new PrinterBuilder());
+    LOGGER.info("security170fix: printer added");
 
     FreeStyleBuild b1 = p.scheduleBuild2(0).get();
+    LOGGER.info("security170fix: build scheduled");
+    assertNotNull("free style build started?", b1);
     j.assertLogContains("resourceNameVar: resource1", b1);
+    LOGGER.info("security170fix: log dine");
     j.assertBuildStatus(Result.SUCCESS, b1);
+    LOGGER.info("security170fix: success");
   }
 
   @Test

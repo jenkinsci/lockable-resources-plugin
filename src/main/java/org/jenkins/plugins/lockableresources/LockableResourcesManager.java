@@ -289,7 +289,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     String queueProjectName
   ) {
     for (LockableResource resource : resources) {
-      if (!resource.isFree()) {
+      if (resource.isReserved() || resource.isQueued(queueItemId) || resource.isLocked()) {
         return false;
       }
     }
