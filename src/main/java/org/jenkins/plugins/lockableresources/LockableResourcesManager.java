@@ -1338,6 +1338,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   boolean enableSave = false;
   @Override
   public synchronized void save() {
+    // TODO this shall be configurable
     if (!enableSave) {
       return;
     }
