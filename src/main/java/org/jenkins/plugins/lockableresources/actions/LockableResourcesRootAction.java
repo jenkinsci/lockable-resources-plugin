@@ -18,6 +18,9 @@ import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
@@ -73,6 +76,8 @@ public class LockableResourcesRootAction implements RootAction {
 
   public static final String ICON = "symbol-lock-closed";
 
+  private LockableResourcesManager lrm = LockableResourcesManager.get();
+
   @Override
   public String getIconFileName() {
     return Jenkins.get().hasPermission(VIEW) ? ICON : null;
@@ -99,11 +104,15 @@ public class LockableResourcesRootAction implements RootAction {
 
   @Exported
   public List<LockableResource> getResources() {
-    return LockableResourcesManager.get().getResources();
+    synchronized(lrm) {
+      return new ArrayList<>(lrm.getResources());
+    }
   }
 
   public LockableResource getResource(final String resourceName) {
-    return LockableResourcesManager.get().fromName(resourceName);
+    synchronized(lrm) {
+      return lrm.fromName(resourceName);
+    }
   }
 
   /**
@@ -112,7 +121,9 @@ public class LockableResourcesRootAction implements RootAction {
    * @return Amount of free labels.
    */
   public int getFreeResourceAmount(String label) {
-    return LockableResourcesManager.get().getFreeResourceAmount(label);
+    synchronized(lrm) {
+      return lrm.getFreeResourceAmount(label);
+    }
   }
 
   /**
@@ -137,7 +148,33 @@ public class LockableResourcesRootAction implements RootAction {
    * @return All possible labels.
    */
   public Set<String> getAllLabels() {
-    return LockableResourcesManager.get().getAllLabels();
+    synchronized(lrm) {
+      return new HashSet<>(lrm.getAllLabels());
+    }
+  }
+
+  
+  public Set<AnLabel> getLabelsList() {
+    Set<AnLabel> list = new HashSet<>();
+    synchronized(lrm) {
+      for(String label : lrm.getAllLabels()) {
+        list.add(new AnLabel(label, lrm.getFreeResourceAmount(label), lrm.getResourcesWithLabel(label, null).size()));
+      }
+    }
+    return list;
+  }
+
+  public class AnLabel {
+    public AnLabel(String name, int free, int assigned) {
+      this.name = name;
+      this.free = free;
+      this.assigned = assigned;
+      this.percentage = (int)((double)free / (double)assigned * 100);
+    }
+    public String name;
+    public int free;
+    public int assigned;
+    public int percentage;
   }
 
   /**
@@ -145,7 +182,9 @@ public class LockableResourcesRootAction implements RootAction {
    * @return Amount of all labels.
    */
   public int getNumberOfAllLabels() {
-    return LockableResourcesManager.get().getAllLabels().size();
+    synchronized(lrm) {
+      return lrm.getAllLabels().size();
+    }
   }
 
   /**
@@ -157,13 +196,17 @@ public class LockableResourcesRootAction implements RootAction {
    */
   @Restricted(NoExternalUse.class)
   public int getAssignedResourceAmount(String label) {
-    return LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
+    synchronized(lrm) {
+      return lrm.getResourcesWithLabel(label, null).size();
+    }
   }
 
   /** Returns current queue */
   @Restricted(NoExternalUse.class) // used by jelly
   public List<QueuedContextStruct> getCurrentQueuedContext() {
-    return LockableResourcesManager.get().getCurrentQueuedContext();
+    synchronized(lrm) {
+      return new ArrayList<>(lrm.getCurrentQueuedContext());
+    }
   }
 
   /** Returns current queue */
@@ -171,8 +214,14 @@ public class LockableResourcesRootAction implements RootAction {
   @CheckForNull
   public LockableResourcesStruct getOldestQueue() {
     LockableResourcesStruct oldest = null;
-    for (QueuedContextStruct context : this.getCurrentQueuedContext()) {
-      for(LockableResourcesStruct resourceStruct : context.getResources()) {
+
+    Iterator<QueuedContextStruct> queueIterator = this.getCurrentQueuedContext().iterator();
+    while (queueIterator.hasNext()) {
+      QueuedContextStruct context = queueIterator.next();
+
+      Iterator<LockableResourcesStruct> contextResourcesIterator = context.getResources().iterator();
+      while (contextResourcesIterator.hasNext()) {
+        LockableResourcesStruct resourceStruct = contextResourcesIterator.next();
         if (resourceStruct.queuedAt == 0) {
           // Older versions of this plugin might miss this information.
           // Therefore skip it here.
@@ -197,7 +246,9 @@ public class LockableResourcesRootAction implements RootAction {
       return;
     }
 
-    LockableResourcesManager.get().unlock(resources, null);
+    synchronized(lrm) {
+      lrm.unlock(resources, null);
+    }
 
     rsp.forwardToPreviousPage(req);
   }
@@ -215,9 +266,11 @@ public class LockableResourcesRootAction implements RootAction {
 
     String userName = getUserName();
     if (userName != null) {
-      if (!LockableResourcesManager.get().reserve(resources, userName)) {
-        rsp.sendError(423, Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
-        return;
+      synchronized(lrm) {
+        if (!lrm.reserve(resources, userName)) {
+          rsp.sendError(423, Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
+          return;
+        }
       }
     }
     rsp.forwardToPreviousPage(req);
@@ -236,7 +289,9 @@ public class LockableResourcesRootAction implements RootAction {
 
     String userName = getUserName();
     if (userName != null) {
-      LockableResourcesManager.get().steal(resources, userName);
+      synchronized(lrm) {
+        lrm.steal(resources, userName);
+      }
     }
 
     rsp.forwardToPreviousPage(req);
@@ -270,7 +325,9 @@ public class LockableResourcesRootAction implements RootAction {
       }
     }
 
-    LockableResourcesManager.get().reassign(resources, userName);
+    synchronized(lrm) {
+      lrm.reassign(resources, userName);
+    }
 
     rsp.forwardToPreviousPage(req);
   }
@@ -295,7 +352,9 @@ public class LockableResourcesRootAction implements RootAction {
       }
     }
 
-    LockableResourcesManager.get().unreserve(resources);
+    synchronized(lrm) {
+      lrm.unreserve(resources);
+    }
 
     rsp.forwardToPreviousPage(req);
   }
@@ -312,7 +371,9 @@ public class LockableResourcesRootAction implements RootAction {
       return;
     }
 
-    LockableResourcesManager.get().reset(resources);
+    synchronized(lrm) {
+      lrm.reset(resources);
+    }
 
     rsp.forwardToPreviousPage(req);
   }
@@ -336,7 +397,9 @@ public class LockableResourcesRootAction implements RootAction {
         resourceNote = req.getParameter("resourceNote");
       }
       resource.setNote(resourceNote);
-      LockableResourcesManager.get().save();
+      synchronized(lrm) {
+        lrm.save();
+      }
 
       rsp.forwardToPreviousPage(req);
     }
@@ -347,14 +410,15 @@ public class LockableResourcesRootAction implements RootAction {
     // this will be the best place to change it. Probably it will be enough to add a code piece here
     // like req.getParameter("resources"); And split the content by some delimiter like ' ' (space)
     String name = req.getParameter("resource");
-    LockableResource r = LockableResourcesManager.get().fromName(name);
-    if (r == null) {
-      rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
-      return null;
-    }
-
     List<LockableResource> resources = new ArrayList<>();
-    resources.add(r);
+    synchronized(lrm) {
+      LockableResource r = lrm.fromName(name);
+      if (r == null) {
+        rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+        return null;
+      }
+      resources.add(r);
+    }
     return resources;
   }
 }

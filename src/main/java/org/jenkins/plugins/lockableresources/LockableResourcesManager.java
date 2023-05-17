@@ -67,13 +67,36 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
                       justification = "Common Jenkins pattern to call method that can be overridden")
   public LockableResourcesManager() {
-    this.resources = new ArrayList<>();
-    load();
+    LOGGER.info("LockableResourcesManager:: c-tor");
+    synchronized (this) {
+      this.resources = new ArrayList<>();
+      load();
+    }
   }
 
   public List<LockableResource> getResources() {
     synchronized (this) {
       return this.resources;
+    }
+  }
+
+  public void addResource(LockableResource resource) {
+    if (resource == null) {
+      return;
+    }
+    synchronized (this) {
+      this.resources.add(resource);
+    }
+  }
+
+/// todo do we need it?
+  public void removeResource(LockableResource resourceToRemove) {
+    if (resourceToRemove == null) {
+      return;
+    }
+
+    synchronized (this) {
+      this.resources.removeIf(resource -> resource.equals(resourceToRemove));
     }
   }
 
@@ -183,8 +206,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
     synchronized (this) {
-      for (LockableResource r : this.resources) {
-        List<String> toAdd = r.getLabelsAsList();
+      for (LockableResource resource : this.resources) {
+        List<String> toAdd = resource.getLabelsAsList();
         if (toAdd.isEmpty()) {
           continue;
         }
@@ -197,11 +220,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public int getFreeResourceAmount(String label) {
     int free = 0;
     synchronized (this) {
-      for (LockableResource r : this.resources) {
-        if (r.isLocked() || r.isQueued() || r.isReserved()) {
-         continue;
-        }
-        if (r.hasLabel(label)) {
+      for (LockableResource resource : this.resources) {
+        if (resource.isFree() && resource.hasLabel(label)) {
           free ++;
         }
       }
@@ -215,9 +235,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return found;
     }
     synchronized (this) {
-      for (LockableResource r : this.resources) {
-        if (r.isValidLabel(label, params))
-          found.add(r);
+      for (LockableResource resource : this.resources) {
+        if (resource.isValidLabel(label, params))
+          found.add(resource);
       }
     }
     return found;
@@ -239,8 +259,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     throws ExecutionException {
     List<LockableResource> found = new ArrayList<>();
     synchronized (this) {
-      for (LockableResource r : this.resources) {
-        if (r.scriptMatches(script, params)) found.add(r);
+      for (LockableResource resource : this.resources) {
+        if (resource.scriptMatches(script, params))
+          found.add(resource);
       }
     }
     return found;
@@ -250,17 +271,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (resourceName == null || resourceName.isEmpty()) {
       return null;
     }
-    LockableResource ret = null;
+
     synchronized (this) {
-      for (LockableResource r : this.resources) {
-        if (resourceName.equals(r.getName()))
-        {
-          ret = r;
-          break;
+      for (LockableResource resource : this.resources) {
+        if (resourceName.equals(resource.getName())) {
+          return resource;
         }
       }
     }
-    return ret;
+
+    return null;
   }
 
   public synchronized boolean queue(
@@ -268,13 +288,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     long queueItemId,
     String queueProjectName
   ) {
-    for (LockableResource r : resources) {
-      if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
+    for (LockableResource resource : resources) {
+      if (!resource.isFree()) {
         return false;
       }
     }
-    for (LockableResource r : resources) {
-      r.setQueued(queueItemId, queueProjectName);
+    for (LockableResource resource : resources) {
+      resource.setQueued(queueItemId, queueProjectName);
     }
     return true;
   }
@@ -402,9 +422,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
 
-    for (LockableResource rs : candidates) {
-      if (number != 0 && (selected.size() >= number)) break;
-      if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) selected.add(rs);
+    for (LockableResource resource : candidates) {
+      if (number != 0 && (selected.size() >= number))
+        break;
+      if (resource.isFree())
+        selected.add(resource);
     }
 
     // if did not get wanted amount or did not get all
@@ -427,16 +449,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
         new Object[] {queueItemProject, selected.size(), required_amount});
       // just to be sure, clean up
       synchronized (this) {
-        for (LockableResource x : this.resources) {
-          if (x.getQueueItemProject() != null && x.getQueueItemProject().equals(queueItemProject))
-            x.unqueue();
+        for (LockableResource resource : this.resources) {
+          if (resource.getQueueItemProject() != null && resource.getQueueItemProject().equals(queueItemProject))
+            resource.unqueue();
         }
       }
       return null;
     }
 
-    for (LockableResource rsc : selected) {
-      rsc.setQueued(queueItemId, queueItemProject);
+    for (LockableResource resource : selected) {
+      resource.setQueued(queueItemId, queueItemProject);
     }
     return selected;
   }
@@ -757,13 +779,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized boolean createResource(String name) {
     name = Util.fixEmptyAndTrim(name);
     if (name != null) {
-      LockableResource existent = fromName(name);
-      if (existent == null) {
-        LockableResource resource = new LockableResource(name);
-        resource.setEphemeral(true);
-        getResources().add(resource);
-        save();
-        return true;
+      synchronized (this) {
+        LockableResource existent = fromName(name);
+        if (existent == null) {
+          LockableResource resource = new LockableResource(name);
+          resource.setEphemeral(true);
+          this.addResource(resource);
+          this.save();
+          return true;
+        }
       }
     }
     return false;
@@ -772,13 +796,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public synchronized boolean createResourceWithLabel(String name, String label) {
     name = Util.fixEmptyAndTrim(name);
     if (name != null && label != null) {
-      LockableResource existent = fromName(name);
-      if (existent == null) {
-        LockableResource resource = new LockableResource(name);
-        resource.setLabels(label);
-        getResources().add(resource);
-        save();
-        return true;
+      synchronized (this) {
+        LockableResource existent = fromName(name);
+        if (existent == null) {
+          LockableResource resource = new LockableResource(name);
+          resource.setLabels(label);
+          this.addResource(resource);
+          this.save();
+          return true;
+        }
       }
     }
     return false;
@@ -787,20 +813,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @Restricted(NoExternalUse.class)
   public synchronized boolean createResourceWithLabelAndProperties(String name, String label, Map<String, String> properties) {
     if (name != null && label != null && properties != null) {
-      LockableResource existent = fromName(name);
-      if (existent == null) {
-        LockableResource resource = new LockableResource(name);
-        resource.setLabels(label);
-        resource.setProperties(
-          properties.entrySet().stream().map(e -> {
-            LockableResourceProperty p = new LockableResourceProperty();
-            p.setName(e.getKey());
-            p.setValue(e.getValue());
-            return p;
-          }).collect(Collectors.toList()));
-        getResources().add(resource);
-        save();
-        return true;
+      synchronized (this) {
+        LockableResource existent = fromName(name);
+        if (existent == null) {
+          LockableResource resource = new LockableResource(name);
+          resource.setLabels(label);
+          resource.setProperties(
+            properties.entrySet().stream().map(e -> {
+              LockableResourceProperty p = new LockableResourceProperty();
+              p.setName(e.getKey());
+              p.setValue(e.getValue());
+              return p;
+            }).collect(Collectors.toList()));
+          this.addResource(resource);
+          this.save();
+          return true;
+        }
       }
     }
     return false;
@@ -814,13 +842,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResource> resources,
     String userName
   ) {
-    for (LockableResource r : resources) {
-      if (r.isReserved() || r.isLocked() || r.isQueued()) {
+    for (LockableResource resource : resources) {
+      if (!resource.isFree()) {
         return false;
       }
     }
-    for (LockableResource r : resources) {
-      r.reserve(userName);
+    for (LockableResource resource : resources) {
+      resource.reserve(userName);
     }
     save();
     return true;
@@ -855,11 +883,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResource> resources,
     String userName
   ) {
-    for (LockableResource r : resources) {
-      if (r.isReserved() || r.isLocked() || r.isQueued()) {
-        r.unReserve();
+    for (LockableResource resource : resources) {
+      if (!resource.isFree()) {
+        resource.unReserve();
       }
-      r.setReservedBy(userName);
+      resource.setReservedBy(userName);
     }
     save();
   }

@@ -91,8 +91,11 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
       throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
     }
-    if (label != null && !LockableResourcesManager.get().isValidLabel( label ) ) {
-      throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    synchronized(lrm) {
+      if (label != null && !lrm.isValidLabel( label ) ) {
+        throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
+      }
     }
     if (resourceSelectStrategy != null ) {
       try {
@@ -139,8 +142,11 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
       if ((resourceLabel == null) && (resourceName == null)) {
         return FormValidation.error(Messages.error_labelOrNameMustBeSpecified());
       }
-      if (resourceLabel != null && !LockableResourcesManager.get().isValidLabel(resourceLabel)) {
-        return FormValidation.error(Messages.error_labelDoesNotExist(resourceLabel));
+      LockableResourcesManager lrm = LockableResourcesManager.get();
+      synchronized(lrm) {
+        if (resourceLabel != null && !lrm.isValidLabel(resourceLabel)) {
+          return FormValidation.error(Messages.error_labelDoesNotExist(resourceLabel));
+        }
       }
       return FormValidation.ok();
     }

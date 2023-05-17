@@ -23,7 +23,8 @@ THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler">
-  <j:if test="${it.getNumberOfAllLabels() != 0}">
+  <j:set var="allLabels" value="${it.getLabelsList()}" />
+  <j:if test="${allLabels.size() != 0}">
     <st:adjunct includes="io.jenkins.plugins.data-tables"/>
     <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
     <div class="table-responsive">
@@ -42,18 +43,18 @@ THE SOFTWARE.
           <th>${%labels.table.column.percentage}</th>
         </thead>
         <tbody>
-          <j:forEach var="label" items="${it.getAllLabels()}">
+          <j:forEach var="label" items="${allLabels}">
             <j:set
               var="freeCount"
-              value="${it.getFreeResourceAmount(label)}"
+              value="${label.free}"
             />
             <j:set
               var="allCount"
-              value="${it.getAssignedResourceAmount(label)}"
+              value="${label.assigned}"
             />
             <j:set
               var="percentage"
-              value="${it.getFreeResourcePercentage(label)}"
+              value="${label.percentage}"
             />
             <j:choose>
               <j:when test="${percentage lt 5}">
@@ -73,8 +74,8 @@ THE SOFTWARE.
               <td>
                 <a
                   class="jenkins-table__link model-link"
-                  href="${rootURL}/label/${label}"
-                  >${label}<button
+                  href="${rootURL}/label/${label.name}"
+                  >${label.name}<button
                     class="jenkins-menu-dropdown-chevron"
                   ></button
                 ></a>

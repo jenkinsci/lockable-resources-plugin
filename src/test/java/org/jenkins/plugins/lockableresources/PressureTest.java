@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.concurrent.CyclicBarrier;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -43,8 +44,9 @@ public class PressureTest extends LockStepTestBase {
    *  It simulates big system with many chaotic locks. Hopefully it runs always good,
    *  because any analysis here will be very hard.
    */
-  @Test ()
+  @Test
   public void pressure() throws Exception {
+    System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
     LockableResourcesManager lm = LockableResourcesManager.get();
     final int resourcesCount = 30;
 
@@ -113,7 +115,9 @@ public class PressureTest extends LockStepTestBase {
     j.waitForMessage("is locked, waiting...", b1);
 
     for(int i = 1; i <= resourcesCount; i++) {
+      j.createSlave("AgentAAA_" + i, "label label2", null);
       lm.createResourceWithLabel("resourceC_" + Integer.toString(i), "label1");
+      j.createSlave("AGENT_BBB_" + i, null, null);
     }
 
     lm.unreserve(Collections.singletonList(lm.fromName("resourceA_1")));

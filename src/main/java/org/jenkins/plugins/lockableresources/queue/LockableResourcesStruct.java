@@ -46,15 +46,17 @@ public class LockableResourcesStruct implements Serializable {
     queuedAt = new Date().getTime();
     required = new ArrayList<>();
 
-    LockableResourcesManager resourcesManager = LockableResourcesManager.get();
-    for (String name : property.getResources()) {
-      String resourceName = env.expand(name);
-      if (resourceName == null) {
-        continue;
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    synchronized(lrm) {
+      for (String name : property.getResources()) {
+        String resourceName = env.expand(name);
+        if (resourceName == null) {
+          continue;
+        }
+        lrm.createResource(resourceName);
+        LockableResource r = lrm.fromName(resourceName);
+        this.required.add(r);
       }
-      resourcesManager.createResource(resourceName);
-      LockableResource r = resourcesManager.fromName(resourceName);
-      this.required.add(r);
     }
 
     label = env.expand(property.getLabelName());
@@ -89,10 +91,13 @@ public class LockableResourcesStruct implements Serializable {
     queuedAt = new Date().getTime();
     required = new ArrayList<>();
     if (resources != null) {
-      for (String resource : resources) {
-        LockableResource r = LockableResourcesManager.get().fromName(resource);
-        if (r != null) {
-          this.required.add(r);
+      LockableResourcesManager lrm = LockableResourcesManager.get();
+      synchronized(lrm) {
+        for (String resource : resources) {
+          LockableResource r = lrm.fromName(resource);
+          if (r != null) {
+            this.required.add(r);
+          }
         }
       }
     }

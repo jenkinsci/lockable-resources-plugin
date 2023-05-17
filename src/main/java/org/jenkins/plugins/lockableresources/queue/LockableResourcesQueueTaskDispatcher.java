@@ -104,10 +104,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
       final List<LockableResource> selected;
       try {
-        selected =
-          LockableResourcesManager.get()
-            .tryQueue(
-              resources, item.getId(), project.getFullName(), resourceNumber, params, LOGGER);
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        synchronized (lrm) {
+          selected = lrm.tryQueue(resources, item.getId(), project.getFullName(), resourceNumber, params, LOGGER);
+        }
       } catch (ExecutionException ex) {
         Throwable toReport = ex.getCause();
         if (toReport == null) { // We care about the cause only
@@ -134,13 +134,15 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
       }
 
     } else {
-      if (LockableResourcesManager.get()
-        .queue(resources.required, item.getId(), project.getFullDisplayName())) {
-        LOGGER.finest(project.getName() + " reserved resources " + resources.required);
-        return null;
-      } else {
-        LOGGER.finest(project.getName() + " waiting for resources " + resources.required);
-        return new BecauseResourcesLocked(resources);
+      LockableResourcesManager lrm = LockableResourcesManager.get();
+      synchronized (lrm) {
+        if (lrm.queue(resources.required, item.getId(), project.getFullDisplayName())) {
+          LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+          return null;
+        } else {
+          LOGGER.finest(project.getName() + " waiting for resources " + resources.required);
+          return new BecauseResourcesLocked(resources);
+        }
       }
     }
   }

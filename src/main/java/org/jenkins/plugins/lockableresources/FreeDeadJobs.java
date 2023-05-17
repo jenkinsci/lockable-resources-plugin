@@ -26,27 +26,22 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
  */
 @Deprecated
 @ExcludeFromJacocoGeneratedReport
-public final class BackwardCompatibility {
-  private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
+public final class FreeDeadJobs {
+  private static final Logger LOG = Logger.getLogger(FreeDeadJobs.class.getName());
 
-  private BackwardCompatibility() {}
+  private FreeDeadJobs() {}
 
   @Initializer(after = InitMilestone.JOB_LOADED)
-  public static void compatibilityMigration() {
+  public static void freePostMortemResources() {
+
     LockableResourcesManager lrm = LockableResourcesManager.get();
     synchronized (lrm) {
-      List<LockableResource> resources = lrm.getResources();
-      LOG.log(Level.FINE, "lockable-resources-plugin compatibility migration task run for " + resources.size() + " resources");
-      for (LockableResource resource : resources) {
-        List<StepContext> queuedContexts = resource.getQueuedContexts();
-        if (!queuedContexts.isEmpty()) {
-          for (StepContext queuedContext : queuedContexts) {
-            List<String> resourcesNames = new ArrayList<>();
-            resourcesNames.add(resource.getName());
-            LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-            lrm.queueContext(queuedContext, Collections.singletonList(resourceHolder), resource.getName(), null);
-          }
-          queuedContexts.clear();
+      LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
+      for (LockableResource resource : lrm.getResources()) {
+        if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
+          LOG.log(Level.INFO, "lockable-resources-plugin reset resource " + resource.getName() +
+                              " due post mortem job: " + resource.getBuildName());
+          resource.recycle();
         }
       }
     }

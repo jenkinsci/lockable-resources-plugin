@@ -49,63 +49,63 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
-    for (LockStepResource resource : step.getResources()) {
-      List<String> resources = new ArrayList<>();
-      if (resource.resource != null) {
-        if (LockableResourcesManager.get().createResource(resource.resource)) {
-          logger.println("Resource [" + resource + "] did not exist. Created.");
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    synchronized(lrm) {
+      for (LockStepResource resource : step.getResources()) {
+        List<String> resources = new ArrayList<>();
+        if (resource.resource != null) {
+          if (lrm.createResource(resource.resource)) {
+            logger.println("Resource [" + resource + "] did not exist. Created.");
+          }
+          resources.add(resource.resource);
         }
-        resources.add(resource.resource);
+        resourceHolderList.add(
+          new LockableResourcesStruct(resources, resource.label, resource.quantity));
       }
-      resourceHolderList.add(
-        new LockableResourcesStruct(resources, resource.label, resource.quantity));
-    }
 
-    ResourceSelectStrategy resourceSelectStrategy;
-    try {
-      resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
-    } catch (IllegalArgumentException e) {
-      logger.println("Error: invalid resourceSelectStrategy: " + step.resourceSelectStrategy);
-      return true;
-    }
-    // determine if there are enough resources available to proceed
-    List<LockableResource> available =
-      LockableResourcesManager.get()
-        .checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
-    Run<?, ?> run = getContext().get(Run.class);
-
-    if (available == null
-      || !LockableResourcesManager.get()
-      .lock(
-        available,
-        run,
-        getContext(),
-        step.toString(),
-        step.variable,
-        step.inversePrecedence)) {
-      // No available resources, or we failed to lock available resources
-      // if the resource is known, we could output the active/blocking job/build
-      LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
-      boolean buildNameKnown = resource != null && resource.getBuildName() != null;
-      if (step.skipIfLocked) {
-        if (buildNameKnown) {
-          logger.println(
-            "[" + step + "] is locked by " + resource.getBuildName() + ", skipping execution...");
-        } else {
-          logger.println("[" + step + "] is locked, skipping execution...");
-        }
-        getContext().onSuccess(null);
+      ResourceSelectStrategy resourceSelectStrategy;
+      try {
+        resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+      } catch (IllegalArgumentException e) {
+        logger.println("Error: invalid resourceSelectStrategy: " + step.resourceSelectStrategy);
         return true;
-      } else {
-        if (buildNameKnown) {
-          logger.println("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
-        } else {
-          logger.println("[" + step + "] is locked, waiting...");
-        }
-        LockableResourcesManager.get()
-          .queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
       }
-    } // proceed is called inside lock if execution is possible
+      // determine if there are enough resources available to proceed
+      List<LockableResource> available =
+        lrm.checkResourcesAvailability(resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
+      Run<?, ?> run = getContext().get(Run.class);
+
+      if (available == null
+        || !lrm.lock(
+          available,
+          run,
+          getContext(),
+          step.toString(),
+          step.variable,
+          step.inversePrecedence)) {
+        // No available resources, or we failed to lock available resources
+        // if the resource is known, we could output the active/blocking job/build
+        LockableResource resource = lrm.fromName(step.resource);
+        boolean buildNameKnown = resource != null && resource.getBuildName() != null;
+        if (step.skipIfLocked) {
+          if (buildNameKnown) {
+            logger.println(
+              "[" + step + "] is locked by " + resource.getBuildName() + ", skipping execution...");
+          } else {
+            logger.println("[" + step + "] is locked, skipping execution...");
+          }
+          getContext().onSuccess(null);
+          return true;
+        } else {
+          if (buildNameKnown) {
+            logger.println("[" + step + "] is locked by " + resource.getBuildName() + ", waiting...");
+          } else {
+            logger.println("[" + step + "] is locked, waiting...");
+          }
+          lrm.queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
+        }
+      } // proceed is called inside lock if execution is possible
+    }
 
     return false;
   }
@@ -192,8 +192,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     protected void finished(StepContext context) throws Exception {
-      LockableResourcesManager.get()
-        .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
+      LockableResourcesManager lrm = LockableResourcesManager.get();
+      synchronized(lrm) {
+        lrm.unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
+      }
       context
         .get(TaskListener.class)
         .getLogger()
@@ -204,7 +206,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
   @Override
   public void stop(@NonNull Throwable cause) {
-    boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    boolean cleaned = false;
+    synchronized(lrm) {
+      cleaned = lrm.unqueueContext(getContext());
+    }
     if (!cleaned) {
       LOGGER.log(
         Level.WARNING,
