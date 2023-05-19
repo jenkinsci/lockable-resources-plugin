@@ -37,11 +37,13 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
+import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -525,7 +527,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
       }
-      save();
+      this.save();
     }
 
     return !needToWait;
@@ -603,7 +605,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // no context is queued which can be started once these resources are free'd.
       if (nextContext == null) {
         this.freeResources(remainingResourceNamesToUnLock, build);
-        save();
+        this.save();
         return;
       }
 
@@ -686,7 +688,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           inversePrecedence);
       }
     }
-    save();
+    this.save();
   }
 
   /** Returns names (IDs) of given *resources*.
@@ -850,7 +852,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     for (LockableResource resource : resources) {
       resource.reserve(userName);
     }
-    save();
+    this.save();
     return true;
   }
 
@@ -870,7 +872,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       r.setStolen();
     }
     unlock(resources, null, false);
-    save();
+    this.save();
     return true;
   }
 
@@ -889,7 +891,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
       resource.setReservedBy(userName);
     }
-    save();
+    this.save();
   }
 
   private void unreserveResources(@NonNull List<LockableResource> resources) {
@@ -897,7 +899,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       uncacheIfFreeing(l, false, true);
       l.unReserve();
     }
-    save();
+    this.save();
   }
 
   @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
@@ -994,7 +996,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         nextContext.getVariableName(),
         false);
     }
-    save();
+    this.save();
   }
 
   @NonNull
@@ -1008,7 +1010,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       uncacheIfFreeing(r, true, true);
       r.reset();
     }
-    save();
+    this.save();
   }
 
   /**
@@ -1052,7 +1054,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
     if (updated) {
-      save();
+      this.save();
     }
 
     return true;
@@ -1315,7 +1317,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     this.queuedContexts.add(
       new QueuedContextStruct(context, requiredResources, resourceDescription, variableName));
-    save();
+    this.save();
   }
 
   public synchronized boolean unqueueContext(StepContext context) {
@@ -1323,7 +1325,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       iter.hasNext(); ) {
       if (iter.next().getContext() == context) {
         iter.remove();
-        save();
+        this.save();
         return true;
       }
     }
@@ -1335,11 +1337,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
   }
 
-  boolean enableSave = false;
   @Override
   public synchronized void save() {
-    // TODO this shall be configurable
-    if (!enableSave) {
+    if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE)) {
       return;
     }
     if (BulkChange.contains(this)) return;
