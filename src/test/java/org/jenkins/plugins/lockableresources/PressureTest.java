@@ -47,6 +47,7 @@ public class PressureTest extends LockStepTestBase {
   @Test
   public void pressure() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
+    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     LockableResourcesManager lm = LockableResourcesManager.get();
     final int resourcesCount = 30;
 
