@@ -934,7 +934,6 @@ public class LockStepTest extends LockStepTestBase {
           + "  }\n"
           + "},\n"
           + "p2: {\n"
-          + "  sleep(1)\n" // we can not grand which parallel step starts first
           + "  semaphore 'wait-outside'\n"
           + "  lock(label: 'label1', variable: 'someVar2') {\n"
           + "    echo \"VAR2 IS $env.someVar2\"\n"
@@ -952,6 +951,7 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource", b1);
+    j.waitForMessage("VAR2 IS", b1);
     isPaused(b1, 2, 0);
 
     // Now the second parallel branch should get and release the lock...
