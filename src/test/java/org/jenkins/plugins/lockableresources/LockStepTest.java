@@ -934,6 +934,7 @@ public class LockStepTest extends LockStepTestBase {
           + "  }\n"
           + "},\n"
           + "p2: {\n"
+          + "  sleep(1)\n" // we can not grand which parallel step starts first
           + "  semaphore 'wait-outside'\n"
           + "  lock(label: 'label1', variable: 'someVar2') {\n"
           + "    echo \"VAR2 IS $env.someVar2\"\n"
