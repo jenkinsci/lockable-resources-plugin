@@ -202,9 +202,32 @@ To allow this behavior start jenkins with option `-Dorg.jenkins.plugins.lockable
 System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "true");
 ```
 
-note: When the node has been deleted, during the lockable-resource is locked / reserved / queued, then the lockable-resource will be NOT deleted.
+> *Note:* When the node has been deleted, during the lockable-resource is locked / reserved / queued, then the lockable-resource will be NOT deleted.
 
 ----
+
+## Improve performance
+
+To be safe thread over all jobs and resources, need to be all operations synchronized.
+This might lead to slow down your jobs. The jenkins self, has low CPU usage, but your jobs are very slow. Why?
+
+The most time are spend to write the lockable-resources states into local file system. This is important to get the correct state after Jenkins reboots.
+
+To eliminate this saving time has been added a property *DISABLE_SAVE*.
+
++ The best way is to use it with JCaC plugin. So you are sure, you have still correct
+resources on Jenkins start.
++ When you set pipeline durability level to *PERFORMANCE_OPTIMIZED*, it makes also sense to set this property to true.
+
+> *Note:* Keep in mind, that you will lost all your manual changes!
+
+> *Note:* This option is experimental. It has been tested in many scenarios, but no body know.
+
+To allow this behavior start jenkins with option `-Dorg.jenkins.plugins.lockableresources.DISABLE_SAVE=true` or run this groovy code.
+
+```groovy
+System.setProperty("org.jenkins.plugins.lockableresources.DISABLE_SAVE", "true");
+```
 
 ## Configuration as Code
 
