@@ -951,11 +951,15 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource", b1);
+
+    // wait until both resources are free.
+    // otherwise the next isPaused() check might fail
+    j.waitForMessage("VAR2 IS", b1);
     // this sometimes fails, but it does not looks like a failure in the plugin self
     // and it is not necessary to check it here, because this test case will check
     // env variable resolution and not if the paused actions works
-    // therefore is commented out for now
-    // isPaused(b1, 2, 0);
+    // therefore, when it fails again, you can comment it out.
+    isPaused(b1, 2, 0);
 
     // Now the second parallel branch should get and release the lock...
     j.waitForCompletion(b1);
