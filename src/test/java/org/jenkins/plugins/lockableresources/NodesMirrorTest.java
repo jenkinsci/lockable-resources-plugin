@@ -53,7 +53,7 @@ public class NodesMirrorTest {
 
   @Test
   public void mirror_locked_nodes() throws Exception {
-    System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "true");
+    System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
 
     j.createSlave("FirstAgent", "label label2", null);
     // this is asynchronous operation, so wait until resources has been created.
