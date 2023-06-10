@@ -52,5 +52,7 @@ public class InteroperabilityTest extends LockStepTestBase {
     // Wait for lock after the freestyle finishes
     j.waitForMessage("Lock released on resource [resource1]", b1);
     isPaused(b1, 1, 0);
+    j.assertBuildStatusSuccess(j.waitForCompletion(f1));
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
   }
 }
