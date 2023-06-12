@@ -36,6 +36,8 @@ public class LockStep extends Step implements Serializable {
 
   @CheckForNull public String label = null;
 
+  @CheckForNull public String reason = null;
+
   public int quantity = 0;
 
   /** name of environment variable to store locked resources in */
@@ -62,6 +64,11 @@ public class LockStep extends Step implements Serializable {
   @DataBoundSetter
   public void setInversePrecedence(boolean inversePrecedence) {
     this.inversePrecedence = inversePrecedence;
+  }
+  
+  @DataBoundSetter
+  public void setReason(String reason) {
+    this.reason = reason;
   }
 
   @DataBoundSetter
