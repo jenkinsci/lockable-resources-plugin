@@ -1,0 +1,21 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:l="/lib/layout">
+  <j:set var="resource" value="${request.getParameter('resource')}"/>
+  <j:set var="resourceObject" value="${it.getResource(resource)}"/>
+  <j:set var="reason" value="${resourceObject.reason}"/>
+  <l:ajax>
+    <f:block>
+      <form action="saveReason?resource=${h.urlEncode(resource)}" method="post" style="flex-grow: 1;">
+        <div class="jenkins-!-padding-right-4">
+          <f:entry help="${app.markupFormatter.helpUrl}">
+            <f:textarea name="reason" value="${reason}"
+              codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
+          </f:entry>
+        </div>
+        <div align="right">
+          <f:submit value="${%Save}"/>
+        </div>
+      </form>
+    </f:block>
+  </l:ajax>
+</j:jelly>
