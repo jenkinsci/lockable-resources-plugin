@@ -62,6 +62,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private final String name;
   private String description = "";
+  private String reason = "";
   /** @deprecated use labelsAsList instead due performance.
    */
   @Deprecated private transient String labels = null;
@@ -115,7 +116,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   /** @deprecated Use single-argument constructor instead (since 1.8) */
   @Deprecated
   @ExcludeFromJacocoGeneratedReport
-  public LockableResource(String name, String description, String labels, String reservedBy, String note) {
+  public LockableResource(String name, String description, String labels, String reservedBy, String note, String reason) {
     // todo throw exception, when the name is empty
     // todo check if the name contains only valid characters (no spaces, new lines ...)
     this.name = name;
@@ -123,6 +124,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.setLabels(labels);
     this.setReservedBy(reservedBy);
     this.setNote(note);
+    this.setReason(reason);
   }
 
   @DataBoundConstructor
@@ -178,6 +180,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @DataBoundSetter
   public void setDescription(String description) {
     this.description = Util.fixNull(description);
+  }
+
+  @DataBoundSetter
+  public void setReason(String reason) {
+    this.reason = Util.fixNull(reason);
+  }
+
+  @Exported
+  public String getReason() {
+    return this.reason;
   }
 
   @Exported
@@ -308,6 +320,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     binding.setVariable("resourceDescription", description);
     binding.setVariable("resourceLabels", this.getLabelsAsList());
     binding.setVariable("resourceNote", note);
+    binding.setVariable("resourceReason", reason);
     try {
       Object result =
         script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
