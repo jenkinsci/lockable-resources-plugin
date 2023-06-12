@@ -50,6 +50,8 @@ THE SOFTWARE.
         <col class="col-width-2 text-end" />
         <!-- timestamp -->
         <col class="col-width-1 text-end" />
+        <!-- reason -->
+        <col class="col-width-2 text-end" />
         <!-- labels -->
         <col class="col-width-5 text-end" />
         <!-- properties -->
@@ -62,6 +64,7 @@ THE SOFTWARE.
         <th>${%resources.table.column.resource}</th>
         <th>${%resources.table.column.status}</th>
         <th>${%resources.table.column.timestamp}</th>
+        <th>${%resources.table.column.reason}</th>
         <th>${%resources.table.column.labels}</th>
         <th>${%resources.table.column.properties}</th>
         <th>${%resources.table.column.action}</th>
