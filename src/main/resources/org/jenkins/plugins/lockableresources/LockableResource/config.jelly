@@ -18,8 +18,8 @@
     <f:textbox/>
   </f:entry>
   <f:entry title="${%entry.reason.title}" field="reason">
-    <f:textbox>
-  <f:entry>
+    <f:textbox/>
+  </f:entry>
   <f:entry title="${%entry.labels.title}" field="labels">
     <f:textbox/>
   </f:entry>
