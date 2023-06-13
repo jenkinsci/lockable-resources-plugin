@@ -28,13 +28,17 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
   @CheckForNull
   public String label = null;
+  
+  @CheckForNull
+  public String reason = null;
 
   public int quantity = 0;
 
-  LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
+  LockStepResource(@Nullable String resource, @Nullable String label, int quantity, String reason) {
     this.resource = resource;
     this.label = label;
     this.quantity = quantity;
+    this.reason = reason;
   }
 
   @DataBoundConstructor
@@ -48,6 +52,13 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
   public void setLabel(String label) {
     if (label != null && !label.isEmpty()) {
       this.label = label;
+    }
+  }
+
+  @DataBoundSetter
+  public void setReason(String reason) {
+    if (reason != null && !reason.isEmpty()) {
+      this.reason = reason;
     }
   }
 
