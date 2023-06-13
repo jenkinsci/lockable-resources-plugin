@@ -38,7 +38,7 @@ THE SOFTWARE.
       id="lockable-resources"
       data-remember-search-text="true"
       isLoaded="true"
-      data-columns-definition="[null, null, null, null, null, null, null]"
+      data-columns-definition="[null, null, null, null, null, null, null, null]"
       data-table-configuration="{}"
     >
       <colgroup>
@@ -209,7 +209,30 @@ THE SOFTWARE.
               </j:otherwise>
             </j:choose>
 
+            <!-- **************************************************************
+                 Reserved / locked timestamp column
+            -->
+            <td>
+              <j:if test="${resource.reason != null and !resource.reason.isEmpty()}">
+                <div class="row">
+                  <div class="col">
+                    ${resource.reason}
+                  </div>
+                </div>
+              </j:if>
+            </td>
+            <!-- **************************************************************
+                 Reason column
+            -->
+            <j:if test="${resource.reason != null and !resource.reason.isEmpty()}">
+              <div class="row">
+                <div class="col">
+                  ${resource.reason}
+                </div>
+              </div>
+            </j:if>
 
+            
             <!-- **************************************************************
                  Labels column
             -->
