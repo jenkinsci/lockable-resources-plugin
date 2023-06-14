@@ -40,8 +40,7 @@ public class LockStepTest extends LockStepTestBase {
       new CpsFlowDefinition(
         "lock('resource1') {\n" + "	echo 'Resource locked'\n" + "}\n" + "echo 'Finish'", true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
 
     assertNull(LockableResourcesManager.get().fromName("resource1"));
@@ -54,8 +53,7 @@ public class LockStepTest extends LockStepTestBase {
       new CpsFlowDefinition(
         "lock() {\n" + "  echo 'Nothing locked.'\n" + "}\n" + "echo 'Finish'", true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     j.assertLogContains("Lock acquired on [nothing]", b1);
   }
 
@@ -71,8 +69,7 @@ public class LockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     j.assertLogContains("Lock released on resource [Label: label1]", b1);
     j.assertLogContains("Resource locked: resource1", b1);
     isPaused(b1, 1, 0);
@@ -92,8 +89,7 @@ public class LockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     j.assertLogContains("Lock released on resource [Label: label1]", b1);
     j.assertLogContains("Resource locked: resource1", b1);
     isPaused(b1, 1, 0);
@@ -131,16 +127,19 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock Label: label1, Quantity: 2
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [Label: label1, Quantity: 2]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // #2 gets the lock before #3 (in the order as they requested the lock)
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
     SemaphoreStep.success("wait-inside/2", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b3);
     SemaphoreStep.success("wait-inside/3", null);
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b3, 1, 0);
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
@@ -184,17 +183,20 @@ public class LockStepTest extends LockStepTestBase {
     // Let 3 finish
     SemaphoreStep.success("wait-inside-quantity1/1", null);
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b3, 1, 0);
 
     // Unlock Label: label1, Quantity: 2
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [Label: label1, Quantity: 2]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // #2 gets the lock before #3 (in the order as they requested the lock)
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
     SemaphoreStep.success("wait-inside/2", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
@@ -252,6 +254,7 @@ public class LockStepTest extends LockStepTestBase {
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [Label: label1]", b1);
     isPaused(b1, 1, 0);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
     // Both get their lock
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b2);
@@ -260,7 +263,9 @@ public class LockStepTest extends LockStepTestBase {
     SemaphoreStep.success("wait-inside-quantity2/1", null);
     SemaphoreStep.success("wait-inside-quantity1/1", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b2, 1, 0);
     isPaused(b3, 1, 0);
 
@@ -293,15 +298,18 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resource1
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [resource1]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // #2 gets the lock before #3 (in the order as they requested the lock)
     j.waitForMessage("Lock acquired on [resource1]", b2);
     SemaphoreStep.success("wait-inside/2", null);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
     j.waitForMessage("Lock acquired on [resource1]", b3);
     SemaphoreStep.success("wait-inside/3", null);
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b3, 1, 0);
   }
 
@@ -332,6 +340,7 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resource1
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [resource1]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // #3 gets the lock before #2 because of inversePrecedence
@@ -341,6 +350,8 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForMessage("Lock acquired on [resource1]", b2);
     SemaphoreStep.success("wait-inside/3", null);
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
   }
 
@@ -378,7 +389,7 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b1, 2, 0);
     SemaphoreStep.success("inside-a/1", null);
 
-    j.waitForCompletion(b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     assertNull(LockableResourcesManager.get().fromName("resource1"));
   }
 
@@ -477,7 +488,7 @@ public class LockStepTest extends LockStepTestBase {
       prevBuild = rNext;
     }
     SemaphoreStep.success("wait-inside/3", null);
-    j.assertBuildStatus(Result.SUCCESS, j.waitForCompletion(prevBuild));
+    j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
   }
 
   @Issue("JENKINS-40879")
@@ -611,6 +622,7 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [{resource1},{resource2}]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // Both get their lock
@@ -620,7 +632,9 @@ public class LockStepTest extends LockStepTestBase {
     SemaphoreStep.success("wait-inside-p2/1", null);
     SemaphoreStep.success("wait-inside-p3/1", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b2, 1, 0);
     isPaused(b3, 1, 0);
   }
@@ -665,6 +679,7 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [{Label: label1},{resource1}]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b2, 1, 0);
 
     // Both get their lock
@@ -674,7 +689,9 @@ public class LockStepTest extends LockStepTestBase {
     SemaphoreStep.success("wait-inside-p2/1", null);
     SemaphoreStep.success("wait-inside-p3/1", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b2, 1, 0);
     isPaused(b3, 1, 0);
   }
@@ -719,16 +736,19 @@ public class LockStepTest extends LockStepTestBase {
     // Unlock resources
     SemaphoreStep.success("wait-inside/1", null);
     j.waitForMessage("Lock released on resource [{Label: label1},{resource1}]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // #2 gets the lock before #3 (in the order as they requested the lock)
     j.waitForMessage("Lock acquired on [resource1]", b2);
     SemaphoreStep.success("wait-inside-p2/1", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
     j.waitForMessage("Lock acquired on [Label: label1]", b3);
     SemaphoreStep.success("wait-inside-p3/1", null);
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     isPaused(b3, 1, 0);
 
     assertNotNull(LockableResourcesManager.get().fromName("resource1"));
@@ -788,6 +808,7 @@ public class LockStepTest extends LockStepTestBase {
     // Let 3 finish
     SemaphoreStep.success("wait-inside-quantity2/1", null);
     j.waitForMessage("Finish", b3);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
     j.assertLogContains("Resources locked: [resource1, resource3]", b3);
     isPaused(b3, 1, 0);
 
@@ -796,12 +817,14 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForMessage(
       "Lock released on resource [{resource4},{resource2},{Label: label1, Quantity: 2}]", b1);
     j.assertLogContains("Resources locked: [resource2, resource4]", b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 1, 0);
 
     // #2 gets the lock
     j.waitForMessage("Lock acquired on [Label: label1, Quantity: 3]", b2);
     SemaphoreStep.success("wait-inside-quantity3/1", null);
     j.waitForMessage("Finish", b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     // Could be any 3 resources, so just check the beginning of the message
     j.assertLogContains("Resources locked: [resource", b2);
     isPaused(b2, 1, 0);
@@ -828,7 +851,7 @@ public class LockStepTest extends LockStepTestBase {
           + "}",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
     // Variable should have been filled
     j.assertLogContains("VAR IS [resource1, resource2]", b1);
@@ -861,7 +884,7 @@ public class LockStepTest extends LockStepTestBase {
           + "}",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
     // Variable should have been filled
     j.assertLogContains("VAR IS main,extra0,extra1,extra2,extra3,extra4,extra5,extra6,extra7,extra8,extra9,extra10,extra11,"
@@ -911,8 +934,8 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b1, 1, 0);
 
     // Now job 2 should get and release the lock...
-    j.waitForCompletion(b1);
-    j.waitForCompletion(b2);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     isPaused(b2, 1, 0);
 
     // Variable should have been filled in both cases
@@ -962,7 +985,7 @@ public class LockStepTest extends LockStepTestBase {
     isPaused(b1, 2, 0);
 
     // Now the second parallel branch should get and release the lock...
-    j.waitForCompletion(b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     isPaused(b1, 2, 0);
 
     // Variable should have been filled in both cases
@@ -1425,8 +1448,7 @@ public class LockStepTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(new CpsFlowDefinition("lock(label: 'invalidLabel') {\n" + "}\n", true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.FAILURE, b1);
+    j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
     j.assertLogContains("The resource label does not exist: invalidLabel", b1);
     isPaused(b1, 0, 0);
   }
@@ -1443,8 +1465,7 @@ public class LockStepTest extends LockStepTestBase {
         "lock(resource: 'resource1', skipIfLocked: true) {\n" + "  echo 'Running body'\n" + "}",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
-    j.assertBuildStatus(Result.SUCCESS, b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     j.assertLogContains("[resource1] is locked, skipping execution...", b1);
     j.assertLogNotContains("Running body", b1);
   }
@@ -1464,7 +1485,7 @@ public class LockStepTest extends LockStepTestBase {
           + "}",
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-    j.waitForCompletion(b1);
+    j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
     // Variable should have been filled
     j.assertLogContains("resource1 HAS MYKEY=MYVAL1", b1);
