@@ -179,7 +179,7 @@ public class LockStep extends Step implements Serializable {
         .map(res -> "{" + res.toString() + "}")
         .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
-      return LockStepResource.toString(resource, label, quantity);
+      return LockStepResource.toString(resource, label, quantity, reason);
     } else {
       return "nothing";
     }
@@ -193,7 +193,7 @@ public class LockStep extends Step implements Serializable {
   public List<LockStepResource> getResources() {
     List<LockStepResource> resources = new ArrayList<>();
     if (resource != null || label != null) {
-      resources.add(new LockStepResource(resource, label, quantity));
+      resources.add(new LockStepResource(resource, label, quantity, reason));
     }
 
     if (extra != null) {

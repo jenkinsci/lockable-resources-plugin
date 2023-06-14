@@ -34,7 +34,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
   public int quantity = 0;
 
-  LockStepResource(@Nullable String resource, @Nullable String label, int quantity, String reason) {
+  LockStepResource(@Nullable String resource, @Nullable String label, int quantity, @Nullable String reason) {
     this.resource = resource;
     this.label = label;
     this.quantity = quantity;
@@ -69,10 +69,10 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
   @Override
   public String toString() {
-    return toString(resource, label, quantity);
+    return toString(resource, label, quantity, reason);
   }
 
-  public static String toString(String resource, String label, int quantity) {
+  public static String toString(String resource, String label, int quantity, String reason) {
     // a label takes always priority
     if (label != null) {
       if (quantity > 0) {
