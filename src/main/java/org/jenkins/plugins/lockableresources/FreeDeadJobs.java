@@ -24,7 +24,6 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
  * locked by build, but the build is no more running.
  * This script will 'unlock' all resource assigned to dead builds
  */
-@Deprecated
 @ExcludeFromJacocoGeneratedReport
 public final class FreeDeadJobs {
   private static final Logger LOG = Logger.getLogger(FreeDeadJobs.class.getName());
