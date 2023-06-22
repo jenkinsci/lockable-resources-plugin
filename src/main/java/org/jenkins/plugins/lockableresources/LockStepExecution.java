@@ -50,7 +50,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm) {
+    synchronized (lrm) {
       for (LockStepResource resource : step.getResources()) {
         List<String> resources = new ArrayList<>();
         if (resource.resource != null) {
@@ -193,7 +193,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     @Override
     protected void finished(StepContext context) throws Exception {
       LockableResourcesManager lrm = LockableResourcesManager.get();
-      synchronized(lrm) {
+      synchronized (lrm) {
         lrm.unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
       }
       context
@@ -208,7 +208,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   public void stop(@NonNull Throwable cause) {
     LockableResourcesManager lrm = LockableResourcesManager.get();
     boolean cleaned = false;
-    synchronized(lrm) {
+    synchronized (lrm) {
       cleaned = lrm.unqueueContext(getContext());
     }
     if (!cleaned) {

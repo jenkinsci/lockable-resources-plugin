@@ -47,20 +47,26 @@ public class LockableResourcesStruct implements Serializable {
     required = new ArrayList<>();
 
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm) {
+    synchronized (lrm) {
       for (String name : property.getResources()) {
         String resourceName = env.expand(name);
         if (resourceName == null) {
           continue;
         }
-        lrm.createResource(resourceName);
         LockableResource r = lrm.fromName(resourceName);
+        if (r == null) {
+          // looks like defensive code here. I hope this never happens
+          lrm.createResource(resourceName);
+          r = lrm.fromName(resourceName);
+        }
+
         this.required.add(r);
       }
     }
 
     label = env.expand(property.getLabelName());
-    if (label == null) label = "";
+    if (label == null)
+      label = "";
 
     resourceMatchScript = property.getResourceMatchScript();
     serializableResourceMatchScript = new SerializableSecureGroovyScript(resourceMatchScript);
@@ -68,7 +74,8 @@ public class LockableResourcesStruct implements Serializable {
     requiredVar = property.getResourceNamesVar();
 
     requiredNumber = property.getResourceNumber();
-    if (requiredNumber != null && requiredNumber.equals("0")) requiredNumber = null;
+    if (requiredNumber != null && requiredNumber.equals("0"))
+      requiredNumber = null;
   }
 
   /**
@@ -92,7 +99,7 @@ public class LockableResourcesStruct implements Serializable {
     required = new ArrayList<>();
     if (resources != null) {
       LockableResourcesManager lrm = LockableResourcesManager.get();
-      synchronized(lrm) {
+      synchronized (lrm) {
         for (String resource : resources) {
           LockableResource r = lrm.fromName(resource);
           if (r != null) {

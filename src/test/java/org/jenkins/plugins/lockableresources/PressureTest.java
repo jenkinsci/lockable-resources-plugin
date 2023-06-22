@@ -27,9 +27,7 @@ import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.WithPlugin;
-
-// import java.util.concurrent.TimeUnit;
-import org.junit.rules.Timeout;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 
 
@@ -38,18 +36,18 @@ public class PressureTest extends LockStepTestBase {
   private static final Logger LOGGER = Logger.getLogger(LockStepTest.class.getName());
 
   @Rule public JenkinsRule j = new JenkinsRule();
-  @Rule public Timeout globalTimeout = Timeout.seconds(300);
 
   /** Pressure test to lock resources via labels, resource name, ephemeral ...
    *  It simulates big system with many chaotic locks. Hopefully it runs always good,
    *  because any analysis here will be very hard.
    */
   @Test
+  @WithTimeout(300)
   public void pressure() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     LockableResourcesManager lm = LockableResourcesManager.get();
-    final int resourcesCount = 30;
+    final int resourcesCount = 100;
 
     for(int i = 1; i <= resourcesCount; i++) {
       lm.createResourceWithLabel("resourceA_" + Integer.toString(i), "label1 label2");

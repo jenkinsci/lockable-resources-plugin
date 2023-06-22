@@ -544,7 +544,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
       List<LockableResource> resources = new ArrayList<>();
       resources.add(this);
       LockableResourcesManager lrm =  org.jenkins.plugins.lockableresources.LockableResourcesManager.get();
-      synchronized(lrm) {
+      synchronized (lrm) {
         lrm.recycle(resources);
       }
     } catch (Exception e) {

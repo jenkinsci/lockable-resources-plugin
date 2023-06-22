@@ -70,10 +70,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                       justification = "Common Jenkins pattern to call method that can be overridden")
   public LockableResourcesManager() {
     LOGGER.info("LockableResourcesManager:: c-tor");
-    synchronized (this) {
-      this.resources = new ArrayList<>();
-      load();
-    }
+    this.resources = new ArrayList<>();
+    load();
   }
 
   public List<LockableResource> getResources() {
@@ -171,12 +169,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
     List<LockableResource> matching = new ArrayList<>();
-    synchronized (this) {
-      for (LockableResource r : this.resources) {
-        Run<?, ?> rBuild = r.getBuild();
-        if (rBuild != null && rBuild == build) {
-          matching.add(r);
-        }
+    for (LockableResource r : this.resources) {
+      Run<?, ?> rBuild = r.getBuild();
+      if (rBuild != null && rBuild == build) {
+        matching.add(r);
       }
     }
     return matching;
@@ -189,11 +185,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (label == null || label.isEmpty()) {
       return false;
     }
-    if (this.getAllLabels().contains(label))
-      return true;
-
-    final Map<String, Object> params = null;
+    LOGGER.log(Level.FINEST, "isValidLabel try access");
     synchronized (this) {
+      LOGGER.log(Level.FINEST, "isValidLabel accessed");
+      final Map<String, Object> params = null;
       for (LockableResource r : this.resources) {
         if (r.isValidLabel(label, params)) {
           return true;
@@ -290,13 +285,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     long queueItemId,
     String queueProjectName
   ) {
-    for (LockableResource resource : resources) {
-      if (resource.isReserved() || resource.isQueued(queueItemId) || resource.isLocked()) {
-        return false;
+    synchronized (this) {
+      for (LockableResource resource : resources) {
+        if (resource.isReserved() || resource.isQueued(queueItemId) || resource.isLocked()) {
+          return false;
+        }
       }
-    }
-    for (LockableResource resource : resources) {
-      resource.setQueued(queueItemId, queueProjectName);
+      for (LockableResource resource : resources) {
+        resource.setQueued(queueItemId, queueProjectName);
+      }
     }
     return true;
   }

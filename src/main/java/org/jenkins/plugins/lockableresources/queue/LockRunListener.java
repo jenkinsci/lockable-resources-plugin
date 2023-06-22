@@ -50,7 +50,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
       if (resources != null) {
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized(lrm) {
+        synchronized (lrm) {
           if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
             required.addAll(lrm.
               getResourcesFromProject(proj.getFullName()));
@@ -110,7 +110,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
 
     // obviously project name cannot be obtained here
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm) {
+    synchronized (lrm) {
       List<LockableResource> required = lrm.getResourcesFromBuild(build);
       if (!required.isEmpty()) {
         lrm.unlock(required, build);
@@ -131,7 +131,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
       return;
 
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm) {
+    synchronized (lrm) {
       List<LockableResource> required = lrm.getResourcesFromBuild(build);
       if (!required.isEmpty()) {
         lrm.unlock(required, build);

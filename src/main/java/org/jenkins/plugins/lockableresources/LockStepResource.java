@@ -13,6 +13,8 @@ import hudson.util.FormValidation;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.AncestorInPath;
@@ -30,6 +32,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
   public String label = null;
 
   public int quantity = 0;
+
+  private static final Logger LOGGER = Logger.getLogger(LockStepResource.class.getName());
 
   LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
     this.resource = resource;
@@ -91,12 +95,15 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
       throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
     }
+
+    LOGGER.finest("validate:: get LRM");
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm) {
-      if (label != null && !lrm.isValidLabel( label ) ) {
-        throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
-      }
+    LOGGER.finest("validate:: validate label");
+    if (label != null && !lrm.isValidLabel( label ) ) {
+      throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
     }
+    LOGGER.finest("validate:: validate label done");
+
     if (resourceSelectStrategy != null ) {
       try {
         ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
@@ -143,10 +150,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         return FormValidation.error(Messages.error_labelOrNameMustBeSpecified());
       }
       LockableResourcesManager lrm = LockableResourcesManager.get();
-      synchronized(lrm) {
-        if (resourceLabel != null && !lrm.isValidLabel(resourceLabel)) {
-          return FormValidation.error(Messages.error_labelDoesNotExist(resourceLabel));
-        }
+      if (resourceLabel != null && !lrm.isValidLabel(resourceLabel)) {
+        return FormValidation.error(Messages.error_labelDoesNotExist(resourceLabel));
       }
       return FormValidation.ok();
     }

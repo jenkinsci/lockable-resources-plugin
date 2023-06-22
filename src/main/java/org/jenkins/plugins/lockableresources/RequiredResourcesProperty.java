@@ -171,7 +171,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       } else {
         List<String> wrongNames = new ArrayList<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized(lrm) {
+        synchronized (lrm) {
           for (String name : names.split("\\s+")) {
             boolean found = false;
             if (lrm.fromName(name) == null) {
@@ -207,13 +207,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
           Messages.error_labelAndNameOrGroovySpecified());
       } else {
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized(lrm) {
-          if (lrm.isValidLabel(label)) {
-            return FormValidation.ok();
-          } else {
-            return FormValidation.error(
-              Messages.error_labelDoesNotExist(label));
-          }
+        if (lrm.isValidLabel(label)) {
+          return FormValidation.ok();
+        } else {
+          return FormValidation.error(
+            Messages.error_labelDoesNotExist(label));
         }
       }
     }
@@ -271,7 +269,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       value = Util.fixEmptyAndTrim(value);
 
       LockableResourcesManager lrm = LockableResourcesManager.get();
-      synchronized(lrm) {
+      synchronized (lrm) {
         for (String l : lrm.getAllLabels())
           if (value != null && l.startsWith(value))
             c.add(l);
@@ -293,7 +291,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
       if (value != null) {
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized(lrm) {
+        synchronized (lrm) {
           for (LockableResource r : lrm.getResources()) {
             if (r.getName().startsWith(value))
               c.add(r.getName());

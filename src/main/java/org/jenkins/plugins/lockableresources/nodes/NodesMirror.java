@@ -28,6 +28,7 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 public class NodesMirror extends ComputerListener {
 
   private static final Logger LOG = Logger.getLogger(NodesMirror.class.getName());
+  private static LockableResourcesManager lrm = LockableResourcesManager.get();
 
   //---------------------------------------------------------------------------
   private static boolean isNodeMirrorEnabled() {
@@ -53,34 +54,35 @@ public class NodesMirror extends ComputerListener {
       return;
     }
 
-    deleteExistingNodes();
+    synchronized (lrm) {
+      deleteExistingNodes();
 
-    for (Node n : Jenkins.get().getNodes()) {
-      mirrorNode(n);
+      for (Node n : Jenkins.get().getNodes()) {
+        mirrorNode(n);
+      }
     }
   }
 
   //---------------------------------------------------------------------------
   private static void deleteExistingNodes() {
-    LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized (lrm) {
-      Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
-      while (resourceIterator.hasNext()) {
-        LockableResource resource = resourceIterator.next();
-        if (!resource.isNodeResource()) {
-          continue;
-        }
-        if (Jenkins.get().getNode(resource.getName()) != null) {
-          // the node exist, do not remove the resource
-          continue;
-        }
-        if (!resource.isFree()) {
-          // the resource is still used somewhere. Do not remove it
-          continue;
-        }
-        resourceIterator.remove();
+
+    Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
+    while (resourceIterator.hasNext()) {
+      LockableResource resource = resourceIterator.next();
+      if (!resource.isNodeResource()) {
+        continue;
       }
+      if (Jenkins.get().getNode(resource.getName()) != null) {
+        // the node exist, do not remove the resource
+        continue;
+      }
+      if (!resource.isFree()) {
+        // the resource is still used somewhere. Do not remove it
+        continue;
+      }
+      resourceIterator.remove();
     }
+
   }
 
   //---------------------------------------------------------------------------
@@ -89,24 +91,24 @@ public class NodesMirror extends ComputerListener {
       return;
     }
 
-    LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized (lrm) {
-      LockableResource nodeResource = lrm.fromName(node.getNodeName());
-      boolean exist = nodeResource != null;
-      if (!exist) {
-        nodeResource = new LockableResource(node.getNodeName());
-      }
+    LockableResource nodeResource = new LockableResource(node.getNodeName());
 
-      Set<LabelAtom> assignedLabels = new HashSet<>(node.getAssignedLabels());
-      assignedLabels.remove(node.getSelfLabel());
-      nodeResource.setLabels(assignedLabels.stream().map(Object::toString).collect(Collectors.joining(" ")));
-      nodeResource.setNodeResource(true);
-      nodeResource.setEphemeral(false);
-      nodeResource.setDescription(node.getNodeDescription());
+    Set<LabelAtom> assignedLabels = new HashSet<>(node.getAssignedLabels());
+    assignedLabels.remove(node.getSelfLabel());
+    nodeResource.setLabels(assignedLabels.stream().map(Object::toString).collect(Collectors.joining(" ")));
+    nodeResource.setNodeResource(true);
+    nodeResource.setEphemeral(false);
+    nodeResource.setDescription(node.getNodeDescription());
+
+    LockableResource origNodeResource = lrm.fromName(node.getNodeName());
+
+    if (origNodeResource == null) {
       LOG.log(Level.FINE, "lockable-resources-plugin add node-resource: " + nodeResource.getName());
-      if (!exist) {
-        lrm.getResources().add(nodeResource);
-      }
+      lrm.getResources().add(nodeResource);
+    } else if (!nodeResource.equals(origNodeResource)) {
+      LOG.log(Level.FINE, "lockable-resources-plugin change in node-resource: " + nodeResource.getName());
+    } else {
+      LOG.log(Level.FINE, "lockable-resources-plugin no-change in node-resource: " + nodeResource.getName());
     }
   }
 }

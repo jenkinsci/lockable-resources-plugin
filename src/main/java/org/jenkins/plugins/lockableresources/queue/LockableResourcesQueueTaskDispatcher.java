@@ -135,14 +135,12 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     } else {
       LockableResourcesManager lrm = LockableResourcesManager.get();
-      synchronized (lrm) {
-        if (lrm.queue(resources.required, item.getId(), project.getFullDisplayName())) {
-          LOGGER.finest(project.getName() + " reserved resources " + resources.required);
-          return null;
-        } else {
-          LOGGER.finest(project.getName() + " waiting for resources " + resources.required);
-          return new BecauseResourcesLocked(resources);
-        }
+      if (lrm.queue(resources.required, item.getId(), project.getFullDisplayName())) {
+        LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+        return null;
+      } else {
+        LOGGER.finest(project.getName() + " waiting for resources " + resources.required);
+        return new BecauseResourcesLocked(resources);
       }
     }
   }
