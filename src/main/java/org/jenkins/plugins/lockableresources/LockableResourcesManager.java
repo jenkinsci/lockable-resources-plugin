@@ -1267,6 +1267,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @Override
   public synchronized void save() {
+    if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE)) {
+      return;
+    }
+
     if (BulkChange.contains(this)) return;
 
     try {
