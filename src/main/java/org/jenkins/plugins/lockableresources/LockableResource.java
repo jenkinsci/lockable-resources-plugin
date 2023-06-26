@@ -138,6 +138,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     if (queuedContexts == null) { // this field was added after the initial version if this class
       queuedContexts = new ArrayList<>();
     }
+    if (properties == null) {
+      properties = new ArrayList<>();
+    }
     this.repairLabels();
     return this;
   }

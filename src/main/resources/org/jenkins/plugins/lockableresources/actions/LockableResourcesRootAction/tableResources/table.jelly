@@ -70,12 +70,12 @@ THE SOFTWARE.
         <th>${%resources.table.column.action}</th>
       </thead>
       <tbody>
-        <j:forEach var="resource" items="${it.resources}">
+        <j:forEach var="resource" items="${it.resources}" varStatus="idx">
           <tr data-resource-name="${resource.name}">
             <!-- **************************************************************
                  Index
             -->
-            <td>${i + 1}</td>
+            <td>${idx.index + 1}</td>
 
             <!-- **************************************************************
                  Column with common resource data
