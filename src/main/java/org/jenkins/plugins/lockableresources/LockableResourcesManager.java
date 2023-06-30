@@ -42,6 +42,7 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
