@@ -37,6 +37,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
+import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
@@ -61,6 +62,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * (freestyle builds) regular Jenkins queue is used.
    */
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+
+  // cache to enable / disable saving lockable-resources state
+  private boolean enableSave = null;
 
   @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
                       justification = "Common Jenkins pattern to call method that can be overridden")
@@ -1268,11 +1272,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @Override
   public synchronized void save() {
-    if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE)) {
-      return;
+    if (enableSave == null)
+    {
+      // read system property and chache it.
+      // disable == false means enable
+      enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) == false;
     }
 
-    if (BulkChange.contains(this)) return;
+    if (enableSave == false)
+      return; // savinig is disabled
+
+    if (BulkChange.contains(this))
+      return; // no change detected
 
     try {
       getConfigFile().write(this);
