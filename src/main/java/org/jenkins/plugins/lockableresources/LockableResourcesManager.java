@@ -64,7 +64,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
   // cache to enable / disable saving lockable-resources state
-  private boolean enableSave = null;
+  private int enableSave = -1;
 
   @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
                       justification = "Common Jenkins pattern to call method that can be overridden")
@@ -1272,14 +1272,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @Override
   public synchronized void save() {
-    if (enableSave == null)
+    if (enableSave == -1)
     {
       // read system property and chache it.
-      // disable == false means enable
-      enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) == false;
+      enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
     }
 
-    if (enableSave == false)
+    if (enableSave == 0)
       return; // savinig is disabled
 
     if (BulkChange.contains(this))
