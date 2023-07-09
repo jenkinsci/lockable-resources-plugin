@@ -42,3 +42,59 @@ function replaceNote(element, resourceName) {
   });
   return false;
 }
+
+function format(d) {
+  // `d` is the original data object for the row
+  // show all the hidden columns in the child row
+  var hiddenRows = getHiddenColumns();
+  return hiddenRows.map(i => d[i]).join("<br>");
+}
+
+function getHiddenColumns() {
+    // returns the indexes of all hidden rows
+    var indexes = new Array();
+
+    resourceTable.columns().every( function () {
+        if (!this.visible())
+            indexes.push(this.index())
+    });
+
+    return indexes;
+}
+
+jQuery(document).ready(function() {
+  resourceTable = jQuery('#lockable-resources').DataTable( {
+    responsive: {
+        details: {
+            type: 'column'
+        }
+    },
+    columnDefs: [
+        // use columns names, as how they are defined in the <th> elements in jelly file
+        { targets: "index", className: 'dt-control' },
+        { targets: "properties", visible: false }
+    ],
+    order: [ 0, 'asc' ]
+  } );
+
+
+  // set visible in columnDefs instead
+  // resourceTable.column('properties:name').visible( false );
+
+  // Add event listener for opening and closing details
+  jQuery('#lockable-resources tbody').on('click', 'td.dt-control', function () {
+      var tr = jQuery(this).closest('tr');
+      var row = resourceTable.row(tr);
+
+      // child row example taken from https://datatables.net/examples/api/row_details.html
+      if (row.child.isShown()) {
+          // This row is already open - close it
+          row.child.hide();
+          tr.removeClass('shown');
+      } else {
+          // Open this row
+          row.child(format(row.data())).show();
+          tr.addClass('shown');
+      }
+  });
+} );
