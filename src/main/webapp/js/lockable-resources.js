@@ -54,7 +54,7 @@ function getHiddenColumns() {
     // returns the indexes of all hidden rows
     var indexes = new Array();
 
-    resourceTable.columns().every( function () {
+    jQuery("#lockable-resources").DataTable().columns().every( function () {
         if (!this.visible())
             indexes.push(this.index())
     });
@@ -63,28 +63,10 @@ function getHiddenColumns() {
 }
 
 jQuery(document).ready(function() {
-  resourceTable = jQuery('#lockable-resources').DataTable( {
-    responsive: {
-        details: {
-            type: 'column'
-        }
-    },
-    columnDefs: [
-        // use columns names, as how they are defined in the <th> elements in jelly file
-        { targets: "index", className: 'dt-control' },
-        { targets: "properties", visible: false }
-    ],
-    order: [ 0, 'asc' ]
-  } );
-
-
-  // set visible in columnDefs instead
-  // resourceTable.column('properties:name').visible( false );
-
   // Add event listener for opening and closing details
   jQuery('#lockable-resources tbody').on('click', 'td.dt-control', function () {
       var tr = jQuery(this).closest('tr');
-      var row = resourceTable.row(tr);
+      var row = jQuery("#lockable-resources").DataTable().row(tr);
 
       // child row example taken from https://datatables.net/examples/api/row_details.html
       if (row.child.isShown()) {

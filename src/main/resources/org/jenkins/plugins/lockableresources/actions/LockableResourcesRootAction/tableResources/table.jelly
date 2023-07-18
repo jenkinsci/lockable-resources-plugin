@@ -35,12 +35,25 @@ THE SOFTWARE.
 
   <div class="table-responsive">
     <table
-      class="jenkins-table jenkins-!-margin-bottom-4"
+      class="jenkins-table jenkins-!-margin-bottom-4 data-table"
       id="lockable-resources"
       data-remember-search-text="true"
       isLoaded="true"
       data-columns-definition="[null, null, null, null, null, null, null]"
-      data-table-configuration="{}"
+      data-table-configuration='
+      {
+        "responsive": {
+          "details": {
+            "type": "column"
+          }
+        },
+        "columnDefs": [
+            { "targets": "index", "className": "dt-control" },
+            { "targets": "properties", "visible": false }
+        ],
+        "order": [ 0, "asc" ],
+        "stateSave": true
+      }'
     >
       <colgroup>
         <!-- index -->
