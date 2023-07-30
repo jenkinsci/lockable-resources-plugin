@@ -52,6 +52,7 @@ public class LockableResourcesStruct implements Serializable {
       if (resourceName == null) {
         continue;
       }
+      // TODO createAndGetResource, lrm.fomName() is performance killer
       resourcesManager.createResource(resourceName);
       LockableResource r = resourcesManager.fromName(resourceName);
       this.required.add(r);

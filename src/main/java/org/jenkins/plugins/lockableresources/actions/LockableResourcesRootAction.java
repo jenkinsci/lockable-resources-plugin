@@ -102,6 +102,7 @@ public class LockableResourcesRootAction implements RootAction {
     return LockableResourcesManager.get().getResources();
   }
 
+  // TODO check it where is used, lrm.fomName() is performance killer
   public LockableResource getResource(final String resourceName) {
     return LockableResourcesManager.get().fromName(resourceName);
   }

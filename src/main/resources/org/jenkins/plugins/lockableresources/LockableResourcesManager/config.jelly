@@ -13,6 +13,7 @@
   xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
   <f:section title="${%section.title}">
     <f:entry title="${%entry.title}">
+      <!-- all resources -->
       <f:repeatable field="declaredResources" header="${%field.header}" minimum="0" add="${%field.add}">
         <table width="100%">
           <st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>

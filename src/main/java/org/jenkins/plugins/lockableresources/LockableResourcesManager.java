@@ -52,7 +52,10 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
+  // TODO change it to hashMap, list iteration are performance killer
+  // and most time are spend in search. See also fromName
   private List<LockableResource> resources;
+  private SecureGroovyScript nodeMatchScript;
   private transient Cache<Long,List<LockableResource>> cachedCandidates = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
 
   /**
@@ -1274,6 +1277,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     } catch (IOException e) {
       LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
     }
+  }
+
+  public SecureGroovyScript getNodeMatchScript() {
+    return nodeMatchScript;
   }
 
   private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
