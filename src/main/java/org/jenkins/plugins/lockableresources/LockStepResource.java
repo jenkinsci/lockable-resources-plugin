@@ -28,13 +28,17 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
   @CheckForNull
   public String label = null;
+  
+  @CheckForNull
+  public String reason = null;
 
   public int quantity = 0;
 
-  LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
+  LockStepResource(@Nullable String resource, @Nullable String label, int quantity, @Nullable String reason) {
     this.resource = resource;
     this.label = label;
     this.quantity = quantity;
+    this.reason = reason;
   }
 
   @DataBoundConstructor
@@ -52,16 +56,23 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
   }
 
   @DataBoundSetter
+  public void setReason(String reason) {
+    if (reason != null && !reason.isEmpty()) {
+      this.reason = reason;
+    }
+  }
+
+  @DataBoundSetter
   public void setQuantity(int quantity) {
     this.quantity = quantity;
   }
 
   @Override
   public String toString() {
-    return toString(resource, label, quantity);
+    return toString(resource, label, quantity, reason);
   }
 
-  public static String toString(String resource, String label, int quantity) {
+  public static String toString(String resource, String label, int quantity, String reason) {
     // a label takes always priority
     if (label != null) {
       if (quantity > 0) {

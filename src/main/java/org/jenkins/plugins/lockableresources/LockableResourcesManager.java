@@ -103,6 +103,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         locked.setDescription(r.getDescription());
         locked.setLabels(r.getLabels());
         locked.setEphemeral(false);
+        locked.setReason(r.getReason());
         locked.setNote(r.getNote());
         mergedResources.add(locked);
         continue;
@@ -115,6 +116,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       r.setDescription("");
       r.setLabels("");
       r.setNote("");
+      r.setReason("");
       r.setEphemeral(true);
       mergedResources.add(r);
     }

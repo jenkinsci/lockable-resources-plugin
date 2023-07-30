@@ -42,3 +42,27 @@ function replaceNote(element, resourceName) {
   });
   return false;
 }
+
+function replaceReason(element, resourceName) {
+  var d = document.getElementById("reason-" + resourceName);
+  d.innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>loading...</div>";
+  fetch("reasonForm", {
+    method: "post",
+    headers: crumb.wrap({
+      "Content-Type": "application/x-www-form-urlencoded",
+    }),
+    body: new URLSearchParams({
+      resource: resourceName,
+    }),
+  }).then((rsp) => {
+      rsp.text().then((responseText) => {
+        d.innerHTML = responseText;
+        evalInnerHtmlScripts(responseText, function () {
+          Behaviour.applySubtree(d);
+          d.getElementsByTagName("TEXTAREA")[0].focus();
+        });
+        layoutUpdateCallback.call();
+      });
+  });
+  return false;
+}
