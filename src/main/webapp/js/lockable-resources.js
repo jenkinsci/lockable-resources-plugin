@@ -42,3 +42,41 @@ function replaceNote(element, resourceName) {
   });
   return false;
 }
+
+function format(d) {
+  // `d` is the original data object for the row
+  // show all the hidden columns in the child row
+  var hiddenRows = getHiddenColumns();
+  return hiddenRows.map(i => d[i]).join("<br>");
+}
+
+function getHiddenColumns() {
+    // returns the indexes of all hidden rows
+    var indexes = new Array();
+
+    jQuery("#lockable-resources").DataTable().columns().every( function () {
+        if (!this.visible())
+            indexes.push(this.index())
+    });
+
+    return indexes;
+}
+
+jQuery(document).ready(function() {
+  // Add event listener for opening and closing details
+  jQuery('#lockable-resources tbody').on('click', 'td.dt-control', function () {
+      var tr = jQuery(this).closest('tr');
+      var row = jQuery("#lockable-resources").DataTable().row(tr);
+
+      // child row example taken from https://datatables.net/examples/api/row_details.html
+      if (row.child.isShown()) {
+          // This row is already open - close it
+          row.child.hide();
+          tr.removeClass('shown');
+      } else {
+          // Open this row
+          row.child(format(row.data())).show();
+          tr.addClass('shown');
+      }
+  });
+} );
