@@ -41,22 +41,7 @@ THE SOFTWARE.
       data-columns-definition="[null, null, null, null, null, null, null]"
       data-table-configuration="{}"
     >
-      <colgroup>
-        <!-- index -->
-        <col class="col-width-0 text-end" />
-        <!-- resouce -->
-        <col class="col-width-5 text-end" />
-        <!-- status -->
-        <col class="col-width-2 text-end" />
-        <!-- timestamp -->
-        <col class="col-width-1 text-end" />
-        <!-- labels -->
-        <col class="col-width-5 text-end" />
-        <!-- properties -->
-        <col class="col-width-5 text-end" />
-        <!-- actions -->
-        <col action="col-width-1 text-end" />
-      </colgroup>
+
       <thead>
         <th>${%resources.table.column.index}</th>
         <th>${%resources.table.column.resource}</th>
@@ -250,7 +235,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button
                       onClick="resource_action(this, 'unlock');"
-                      class="jenkins-button j.jenkins-!-warning-color"
+                      class="jenkins-button j.jenkins-!-warning-color width-100"
                       tooltip="${%btn.unlock.detail}"
                     >
                       ${%btn.unlock}
@@ -259,7 +244,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.STEAL}">
                     <button
                       onClick="resource_action(this, 'steal');"
-                      class="jenkins-button jenkins-!-destructive-color"
+                      class="jenkins-button jenkins-!-destructive-color width-100"
                       tooltip="${%btn.steal.detail}"
                     >
                       ${%btn.steal}
@@ -271,7 +256,7 @@ THE SOFTWARE.
                     <j:if test="${resource.isReservedByCurrentUser() or h.hasPermission(app.ADMINISTER)}">
                       <button
                         onClick="resource_action(this, 'unreserve');"
-                        class="jenkins-button jenkins-!-success-color"
+                        class="jenkins-button jenkins-!-success-color width-100"
                         tooltip="${%btn.unReserve.detail}"
                       >
                         ${%btn.unReserve}
@@ -282,7 +267,7 @@ THE SOFTWARE.
                     <j:if test="${!resource.isReservedByCurrentUser()}">
                       <button
                         onClick="resource_action(this, 'reassign');"
-                        class="jenkins-button jenkins-button--primary"
+                        class="jenkins-button jenkins-button--primary width-100"
                         tooltip="${%btn.reassign.detail}"
                       >
                         ${%btn.reassign}
@@ -294,7 +279,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button
                       onClick="resource_action(this, 'reset');"
-                      class="jenkins-button jenkins-!-destructive-color"
+                      class="jenkins-button jenkins-!-destructive-color width-100"
                       tooltip="${%btn.reset.detail}"
                     >
                       ${%btn.reset}
@@ -305,7 +290,7 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.RESERVE}">
                     <button
                       onClick="resource_action(this, 'reserve');"
-                      class="jenkins-button jenkins-button--primary"
+                      class="jenkins-button jenkins-button--primary width-100"
                       tooltip="${%btn.reserve.detail}"
                     >
                       ${%btn.reserve}
