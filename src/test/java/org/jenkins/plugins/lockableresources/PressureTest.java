@@ -1,6 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -65,7 +67,6 @@ public class PressureTest extends LockStepTestBase {
   private void pressure(final int resourcesCount) throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    final int resourcesCount = 70;
 
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceA_" + Integer.toString(i), "label1 label2");
@@ -114,13 +115,15 @@ public class PressureTest extends LockStepTestBase {
     p.setDefinition(new CpsFlowDefinition(pipeCode, true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
-    WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
-    p2.setDefinition(new CpsFlowDefinition(pipeCode, true));
-    WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+    List<WorkflowRun> otherBuilds = new ArrayList<>();
 
-    WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
-    p3.setDefinition(new CpsFlowDefinition(pipeCode, true));
-    WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
+    for (int i = 2; i <= resourcesCount; i++) {
+      WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p" + i);
+      p2.setDefinition(new CpsFlowDefinition(pipeCode, true));
+      WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+      otherBuilds.add(b2);
+    }
+
 
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceB_" + Integer.toString(i), "label1");
@@ -141,7 +144,8 @@ public class PressureTest extends LockStepTestBase {
     }
 
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-    j.assertBuildStatusSuccess(j.waitForCompletion(b2));
-    j.assertBuildStatusSuccess(j.waitForCompletion(b3));
-  }
+    for(WorkflowRun b2 : otherBuilds) {
+      j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+    }
+   }
 }
