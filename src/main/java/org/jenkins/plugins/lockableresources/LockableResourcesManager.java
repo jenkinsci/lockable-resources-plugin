@@ -37,11 +37,13 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
+import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -60,6 +62,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * (freestyle builds) regular Jenkins queue is used.
    */
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+
+  // cache to enable / disable saving lockable-resources state
+  private int enableSave = -1;
 
   @SuppressFBWarnings(value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
                       justification = "Common Jenkins pattern to call method that can be overridden")
@@ -1267,7 +1272,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   @Override
   public synchronized void save() {
-    if (BulkChange.contains(this)) return;
+    if (enableSave == -1)
+    {
+      // read system property and chache it.
+      enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
+    }
+
+    if (enableSave == 0)
+      return; // savinig is disabled
+
+    if (BulkChange.contains(this))
+      return; // no change detected
 
     try {
       getConfigFile().write(this);
