@@ -66,6 +66,9 @@ public class QueuedContextStruct implements Serializable {
   @Restricted(NoExternalUse.class) // used by jelly
   public Run<?, ?> getBuild() {
     try {
+      if (this.getContext() == null) {
+        return null;
+      }
       return this.getContext().get(Run.class);
     } catch (IOException | InterruptedException e) {
       // for some reason there is no Run object for this context

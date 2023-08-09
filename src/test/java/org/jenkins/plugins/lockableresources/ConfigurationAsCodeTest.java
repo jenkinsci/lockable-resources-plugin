@@ -36,7 +36,7 @@ public class ConfigurationAsCodeTest {
     assertEquals("Reserved_A", declaredResource.getReservedBy());
     assertEquals("Note A", declaredResource.getNote());
 
-    List<LockableResource> resources = LockableResourcesManager.get().getResources();
+    List<LockableResource> resources = LockableResourcesManager.get().getReadOnlyResources();
     assertEquals(
       "The number of resources is wrong. Check your configuration-as-code.yml",
       1,

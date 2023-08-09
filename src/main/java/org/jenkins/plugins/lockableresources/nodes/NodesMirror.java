@@ -25,6 +25,7 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 public class NodesMirror extends ComputerListener {
 
   private static final Logger LOG = Logger.getLogger(NodesMirror.class.getName());
+  private static LockableResourcesManager lrm = LockableResourcesManager.get();
 
   //---------------------------------------------------------------------------
   private static boolean isNodeMirrorEnabled() {
@@ -50,16 +51,17 @@ public class NodesMirror extends ComputerListener {
       return;
     }
 
-    deleteExistingNodes();
+    synchronized(lrm.syncResources) {
+      deleteExistingNodes();
 
-    for (Node n : Jenkins.get().getNodes()) {
-      mirrorNode(n);
+      for (Node n : Jenkins.get().getNodes()) {
+        mirrorNode(n);
+      }
     }
   }
 
   //---------------------------------------------------------------------------
   private static void deleteExistingNodes() {
-    LockableResourcesManager lrm = LockableResourcesManager.get();
     Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
     while (resourceIterator.hasNext()) {
       LockableResource resource = resourceIterator.next();
@@ -81,7 +83,6 @@ public class NodesMirror extends ComputerListener {
       return;
     }
 
-    LockableResourcesManager lrm = LockableResourcesManager.get();
     LockableResource nodeResource = lrm.fromName(node.getNodeName());
     boolean exist = nodeResource != null;
     if (!exist) {
@@ -93,7 +94,7 @@ public class NodesMirror extends ComputerListener {
     nodeResource.setDescription(node.getNodeDescription());
     LOG.log(Level.FINE, "lockable-resources-plugin add node-resource: " + nodeResource.getName());
     if (!exist) {
-      lrm.getResources().add(nodeResource);
+      lrm.addResource(nodeResource);
     }
   }
 }

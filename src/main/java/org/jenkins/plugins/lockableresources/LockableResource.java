@@ -73,7 +73,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   /**
    * Track that a currently reserved resource was originally reserved
    * for someone else, or locked for some other job, and explicitly
-   * taken away - e.g. for SUT post-mortems while a test job runs.
+   * taken away - e.g. for SUT post-mortem while a test job runs.
    * Currently this does not track "who" it was taken from nor intend
    * to give it back - just for bookkeeping and UI button naming.
    * Cleared when the resource is unReserve'd.
@@ -225,6 +225,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   // @Deprecated can not be used, because of JCaC
   @DataBoundSetter
   public void setLabels(String labels) {
+    labels = Util.fixNull(labels);
     // todo use label parser from Jenkins.Label to allow the same syntax
     this.labelsAsList = new ArrayList<>();
     for(String label : labels.split("\\s+")) {
@@ -255,7 +256,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   //----------------------------------------------------------------------------
+  /**
+   * @deprecated Use isValidLabel(String candidate)
+   */
+  @Deprecated
+  @ExcludeFromJacocoGeneratedReport
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
+    return isValidLabel(candidate);
+  }
+
+  //----------------------------------------------------------------------------
+  public boolean isValidLabel(String candidate) {
     if (candidate == null || candidate.isEmpty()) {
       return false;
     }

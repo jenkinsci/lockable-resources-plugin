@@ -171,14 +171,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       } else {
         List<String> wrongNames = new ArrayList<>();
         for (String name : names.split("\\s+")) {
-          boolean found = false;
-          for (LockableResource r : LockableResourcesManager.get()
-            .getResources()) {
-            if (r.getName().equals(name)) {
-              found = true;
-              break;
-            }
-          }
+          boolean found = LockableResourcesManager.get().resourceExist(name);
           if (!found)
             wrongNames.add(name);
         }
@@ -289,10 +282,10 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       value = Util.fixEmptyAndTrim(value);
 
       if (value != null) {
-        for (LockableResource r : LockableResourcesManager.get()
-          .getResources()) {
-          if (r.getName().startsWith(value))
-            c.add(r.getName());
+        List<String> allNames = LockableResourcesManager.getResourcesNames(LockableResourcesManager.get().getReadOnlyResources());
+        for (String name : allNames) {
+          if (name.startsWith(value))
+            c.add(name);
         }
       }
 
