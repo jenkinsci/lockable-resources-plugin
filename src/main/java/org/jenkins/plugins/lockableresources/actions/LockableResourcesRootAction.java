@@ -264,8 +264,7 @@ public class LockableResourcesRootAction implements RootAction {
   @Deprecated // slow down plugin execution due concurrent modification checks
   public int getAssignedResourceAmount(String labelString) {
     this.informPerformanceIssue();
-    LockableResourcesLabel label = this.getLabelsList().get(labelString);
-    return (label == null) ? 0 : label.getAssigned();
+    return LockableResourcesManager.get().getResourcesWithLabel(labelString).size();
   }
 
   //---------------------------------------------------------------------------
