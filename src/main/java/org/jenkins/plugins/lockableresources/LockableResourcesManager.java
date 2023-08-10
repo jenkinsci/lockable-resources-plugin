@@ -274,7 +274,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (r != null && r.isValidLabel(label))
         found.add(r);
     }
-    return Collections.unmodifiableList(found);
+    return found;
   }
 
   // ---------------------------------------------------------------------------
@@ -460,6 +460,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
       if (candidatesByScript
           || (requiredResources.label != null && !requiredResources.label.isEmpty())) {
+
         candidates = cachedCandidates.getIfPresent(queueItemId);
         if (candidates != null) {
           candidates.retainAll(this.resources);
@@ -886,9 +887,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     synchronized (this.syncResources) {
       if (resource == null
           || resource.getName() == null
-          || resource.getName().isEmpty()
-          || this.resourceExist(resource.getName())) {
-        LOGGER.warning("Internal failure: We will add wrong or existing resource: " + resource);
+          || resource.getName().isEmpty()) {
+        LOGGER.warning("Internal failure: We will add wrong resource: " + resource);
+        return false;
+      }
+      if (this.resourceExist(resource.getName())) {
+        LOGGER.fine("Internal failure: We will add existing resource: " + resource);
         return false;
       }
       LOGGER.fine("addResource: " + resource);

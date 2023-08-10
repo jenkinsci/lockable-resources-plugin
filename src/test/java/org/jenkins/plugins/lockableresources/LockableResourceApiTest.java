@@ -9,12 +9,21 @@ import static org.junit.Assert.assertThrows;
 
 import org.htmlunit.FailingHttpStatusCodeException;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import org.jenkins.plugins.lockableresources.util.Constants;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class LockableResourceApiTest {
+
+  //---------------------------------------------------------------------------
+  @Before
+  public void setUp() {
+    // to speed up the test
+    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+  }
 
   @Rule public JenkinsRule j = new JenkinsRule();
 
