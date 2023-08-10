@@ -91,7 +91,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
       throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
     }
-    if (label != null && !LockableResourcesManager.get().isValidLabel( label ) ) {
+    if (label != null && !LockableResourcesManager.get().isValidLabel(label) ) {
       throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
     }
     if (resourceSelectStrategy != null ) {

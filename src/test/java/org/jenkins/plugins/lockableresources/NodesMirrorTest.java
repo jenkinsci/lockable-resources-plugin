@@ -5,6 +5,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -17,20 +18,25 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 public class NodesMirrorTest {
 
+  private static final Logger LOGGER = Logger.getLogger(NodesMirror.class.getName());
   @Rule public final JenkinsRule j = new JenkinsRule();
 
   @Test
   public void mirror_few_nodes() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
 
+    LOGGER.info("add agent: FirstAgent");
     j.createSlave("FirstAgent", "label label2", null);
+    LOGGER.info("add agent: SecondAgent");
     j.createSlave("SecondAgent", null, null);
 
     // this is asynchronous operation, so wait until resources are created.
-    for(int i = 1; LockableResourcesManager.get().fromName("SecondAgent") != null && i <= 10; i++) {
+    LOGGER.info("wait for resources");
+    for(int i = 1; !LockableResourcesManager.get().resourceExist("FirstAgent") && !LockableResourcesManager.get().resourceExist("SecondAgent") && i <= 10; i++) {
       Thread.sleep(100);
     }
 
+    LOGGER.info("check aganet: FirstAgent");
     LockableResource firstAgent = LockableResourcesManager.get().fromName("FirstAgent");
 
     assertEquals("FirstAgent", firstAgent.getName());

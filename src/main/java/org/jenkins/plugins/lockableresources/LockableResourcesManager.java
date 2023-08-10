@@ -52,8 +52,8 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-  public transient Object syncResources = new Object();
-  private List<LockableResource> resources = new ArrayList<>();
+  public final static transient Object syncResources = new Object();
+  private List<LockableResource> resources;
   private transient Cache<Long, List<LockableResource>> cachedCandidates =
       CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
   private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
@@ -72,6 +72,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
       justification = "Common Jenkins pattern to call method that can be overridden")
   public LockableResourcesManager() {
+    resources = new ArrayList<>();
     load();
   }
 
@@ -95,12 +96,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // ---------------------------------------------------------------------------
   /** Get declared resources, means only defined in config file (xml or JCaC yaml). */
   public List<LockableResource> getDeclaredResources() {
+    LOGGER.info("getDeclaredResources: in: " + this.resources);
     ArrayList<LockableResource> declaredResources = new ArrayList<>();
     for (LockableResource r : this.getReadOnlyResources()) {
+      LOGGER.info("getDeclaredResources: " + r);
       if (!r.isEphemeral() && !r.isNodeResource()) {
         declaredResources.add(r);
       }
     }
+    LOGGER.info("getDeclaredResources: returns: " + declaredResources);
     return declaredResources;
   }
 
@@ -189,9 +193,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return false;
     }
 
-    final Map<String, Object> params = null;
     for (LockableResource r : this.getReadOnlyResources()) {
-      if (r != null && r.isValidLabel(label, params)) {
+      if (r != null && r.isValidLabel(label)) {
         return true;
       }
     }
@@ -201,6 +204,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   // ---------------------------------------------------------------------------
   /** Returns all configured labels. */
+  @NonNull
   @Restricted(NoExternalUse.class)
   public Set<String> getAllLabels() {
     Set<String> labels = new HashSet<>();
@@ -219,9 +223,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   // ---------------------------------------------------------------------------
   /** Get amount of free resources contained given *label* */
+  @NonNull
   @Restricted(NoExternalUse.class)
   public int getFreeResourceAmount(String label) {
     int free = 0;
+    label = Util.fixEmpty(label);
+
+    if (label == null) {
+      return free;
+    }
+
     for (LockableResource r : this.getResourcesWithLabel(label)) {
       if (r == null) {
         continue;
@@ -249,14 +260,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * Returns resources matching by given *label*. Note: The param *params* is not used (has no
    * effect)
    */
+  @NonNull
   @Restricted(NoExternalUse.class)
   public List<LockableResource> getResourcesWithLabel(String label) {
     List<LockableResource> found = new ArrayList<>();
-    if (label == null || label.isEmpty()) {
+    label = Util.fixEmpty(label);
+
+    if (label == null) {
       return found;
     }
+
     for (LockableResource r : this.getReadOnlyResources()) {
-      if (r != null && r.isValidLabel(label)) found.add(r);
+      if (r != null && r.isValidLabel(label))
+        found.add(r);
     }
     return Collections.unmodifiableList(found);
   }
@@ -285,21 +301,37 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
+  @Restricted(NoExternalUse.class) // For internal debugging purpose only
+  public void printResources() {
+      LOGGER.info("this.syncResources: "   + String.join(",", getResourcesNames(this.resources)));
+      LOGGER.info("getReadOnlyResources: " + String.join(",", getResourcesNames(this.getReadOnlyResources())));
+  }
+
+  // ---------------------------------------------------------------------------
   /** Returns resource matched by name. Returns null in case, the resource does not exists. */
+  @CheckForNull
   @Restricted(NoExternalUse.class)
-  public LockableResource fromName(String resourceName) {
+  public LockableResource fromName(@CheckForNull String resourceName) {
+    resourceName = Util.fixEmpty(resourceName);
+
     if (resourceName != null) {
+      // printResources();
+      
       for (LockableResource r : this.getReadOnlyResources()) {
-        if (resourceName.equals(r.getName())) return r;
+        if (resourceName.equals(r.getName()))
+          return r;
       }
+    } else {
+      LOGGER.warning("Internal failure, fromName is empty or null");
     }
     return null;
   }
 
   // ---------------------------------------------------------------------------
   /** Checks if given resource exist. */
+  @NonNull
   @Restricted(NoExternalUse.class)
-  public boolean resourceExist(String resourceName) {
+  public boolean resourceExist(@CheckForNull String resourceName) {
     return this.fromName(resourceName) != null;
   }
 
@@ -850,16 +882,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
   // ---------------------------------------------------------------------------
   public boolean addResource(final LockableResource resource, final boolean doSave) {
+    
     synchronized (this.syncResources) {
       if (resource == null
+          || resource.getName() == null
           || resource.getName().isEmpty()
-          || this.resourceExist(resource.getName())) return false;
-
+          || this.resourceExist(resource.getName())) {
+        LOGGER.warning("Internal failure: We will add wrong or existing resource: " + resource);
+        return false;
+      }
+      LOGGER.fine("addResource: " + resource);
       this.resources.add(resource);
       if (doSave) {
         this.save();
       }
     }
+    LOGGER.fine("resource added: " + resource);
     return true;
   }
 
@@ -1462,8 +1500,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @ExcludeFromJacocoGeneratedReport
   public void compatibilityMigration() {
     synchronized (this.syncResources) {
-      LOGGER.log(
-          Level.FINE,
+      LOGGER.info(
           "lockable-resources-plugin compatibility migration task run for "
               + this.resources.size()
               + " resources");
