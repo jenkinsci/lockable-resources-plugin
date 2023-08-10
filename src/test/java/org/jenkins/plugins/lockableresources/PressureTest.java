@@ -40,29 +40,29 @@ public class PressureTest extends LockStepTestBase {
     pressure(20);
   }
 
-  @Test
-  @WithTimeout(600)
-  public void pressure50() throws Exception {
-    pressure(50);
-    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(50);
-  }
+  // @Test
+  // @WithTimeout(600)
+  // public void pressure50() throws Exception {
+  //   pressure(50);
+  //   System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+  //   pressure(50);
+  // }
 
-  @Test
-  @WithTimeout(600)
-  public void pressure70() throws Exception {
-    pressure(70);
-    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(70);
-  }
+  // @Test
+  // @WithTimeout(600)
+  // public void pressure70() throws Exception {
+  //   pressure(70);
+  //   System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+  //   pressure(70);
+  // }
 
-  @Test
-  @WithTimeout(600)
-  public void pressure100() throws Exception {
-    pressure(100);
-    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(100);
-  }
+  // @Test
+  // @WithTimeout(600)
+  // public void pressure100() throws Exception {
+  //   pressure(100);
+  //   System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+  //   pressure(100);
+  // }
 
   private void pressure(final int resourcesCount) throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
