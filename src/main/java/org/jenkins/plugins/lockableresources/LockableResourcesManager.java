@@ -37,11 +37,13 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
+import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesCandidatesStruct;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -65,6 +67,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private transient Object syncQueue = new Object();
 
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+
+  // cache to enable / disable saving lockable-resources state
+  private int enableSave = -1;
 
   // ---------------------------------------------------------------------------
   /** C-tor */
@@ -1457,12 +1462,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
-  boolean enableSave = false;
-
   @Override
   public void save() {
+    if (enableSave == -1)
+    {
+      // read system property and cache it.
+      enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
+    }
 
-    if (!enableSave) return;
+    if (enableSave == 0)
+      return; // saving is disabled
+
     synchronized (this.syncResources) {
       if (BulkChange.contains(this)) return;
 
