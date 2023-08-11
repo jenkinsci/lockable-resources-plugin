@@ -327,9 +327,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
           return r;
       }
     } else {
-      LOGGER.warning("Internal failure, fromName is empty or null");
+      LOGGER.warning("Internal failure, fromName is empty or null:" + getStack());
+
     }
     return null;
+  }
+
+  //---------------------------------------------------------------------------
+  private String getStack() {
+    StringBuffer buf = new StringBuffer();
+    for(StackTraceElement st : Thread.currentThread().getStackTrace())
+    {
+      buf.append("\n" + st);
+    }
+    return buf.toString();
   }
 
   // ---------------------------------------------------------------------------
@@ -893,11 +904,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (resource == null
           || resource.getName() == null
           || resource.getName().isEmpty()) {
-        LOGGER.warning("Internal failure: We will add wrong resource: " + resource);
+        LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
         return false;
       }
       if (this.resourceExist(resource.getName())) {
-        LOGGER.fine("Internal failure: We will add existing resource: " + resource);
+        LOGGER.fine("Internal failure: We will add existing resource: " + resource + getStack());
         return false;
       }
       LOGGER.fine("addResource: " + resource);
