@@ -13,11 +13,27 @@ import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.WithTimeout;
 
-public class PressureTestHelpers extends LockStepTestBase {
+public class PressureTest extends LockStepTestBase {
 
   private static final Logger LOGGER = Logger.getLogger(LockStepTest.class.getName());
+@Rule public JenkinsRule j = new JenkinsRule();
 
-  @Rule public JenkinsRule j = new JenkinsRule();
+  /**
+   * Pressure test to lock resources via labels, resource name, ephemeral ... It simulates big
+   * system with many chaotic locks. Hopefully it runs always good, because any analysis here will
+   * be very hard.
+   */
+  @Test
+  @WithTimeout(900)
+  public void pressureEnableSave() throws Exception {
+    pressure(20);
+  }
+  @Test
+  @WithTimeout(900)
+  public void pressureDisableSave() throws Exception {
+    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    pressure(20);
+  }
 
   public void pressure(final int resourcesCount) throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
@@ -101,9 +117,11 @@ public class PressureTestHelpers extends LockStepTestBase {
 
     LOGGER.info("Wait for build b1");
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+    LOGGER.info("build b1: done");
     for(WorkflowRun b2 : otherBuilds) {
       LOGGER.info("Wait for build " + b2.getUrl());
       j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+      LOGGER.info("build " + b2.getUrl() + ": done");
     }
    }
 }
