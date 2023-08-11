@@ -85,7 +85,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         step.inversePrecedence)) {
       // No available resources, or we failed to lock available resources
       // if the resource is known, we could output the active/blocking job/build
-      LockableResource resource = LockableResourcesManager.get().fromName(step.resource);
+      LockableResource resource = step.resource != null ? LockableResourcesManager.get().fromName(step.resource) : null;;
       boolean buildNameKnown = resource != null && resource.getBuildName() != null;
       if (step.skipIfLocked) {
         if (buildNameKnown) {
