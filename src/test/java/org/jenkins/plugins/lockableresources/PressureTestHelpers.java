@@ -13,65 +13,13 @@ import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.WithTimeout;
 
-public class PressureTest extends LockStepTestBase {
+public class PressureTestHelpers extends LockStepTestBase {
 
   private static final Logger LOGGER = Logger.getLogger(LockStepTest.class.getName());
 
   @Rule public JenkinsRule j = new JenkinsRule();
 
-  /**
-   * Pressure test to lock resources via labels, resource name, ephemeral ... It simulates big
-   * system with many chaotic locks. Hopefully it runs always good, because any analysis here will
-   * be very hard.
-   */
-  @Test
-  @WithTimeout(600)
-  public void pressure10EnableSave() throws Exception {
-    pressure(10);
-  }
-  @Test
-  @WithTimeout(600)
-  public void pressure10DisableSave() throws Exception {
-    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(10);
-  }
-
-  @Test
-  @WithTimeout(600)
-  public void pressure20EnableSave() throws Exception {
-    pressure(20);
-  }
-  @Test
-  @WithTimeout(600)
-  public void pressure20DisableSave() throws Exception {
-    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(20);
-  }
-  // @Test
-  // @WithTimeout(600)
-  // public void pressure50() throws Exception {
-  //   pressure(50);
-  //   System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-  //   pressure(50);
-  // }
-
-  // @Test
-  // @WithTimeout(600)
-  // public void pressure70() throws Exception {
-  //   pressure(70);
-  //   System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-  //   pressure(70);
-  // }
-
-  // @Test
-  // @WithTimeout(600)
-  // public void pressure100() throws Exception {
-  //   pressure(100);
-  //   System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-  //   pressure(100);
-  // }
-
-  private void pressure(final int resourcesCount) throws Exception {
+  public void pressure(final int resourcesCount) throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
     LockableResourcesManager lrm = LockableResourcesManager.get();
 
@@ -88,18 +36,19 @@ public class PressureTest extends LockStepTestBase {
         "for(int i = 1; i < "
             + resourcesCount
             + "; i++) {\n"
-            + "  String stageName = 'stage_' + i;\n"
+            + "  final int index = i;\n"
+            + "  String stageName = 'stage_' + index;\n"
             + "  stages[stageName] = {\n"
             + "    echo 'my stage: ' + stageName;\n"
-            + "    echo 'test: label1 && label2 at ' + i;\n"
+            + "    echo 'test: label1 && label2 at ' + index;\n"
             + "    lock(label: 'label1 && label2', variable: 'someVar', quantity : 1) {\n"
             + "      echo \"VAR-1 IS $env.someVar\"\n"
             + "    }\n"
-            + "    echo 'test: label1 || label2 at ' + i;\n"
+            + "    echo 'test: label1 || label2 at ' + index;\n"
             + "    lock(label: 'label1 || label2', variable: 'someVar', quantity : 2, resourceSelectStrategy: 'random') {\n"
             + "      echo \"VAR-2 IS $env.someVar\"\n"
             + "    }\n"
-            + "    echo 'test: label2 at ' + i;\n"
+            + "    echo 'test: label2 at ' + index;\n"
             + "    lock(label: 'label2', variable: 'someVar', quantity : 5) {\n"
             + "      echo \"VAR-3 IS $env.someVar\"\n"
             + "    }\n"
@@ -107,9 +56,9 @@ public class PressureTest extends LockStepTestBase {
             + "    lock('resource_ephemeral_' + stageName) {\n"
             + "      echo \"locked resource_ephemeral_\" + stageName\n"
             + "    }\n"
-            + "    echo 'test: resourceA_' + i;\n"
-            + "    lock('resourceA_' + i) {\n"
-            + "      echo \"locked resourceA_\" + i\n"
+            + "    echo 'test: resourceA_' + index;\n"
+            + "    lock('resourceA_' + index) {\n"
+            + "      echo \"locked resourceA_\" + index\n"
             + "    }\n"
             + "  }\n"
             + "}\n";
@@ -150,8 +99,10 @@ public class PressureTest extends LockStepTestBase {
       lrm.createResourceWithLabel("resourceD_" + Integer.toString(i), "label1");
     }
 
+    LOGGER.info("Wait for build b1");
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     for(WorkflowRun b2 : otherBuilds) {
+      LOGGER.info("Wait for build " + b2.getUrl());
       j.assertBuildStatusSuccess(j.waitForCompletion(b2));
     }
    }
