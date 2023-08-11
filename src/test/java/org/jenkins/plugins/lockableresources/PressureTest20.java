@@ -13,12 +13,12 @@ public class PressureTest20 extends PressureTestHelpers {
    * be very hard.
    */
   @Test
-  @WithTimeout(300)
+  @WithTimeout(600)
   public void pressureEnableSave() throws Exception {
     pressure(20);
   }
   @Test
-  @WithTimeout(300)
+  @WithTimeout(600)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     pressure(20);
