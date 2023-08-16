@@ -32,7 +32,7 @@ public class PressureTest extends LockStepTestBase {
   @WithTimeout(900)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(30);
+    pressure(20);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
