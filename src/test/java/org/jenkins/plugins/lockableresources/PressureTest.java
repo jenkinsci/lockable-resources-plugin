@@ -26,19 +26,23 @@ public class PressureTest extends LockStepTestBase {
   @Test
   @WithTimeout(900)
   public void pressureEnableSave() throws Exception {
-    pressure(20);
+    pressure(10);
   }
   @Test
   @WithTimeout(900)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(20);
+    pressure(30);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
+    // count of parallel jobs
+    final int jobsCount = (resourcesCount / 10) + 1;
+    // enable node mirroring to make more chaos
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
     LockableResourcesManager lrm = LockableResourcesManager.get();
 
+    // create resources
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceA_" + Integer.toString(i), "label1 label2");
       lrm.createResourceWithLabel("resourceAA_" + Integer.toString(i), "label");
@@ -46,6 +50,7 @@ public class PressureTest extends LockStepTestBase {
       lrm.createResourceWithLabel("resourceAAAA_" + Integer.toString(i), "(=%/!(/)?$/ HH( RU))");
     }
 
+    // define groovy script used by our test jobs
     String pipeCode = "def stages = [:];\n";
 
     pipeCode +=
@@ -81,43 +86,58 @@ public class PressureTest extends LockStepTestBase {
 
     pipeCode += "parallel stages;";
 
+    // reserve 1 resource to bu sure the parallel builds and stages are freezed in the same time.
     lrm.reserve(Collections.singletonList(lrm.fromName("resourceA_1")), "test");
 
-    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+    // create first project and start the build
+    WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "main-project");
     p.setDefinition(new CpsFlowDefinition(pipeCode, true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
     List<WorkflowRun> otherBuilds = new ArrayList<>();
 
-    for (int i = 2; i <= resourcesCount; i++) {
-      WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p" + i);
+    // create extra jobs to make more chaos
+    for (int i = 1; i <= jobsCount; i++) {
+      WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "extra-project_" + i);
       p2.setDefinition(new CpsFlowDefinition(pipeCode, true));
       WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
       otherBuilds.add(b2);
     }
 
-
+    // create more resources until the first job has been started
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceB_" + Integer.toString(i), "label1");
     }
 
     j.waitForMessage("is locked, waiting...", b1);
 
+    // create jenkins nodes. All shall be mirrored to resources
     for (int i = 1; i <= resourcesCount; i++) {
       j.createSlave("AgentAAA_" + i, "label label2", null);
       lrm.createResourceWithLabel("resourceC_" + Integer.toString(i), "label1");
       j.createSlave("AGENT_BBB_" + i, null, null);
     }
 
+    // unreserve it now, and the fun may starts. Because all the parallel jobs and stages will be "free"
     lrm.unreserve(Collections.singletonList(lrm.fromName("resourceA_1")));
 
+    // create more resources until the first job has been started
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceD_" + Integer.toString(i), "label1");
     }
 
+    // create more jenkins nodes to make more chaos
+    for (int i = 1; i <= resourcesCount; i++) {
+      j.createSlave("AgentCCC_" + i, "label label2", null);
+      j.createSlave("AGENT_DDD_" + i, null, null);
+    }
+
+    // wait until the first build has been stopped
     LOGGER.info("Wait for build b1");
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
     LOGGER.info("build b1: done");
+
+    // wait until all parallel jobs has been stopped
     for(WorkflowRun b2 : otherBuilds) {
       LOGGER.info("Wait for build " + b2.getUrl());
       j.assertBuildStatusSuccess(j.waitForCompletion(b2));
