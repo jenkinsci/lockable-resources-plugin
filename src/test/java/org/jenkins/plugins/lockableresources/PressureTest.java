@@ -26,13 +26,13 @@ public class PressureTest extends LockStepTestBase {
   @Test
   @WithTimeout(900)
   public void pressureEnableSave() throws Exception {
-    pressure(10);
+    pressure(20);
   }
   @Test
   @WithTimeout(900)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(10);
+    pressure(20);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
