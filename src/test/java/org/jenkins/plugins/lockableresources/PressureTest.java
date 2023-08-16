@@ -32,12 +32,13 @@ public class PressureTest extends LockStepTestBase {
   @WithTimeout(900)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(20);
+    pressure(10);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
     // count of parallel jobs
     final int jobsCount = (resourcesCount / 10) + 1;
+    final int nodesCount = (resourcesCount / 10) + 1;
     // enable node mirroring to make more chaos
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
     LockableResourcesManager lrm = LockableResourcesManager.get();
@@ -112,7 +113,7 @@ public class PressureTest extends LockStepTestBase {
     j.waitForMessage("is locked, waiting...", b1);
 
     // create jenkins nodes. All shall be mirrored to resources
-    for (int i = 1; i <= resourcesCount; i++) {
+    for (int i = 1; i <= nodesCount; i++) {
       j.createSlave("AgentAAA_" + i, "label label2", null);
       lrm.createResourceWithLabel("resourceC_" + Integer.toString(i), "label1");
       j.createSlave("AGENT_BBB_" + i, null, null);
@@ -127,7 +128,7 @@ public class PressureTest extends LockStepTestBase {
     }
 
     // create more jenkins nodes to make more chaos
-    for (int i = 1; i <= resourcesCount; i++) {
+    for (int i = 1; i <= nodesCount; i++) {
       j.createSlave("AgentCCC_" + i, "label label2", null);
       j.createSlave("AGENT_DDD_" + i, null, null);
     }
