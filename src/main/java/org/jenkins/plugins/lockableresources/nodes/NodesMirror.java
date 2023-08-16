@@ -56,6 +56,8 @@ public class NodesMirror extends ComputerListener {
       for (Node n : Jenkins.get().getNodes()) {
         mirrorNode(n);
       }
+      // please do not remove it, From time to time is necessary for developer debugs
+      // thx
       // lrm.printResources();
       deleteNotExistingNodes();
       // lrm.printResources();
