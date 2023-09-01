@@ -310,7 +310,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     resourceName = Util.fixEmpty(resourceName);
 
     if (resourceName != null) {
-      
+
       for (LockableResource r : this.getReadOnlyResources()) {
         if (resourceName.equals(r.getName()))
           return r;
@@ -596,7 +596,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
 
     List<LockableResource> unlockResources = new ArrayList<>();
-    
+
     if (build != null) {
       unlockResources = this.getResourcesFromBuild(build);
     } else {
@@ -819,7 +819,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // Build A -- lock('abc') ... waiting for build B
       // in this case, win Build A before Build C, because it is started long time ago.
       // But Build C was the first one in queue !!!
-      if (!inversePrecedence && run.getStartTimeInMillis() <= newest) {
+      if (newest == 0) {
+        newest = run.getStartTimeInMillis();
+      }
+      if (!inversePrecedence && run.getStartTimeInMillis() > newest) {
         continue;
       }
 
@@ -898,7 +901,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
   // ---------------------------------------------------------------------------
   public boolean addResource(final LockableResource resource, final boolean doSave) {
-    
+
     synchronized (this.syncResources) {
       if (resource == null
           || resource.getName() == null
