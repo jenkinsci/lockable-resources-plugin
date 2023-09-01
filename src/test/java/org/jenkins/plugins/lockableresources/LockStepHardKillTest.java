@@ -56,7 +56,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
     // Make sure that b2 is blocked on b1's lock.
-    j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b2);
+    j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
     isPaused(b2, 1, 1);
 
     // Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the
@@ -72,7 +72,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
     // Make sure that b3 is also blocked still on b1's lock.
-    j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b3);
+    j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b3);
     isPaused(b3, 1, 1);
 
     // Kill b1 hard.
@@ -121,7 +121,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
       WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
       if (prevBuild != null) {
         j.waitForMessage(
-          "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
+          "[resource1] is locked by " + prevBuild.getFullDisplayName(), rNext);
         isPaused(rNext, 1, 1);
         interruptTermKill(prevBuild);
       }
