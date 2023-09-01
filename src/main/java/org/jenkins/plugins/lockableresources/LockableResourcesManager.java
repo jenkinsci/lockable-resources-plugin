@@ -1403,11 +1403,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // As soon as we know we can not fulfill the overall requirement
         // (not enough of something from that list), we bail out quickly.
         if (logger != null && !skipIfLocked) {
-          String msg = "Found "
-                  + selected.size() + " "
-                  + " available resource(s). Waiting for correct amount: "
-                  + requiredAmount
-                  + ".";
+          String msg = "Found " + selected.size() + " available resource(s). Waiting for correct amount: " + requiredAmount + ".";
           if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
             msg += "\nBlocked candidates: " + getCauses(candidates);
           }
