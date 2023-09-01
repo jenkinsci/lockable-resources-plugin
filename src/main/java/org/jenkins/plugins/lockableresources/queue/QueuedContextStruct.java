@@ -13,6 +13,7 @@ import hudson.model.Run;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Date;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -44,6 +45,8 @@ public class QueuedContextStruct implements Serializable {
    */
   private String variableName;
 
+  private long queuedAt = 0;
+
   /*
    * Constructor for the QueuedContextStruct class.
    */
@@ -52,6 +55,7 @@ public class QueuedContextStruct implements Serializable {
     this.lockableResourcesStruct = lockableResourcesStruct;
     this.resourceDescription = resourceDescription;
     this.variableName = variableName;
+    this.queuedAt = new Date().getTime();
   }
 
   /*
@@ -95,6 +99,10 @@ public class QueuedContextStruct implements Serializable {
    */
   public String getVariableName() {
     return this.variableName;
+  }
+
+  public long getAddTime() {
+    return queuedAt;
   }
 
   private static final long serialVersionUID = 1L;

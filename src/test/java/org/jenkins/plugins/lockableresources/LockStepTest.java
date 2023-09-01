@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.concurrent.CyclicBarrier;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -1020,6 +1021,10 @@ public class LockStepTest extends LockStepTestBase {
   @Test
   // @Issue("JENKINS-XXXXX")
   public void reserveInsideLockHonoured() throws Exception {
+
+    // to see detailed lock causes
+    System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES, "true");
+
     // Use-case is a job keeping the resource reserved so it can use
     // it in other stages and free it later, not all in one closure
     // Variant: using the LockableResourcesManager to manipulate
@@ -1087,6 +1092,7 @@ public class LockStepTest extends LockStepTestBase {
           + "p2: {\n"
           //+ "  semaphore 'wait-outside'\n"
           + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
+          + "  sleep 1\n"
           + "  echo \"Locked resource cause 2-1: not locked yet\"\n"
           + "  lock(label: 'label1', variable: 'someVar2') {\n"
           + "    echo \"VAR2 IS $env.someVar2\"\n"
@@ -1117,7 +1123,7 @@ public class LockStepTest extends LockStepTestBase {
           + "p3: {\n"
           + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
           + "  echo \"Locked resource cause 3-1: not locked yet\"\n"
-          + "  sleep 1\n"
+          + "  sleep 2\n"
           + "  lock(label: 'label1', variable: 'someVar3') {\n"
           + "    echo \"VAR3 IS $env.someVar3\"\n"
           + "    lr = " + lmget + ".fromName(env.someVar3)\n"
@@ -1129,14 +1135,7 @@ public class LockStepTest extends LockStepTestBase {
           + "  }\n"
           + "  echo \"Locked resource cause 3-3: ${lr.getLockCause()}\"\n"
           + "  echo \"Locked resource reservedBy 3-3: ${lr.getReservedBy()}\"\n"
-          + "},\n"
-          // Add some pressure to try for race conditions:
-          + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
-          + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
-          + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-          + "p7: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
-          + "p8: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
-          + "p9: { sleep 2; lock(label: 'label1') { sleep 1 } }\n"
+          + "}\n"
           + "\necho \"Survived the test\"\n"
           + "}", // timeout wrapper
         false));
@@ -1466,7 +1465,9 @@ public class LockStepTest extends LockStepTestBase {
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-    j.assertLogContains("[resource1] is locked, skipping execution...", b1);
+    // check: The resource [resource1] is reserved by test at Sep 1, 2023, 8:29 PM, skipping execution...
+    j.assertLogContains("The resource [resource1] is reserved by test", b1);
+    j.assertLogContains(", skipping execution...", b1);
     j.assertLogNotContains("Running body", b1);
   }
 

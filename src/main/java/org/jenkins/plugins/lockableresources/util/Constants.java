@@ -10,5 +10,5 @@ public class Constants {
   /// The best way is to use it with JCaC plugin.
   public static final String SYSTEM_PROPERTY_DISABLE_SAVE = "org.jenkins.plugins.lockableresources.DISABLE_SAVE";
   /// Enable to print lock causes. Keep in mind, that the log output may grove depends on count of resources.
-  public static final String SYSTEM_PROPERTY_PRINT_LOCK_CAUSES = "org.jenkins.plugins.lockableresources.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES";
+  public static final String SYSTEM_PROPERTY_PRINT_LOCK_CAUSES = "org.jenkins.plugins.lockableresources.PRINT_LOCK_CAUSES";
 }

@@ -822,9 +822,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (newest == 0) {
         newest = run.getStartTimeInMillis();
       }
-      if (!inversePrecedence && run.getStartTimeInMillis() > newest) {
-        continue;
+      LOGGER.finest("getNextQueuedContext: " + entry.getContext().hashCode() +" " + entry.getResourceDescription() + " " + run + " " + run.getStartTimeInMillis() + " vs " + newest);
+      if (nextEntry != null)
+        LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
+      if (nextEntry != null) {
+        boolean ignoreMe = false;
+        if (inversePrecedence) { 
+          // in case inverse precedence ignore all old entries
+          ignoreMe = entry.getAddTime() < nextEntry.getAddTime();
+        } else {
+          // in normal case ignore all newest entries
+          ignoreMe = entry.getAddTime() > nextEntry.getAddTime();
+        }
+
+        if (ignoreMe) {
+          continue;
+        }
       }
+      LOGGER.finest("getNextQueuedContext take this: " + entry.getContext().hashCode() + " " + entry.getResourceDescription() + " " + run);
 
       if (checkResourcesAvailability(
               entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
