@@ -115,12 +115,12 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
     // Ensure that b2 reaches the lock before b3
-    j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b2);
+    j.waitForMessage("[Label: label1, Quantity: 2] is not free , waiting for execution...", b2);
     j.waitForMessage("Found 1 available resource(s). Waiting for correct amount: 2.", b2);
     isPaused(b2, 1, 1);
     WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
     // Both 2 and 3 are waiting for locking Label: label1, Quantity: 2
-    j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b3);
+    j.waitForMessage("[Label: label1, Quantity: 2] is not free  , waiting for execution...", b3);
     j.waitForMessage("Found 1 available resource(s). Waiting for correct amount: 2.", b3);
     isPaused(b3, 1, 1);
 
@@ -165,7 +165,7 @@ public class LockStepTest extends LockStepTestBase {
 
     WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
     // Ensure that b2 reaches the lock before b3
-    j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b2);
+    j.waitForMessage("[Label: label1, Quantity: 2] is not free  , waiting for execution...", b2);
     j.waitForMessage("Found 1 available resource(s). Waiting for correct amount: 2.", b2);
     isPaused(b2, 1, 1);
 
@@ -233,7 +233,7 @@ public class LockStepTest extends LockStepTestBase {
         true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
     // Ensure that b2 reaches the lock before b3
-    j.waitForMessage("[Label: label1, Quantity: 2] is locked, waiting...", b2);
+    j.waitForMessage("[Label: label1, Quantity: 2] is not free  , waiting for execution...", b2);
     j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 2.", b2);
     isPaused(b2, 1, 1);
 
@@ -246,7 +246,7 @@ public class LockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[Label: label1, Quantity: 1] is locked, waiting...", b3);
+    j.waitForMessage("[Label: label1, Quantity: 1] is not free  , waiting for execution...", b3);
     j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 1.", b3);
     isPaused(b3, 1, 1);
 
@@ -673,7 +673,7 @@ public class LockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[Label: label1] is locked, waiting...", b3);
+    j.waitForMessage("[Label: label1] is not free  , waiting for execution...", b3);
     isPaused(b3, 1, 1);
 
     // Unlock resources
@@ -730,7 +730,7 @@ public class LockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[Label: label1] is locked, waiting...", b3);
+    j.waitForMessage("[Label: label1] is not free  , waiting for execution...", b3);
     isPaused(b3, 1, 1);
 
     // Unlock resources
@@ -788,7 +788,7 @@ public class LockStepTest extends LockStepTestBase {
           + "echo 'Finish'",
         true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("[Label: label1, Quantity: 3] is locked, waiting...", b2);
+    j.waitForMessage("[Label: label1, Quantity: 3] is not free  , waiting for execution...", b2);
     j.waitForMessage("Found 2 available resource(s). Waiting for correct amount: 3.", b2);
     isPaused(b2, 1, 1);
 
@@ -925,7 +925,7 @@ public class LockStepTest extends LockStepTestBase {
           + "}",
         true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-    j.waitForMessage("is locked, waiting...", b2);
+    j.waitForMessage(", waiting for execution...", b2);
     isPaused(b2, 1, 1);
 
     // Unlock resources
@@ -968,7 +968,7 @@ public class LockStepTest extends LockStepTestBase {
     SemaphoreStep.waitForStart("wait-inside/1", b1);
     SemaphoreStep.success("wait-outside/1", null);
 
-    j.waitForMessage("is locked, waiting...", b1);
+    j.waitForMessage(", waiting for execution...", b1);
     isPaused(b1, 2, 1);
 
     // Unlock resources
@@ -1009,7 +1009,7 @@ public class LockStepTest extends LockStepTestBase {
         true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
 
-    j.waitForMessage("is locked, waiting...", b1);
+    j.waitForMessage(", waiting for execution...", b1);
     lm.unreserve(Collections.singletonList(lm.fromName("resource1")));
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
@@ -1243,7 +1243,7 @@ public class LockStepTest extends LockStepTestBase {
     j.assertLogContains("Locked resource cause 3-2", b1);
     LOGGER.info("GOOD: lock#3 was taken just after we recycled lock#2");
 
-    j.assertLogContains("is locked, waiting...", b1);
+    j.assertLogContains(", waiting for execution...", b1);
 
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 
@@ -1435,7 +1435,7 @@ public class LockStepTest extends LockStepTestBase {
     j.waitForMessage("Locked resource cause 2-2", b1);
     j.assertLogContains("Locked resource cause 1-5", b1);
 
-    j.assertLogContains("is locked, waiting...", b1);
+    j.assertLogContains(", waiting for execution...", b1);
 
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 

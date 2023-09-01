@@ -15,6 +15,7 @@ import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import groovy.lang.Binding;
+import hudson.console.ModelHyperlinkNote;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractBuild;
@@ -436,10 +437,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
     final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
     if (isReserved()) {
-      return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
+      User user = Jenkins.get().getUser(reservedBy);
+      String userText = user == null ? reservedBy : ModelHyperlinkNote.encodeTo(user);
+      return String.format("The resource [%s] is reserved by %s at %s", name, userText, timestamp);
     }
     if (isLocked()) {
-      return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
+      return String.format("The resource [%s] is locked by %s at %s", name, getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()), timestamp);
     }
     return null;
   }

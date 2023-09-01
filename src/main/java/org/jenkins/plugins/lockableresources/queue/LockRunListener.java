@@ -105,17 +105,18 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
     if (build instanceof MatrixBuild)
       return;
 
-    // obviously project name cannot be obtained here
-    List<LockableResource> required = LockableResourcesManager.get()
-      .getResourcesFromBuild(build);
-    if (!required.isEmpty()) {
-      LockableResourcesManager.get().unlock(required, build);
-      listener.getLogger().printf("%s released lock on %s%n",
-        LOG_PREFIX, required);
-      LOGGER.fine(build.getFullDisplayName() + " released lock on "
-        + required);
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    synchronized(lrm.syncResources) {
+      // obviously project name cannot be obtained here
+      List<LockableResource> required = lrm.getResourcesFromBuild(build);
+      if (!required.isEmpty()) {
+        lrm.unlock(required, build);
+        listener.getLogger().printf("%s released lock on %s%n",
+          LOG_PREFIX, required);
+        LOGGER.warning(build.getFullDisplayName() + " released lock on "
+          + required + ", because the build has been finished.");
+      }
     }
-
   }
 
   @Override
@@ -124,13 +125,14 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
     // only the child jobs will actually unlock resources.
     if (build instanceof MatrixBuild)
       return;
-
-    List<LockableResource> required = LockableResourcesManager.get()
-      .getResourcesFromBuild(build);
-    if (!required.isEmpty()) {
-      LockableResourcesManager.get().unlock(required, build);
-      LOGGER.fine(build.getFullDisplayName() + " released lock on "
-        + required);
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    synchronized(lrm.syncResources) {
+      List<LockableResource> required = lrm.getResourcesFromBuild(build);
+      if (!required.isEmpty()) {
+        lrm.unlock(required, build);
+        LOGGER.warning(build.getFullDisplayName() + " released lock on "
+          + required + ", because the build has been deleted.");
+      }
     }
   }
 

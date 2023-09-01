@@ -133,15 +133,22 @@ public class LockableResourcesStruct implements Serializable {
 
   @Override
   public String toString() {
-    return "Required resources: "
-      + this.required
-      + ", Required label: "
-      + this.label
-      + ", Required label script: "
-      + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
-      + ", Variable name: "
-      + this.requiredVar
-      + ", Number of resources: "
-      + this.requiredNumber;
+    String str = "";
+    if (this.required != null && !this.required.isEmpty()) {
+      str += "Required resources: " + this.required;
+    }
+    if (this.label != null && !this.label.isEmpty()) {
+      str += "Required label: " + this.label;
+    }
+    if (this.resourceMatchScript != null) {
+      str += "Required label script: " + this.resourceMatchScript.getScript();
+    }
+    if (this.requiredVar != null) {
+      str += ", Variable name: " + this.requiredVar;
+    }
+    if (this.requiredNumber != null) {
+      str += ", Number of resources: " + this.requiredNumber;
+    }
+    return str;
   }
 }
