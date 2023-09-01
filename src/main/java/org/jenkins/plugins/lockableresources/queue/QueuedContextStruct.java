@@ -50,6 +50,7 @@ public class QueuedContextStruct implements Serializable {
   /*
    * Constructor for the QueuedContextStruct class.
    */
+  @Restricted(NoExternalUse.class)
   public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription, String variableName) {
     this.context = context;
     this.lockableResourcesStruct = lockableResourcesStruct;
@@ -61,6 +62,7 @@ public class QueuedContextStruct implements Serializable {
   /*
    * Gets the pipeline step context.
    */
+  @Restricted(NoExternalUse.class)
   public StepContext getContext() {
     return this.context;
   }
@@ -80,6 +82,7 @@ public class QueuedContextStruct implements Serializable {
     }
   }
 
+  @Restricted(NoExternalUse.class)
   /*
    * Gets the required resources.
    */
@@ -87,6 +90,7 @@ public class QueuedContextStruct implements Serializable {
     return this.lockableResourcesStruct;
   }
 
+  @Restricted(NoExternalUse.class)
   /*
    * Gets the resource description for logging messages.
    */
@@ -94,6 +98,7 @@ public class QueuedContextStruct implements Serializable {
     return this.resourceDescription;
   }
 
+  @Restricted(NoExternalUse.class)
   /*
    * Gets the variable name to save the locks taken.
    */
@@ -101,6 +106,8 @@ public class QueuedContextStruct implements Serializable {
     return this.variableName;
   }
 
+  /** Get time-ticks, when the item has been added into queue */
+  @Restricted(NoExternalUse.class)
   public long getAddTime() {
     return queuedAt;
   }
