@@ -40,9 +40,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
   private final @CheckForNull SecureGroovyScript resourceMatchScript;
 
   @DataBoundConstructor
-  public RequiredResourcesProperty(String resourceNames,
-    String resourceNamesVar, String resourceNumber,
-    String labelName, @CheckForNull SecureGroovyScript resourceMatchScript) {
+  public RequiredResourcesProperty(
+      String resourceNames,
+      String resourceNamesVar,
+      String resourceNumber,
+      String labelName,
+      @CheckForNull SecureGroovyScript resourceMatchScript) {
     super();
 
     if (resourceNames == null || resourceNames.trim().isEmpty()) {
@@ -60,13 +63,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     } else {
       this.resourceNumber = resourceNumber.trim();
     }
-    String labelNamePreparation = (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
+    String labelNamePreparation =
+        (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
     if (resourceMatchScript != null) {
       this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
       this.labelName = labelNamePreparation;
     } else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
-      this.resourceMatchScript = new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()),
-        false, null).configuring(ApprovalContext.create());
+      this.resourceMatchScript =
+          new SecureGroovyScript(
+                  labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
+              .configuring(ApprovalContext.create());
       this.labelName = null;
     } else {
       this.resourceMatchScript = null;
@@ -79,18 +85,24 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
    */
   @Deprecated
   @ExcludeFromJacocoGeneratedReport
-  public RequiredResourcesProperty(String resourceNames,
-    String resourceNamesVar, String resourceNumber,
-    String labelName) {
+  public RequiredResourcesProperty(
+      String resourceNames, String resourceNamesVar, String resourceNumber, String labelName) {
     this(resourceNames, resourceNamesVar, resourceNumber, labelName, null);
   }
 
   private Object readResolve() {
     // SECURITY-368 migration logic
-    if (resourceMatchScript == null && labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
-      return new RequiredResourcesProperty(resourceNames, resourceNamesVar, resourceNumber, null,
-        new SecureGroovyScript(labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
-          .configuring(ApprovalContext.create()));
+    if (resourceMatchScript == null
+        && labelName != null
+        && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
+      return new RequiredResourcesProperty(
+          resourceNames,
+          resourceNamesVar,
+          resourceNumber,
+          null,
+          new SecureGroovyScript(
+                  labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
+              .configuring(ApprovalContext.create()));
     }
 
     return this;
@@ -98,10 +110,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
   public String[] getResources() {
     String names = Util.fixEmptyAndTrim(resourceNames);
-    if (names != null)
-      return names.split("\\s+");
-    else
-      return new String[0];
+    if (names != null) return names.split("\\s+");
+    else return new String[0];
   }
 
   public String getResourceNames() {
@@ -121,10 +131,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
   }
 
   /**
-   * Gets a system Groovy script to be executed in order to determine if the {@link LockableResource} matches the condition.
+   * Gets a system Groovy script to be executed in order to determine if the {@link
+   * LockableResource} matches the condition.
+   *
    * @return System Groovy Script if defined
    * @since 2.0
-   * @see LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript, java.util.Map)
+   * @see
+   *     LockableResource#scriptMatches(org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript,
+   *     java.util.Map)
    */
   @CheckForNull
   public SecureGroovyScript getResourceMatchScript() {
@@ -146,18 +160,21 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     }
 
     @Override
-    public RequiredResourcesProperty newInstance(StaplerRequest req, JSONObject formData) throws FormException {
+    public RequiredResourcesProperty newInstance(StaplerRequest req, JSONObject formData)
+        throws FormException {
       if (formData.containsKey("required-lockable-resources")) {
-        return (RequiredResourcesProperty) super.newInstance(req, formData.getJSONObject("required-lockable-resources"));
+        return (RequiredResourcesProperty)
+            super.newInstance(req, formData.getJSONObject("required-lockable-resources"));
       }
       return null;
     }
 
     @RequirePOST
-    public FormValidation doCheckResourceNames(@QueryParameter String value,
-      @QueryParameter String labelName,
-      @QueryParameter boolean script,
-      @AncestorInPath Item item) {
+    public FormValidation doCheckResourceNames(
+        @QueryParameter String value,
+        @QueryParameter String labelName,
+        @QueryParameter boolean script,
+        @AncestorInPath Item item) {
       // check permission, security first
       checkPermission(item);
 
@@ -172,24 +189,22 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
         List<String> wrongNames = new ArrayList<>();
         for (String name : names.split("\\s+")) {
           boolean found = LockableResourcesManager.get().resourceExist(name);
-          if (!found)
-            wrongNames.add(name);
+          if (!found) wrongNames.add(name);
         }
         if (wrongNames.isEmpty()) {
           return FormValidation.ok();
         } else {
-          return FormValidation
-            .error(Messages.error_resourceDoesNotExist(wrongNames));
+          return FormValidation.error(Messages.error_resourceDoesNotExist(wrongNames));
         }
       }
     }
 
     @RequirePOST
     public FormValidation doCheckLabelName(
-      @QueryParameter String value,
-      @QueryParameter String resourceNames,
-      @QueryParameter boolean script,
-      @AncestorInPath Item item) {
+        @QueryParameter String value,
+        @QueryParameter String resourceNames,
+        @QueryParameter boolean script,
+        @AncestorInPath Item item) {
       // check permission, security first
       checkPermission(item);
 
@@ -199,24 +214,23 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       if (label == null) {
         return FormValidation.ok();
       } else if (names != null || script) {
-        return FormValidation.error(
-          Messages.error_labelAndNameOrGroovySpecified());
+        return FormValidation.error(Messages.error_labelAndNameOrGroovySpecified());
       } else {
         if (LockableResourcesManager.get().isValidLabel(label)) {
           return FormValidation.ok();
         } else {
-          return FormValidation.error(
-            Messages.error_labelDoesNotExist(label));
+          return FormValidation.error(Messages.error_labelDoesNotExist(label));
         }
       }
     }
 
     @RequirePOST
-    public FormValidation doCheckResourceNumber(@QueryParameter String value,
-      @QueryParameter String resourceNames,
-      @QueryParameter String labelName,
-      @QueryParameter String resourceMatchScript,
-      @AncestorInPath Item item) {
+    public FormValidation doCheckResourceNumber(
+        @QueryParameter String value,
+        @QueryParameter String resourceNames,
+        @QueryParameter String labelName,
+        @QueryParameter String resourceMatchScript,
+        @AncestorInPath Item item) {
       // check permission, security first
       checkPermission(item);
 
@@ -232,9 +246,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       int numAsInt;
       try {
         numAsInt = Integer.parseInt(number);
-      } catch(NumberFormatException e)  {
-        return FormValidation.error(
-          Messages.error_couldNotParseToint());
+      } catch (NumberFormatException e) {
+        return FormValidation.error(Messages.error_couldNotParseToint());
       }
       int numResources = 0;
       if (names != null) {
@@ -244,18 +257,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       }
 
       if (numResources < numAsInt) {
-        return FormValidation.error(String.format(
-          Messages.error_givenAmountIsGreaterThatResurcesAmount(),
-          numAsInt,
-          numResources));
+        return FormValidation.error(
+            String.format(
+                Messages.error_givenAmountIsGreaterThatResurcesAmount(), numAsInt, numResources));
       }
       return FormValidation.ok();
     }
 
     @RequirePOST
     public AutoCompletionCandidates doAutoCompleteLabelName(
-      @QueryParameter String value,
-      @AncestorInPath Item item) {
+        @QueryParameter String value, @AncestorInPath Item item) {
       // check permission, security first
       checkPermission(item);
 
@@ -264,16 +275,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       value = Util.fixEmptyAndTrim(value);
 
       for (String l : LockableResourcesManager.get().getAllLabels())
-        if (value != null && l.startsWith(value))
-          c.add(l);
+        if (value != null && l.startsWith(value)) c.add(l);
 
       return c;
     }
 
     @RequirePOST
     public static AutoCompletionCandidates doAutoCompleteResourceNames(
-      @QueryParameter String value,
-      @AncestorInPath Item item) {
+        @QueryParameter String value, @AncestorInPath Item item) {
       // check permission, security first
       checkPermission(item);
 
@@ -282,10 +291,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
       value = Util.fixEmptyAndTrim(value);
 
       if (value != null) {
-        List<String> allNames = LockableResourcesManager.getResourcesNames(LockableResourcesManager.get().getReadOnlyResources());
+        List<String> allNames =
+            LockableResourcesManager.getResourcesNames(
+                LockableResourcesManager.get().getReadOnlyResources());
         for (String name : allNames) {
-          if (name.startsWith(value))
-            c.add(name);
+          if (name.startsWith(value)) c.add(name);
         }
       }
 

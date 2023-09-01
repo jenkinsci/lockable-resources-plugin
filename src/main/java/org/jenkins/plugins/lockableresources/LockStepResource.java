@@ -21,13 +21,12 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {
+public class LockStepResource extends AbstractDescribableImpl<LockStepResource>
+    implements Serializable {
 
-  @CheckForNull
-  public String resource = null;
+  @CheckForNull public String resource = null;
 
-  @CheckForNull
-  public String label = null;
+  @CheckForNull public String label = null;
 
   public int quantity = 0;
 
@@ -76,29 +75,33 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     return "[no resource/label specified - probably a bug]";
   }
 
-  /**
-   * Label and resource are mutual exclusive.
-   */
+  /** Label and resource are mutual exclusive. */
   public void validate() {
     validate(resource, label, null);
   }
 
   /**
-   * Label and resource are mutual exclusive.
-   * The label, if provided, must be configured (at least one resource must have this label).
+   * Label and resource are mutual exclusive. The label, if provided, must be configured (at least
+   * one resource must have this label).
    */
   public static void validate(String resource, String label, String resourceSelectStrategy) {
-    if (label != null && !label.isEmpty() && resource !=  null && !resource.isEmpty()) {
+    if (label != null && !label.isEmpty() && resource != null && !resource.isEmpty()) {
       throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
     }
-    if (label != null && !LockableResourcesManager.get().isValidLabel(label) ) {
+    if (label != null && !LockableResourcesManager.get().isValidLabel(label)) {
       throw new IllegalArgumentException(Messages.error_labelDoesNotExist(label));
     }
-    if (resourceSelectStrategy != null ) {
+    if (resourceSelectStrategy != null) {
       try {
         ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
       } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException(Messages.error_invalidResourceSelectionStrategy(resourceSelectStrategy, Arrays.stream(ResourceSelectStrategy.values()).map(Enum::toString).map(strategy -> strategy.toLowerCase(Locale.ENGLISH)).collect(Collectors.joining(", "))));
+        throw new IllegalArgumentException(
+            Messages.error_invalidResourceSelectionStrategy(
+                resourceSelectStrategy,
+                Arrays.stream(ResourceSelectStrategy.values())
+                    .map(Enum::toString)
+                    .map(strategy -> strategy.toLowerCase(Locale.ENGLISH))
+                    .collect(Collectors.joining(", "))));
       }
     }
   }
@@ -115,15 +118,14 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     }
 
     @RequirePOST
-    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value,
-      @AncestorInPath Item item) {
+    public AutoCompletionCandidates doAutoCompleteResource(
+        @QueryParameter String value, @AncestorInPath Item item) {
       return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
     }
 
     @RequirePOST
-    public static FormValidation doCheckLabel(@QueryParameter String value,
-      @QueryParameter String resource,
-      @AncestorInPath Item item) {
+    public static FormValidation doCheckLabel(
+        @QueryParameter String value, @QueryParameter String resource, @AncestorInPath Item item) {
       // check permission, security first
       if (item != null) {
         item.checkPermission(Item.CONFIGURE);
@@ -146,9 +148,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     }
 
     @RequirePOST
-    public static FormValidation doCheckResource(@QueryParameter String value,
-      @QueryParameter String label,
-      @AncestorInPath Item item) {
+    public static FormValidation doCheckResource(
+        @QueryParameter String value, @QueryParameter String label, @AncestorInPath Item item) {
       return doCheckLabel(label, value, item);
     }
   }

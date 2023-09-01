@@ -1,8 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
 import hudson.Functions;
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -17,7 +17,7 @@ import org.jvnet.hudson.test.recipes.WithTimeout;
 public class PressureTest extends LockStepTestBase {
 
   private static final Logger LOGGER = Logger.getLogger(LockStepTest.class.getName());
-@Rule public JenkinsRule j = new JenkinsRule();
+  @Rule public JenkinsRule j = new JenkinsRule();
 
   /**
    * Pressure test to lock resources via labels, resource name, ephemeral ... It simulates big
@@ -31,6 +31,7 @@ public class PressureTest extends LockStepTestBase {
     // keep in mind, that the windows nodes at jenkins-infra are not very fast
     pressure(Functions.isWindows() ? 5 : 20);
   }
+
   @Test
   @WithTimeout(900)
   public void pressureDisableSave() throws Exception {
@@ -57,7 +58,7 @@ public class PressureTest extends LockStepTestBase {
 
     // define groovy script used by our test jobs
     String pipeCode = "";
-    
+
     pipeCode += "lock('initpipe') {echo 'initialited'};\n";
 
     pipeCode += "def stages = [:];\n";
@@ -88,7 +89,8 @@ public class PressureTest extends LockStepTestBase {
             // recursive lock
             // + "    lock(label: 'label2', quantity : 1) {\n"
             // + "      lock(label: 'label2', quantity : 1, inversePrecedence : true) {\n"
-            // + "        lock(label: 'label2', quantity : 4, skipIfLocked: true, resourceSelectStrategy: 'random') {\n"
+            // + "        lock(label: 'label2', quantity : 4, skipIfLocked: true,
+            // resourceSelectStrategy: 'random') {\n"
             // + "          lock('resource_ephemeral_' + stageName) {\n"
             // + "            lock('resourceA_' + index) {\n"
             // + "              echo \"inside recursive lock \" + stageName\n"
@@ -102,8 +104,8 @@ public class PressureTest extends LockStepTestBase {
 
     pipeCode += "parallel stages;";
 
-
-    // reserve 'initpipe' resource to be sure that parallel builds and stages are paused at the same time.
+    // reserve 'initpipe' resource to be sure that parallel builds and stages are paused at the same
+    // time.
     lrm.createResourceWithLabel("initpipe", "sync step");
     lrm.reserve(Collections.singletonList(lrm.fromName("initpipe")), "test");
 
@@ -124,7 +126,7 @@ public class PressureTest extends LockStepTestBase {
       j.waitForMessage(", waiting for execution...", b2);
     }
 
-    for(WorkflowRun b2 : otherBuilds) {
+    for (WorkflowRun b2 : otherBuilds) {
       j.waitForMessage(", waiting for execution...", b2);
     }
 
@@ -139,10 +141,10 @@ public class PressureTest extends LockStepTestBase {
       lrm.createResourceWithLabel("resourceC_" + Integer.toString(i), "label1");
       j.createSlave("AGENT_BBB_" + i, null, null);
     }
-    
-    // unreserve it now, and the fun may starts. Because all the parallel jobs and stages will be "free"
-    lrm.unreserve(Collections.singletonList(lrm.fromName("initpipe")));
 
+    // unreserve it now, and the fun may starts. Because all the parallel jobs and stages will be
+    // "free"
+    lrm.unreserve(Collections.singletonList(lrm.fromName("initpipe")));
 
     // create more resources until the first job has been started
     for (int i = 1; i <= resourcesCount; i++) {
@@ -161,7 +163,7 @@ public class PressureTest extends LockStepTestBase {
     LOGGER.info("build b1: done");
 
     // wait until all parallel jobs has been stopped
-    for(WorkflowRun b2 : otherBuilds) {
+    for (WorkflowRun b2 : otherBuilds) {
       LOGGER.info("Wait for build " + b2.getAbsoluteUrl());
       j.assertBuildStatusSuccess(j.waitForCompletion(b2));
       LOGGER.info("build " + b2.getUrl() + ": done");

@@ -28,13 +28,13 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
+import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.htmlunit.FailingHttpStatusCodeException;
 import org.htmlunit.html.HtmlElement;
 import org.htmlunit.html.HtmlElementUtil;
 import org.htmlunit.html.HtmlPage;
-import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;

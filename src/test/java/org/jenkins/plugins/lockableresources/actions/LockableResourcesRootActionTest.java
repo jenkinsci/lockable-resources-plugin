@@ -1,11 +1,10 @@
 package org.jenkins.plugins.lockableresources.actions;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
-
 
 import hudson.model.Item;
 import hudson.model.User;
@@ -31,16 +30,13 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-
 public class LockableResourcesRootActionTest extends LockStepTestBase {
 
   @Rule public JenkinsRule j = new JenkinsRule();
 
-  @Mock
-  private StaplerRequest req;
+  @Mock private StaplerRequest req;
 
-  @Mock
-  private StaplerResponse rsp;
+  @Mock private StaplerResponse rsp;
 
   private AutoCloseable mocks;
 
@@ -61,7 +57,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
 
   private LockableResourcesManager LRM = null;
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Before
   public void setUp() throws Exception {
     this.mocks = MockitoAnnotations.openMocks(this);
@@ -75,15 +71,29 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     this.admin = User.getById(this.ADMIN, true);
 
     j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
-    this.j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
-      .grant(Jenkins.READ).everywhere().to(this.USER)
-      .grant(Jenkins.READ, Item.CONFIGURE).everywhere().to(this.USER_WITH_CONFIGURE_PERM)
-      .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.RESERVE).everywhere().to(this.USER_WITH_RESERVE_PERM)
-      .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.RESERVE).everywhere().to(this.USER_WITH_RESERVE_PERM_2)
-      .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.STEAL).everywhere().to(this.USER_WITH_STEAL_PERM)
-      .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.UNLOCK).everywhere().to(this.USER_WITH_UNLOCK_PERM)
-      .grant(Jenkins.ADMINISTER).everywhere().to(this.ADMIN)
-    );
+    this.j.jenkins.setAuthorizationStrategy(
+        new MockAuthorizationStrategy()
+            .grant(Jenkins.READ)
+            .everywhere()
+            .to(this.USER)
+            .grant(Jenkins.READ, Item.CONFIGURE)
+            .everywhere()
+            .to(this.USER_WITH_CONFIGURE_PERM)
+            .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.RESERVE)
+            .everywhere()
+            .to(this.USER_WITH_RESERVE_PERM)
+            .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.RESERVE)
+            .everywhere()
+            .to(this.USER_WITH_RESERVE_PERM_2)
+            .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.STEAL)
+            .everywhere()
+            .to(this.USER_WITH_STEAL_PERM)
+            .grant(Jenkins.READ, Item.CONFIGURE, LockableResourcesRootAction.UNLOCK)
+            .everywhere()
+            .to(this.USER_WITH_UNLOCK_PERM)
+            .grant(Jenkins.ADMINISTER)
+            .everywhere()
+            .to(this.ADMIN));
 
     this.LRM = LockableResourcesManager.get();
   }
@@ -95,15 +105,13 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     }
   }
 
-  //---------------------------------------------------------------------------
-  /** Test action doReassign  in web client.
-   * The action shall do:
-   * ```
-   * Reserves a resource that may be or not be reserved by some person already, giving it away to
-   * the userName indefinitely (until that person, or some explicit scripted action, decides to
-   * release the resource).
-   * ```
- * @throws Exception
+  // ---------------------------------------------------------------------------
+  /**
+   * Test action doReassign in web client. The action shall do: ``` Reserves a resource that may be
+   * or not be reserved by some person already, giving it away to the userName indefinitely (until
+   * that person, or some explicit scripted action, decides to release the resource). ```
+   *
+   * @throws Exception
    */
   @Test
   public void testDoReassign() throws Exception {
@@ -154,7 +162,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     action.doReassign(req, rsp);
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testDoReserve() throws Exception {
 
@@ -182,17 +190,20 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     // second user, shall not work, because it is reserved just now
     SecurityContextHolder.getContext().setAuthentication(this.reserve_user2.impersonate2());
     action.doReserve(req, rsp);
-    assertEquals("still reserved by first user", this.reserve_user1.getId(), resource.getReservedBy());
+    assertEquals(
+        "still reserved by first user", this.reserve_user1.getId(), resource.getReservedBy());
 
     // but create new one and reserve it must works as well
     resource = this.createResource("resource3");
     action.doReserve(req, rsp);
     assertEquals("reserved by second user", this.reserve_user2.getId(), resource.getReservedBy());
 
-    // and also admin can not reserve resource, when is reserved just now (need to use reassign action)
+    // and also admin can not reserve resource, when is reserved just now (need to use reassign
+    // action)
     SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
     action.doReserve(req, rsp);
-    assertEquals("still reserved by second user", this.reserve_user2.getId(), resource.getReservedBy());
+    assertEquals(
+        "still reserved by second user", this.reserve_user2.getId(), resource.getReservedBy());
 
     // try to reserve by label name
     resource = this.createResource("resource4");
@@ -214,7 +225,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     action.doReserve(req, rsp);
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testDoReset() throws IOException, ServletException {
 
@@ -255,7 +266,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     action.doReset(req, rsp);
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testDoSaveNote() throws IOException, ServletException {
 
@@ -305,10 +316,9 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     action.doSaveNote(req, rsp);
     when(req.getParameter("resource")).thenReturn("some-dangerous_characters-like:\n\t$%ÖÜä?=+ľšť");
     action.doSaveNote(req, rsp);
-
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testDoSteal() throws IOException, ServletException {
 
@@ -358,19 +368,15 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     action.doSteal(req, rsp);
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
-  public void testDoUnlock() {
+  public void testDoUnlock() {}
 
-  }
-
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
-  public void testDoUnreserve() {
+  public void testDoUnreserve() {}
 
-  }
-
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testGetAllLabels() throws IOException, ServletException {
     when(req.getMethod()).thenReturn("POST");
@@ -378,8 +384,8 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
 
     this.LRM.createResourceWithLabel("resource-A", "resource-label-1 ");
     this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
-    this.LRM.createResourceWithLabel(" resource-C", "resource-label-1 \n \t \r resource-label-2 resource-label-3");
-
+    this.LRM.createResourceWithLabel(
+        " resource-C", "resource-label-1 \n \t \r resource-label-2 resource-label-3");
 
     Set<String> expectedLabels = new HashSet<>();
     expectedLabels.add("resource-label-1");
@@ -389,13 +395,15 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     Set<String> labels = action.getAllLabels();
     assertEquals("check all labels", expectedLabels, labels);
 
-
     LockableResource getter = action.getResource("resource-C");
-    assertEquals("check labels from resource-C", "resource-label-1 resource-label-2 resource-label-3", getter.getLabels());
+    assertEquals(
+        "check labels from resource-C",
+        "resource-label-1 resource-label-2 resource-label-3",
+        getter.getLabels());
     assertEquals("check resource name", "resource-C", getter.getName());
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testGetAssignedResourceAmount() throws IOException, ServletException {
     when(req.getMethod()).thenReturn("POST");
@@ -406,26 +414,40 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
 
     this.LRM.createResourceWithLabel("resource-A", "resource-label-1");
     this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
-    this.LRM.createResourceWithLabel("resource-C", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-C", "resource-label-1 resource-label-2 resource-label-3");
 
     assertEquals("initial check", 3, action.getAssignedResourceAmount("resource-label-1"));
     assertEquals("initial check", 2, action.getAssignedResourceAmount("resource-label-2"));
     assertEquals("initial check", 1, action.getAssignedResourceAmount("resource-label-3"));
 
     // check label parsing
-    assertEquals("check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
-    assertEquals("check after reservation", 1, action.getAssignedResourceAmount("resource-label-1 && resource-label-2 && resource-label-3"));
-    assertEquals("check after reservation", 2, action.getAssignedResourceAmount("resource-label-1 && resource-label-2"));
-    assertEquals("check after reservation", 2, action.getAssignedResourceAmount("resource-label-3 || resource-label-2"));
-
+    assertEquals(
+        "check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
+    assertEquals(
+        "check after reservation",
+        1,
+        action.getAssignedResourceAmount(
+            "resource-label-1 && resource-label-2 && resource-label-3"));
+    assertEquals(
+        "check after reservation",
+        2,
+        action.getAssignedResourceAmount("resource-label-1 && resource-label-2"));
+    assertEquals(
+        "check after reservation",
+        2,
+        action.getAssignedResourceAmount("resource-label-3 || resource-label-2"));
 
     // reserve one resource. Amount of assigned labels should change
     when(req.getParameter("resource")).thenReturn("resource-A");
     action.doReserve(req, rsp);
-    
-    assertEquals("check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
-    assertEquals("check after reservation", 2, action.getAssignedResourceAmount("resource-label-2"));
-    assertEquals("check after reservation", 1, action.getAssignedResourceAmount("resource-label-3"));
+
+    assertEquals(
+        "check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
+    assertEquals(
+        "check after reservation", 2, action.getAssignedResourceAmount("resource-label-2"));
+    assertEquals(
+        "check after reservation", 1, action.getAssignedResourceAmount("resource-label-3"));
 
     // reserve all resources. Amount of assigned labels should change
     when(req.getParameter("resource")).thenReturn("resource-B");
@@ -433,9 +455,12 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     when(req.getParameter("resource")).thenReturn("resource-C");
     action.doReserve(req, rsp);
 
-    assertEquals("check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
-    assertEquals("check after reservation", 2, action.getAssignedResourceAmount("resource-label-2"));
-    assertEquals("check after reservation", 1, action.getAssignedResourceAmount("resource-label-3"));
+    assertEquals(
+        "check after reservation", 3, action.getAssignedResourceAmount("resource-label-1"));
+    assertEquals(
+        "check after reservation", 2, action.getAssignedResourceAmount("resource-label-2"));
+    assertEquals(
+        "check after reservation", 1, action.getAssignedResourceAmount("resource-label-3"));
 
     // defensive tests
     assertEquals("initial check", 0, action.getAssignedResourceAmount(""));
@@ -443,7 +468,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     assertEquals("initial check", 0, action.getAssignedResourceAmount("resource-A-label "));
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testGetFreeResourceAmount() throws IOException, ServletException {
     when(req.getMethod()).thenReturn("POST");
@@ -454,28 +479,34 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
 
     this.LRM.createResourceWithLabel("resource-A", "resource-label-1");
     this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
-    this.LRM.createResourceWithLabel("resource-C", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-C", "resource-label-1 resource-label-2 resource-label-3");
 
     assertEquals("initial check", 3, action.getFreeResourceAmount("resource-label-1"));
     assertEquals("initial check", 2, action.getFreeResourceAmount("resource-label-2"));
     assertEquals("initial check", 1, action.getFreeResourceAmount("resource-label-3"));
 
-
     when(req.getParameter("resource")).thenReturn("resource-A");
     action.doReserve(req, rsp);
-    
-    assertEquals("check after label-1 is reserved", 2, action.getFreeResourceAmount("resource-label-1"));
-    assertEquals("check after label-1 is reserved", 2, action.getFreeResourceAmount("resource-label-2"));
-    assertEquals("check after label-1 is reserved", 1, action.getFreeResourceAmount("resource-label-3"));
+
+    assertEquals(
+        "check after label-1 is reserved", 2, action.getFreeResourceAmount("resource-label-1"));
+    assertEquals(
+        "check after label-1 is reserved", 2, action.getFreeResourceAmount("resource-label-2"));
+    assertEquals(
+        "check after label-1 is reserved", 1, action.getFreeResourceAmount("resource-label-3"));
 
     when(req.getParameter("resource")).thenReturn("resource-B");
     action.doReserve(req, rsp);
     when(req.getParameter("resource")).thenReturn("resource-C");
     action.doReserve(req, rsp);
 
-    assertEquals("check after label-2 is reserved", 0, action.getFreeResourceAmount("resource-label-1"));
-    assertEquals("check after label-2 is reserved", 0, action.getFreeResourceAmount("resource-label-2"));
-    assertEquals("check after label-2 is reserved", 0, action.getFreeResourceAmount("resource-label-3"));
+    assertEquals(
+        "check after label-2 is reserved", 0, action.getFreeResourceAmount("resource-label-1"));
+    assertEquals(
+        "check after label-2 is reserved", 0, action.getFreeResourceAmount("resource-label-2"));
+    assertEquals(
+        "check after label-2 is reserved", 0, action.getFreeResourceAmount("resource-label-3"));
 
     // defensive tests
     assertEquals("defensive check", 0, action.getFreeResourceAmount(""));
@@ -483,7 +514,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     assertEquals("defensive check", 0, action.getFreeResourceAmount("resource-A-label "));
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testGetFreeResourcePercentage() throws IOException, ServletException {
     when(req.getMethod()).thenReturn("POST");
@@ -494,14 +525,22 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
 
     this.LRM.createResourceWithLabel("resource-A", "resource-label-1");
     this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
-    this.LRM.createResourceWithLabel("resource-C", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-D", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-E", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-F", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-G", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-H", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-I", "resource-label-1 resource-label-2 resource-label-3");
-    this.LRM.createResourceWithLabel("resource-J", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-C", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-D", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-E", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-F", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-G", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-H", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-I", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-J", "resource-label-1 resource-label-2 resource-label-3");
 
     assertEquals("initial check", 100, action.getFreeResourcePercentage("resource-label-1"));
     assertEquals("initial check", 100, action.getFreeResourcePercentage("resource-label-2"));
@@ -510,14 +549,18 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     // reserve one resource. Amount of assigned labels should change
     when(req.getParameter("resource")).thenReturn("resource-A");
     action.doReserve(req, rsp);
-    
-    assertEquals("check after reservation", 90, action.getFreeResourcePercentage("resource-label-1"));
-    assertEquals("check after reservation", 100, action.getFreeResourcePercentage("resource-label-2"));
+
+    assertEquals(
+        "check after reservation", 90, action.getFreeResourcePercentage("resource-label-1"));
+    assertEquals(
+        "check after reservation", 100, action.getFreeResourcePercentage("resource-label-2"));
 
     when(req.getParameter("resource")).thenReturn("resource-B");
     action.doReserve(req, rsp);
-    assertEquals("check after reservation", 80, action.getFreeResourcePercentage("resource-label-1"));
-    assertEquals("check after reservation", 88, action.getFreeResourcePercentage("resource-label-2"));
+    assertEquals(
+        "check after reservation", 80, action.getFreeResourcePercentage("resource-label-1"));
+    assertEquals(
+        "check after reservation", 88, action.getFreeResourcePercentage("resource-label-2"));
 
     // reserve all resources. Amount of assigned labels should change
     when(req.getParameter("resource")).thenReturn("resource-C");
@@ -537,9 +580,12 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     when(req.getParameter("resource")).thenReturn("resource-J");
     action.doReserve(req, rsp);
 
-    assertEquals("check after all reserved", 0, action.getFreeResourcePercentage("resource-label-1"));
-    assertEquals("check after all reserved", 0, action.getFreeResourcePercentage("resource-label-2"));
-    assertEquals("check after all reserved", 0, action.getFreeResourcePercentage("resource-label-3"));
+    assertEquals(
+        "check after all reserved", 0, action.getFreeResourcePercentage("resource-label-1"));
+    assertEquals(
+        "check after all reserved", 0, action.getFreeResourcePercentage("resource-label-2"));
+    assertEquals(
+        "check after all reserved", 0, action.getFreeResourcePercentage("resource-label-3"));
 
     // defensive tests
     assertEquals("defensive check", 0, action.getFreeResourcePercentage(""));
@@ -547,13 +593,11 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     assertEquals("defensive check", 0, action.getFreeResourcePercentage("resource-A-label "));
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
-  public void testGetIconFileName() {
+  public void testGetIconFileName() {}
 
-  }
-
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
   public void testGetNumberOfAllLabels() throws IOException, ServletException {
     when(req.getMethod()).thenReturn("POST");
@@ -566,25 +610,23 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     assertEquals("one resource with one label", 1, action.getNumberOfAllLabels());
     this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
     assertEquals("two resources with 2 labels", 2, action.getNumberOfAllLabels());
-    this.LRM.createResourceWithLabel("resource-C", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-C", "resource-label-1 resource-label-2 resource-label-3");
     assertEquals("three resources with three labels", 3, action.getNumberOfAllLabels());
-    this.LRM.createResourceWithLabel("resource-D", "resource-label-1 resource-label-2 resource-label-3");
+    this.LRM.createResourceWithLabel(
+        "resource-D", "resource-label-1 resource-label-2 resource-label-3");
     assertEquals("four resources with three labels", 3, action.getNumberOfAllLabels());
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
-  public void testGetUrlName() {
+  public void testGetUrlName() {}
 
-  }
-
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Test
-  public void testGetUserName() {
+  public void testGetUserName() {}
 
-  }
-
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   private LockableResource createResource(String resourceName) {
     this.LRM.createResourceWithLabel(resourceName, "label-" + resourceName);
     when(req.getParameter("resource")).thenReturn(resourceName);

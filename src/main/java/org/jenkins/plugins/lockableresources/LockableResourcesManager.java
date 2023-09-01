@@ -54,7 +54,7 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
-  public final static transient Object syncResources = new Object();
+  public static final transient Object syncResources = new Object();
   private List<LockableResource> resources;
   private transient Cache<Long, List<LockableResource>> cachedCandidates =
       CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
@@ -273,8 +273,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     for (LockableResource r : this.getReadOnlyResources()) {
-      if (r != null && r.isValidLabel(label))
-        found.add(r);
+      if (r != null && r.isValidLabel(label)) found.add(r);
     }
     return found;
   }
@@ -312,21 +311,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (resourceName != null) {
 
       for (LockableResource r : this.getReadOnlyResources()) {
-        if (resourceName.equals(r.getName()))
-          return r;
+        if (resourceName.equals(r.getName())) return r;
       }
     } else {
       LOGGER.warning("Internal failure, fromName is empty or null:" + getStack());
-
     }
     return null;
   }
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   private String getStack() {
     StringBuffer buf = new StringBuffer();
-    for(StackTraceElement st : Thread.currentThread().getStackTrace())
-    {
+    for (StackTraceElement st : Thread.currentThread().getStackTrace()) {
       buf.append("\n" + st);
     }
     return buf.toString();
@@ -559,8 +555,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     PrintStream logger = null;
     try {
-      if (context != null)
-        logger = context.get(TaskListener.class).getLogger();
+      if (context != null) logger = context.get(TaskListener.class).getLogger();
     } catch (IOException | InterruptedException e) {
       // this shall never happens, because the logger has been checked in call before
       // but nobody know
@@ -603,10 +598,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       // this shall never happens, but it might.
       // When the build does not exists, we shall free all given resources
       LOGGER.warning("Free resources for non existing build: " + unlockResourceNames);
-      for(String resourceName : unlockResourceNames) {
+      for (String resourceName : unlockResourceNames) {
         LockableResource r = this.fromName(resourceName);
-        if (r != null)
-          unlockResources.add(r);
+        if (r != null) unlockResources.add(r);
       }
     }
 
@@ -636,7 +630,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable List<LockableResource> resourcesToUnLock,
       @Nullable Run<?, ?> build,
       boolean inversePrecedence) {
-    List<String> resourceNamesToUnLock = LockableResourcesManager.getResourcesNames(resourcesToUnLock);
+    List<String> resourceNamesToUnLock =
+        LockableResourcesManager.getResourcesNames(resourcesToUnLock);
     this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
   }
 
@@ -806,7 +801,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
       Run<?, ?> run = entry.getBuild();
       if (run == null) {
         // skip this one, for some reason there is no Run object for this context
-        LOGGER.warning("The queue " + entry.getResourceDescription() + " will be removed, because the build does not exists");
+        LOGGER.warning(
+            "The queue "
+                + entry.getResourceDescription()
+                + " will be removed, because the build does not exists");
         orphan.add(entry);
         continue;
       }
@@ -822,12 +820,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (newest == 0) {
         newest = run.getStartTimeInMillis();
       }
-      LOGGER.finest("getNextQueuedContext: " + entry.getContext().hashCode() +" " + entry.getResourceDescription() + " " + run + " " + run.getStartTimeInMillis() + " vs " + newest);
+      LOGGER.finest(
+          "getNextQueuedContext: "
+              + entry.getContext().hashCode()
+              + " "
+              + entry.getResourceDescription()
+              + " "
+              + run
+              + " "
+              + run.getStartTimeInMillis()
+              + " vs "
+              + newest);
       if (nextEntry != null)
         LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
       if (nextEntry != null) {
         boolean ignoreMe = false;
-        if (inversePrecedence) { 
+        if (inversePrecedence) {
           // in case inverse precedence ignore all old entries
           ignoreMe = entry.getAddTime() < nextEntry.getAddTime();
         } else {
@@ -839,7 +847,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
           continue;
         }
       }
-      LOGGER.finest("getNextQueuedContext take this: " + entry.getContext().hashCode() + " " + entry.getResourceDescription() + " " + run);
+      LOGGER.finest(
+          "getNextQueuedContext take this: "
+              + entry.getContext().hashCode()
+              + " "
+              + entry.getResourceDescription()
+              + " "
+              + run);
 
       if (checkResourcesAvailability(
               entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
@@ -918,9 +932,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public boolean addResource(final LockableResource resource, final boolean doSave) {
 
     synchronized (this.syncResources) {
-      if (resource == null
-          || resource.getName() == null
-          || resource.getName().isEmpty()) {
+      if (resource == null || resource.getName() == null || resource.getName().isEmpty()) {
         LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
         return false;
       }
@@ -1352,8 +1364,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
               // already waiting queue. Otherwise those already waiting are not
               // notified until you lock/unlock that resource again.
               if (logger != null) {
-                logger.println(
-                    candidate.getLockCause() + "', not treating as available.");
+                logger.println(candidate.getLockCause() + "', not treating as available.");
               }
               totalReserved += 1;
               continue;
@@ -1421,7 +1432,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // As soon as we know we can not fulfill the overall requirement
         // (not enough of something from that list), we bail out quickly.
         if (logger != null && !skipIfLocked) {
-          String msg = "Found " + selected.size() + " available resource(s). Waiting for correct amount: " + requiredAmount + ".";
+          String msg =
+              "Found "
+                  + selected.size()
+                  + " available resource(s). Waiting for correct amount: "
+                  + requiredAmount
+                  + ".";
           if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
             msg += "\nBlocked candidates: " + getCauses(candidates);
           }
@@ -1445,8 +1461,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         continue;
       }
       String cause = resource.getLockCause();
-      if (cause == null)
-        cause = "  Unknown!!!";
+      if (cause == null) cause = "  Unknown!!!";
 
       buf.append("\n  " + cause);
     }
@@ -1500,14 +1515,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // ---------------------------------------------------------------------------
   @Override
   public void save() {
-    if (enableSave == -1)
-    {
+    if (enableSave == -1) {
       // read system property and cache it.
       enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
     }
 
-    if (enableSave == 0)
-      return; // saving is disabled
+    if (enableSave == 0) return; // saving is disabled
 
     synchronized (this.syncResources) {
       if (BulkChange.contains(this)) return;

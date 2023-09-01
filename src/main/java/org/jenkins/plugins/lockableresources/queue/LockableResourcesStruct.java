@@ -21,8 +21,6 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 public class LockableResourcesStruct implements Serializable {
 
@@ -38,7 +36,8 @@ public class LockableResourcesStruct implements Serializable {
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
   @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
-  @CheckForNull private transient SecureGroovyScript resourceMatchScript;
+  @CheckForNull
+  private transient SecureGroovyScript resourceMatchScript;
 
   private static final long serialVersionUID = 1L;
 
@@ -79,13 +78,13 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
+      @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
     this(resources, label, quantity);
     requiredVar = variable;
   }
 
   public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity) {
+      @Nullable List<String> resources, @Nullable String label, int quantity) {
     queuedAt = new Date().getTime();
     required = new ArrayList<>();
     if (resources != null) {

@@ -18,9 +18,7 @@ import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -33,15 +31,13 @@ import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 public class LockRunListener extends RunListener<Run<?, ?>> {
 
   static final String LOG_PREFIX = "[lockable-resources]";
-  static final Logger LOGGER = Logger.getLogger(LockRunListener.class
-    .getName());
+  static final Logger LOGGER = Logger.getLogger(LockRunListener.class.getName());
 
   @Override
   public void onStarted(Run<?, ?> build, TaskListener listener) {
     // Skip locking for multiple configuration projects,
     // only the child jobs will actually lock resources.
-    if (build instanceof MatrixBuild)
-      return;
+    if (build instanceof MatrixBuild) return;
 
     if (build instanceof AbstractBuild) {
       Job<?, ?> proj = Utils.getProject(build);
@@ -49,29 +45,29 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
       LockableResourcesStruct resources = Utils.requiredResources(proj);
 
       if (resources != null) {
-        if (resources.requiredNumber != null || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
-          required.addAll(LockableResourcesManager.get().
-            getResourcesFromProject(proj.getFullName()));
+        if (resources.requiredNumber != null
+            || !resources.label.isEmpty()
+            || resources.getResourceMatchScript() != null) {
+          required.addAll(
+              LockableResourcesManager.get().getResourcesFromProject(proj.getFullName()));
         } else {
           required.addAll(resources.required);
         }
 
         if (LockableResourcesManager.get().lock(required, build, null)) {
-          build.addAction(LockedResourcesBuildAction
-            .fromResources(required));
-          listener.getLogger().printf("%s acquired lock on %s%n",
-            LOG_PREFIX, required);
-          LOGGER.fine(build.getFullDisplayName()
-            + " acquired lock on " + required);
+          build.addAction(LockedResourcesBuildAction.fromResources(required));
+          listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, required);
+          LOGGER.fine(build.getFullDisplayName() + " acquired lock on " + required);
           if (resources.requiredVar != null) {
             List<StringParameterValue> envsToSet = new ArrayList<>();
 
             // add the comma separated list of names acquired
-            envsToSet.add(new StringParameterValue(
-              resources.requiredVar,
-              required.stream()
-                .map(LockableResource::getName)
-                .collect(Collectors.joining(","))));
+            envsToSet.add(
+                new StringParameterValue(
+                    resources.requiredVar,
+                    required.stream()
+                        .map(LockableResource::getName)
+                        .collect(Collectors.joining(","))));
 
             // also add a numbered variable for each acquired lock along with properties of the lock
             int index = 0;
@@ -88,13 +84,10 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             build.addAction(new ResourceVariableNameAction(envsToSet));
           }
         } else {
-          listener.getLogger().printf("%s failed to lock %s%n",
-            LOG_PREFIX, required);
-          LOGGER.fine(build.getFullDisplayName() + " failed to lock "
-            + required);
+          listener.getLogger().printf("%s failed to lock %s%n", LOG_PREFIX, required);
+          LOGGER.fine(build.getFullDisplayName() + " failed to lock " + required);
         }
       }
-      
     }
   }
 
@@ -102,19 +95,20 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
   public void onCompleted(Run<?, ?> build, @NonNull TaskListener listener) {
     // Skip unlocking for multiple configuration projects,
     // only the child jobs will actually unlock resources.
-    if (build instanceof MatrixBuild)
-      return;
+    if (build instanceof MatrixBuild) return;
 
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm.syncResources) {
+    synchronized (lrm.syncResources) {
       // obviously project name cannot be obtained here
       List<LockableResource> required = lrm.getResourcesFromBuild(build);
       if (!required.isEmpty()) {
         lrm.unlock(required, build);
-        listener.getLogger().printf("%s released lock on %s%n",
-          LOG_PREFIX, required);
-        LOGGER.warning(build.getFullDisplayName() + " released lock on "
-          + required + ", because the build has been finished.");
+        listener.getLogger().printf("%s released lock on %s%n", LOG_PREFIX, required);
+        LOGGER.warning(
+            build.getFullDisplayName()
+                + " released lock on "
+                + required
+                + ", because the build has been finished.");
       }
     }
   }
@@ -123,17 +117,18 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
   public void onDeleted(Run<?, ?> build) {
     // Skip unlocking for multiple configuration projects,
     // only the child jobs will actually unlock resources.
-    if (build instanceof MatrixBuild)
-      return;
+    if (build instanceof MatrixBuild) return;
     LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized(lrm.syncResources) {
+    synchronized (lrm.syncResources) {
       List<LockableResource> required = lrm.getResourcesFromBuild(build);
       if (!required.isEmpty()) {
         lrm.unlock(required, build);
-        LOGGER.warning(build.getFullDisplayName() + " released lock on "
-          + required + ", because the build has been deleted.");
+        LOGGER.warning(
+            build.getFullDisplayName()
+                + " released lock on "
+                + required
+                + ", because the build has been deleted.");
       }
     }
   }
-
 }

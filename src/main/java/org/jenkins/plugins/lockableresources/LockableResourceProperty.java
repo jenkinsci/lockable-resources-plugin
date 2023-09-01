@@ -10,14 +10,13 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
 
 public class LockableResourceProperty extends AbstractDescribableImpl<LockableResourceProperty>
-  implements Serializable {
+    implements Serializable {
 
   private String name;
   private String value;
 
   @DataBoundConstructor
-  public LockableResourceProperty() {
-  }
+  public LockableResourceProperty() {}
 
   @DataBoundSetter
   public void setName(String name) {

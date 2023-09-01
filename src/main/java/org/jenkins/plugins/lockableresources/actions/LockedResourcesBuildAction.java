@@ -41,11 +41,9 @@ public class LockedResourcesBuildAction implements Action {
     return "locked-resources";
   }
 
-  public static LockedResourcesBuildAction fromResources(
-    Collection<LockableResource> resources) {
+  public static LockedResourcesBuildAction fromResources(Collection<LockableResource> resources) {
     List<ResourcePOJO> resPojos = new ArrayList<>();
-    for (LockableResource r : resources)
-      resPojos.add(new ResourcePOJO(r));
+    for (LockableResource r : resources) resPojos.add(new ResourcePOJO(r));
     return new LockedResourcesBuildAction(resPojos);
   }
 
@@ -71,7 +69,5 @@ public class LockedResourcesBuildAction implements Action {
     public String getDescription() {
       return description;
     }
-
   }
-
 }

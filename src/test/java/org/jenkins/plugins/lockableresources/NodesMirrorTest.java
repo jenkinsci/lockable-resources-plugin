@@ -1,17 +1,15 @@
 package org.jenkins.plugins.lockableresources;
 
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -32,7 +30,11 @@ public class NodesMirrorTest {
 
     // this is asynchronous operation, so wait until resources are created.
     LOGGER.info("wait for resources");
-    for(int i = 1; !LockableResourcesManager.get().resourceExist("FirstAgent") && !LockableResourcesManager.get().resourceExist("SecondAgent") && i <= 10; i++) {
+    for (int i = 1;
+        !LockableResourcesManager.get().resourceExist("FirstAgent")
+            && !LockableResourcesManager.get().resourceExist("SecondAgent")
+            && i <= 10;
+        i++) {
       Thread.sleep(100);
     }
 
@@ -50,7 +52,7 @@ public class NodesMirrorTest {
     // delete agent
     j.jenkins.removeNode(j.jenkins.getNode("FirstAgent"));
 
-    for(int i = 1; LockableResourcesManager.get().fromName("FirstAgent") == null && i <= 10; i++) {
+    for (int i = 1; LockableResourcesManager.get().fromName("FirstAgent") == null && i <= 10; i++) {
       Thread.sleep(100);
     }
     assertNull(LockableResourcesManager.get().fromName("FirstAgent"));
@@ -63,20 +65,20 @@ public class NodesMirrorTest {
 
     j.createSlave("FirstAgent", "label label2", null);
     // this is asynchronous operation, so wait until resources has been created.
-    for(int i = 1; LockableResourcesManager.get().fromName("FirstAgent") != null && i <= 10; i++) {
+    for (int i = 1; LockableResourcesManager.get().fromName("FirstAgent") != null && i <= 10; i++) {
       Thread.sleep(100);
     }
     assertNotNull(LockableResourcesManager.get().fromName("FirstAgent"));
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(
-        "lock(label: 'label && label2', variable : 'lockedNode') {\n"
-          + " echo 'wait for node: ' + env.lockedNode\n"
-          + "	semaphore 'wait-inside'\n"
-          + "}\n"
-          + "echo 'Finish'",
-        true));
+        new CpsFlowDefinition(
+            "lock(label: 'label && label2', variable : 'lockedNode') {\n"
+                + " echo 'wait for node: ' + env.lockedNode\n"
+                + "	semaphore 'wait-inside'\n"
+                + "}\n"
+                + "echo 'Finish'",
+            true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("wait for node: FirstAgent", b1);
     SemaphoreStep.waitForStart("wait-inside/1", b1);

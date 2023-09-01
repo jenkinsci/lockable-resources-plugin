@@ -18,7 +18,7 @@ import org.junit.Test;
 
 public class ConfigurationAsCodeTest {
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Before
   public void setUp() {
     // to speed up the test
@@ -32,11 +32,11 @@ public class ConfigurationAsCodeTest {
   @Test
   public void should_support_configuration_as_code() {
     List<LockableResource> declaredResources =
-      LockableResourcesManager.get().getDeclaredResources();
+        LockableResourcesManager.get().getDeclaredResources();
     assertEquals(
-      "The number of declared resources is wrong. Check your configuration-as-code.yml",
-      1,
-      declaredResources.size());
+        "The number of declared resources is wrong. Check your configuration-as-code.yml",
+        1,
+        declaredResources.size());
 
     LockableResource declaredResource = declaredResources.get(0);
     assertEquals("Resource_A", declaredResource.getName());
@@ -47,9 +47,9 @@ public class ConfigurationAsCodeTest {
 
     List<LockableResource> resources = LockableResourcesManager.get().getReadOnlyResources();
     assertEquals(
-      "The number of resources is wrong. Check your configuration-as-code.yml",
-      1,
-      resources.size());
+        "The number of resources is wrong. Check your configuration-as-code.yml",
+        1,
+        resources.size());
 
     LockableResource resource = resources.get(0);
     assertEquals("Resource_A", resource.getName());

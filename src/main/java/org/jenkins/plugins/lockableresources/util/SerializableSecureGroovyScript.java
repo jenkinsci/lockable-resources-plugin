@@ -41,6 +41,7 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 /**
  * Wrapper for a {@link SecureGroovyScript}.
+ *
  * @author Oleg Nenashev
  */
 @Restricted(NoExternalUse.class)
@@ -48,16 +49,13 @@ public class SerializableSecureGroovyScript implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  @CheckForNull
-  private final String script;
+  @CheckForNull private final String script;
   private final boolean sandbox;
-  /**
-   * {@code null} if and only if the {@link #script is null}.
-   */
-  @Nullable
-  private final ArrayList<SerializableClassPathEntry> classPathEntries;
+  /** {@code null} if and only if the {@link #script is null}. */
+  @Nullable private final ArrayList<SerializableClassPathEntry> classPathEntries;
 
-  private static final Logger LOGGER = Logger.getLogger(SerializableSecureGroovyScript.class.getName());
+  private static final Logger LOGGER =
+      Logger.getLogger(SerializableSecureGroovyScript.class.getName());
 
   public SerializableSecureGroovyScript(@CheckForNull SecureGroovyScript secureScript) {
     if (secureScript == null) {
@@ -104,7 +102,7 @@ public class SerializableSecureGroovyScript implements Serializable {
     }
 
     @CheckForNull
-    private ClasspathEntry rehydrate(){
+    private ClasspathEntry rehydrate() {
       try {
         ClasspathEntry entry = new ClasspathEntry(url);
         if (ScriptApproval.get().checking(entry).kind.equals(FormValidation.Kind.OK)) {
@@ -118,6 +116,5 @@ public class SerializableSecureGroovyScript implements Serializable {
         return null;
       }
     }
-
   }
 }

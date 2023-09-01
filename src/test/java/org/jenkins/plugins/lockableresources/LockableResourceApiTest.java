@@ -7,8 +7,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
 
-import org.htmlunit.FailingHttpStatusCodeException;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import org.htmlunit.FailingHttpStatusCodeException;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.junit.Before;
 import org.junit.Rule;
@@ -18,7 +18,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 public class LockableResourceApiTest {
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Before
   public void setUp() {
     // to speed up the test
@@ -47,9 +47,9 @@ public class LockableResourceApiTest {
   public void apiUsageHttpGet() {
     JenkinsRule.WebClient wc = j.createWebClient();
     FailingHttpStatusCodeException e =
-      assertThrows(
-        FailingHttpStatusCodeException.class,
-        () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
+        assertThrows(
+            FailingHttpStatusCodeException.class,
+            () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
     assertThat(e.getStatusCode(), is(405));
   }
 }

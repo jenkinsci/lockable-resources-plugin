@@ -38,10 +38,10 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
   private transient Cache<Long, Date> lastLogged =
-    Caffeine.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
+      Caffeine.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
 
   static final Logger LOGGER =
-    Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
+      Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
   @Override
   public CauseOfBlockage canRun(Queue.Item item) {
@@ -54,9 +54,9 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     LockableResourcesStruct resources = Utils.requiredResources(project);
     if (resources == null
-      || (resources.required.isEmpty()
-      && resources.label.isEmpty()
-      && resources.getResourceMatchScript() == null)) {
+        || (resources.required.isEmpty()
+            && resources.label.isEmpty()
+            && resources.getResourceMatchScript() == null)) {
       return null;
     }
 
@@ -70,8 +70,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     LOGGER.finest(project.getName() + " trying to get resources with these details: " + resources);
 
     if (resourceNumber > 0
-      || !resources.label.isEmpty()
-      || resources.getResourceMatchScript() != null) {
+        || !resources.label.isEmpty()
+        || resources.getResourceMatchScript() != null) {
       Map<String, Object> params = new HashMap<>();
 
       // Inject Build Parameters, if possible and applicable to the "item" type
@@ -105,9 +105,9 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
       final List<LockableResource> selected;
       try {
         selected =
-          LockableResourcesManager.get()
-            .tryQueue(
-              resources, item.getId(), project.getFullName(), resourceNumber, params, LOGGER);
+            LockableResourcesManager.get()
+                .tryQueue(
+                    resources, item.getId(), project.getFullName(), resourceNumber, params, LOGGER);
       } catch (ExecutionException ex) {
         Throwable toReport = ex.getCause();
         if (toReport == null) { // We care about the cause only
@@ -135,7 +135,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     } else {
       if (LockableResourcesManager.get()
-        .queue(resources.required, item.getId(), project.getFullDisplayName())) {
+          .queue(resources.required, item.getId(), project.getFullDisplayName())) {
         LOGGER.finest(project.getName() + " reserved resources " + resources.required);
         return null;
       } else {
@@ -171,8 +171,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
           }
           // TODO: Developers should extend here if LockableResourcesStruct is extended
           LOGGER.log(
-            Level.WARNING,
-            "Failed to classify reason of waiting for resource: " + this.rscStruct);
+              Level.WARNING,
+              "Failed to classify reason of waiting for resource: " + this.rscStruct);
           return "Waiting for lockable resources";
         }
       } else {
@@ -189,7 +189,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     @NonNull private final Throwable cause;
 
     public BecauseResourcesQueueFailed(
-      @NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
+        @NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
       this.cause = cause;
       this.resources = resources;
     }
@@ -198,13 +198,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     public String getShortDescription() {
       // TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
       String resourceInfo =
-        resources.label.isEmpty()
-          ? resources.required.toString()
-          : "with label " + resources.label;
+          resources.label.isEmpty()
+              ? resources.required.toString()
+              : "with label " + resources.label;
       return "Execution failed while acquiring the resource "
-        + resourceInfo
-        + ". "
-        + cause.getMessage();
+          + resourceInfo
+          + ". "
+          + cause.getMessage();
     }
   }
 }

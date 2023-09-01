@@ -26,10 +26,12 @@ public class ResourceVariableNameAction extends InvisibleAction {
   }
 
   @Extension
-  public static final class ResourceVariableNameActionEnvironmentContributor extends EnvironmentContributor {
+  public static final class ResourceVariableNameActionEnvironmentContributor
+      extends EnvironmentContributor {
 
     @Override
-    public void buildEnvironmentFor(@NonNull Run r, @NonNull EnvVars envs, @NonNull TaskListener listener) {
+    public void buildEnvironmentFor(
+        @NonNull Run r, @NonNull EnvVars envs, @NonNull TaskListener listener) {
       ResourceVariableNameAction a = r.getAction(ResourceVariableNameAction.class);
       if (a != null && a.getParameter() != null) {
         for (StringParameterValue envToSet : a.getParameter()) {
@@ -37,6 +39,5 @@ public class ResourceVariableNameAction extends InvisibleAction {
         }
       }
     }
-
   }
 }

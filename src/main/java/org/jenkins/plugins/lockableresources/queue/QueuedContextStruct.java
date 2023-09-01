@@ -12,8 +12,8 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Run;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Date;
+import java.util.List;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -51,7 +51,11 @@ public class QueuedContextStruct implements Serializable {
    * Constructor for the QueuedContextStruct class.
    */
   @Restricted(NoExternalUse.class)
-  public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription, String variableName) {
+  public QueuedContextStruct(
+      StepContext context,
+      List<LockableResourcesStruct> lockableResourcesStruct,
+      String resourceDescription,
+      String variableName) {
     this.context = context;
     this.lockableResourcesStruct = lockableResourcesStruct;
     this.resourceDescription = resourceDescription;
@@ -67,7 +71,7 @@ public class QueuedContextStruct implements Serializable {
     return this.context;
   }
 
-  /** Return build, where is the resource used.*/
+  /** Return build, where is the resource used. */
   @CheckForNull
   @Restricted(NoExternalUse.class)
   public Run<?, ?> getBuild() {

@@ -40,11 +40,7 @@ public class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
 
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(
-        "lock('resource1') {\n" +
-        "    echo('I am inside')\n" +
-        "}\n",
-        true));
+        new CpsFlowDefinition("lock('resource1') {\n" + "    echo('I am inside')\n" + "}\n", true));
 
     WorkflowRun r = p.scheduleBuild2(0).waitForStart();
     j.waitForMessage("[resource1]  is not free, waiting for execution...", r);

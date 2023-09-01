@@ -18,7 +18,7 @@ import org.jvnet.hudson.test.TestBuilder;
 
 public class InteroperabilityTest extends LockStepTestBase {
 
-  //---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   @Before
   public void setUp() {
     // to speed up the test
@@ -33,23 +33,23 @@ public class InteroperabilityTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(
-        "lock('resource1') {\n" + "	echo 'Locked'\n" + "}\n" + "echo 'Finish'", true));
+        new CpsFlowDefinition(
+            "lock('resource1') {\n" + "	echo 'Locked'\n" + "}\n" + "echo 'Finish'", true));
 
     FreeStyleProject f = j.createFreeStyleProject("f");
     f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
     f.getBuildersList()
-      .add(
-        new TestBuilder() {
+        .add(
+            new TestBuilder() {
 
-          @Override
-          public boolean perform(
-            AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-            throws InterruptedException {
-            semaphore.acquire();
-            return true;
-          }
-        });
+              @Override
+              public boolean perform(
+                  AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+                  throws InterruptedException {
+                semaphore.acquire();
+                return true;
+              }
+            });
     semaphore.acquire();
     FreeStyleBuild f1 = f.scheduleBuild2(0).waitForStart();
 
