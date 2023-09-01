@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import hudson.Functions;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,15 +25,18 @@ public class PressureTest extends LockStepTestBase {
    * be very hard.
    */
   @Test
+  // it depends on which node you are running
   @WithTimeout(900)
   public void pressureEnableSave() throws Exception {
-    pressure(20);
+    // keep in mind, that the windows nodes at jenkins-infra are not very fast
+    pressure(Functions.isWindows() ? 5 : 20);
   }
   @Test
   @WithTimeout(900)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-    pressure(20);
+    // keep in mind, that the windows nodes at jenkins-infra are not very fast
+    pressure(Functions.isWindows() ? 5 : 20);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
