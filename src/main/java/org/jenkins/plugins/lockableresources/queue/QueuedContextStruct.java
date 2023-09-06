@@ -11,9 +11,11 @@ package org.jenkins.plugins.lockableresources.queue;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Run;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
+import hudson.model.TaskListener;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -114,6 +116,20 @@ public class QueuedContextStruct implements Serializable {
   @Restricted(NoExternalUse.class)
   public long getAddTime() {
     return queuedAt;
+  }
+
+  @Restricted(NoExternalUse.class)
+  public PrintStream getLogger() {
+    PrintStream logger = null;
+    try {
+      TaskListener taskListener = .getContext().get(TaskListener.class);
+      if (taskListener != null) {
+        logger = taskListener.getLogger();
+      }
+    } catch (IOException | InterruptedException e) {
+      LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
+    }
+    return logger;
   }
 
   private static final long serialVersionUID = 1L;

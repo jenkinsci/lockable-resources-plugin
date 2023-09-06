@@ -465,6 +465,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
           getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()),
           timestamp);
     }
+    if (this.isReservedForBuild()) {
+      return String.format(
+          "The resource [%s] is pre-reserved for %s",
+          name,
+          getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()));
+    }
     return null;
   }
 
@@ -489,11 +495,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.reservedForBuild = lockedBy;
   }
   
-  public void resetReservationForBuild() {
+  public void resetBuildReservation() {
     this.reservedForBuild = null;
   }
 
   public void setBuild(Run<?, ?> lockedBy) {
+    this.resetBuildReservation();
     this.build = lockedBy;
     if (lockedBy != null) {
       this.buildExternalizableId = lockedBy.getExternalizableId();
@@ -560,8 +567,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   public void unReserve() {
-    setReservedBy(null);
-    setReservedTimestamp(null);
+    this.setReservedBy(null);
+    this.setReservedTimestamp(null);
     this.stolen = false;
   }
 

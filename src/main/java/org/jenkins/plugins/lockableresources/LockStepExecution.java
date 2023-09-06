@@ -69,9 +69,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       }
 
       // determine if there are enough resources available to proceed
-      available =
-          lrm.checkResourcesAvailability(
-              resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
+      available = lrm.getAvailableResources(requiredResourcesList, logger, resourceSelectStrategy);
 
       if (available == null) {
         onLockFailed(logger, resourceHolderList);

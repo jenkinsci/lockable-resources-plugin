@@ -18,7 +18,6 @@ import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.Run;
-import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -668,7 +667,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           return;
         }
 
-        List<LockableResource> requiredResourceForNextContext =
+        List<LockableResource> requiredResourceForNextContext = 
             checkResourcesAvailability(
                 nextContext.getResources(), null, remainingResourceNamesToUnLock);
 
@@ -774,7 +773,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       List<String> resourceNamesToUnLock, boolean inversePrecedence, QueuedContextStruct from) {
     return this.getNextQueuedContext(resourceNamesToUnLock, null, inversePrecedence, from);
   }
-
+  
+  private findQueuedContext(List<LockableResource> rsources)
   // ---------------------------------------------------------------------------
   /**
    * Returns the next queued context with all its requirements satisfied.
@@ -789,8 +789,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
-      @Nullable List<String> resourceNamesToUnLock,
-      @Nullable List<String> resourceNamesToUnReserve,
       boolean inversePrecedence,
       QueuedContextStruct from) {
     QueuedContextStruct newestEntry = null;
@@ -822,8 +820,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (newest == 0) {
         newest = run.getStartTimeInMillis();
       }
-      LOGGER.finest(
-          "getNextQueuedContext: "
+      LOGGER.info(
+          "getNextQueuedContext: " + i + " " +
               + entry.getContext().hashCode()
               + " "
               + entry.getResourceDescription()
@@ -857,9 +855,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
               + " "
               + run);
 
-      if (checkResourcesAvailability(
-              entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
-          != null) {
+
+      if (this.getAvailableResources(requiredResourcesList, logger, null) != null) {
         newest = run.getStartTimeInMillis();
         nextEntry = entry;
       }
@@ -1029,31 +1026,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<String> resourceNamesToUnreserve = LockableResourcesManager.getResourcesNames(resources);
 
     synchronized (this.syncResources) {
+      unreserveResources(resources);
+
+
       // check if there are resources which can be unlocked (and shall not be unlocked)
       QueuedContextStruct nextContext =
           this.getNextQueuedContext(null, resourceNamesToUnreserve, false, null);
 
       // no context is queued which can be started once these resources are free'd.
       if (nextContext == null || nextContext.getContext() == null) {
-        LOGGER.log(
-            Level.FINER,
-            () ->
-                "No context queued for resources "
+        LOGGER.fine("No context queued for resources "
                     + String.join(", ", resourceNamesToUnreserve)
                     + " so unreserving and proceeding.");
-        unreserveResources(resources);
         return;
       }
 
-      PrintStream nextContextLogger = null;
-      try {
-        TaskListener nextContextTaskListener = nextContext.getContext().get(TaskListener.class);
-        if (nextContextTaskListener != null) {
-          nextContextLogger = nextContextTaskListener.getLogger();
-        }
-      } catch (IOException | InterruptedException e) {
-        LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
-      }
+      PrintStream nextContextLogger = nextContext.getLogger();
 
       // remove context from queue and process it
       List<LockableResource> requiredResourceForNextContext =
@@ -1185,274 +1173,276 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return true;
   }
 
-  // ---------------------------------------------------------------------------
-  /**
-   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
-   *     ResourceSelectStrategy)
-   */
-  public List<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
-    boolean skipIfLocked = false;
-    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+//  // ---------------------------------------------------------------------------
+//  /**
+//   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
+//   *     ResourceSelectStrategy)
+//   */
+//  public List<LockableResource> checkResourcesAvailability(
+//      List<LockableResourcesStruct> requiredResourcesList,
+//      @Nullable PrintStream logger,
+//      @Nullable List<String> lockedResourcesAboutToBeUnlocked) {
+//    boolean skipIfLocked = false;
+//    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+//
+//    return this.checkResourcesAvailability(
+//        requiredResourcesList,
+//        logger,
+//        lockedResourcesAboutToBeUnlocked,
+//        null,
+//        skipIfLocked,
+//        selectStrategy);
+//  }
+//
+//  // ---------------------------------------------------------------------------
+//  /**
+//   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
+//   *     ResourceSelectStrategy)
+//   */
+//  public List<LockableResource> checkResourcesAvailability(
+//      List<LockableResourcesStruct> requiredResourcesList,
+//      @Nullable PrintStream logger,
+//      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+//      boolean skipIfLocked) {
+//    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+//
+//    return this.checkResourcesAvailability(
+//        requiredResourcesList,
+//        logger,
+//        lockedResourcesAboutToBeUnlocked,
+//        null,
+//        skipIfLocked,
+//        selectStrategy);
+//  }
+//
+//  // ---------------------------------------------------------------------------
+//  /**
+//   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
+//   *     ResourceSelectStrategy)
+//   */
+//  public List<LockableResource> checkResourcesAvailability(
+//      List<LockableResourcesStruct> requiredResourcesList,
+//      @Nullable PrintStream logger,
+//      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+//      boolean skipIfLocked,
+//      ResourceSelectStrategy selectStrategy) {
+//    return this.checkResourcesAvailability(
+//        requiredResourcesList,
+//        logger,
+//        lockedResourcesAboutToBeUnlocked,
+//        null,
+//        skipIfLocked,
+//        selectStrategy);
+//  }
+//
+//  // ---------------------------------------------------------------------------
+//  /**
+//   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
+//   *     ResourceSelectStrategy)
+//   */
+//  public List<LockableResource> checkResourcesAvailability(
+//      List<LockableResourcesStruct> requiredResourcesList,
+//      @Nullable PrintStream logger,
+//      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+//      @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
+//    boolean skipIfLocked = false;
+//    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
+//
+//    return this.checkResourcesAvailability(
+//        requiredResourcesList,
+//        logger,
+//        lockedResourcesAboutToBeUnlocked,
+//        reservedResourcesAboutToBeUnreserved,
+//        skipIfLocked,
+//        selectStrategy);
+//  }
+//
+//  // ---------------------------------------------------------------------------
+//  /**
+//   * Checks if there are enough resources available to satisfy the requirements specified within
+//   * requiredResources and returns the necessary available resources. If not enough resources are
+//   * available, returns null.
+//   */
+//  public List<LockableResource> checkResourcesAvailability(
+//      List<LockableResourcesStruct> requiredResourcesList,
+//      @Nullable PrintStream logger,
+//      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
+//      @Nullable List<String> reservedResourcesAboutToBeUnreserved,
+//      boolean skipIfLocked,
+//      ResourceSelectStrategy selectStrategy) {
+//    return this.getAvailableResources(requiredResourcesList, logger, selectStrategy);
+//  }
 
-    return this.checkResourcesAvailability(
-        requiredResourcesList,
-        logger,
-        lockedResourcesAboutToBeUnlocked,
-        null,
-        skipIfLocked,
-        selectStrategy);
-  }
-
-  // ---------------------------------------------------------------------------
-  /**
-   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
-   *     ResourceSelectStrategy)
-   */
-  public List<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      boolean skipIfLocked) {
-    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
-
-    return this.checkResourcesAvailability(
-        requiredResourcesList,
-        logger,
-        lockedResourcesAboutToBeUnlocked,
-        null,
-        skipIfLocked,
-        selectStrategy);
-  }
-
-  // ---------------------------------------------------------------------------
-  /**
-   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
-   *     ResourceSelectStrategy)
-   */
-  public List<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      boolean skipIfLocked,
-      ResourceSelectStrategy selectStrategy) {
-    return this.checkResourcesAvailability(
-        requiredResourcesList,
-        logger,
-        lockedResourcesAboutToBeUnlocked,
-        null,
-        skipIfLocked,
-        selectStrategy);
-  }
-
-  // ---------------------------------------------------------------------------
-  /**
-   * @see #checkResourcesAvailability(List, PrintStream, List, List, boolean,
-   *     ResourceSelectStrategy)
-   */
-  public List<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      @Nullable List<String> reservedResourcesAboutToBeUnreserved) {
-    boolean skipIfLocked = false;
-    ResourceSelectStrategy selectStrategy = ResourceSelectStrategy.SEQUENTIAL;
-
-    return this.checkResourcesAvailability(
-        requiredResourcesList,
-        logger,
-        lockedResourcesAboutToBeUnlocked,
-        reservedResourcesAboutToBeUnreserved,
-        skipIfLocked,
-        selectStrategy);
-  }
-
-  // ---------------------------------------------------------------------------
-  /**
-   * Checks if there are enough resources available to satisfy the requirements specified within
-   * requiredResources and returns the necessary available resources. If not enough resources are
-   * available, returns null.
-   */
-  public List<LockableResource> checkResourcesAvailability(
-      List<LockableResourcesStruct> requiredResourcesList,
-      @Nullable PrintStream logger,
-      @Nullable List<String> lockedResourcesAboutToBeUnlocked,
-      @Nullable List<String> reservedResourcesAboutToBeUnreserved,
-      boolean skipIfLocked,
-      ResourceSelectStrategy selectStrategy) {
-
-    List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
-
-    // Build possible resources for each requirement
-    for (LockableResourcesStruct requiredResources : requiredResourcesList) {
-      // get possible resources
-      int requiredAmount = 0; // 0 means all
-      List<LockableResource> candidates = new ArrayList<>();
-      if (StringUtils.isBlank(requiredResources.label)) {
-        candidates.addAll(requiredResources.required);
-      } else {
-        candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
-        if (requiredResources.requiredNumber != null) {
-          try {
-            requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
-          } catch (NumberFormatException e) {
-            requiredAmount = 0;
-          }
-        }
-      }
-
-      if (requiredAmount == 0) {
-        requiredAmount = candidates.size();
-      }
-
-      requiredResourcesCandidatesList.add(
-          new LockableResourcesCandidatesStruct(candidates, requiredAmount));
-    }
-
-    // Process freed resources
-    int totalSelected = 0;
-    // These resources are currently reserved, even though candidates
-    // for freeing (might be reserved inside lock step "bypassing" the
-    // lockable resources general logic). They may become available
-    // later and we want to notice that - so they are not selected
-    // now, but we do not bail out and end the looping either.
-    int totalReserved = 0;
-
-    for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
-      if (selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
-        Collections.shuffle(requiredResources.candidates);
-      }
-      // start with an empty set of selected resources
-      List<LockableResource> selected = new ArrayList<>();
-
-      // some resources might be already locked, but will be freed.
-      // Determine if these resources can be reused
-      // FIXME? Why is this check not outside the for loop?
-      if (lockedResourcesAboutToBeUnlocked != null
-          || reservedResourcesAboutToBeUnreserved != null) {
-        for (LockableResource candidate : requiredResources.candidates) {
-          if (selected.size() >= requiredResources.requiredAmount) {
-            break;
-          }
-
-          String candidateName = candidate.getName();
-          boolean listedUnlock =
-              (lockedResourcesAboutToBeUnlocked != null
-                  && lockedResourcesAboutToBeUnlocked.contains(candidateName));
-          boolean listedUnreserve =
-              (reservedResourcesAboutToBeUnreserved != null
-                  && reservedResourcesAboutToBeUnreserved.contains(candidateName));
-          boolean isReserved = candidate.isReserved();
-          boolean isLocked = candidate.isLocked();
-
-          if (isReserved) {
-            if (listedUnreserve) {
-              if (!isLocked || listedUnlock) {
-                // Avoid selecting a reserved candidate which *is* also locked
-                // and not listed for imminent un-locking
-                selected.add(candidate);
-              }
-            } else {
-              // Caller did not say that this resource will be un-reserved now!
-              // Still needed, might be `lr.setReservedBy()` from the lock step
-              // closure by users who deemed that required in their workflow
-              // and might need to free it manually - maybe after postmortem.
-              // Note that such un-reservation should go through LRM API,
-              // as `lrm.unreserve([lr])`, and not just `lr.setReservedBy(null)`,
-              // (nor `lrm.reset([lr])`) to get into this method among others
-              // and let the resource be instantly re-used by someone from an
-              // already waiting queue. Otherwise those already waiting are not
-              // notified until you lock/unlock that resource again.
-              if (logger != null) {
-                logger.println(candidate.getLockCause() + "', not treating as available.");
-              }
-              totalReserved += 1;
-              continue;
-            }
-          } else {
-            // If the resource is not reserved (as checked above)
-            // but listed for releasing in either category, select it
-            if (listedUnlock || listedUnreserve) {
-              selected.add(candidate);
-            }
-          }
-        }
-      }
-
-      totalSelected += selected.size();
-      requiredResources.selected = selected;
-    }
-
-    // if none of the currently locked resources can be reused,
-    // this context is not suitable to be continued with
-    // Note that if arguments lockedResourcesAboutToBeUnlocked==null
-    // and reservedResourcesAboutToBeUnreserved==null, then
-    // the loop above was effectively skipped
-    if (totalSelected == 0
-        && totalReserved == 0
-        && (lockedResourcesAboutToBeUnlocked != null
-            || reservedResourcesAboutToBeUnreserved != null)) {
-      return null;
-    }
-
-    // Find remaining resources
-    List<LockableResource> allSelected = new ArrayList<>();
-
-    for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
-      List<LockableResource> candidates = requiredResources.candidates;
-      List<LockableResource> selected = requiredResources.selected;
-      int requiredAmount = requiredResources.requiredAmount;
-
-      // Try and re-use as many previously selected resources first
-      List<LockableResource> alreadySelectedCandidates = new ArrayList<>(candidates);
-      alreadySelectedCandidates.retainAll(allSelected);
-      for (LockableResource rs : alreadySelectedCandidates) {
-        if (selected.size() >= requiredAmount) {
-          break;
-        }
-        if (!rs.isReserved() && !rs.isLocked()) {
-          selected.add(rs);
-        }
-      }
-
-      candidates.removeAll(alreadySelectedCandidates);
-      for (LockableResource rs : candidates) {
-        if (selected.size() >= requiredAmount) {
-          break;
-        }
-        if (!rs.isReserved() && !rs.isLocked()) {
-          selected.add(rs);
-        }
-      }
-
-      if (selected.size() < requiredAmount) {
-        // Note: here we are looping over requiredResourcesCandidatesList
-        // based on original argument requiredResourcesList with its specs
-        // (maybe several) of required resources and their amounts.
-        // As soon as we know we can not fulfill the overall requirement
-        // (not enough of something from that list), we bail out quickly.
-        if (logger != null && !skipIfLocked) {
-          String msg =
-              "Found "
-                  + selected.size()
-                  + " available resource(s). Waiting for correct amount: "
-                  + requiredAmount
-                  + ".";
-          if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
-            msg += "\nBlocked candidates: " + getCauses(candidates);
-          }
-          logger.println(msg);
-        }
-        return null;
-      }
-
-      allSelected.addAll(selected);
-    }
-
-    return allSelected;
-  }
+////    List<LockableResourcesCandidatesStruct> requiredResourcesCandidatesList = new ArrayList<>();
+////
+////    // Build possible resources for each requirement
+////    for (LockableResourcesStruct requiredResources : requiredResourcesList) {
+////      // get possible resources
+////      int requiredAmount = 0; // 0 means all
+////      List<LockableResource> candidates = new ArrayList<>();
+////      if (StringUtils.isBlank(requiredResources.label)) {
+////        candidates.addAll(requiredResources.required);
+////      } else {
+////        candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
+////        if (requiredResources.requiredNumber != null) {
+////          try {
+////            requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
+////          } catch (NumberFormatException e) {
+////            requiredAmount = 0;
+////          }
+////        }
+////      }
+////
+////      if (requiredAmount == 0) {
+////        requiredAmount = candidates.size();
+////      }
+////
+////      requiredResourcesCandidatesList.add(
+////          new LockableResourcesCandidatesStruct(candidates, requiredAmount));
+////    }
+////
+////    // Process freed resources
+////    int totalSelected = 0;
+////    // These resources are currently reserved, even though candidates
+////    // for freeing (might be reserved inside lock step "bypassing" the
+////    // lockable resources general logic). They may become available
+////    // later and we want to notice that - so they are not selected
+////    // now, but we do not bail out and end the looping either.
+////    int totalReserved = 0;
+////
+////    for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
+////      if (selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
+////        Collections.shuffle(requiredResources.candidates);
+////      }
+////      // start with an empty set of selected resources
+////      List<LockableResource> selected = new ArrayList<>();
+////
+////      // some resources might be already locked, but will be freed.
+////      // Determine if these resources can be reused
+////      // FIXME? Why is this check not outside the for loop?
+////      if (lockedResourcesAboutToBeUnlocked != null
+////          || reservedResourcesAboutToBeUnreserved != null) {
+////        for (LockableResource candidate : requiredResources.candidates) {
+////          if (selected.size() >= requiredResources.requiredAmount) {
+////            break;
+////          }
+////
+////          String candidateName = candidate.getName();
+////          boolean listedUnlock =
+////              (lockedResourcesAboutToBeUnlocked != null
+////                  && lockedResourcesAboutToBeUnlocked.contains(candidateName));
+////          boolean listedUnreserve =
+////              (reservedResourcesAboutToBeUnreserved != null
+////                  && reservedResourcesAboutToBeUnreserved.contains(candidateName));
+////          boolean isReserved = candidate.isReserved();
+////          boolean isLocked = candidate.isLocked();
+////
+////          if (isReserved) {
+////            if (listedUnreserve) {
+////              if (!isLocked || listedUnlock) {
+////                // Avoid selecting a reserved candidate which *is* also locked
+////                // and not listed for imminent un-locking
+////                selected.add(candidate);
+////              }
+////            } else {
+////              // Caller did not say that this resource will be un-reserved now!
+////              // Still needed, might be `lr.setReservedBy()` from the lock step
+////              // closure by users who deemed that required in their workflow
+////              // and might need to free it manually - maybe after postmortem.
+////              // Note that such un-reservation should go through LRM API,
+////              // as `lrm.unreserve([lr])`, and not just `lr.setReservedBy(null)`,
+////              // (nor `lrm.reset([lr])`) to get into this method among others
+////              // and let the resource be instantly re-used by someone from an
+////              // already waiting queue. Otherwise those already waiting are not
+////              // notified until you lock/unlock that resource again.
+////              if (logger != null) {
+////                logger.println(candidate.getLockCause() + "', not treating as available.");
+////              }
+////              totalReserved += 1;
+////              continue;
+////            }
+////          } else {
+////            // If the resource is not reserved (as checked above)
+////            // but listed for releasing in either category, select it
+////            if (listedUnlock || listedUnreserve) {
+////              selected.add(candidate);
+////            }
+////          }
+////        }
+////      }
+////
+////      totalSelected += selected.size();
+////      requiredResources.selected = selected;
+////    }
+////
+////    // if none of the currently locked resources can be reused,
+////    // this context is not suitable to be continued with
+////    // Note that if arguments lockedResourcesAboutToBeUnlocked==null
+////    // and reservedResourcesAboutToBeUnreserved==null, then
+////    // the loop above was effectively skipped
+////    if (totalSelected == 0
+////        && totalReserved == 0
+////        && (lockedResourcesAboutToBeUnlocked != null
+////            || reservedResourcesAboutToBeUnreserved != null)) {
+////      return null;
+////    }
+////
+////    // Find remaining resources
+////    List<LockableResource> allSelected = new ArrayList<>();
+////
+////    for (LockableResourcesCandidatesStruct requiredResources : requiredResourcesCandidatesList) {
+////      List<LockableResource> candidates = requiredResources.candidates;
+////      List<LockableResource> selected = requiredResources.selected;
+////      int requiredAmount = requiredResources.requiredAmount;
+////
+////      // Try and re-use as many previously selected resources first
+////      List<LockableResource> alreadySelectedCandidates = new ArrayList<>(candidates);
+////      alreadySelectedCandidates.retainAll(allSelected);
+////      for (LockableResource rs : alreadySelectedCandidates) {
+////        if (selected.size() >= requiredAmount) {
+////          break;
+////        }
+////        if (!rs.isReserved() && !rs.isLocked()) {
+////          selected.add(rs);
+////        }
+////      }
+////
+////      candidates.removeAll(alreadySelectedCandidates);
+////      for (LockableResource rs : candidates) {
+////        if (selected.size() >= requiredAmount) {
+////          break;
+////        }
+////        if (!rs.isReserved() && !rs.isLocked()) {
+////          selected.add(rs);
+////        }
+////      }
+////
+////      if (selected.size() < requiredAmount) {
+////        // Note: here we are looping over requiredResourcesCandidatesList
+////        // based on original argument requiredResourcesList with its specs
+////        // (maybe several) of required resources and their amounts.
+////        // As soon as we know we can not fulfill the overall requirement
+////        // (not enough of something from that list), we bail out quickly.
+////        if (logger != null && !skipIfLocked) {
+////          String msg =
+////              "Found "
+////                  + selected.size()
+////                  + " available resource(s). Waiting for correct amount: "
+////                  + requiredAmount
+////                  + ".";
+////          if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
+////            msg += "\nBlocked candidates: " + getCauses(candidates);
+////          }
+////          logger.println(msg);
+////        }
+////        return null;
+////      }
+////
+////      allSelected.addAll(selected);
+////    }
+////
+////    return allSelected;
+////  }
 
   // ---------------------------------------------------------------------------
   /**
@@ -1463,7 +1453,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public List<LockableResource> getAvailableResources(
       final List<LockableResourcesStruct> requiredResourcesList,
       final @Nullable PrintStream logger,
-      final ResourceSelectStrategy selectStrategy) {
+      final @Nullable ResourceSelectStrategy selectStrategy) {
 
         // get possible resources
       int requiredAmount = 0; // 0 means all
@@ -1515,7 +1505,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (available == null) {
         // free candidates
         for (LockableResource candidate : candidates) {
-          candidate.resetReservationForBuild();
+          candidate.resetBuildReservation();
         }
         return null;
       }
@@ -1535,7 +1525,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private int getFreeResourcesWithLabel(
     @NonNull String label,
     final long amount,
-    final ResourceSelectStrategy selectStrategy,
+    final @Nullable ResourceSelectStrategy selectStrategy,
     final @Nullable PrintStream logger,
     List<LockableResource> toIgnore
   ) {
@@ -1549,14 +1539,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
       return null; // there are not enough resources
     }
-    if (selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
+    if (selectStrategy != null && selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
       Collections.shuffle(candidates);
     }
 
     for (LockableResource r : candidates) {
-      
-      if (!r.isAvailable())
+      if (!r.isAvailable()) {
         found.add(r);
+      }
 
       if (amount > 0 && found.size() >= amount) {
         return found;
