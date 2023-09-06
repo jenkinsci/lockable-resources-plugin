@@ -960,7 +960,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   public boolean reserve(List<LockableResource> resources, String userName) {
     synchronized (this.syncResources) {
       for (LockableResource r : resources) {
-        if (r.isReserved() || r.isLocked() || r.isQueued()) {
+        if (!r.isFree())) {
           return false;
         }
       }
@@ -1452,6 +1452,122 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     return allSelected;
+  }
+
+  // ---------------------------------------------------------------------------
+  /**
+   * Checks if there are enough resources available to satisfy the requirements specified within
+   * requiredResources and returns the necessary available resources. If not enough resources are
+   * available, returns null.
+   */
+  public List<LockableResource> getAvailableResources(
+      final List<LockableResourcesStruct> requiredResourcesList,
+      final @Nullable PrintStream logger,
+      final ResourceSelectStrategy selectStrategy) {
+
+        // get possible resources
+      int requiredAmount = 0; // 0 means all
+      List<LockableResource> candidates = new ArrayList<>();
+      if (StringUtils.isBlank(requiredResources.label)) {
+        candidates.addAll(requiredResources.required);
+      } else {
+        candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
+        if (requiredResources.requiredNumber != null) {
+          try {
+            requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
+          } catch (NumberFormatException e) {
+            requiredAmount = 0;
+          }
+        }
+      }
+
+      if (requiredAmount == 0) {
+        requiredAmount = candidates.size();
+      }
+    
+    List<LockableResource> candidates = new ArrayList<>();
+    for (LockableResourcesStruct requiredResources : requiredResourcesList) {
+      // filter by labels
+      if (!StringUtils.isBlank(requiredResources.label)) {
+        // get required amount first
+        int requiredAmount = 0;
+        if (requiredResources.requiredNumber != null) {
+          try {
+            requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
+          } catch (NumberFormatException e) {
+            requiredAmount = 0;
+          }
+        }
+
+        List<LockableResource> available = this.getFreeResourcesWithLabel(requiredResources.label, requiredAmount, selectStrategy, logger, candidates);
+
+        if (available == null) {
+          return null;
+        }
+        candidates.addAll(available);
+      } else if (requiredResources.required != null) {
+        // resource by name requested
+        if (!requiredResources.required.isAvailable()) {
+          if (logger)
+            logger.println(requiredResources.required.getLockCause());
+          return null;
+        }
+        candidates.addAll(requiredResources.required);
+      }
+    }
+
+    return candidates;
+  }
+
+  
+
+  // ---------------------------------------------------------------------------
+  @CheckForNull
+  @Restricted(NoExternalUse.class)
+  private int getFreeResourcesWithLabel(
+    @NonNull String label,
+    final long amount,
+    final ResourceSelectStrategy selectStrategy,
+    final @Nullable PrintStream logger,
+    List<LockableResource> toIgnore
+  ) {
+    List<LockableResource> found = new ArrayList<>();
+
+    final List<LockableResource> candidates = this.getResourcesWithLabel(label);
+    
+    if (candidates.size() < amount) {
+      if (logger) {
+        logger.println("Found " + candidates.size() + " possible resource(s). Expected amount " + amount);
+      }
+      return null; // there are not enough resources
+    }
+    if (selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
+      Collections.shuffle(candidates);
+    }
+
+    for (LockableResource r : candidates) {
+      
+      if (!r.isAvailable())
+        found.add(r);
+
+      if (amount > 0 && found.size() >= amount) {
+        return found;
+      }
+    }
+
+    if (logger != null && !skipIfLocked) {
+      String msg =
+          "Found "
+              + found.size()
+              + " available resource(s). Waiting for correct amount: "
+              + amount
+              + ".";
+      if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
+        msg += "\nBlocked candidates: " + getCauses(candidates);
+      }
+      logger.println(msg);
+    }
+    return found;
   }
 
   // ---------------------------------------------------------------------------

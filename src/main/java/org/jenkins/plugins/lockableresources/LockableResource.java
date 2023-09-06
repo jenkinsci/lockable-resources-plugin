@@ -372,6 +372,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   public boolean isFree() {
     return (!this.isLocked() && !this.isReserved() && !this.isQueued());
   }
+  
+  /** Return true when resource is available. False otherwise */
+  public boolean isAvailable() {
+    return (!this.isLocked() && !this.isReserved());
+  }
 
   @Exported
   public boolean isReserved() {
