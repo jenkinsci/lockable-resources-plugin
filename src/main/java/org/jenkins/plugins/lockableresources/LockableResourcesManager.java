@@ -64,8 +64,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
    * (freestyle builds) regular Jenkins queue is used.
    */
-  private transient Object syncQueue = new Object();
-
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
   // cache to enable / disable saving lockable-resources state
@@ -538,13 +536,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
+  /**
+   * @deprecated use lock(List<LockableResource> resources, Run<?, ?> build)
+   */
+  @Deprecated
   public boolean lock(
       List<LockableResource> resources, Run<?, ?> build, @Nullable StepContext context) {
-    return lock(resources, build, context, null, null, false);
+    return lock(resources, build);
   }
 
   // ---------------------------------------------------------------------------
-  /** Try to lock the resource and return true if locked. */
+  /**
+   * @deprecated use lock(List<LockableResource> resources, Run<?, ?> build)
+   */
+  @Deprecated
   public boolean lock(
       List<LockableResource> resources,
       Run<?, ?> build,
@@ -552,19 +557,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable String logmessage,
       final String variable,
       boolean inversePrecedence) {
+    return lock(resources, build);
+  }
 
-    PrintStream logger = null;
-    try {
-      if (context != null) logger = context.get(TaskListener.class).getLogger();
-    } catch (IOException | InterruptedException e) {
-      // this shall never happens, because the logger has been checked in call before
-      // but nobody know
-      LOGGER.log(Level.WARNING, "Could not get logger for next context: " + e, e);
-    }
+  // ---------------------------------------------------------------------------
+  /** Try to lock the resource and return true if locked. */
+  public boolean lock(
+      List<LockableResource> resources,
+      Run<?, ?> build) {
 
     for (LockableResource r : resources) {
       if (r.isReserved() || r.isLocked()) {
-        if (logger != null) logger.println(r.getLockCause());
+        LOGGER.warning("lock() will fails, because " + r.getLockCause());
         return false; // not locked
       }
     }
@@ -573,15 +577,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       r.unqueue();
       r.setBuild(build);
     }
-    if (context != null) {
-      // since LockableResource contains transient variables, they cannot be correctly serialized
-      // hence we use their unique resource names and properties
-      LinkedHashMap<String, List<LockableResourceProperty>> resourceNames = new LinkedHashMap<>();
-      for (LockableResource resource : resources) {
-        resourceNames.put(resource.getName(), resource.getProperties());
-      }
-      LockStepExecution.proceed(resourceNames, context, logmessage, variable, inversePrecedence);
-    }
+
     save();
 
     return true;

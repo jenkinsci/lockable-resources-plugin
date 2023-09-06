@@ -45,14 +45,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
     PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
-    ResourceSelectStrategy resourceSelectStrategy;
-    try {
-      resourceSelectStrategy =
-          ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
-    } catch (IllegalArgumentException e) {
-      logger.println("Error: invalid resourceSelectStrategy: " + step.resourceSelectStrategy);
-      return true;
-    }
+    ResourceSelectStrategy resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
 
     Run<?, ?> run = getContext().get(Run.class);
     logger.println("Trying to acquire lock on [" + step + "]");
@@ -61,6 +54,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     LockableResourcesManager lrm = LockableResourcesManager.get();
     List<LockableResource> available = null;
+    LinkedHashMap<String, List<LockableResourceProperty>> resourceNames = new LinkedHashMap<>();
     synchronized (lrm.syncResources) {
       for (LockStepResource resource : step.getResources()) {
         List<String> resources = new ArrayList<>();
@@ -78,15 +72,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       available =
           lrm.checkResourcesAvailability(
               resourceHolderList, logger, null, step.skipIfLocked, resourceSelectStrategy);
+
       if (available == null) {
         onLockFailed(logger, resourceHolderList);
         return false;
       }
+
+      final boolean lockFailed = (lrm.lock(available, run) == false);
+
+
+      if (lockFailed) {
+        // this here is very defensive code, and you will probably never hit it. (hopefully)
+        onLockFailed(logger, resourceHolderList);
+        return true;
+      }
+
+      // since LockableResource contains transient variables, they cannot be correctly serialized
+      // hence we use their unique resource names and properties
+      for (LockableResource resource : available) {
+        resourceNames.put(resource.getName(), resource.getProperties());
+      }
     }
-    if (!lrm.lock(
-        available, run, getContext(), step.toString(), step.variable, step.inversePrecedence)) {
-      onLockFailed(logger, resourceHolderList);
-    } // proceed is called inside lock if execution is possible
+    LockStepExecution.proceed(resourceNames, getContext(), step.toString(), step.variable, step.inversePrecedence);
 
     return false;
   }
@@ -118,6 +125,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     }
   }
 
+  // ---------------------------------------------------------------------------
   @SuppressFBWarnings(
       value = "REC_CATCH_EXCEPTION",
       justification = "not sure which exceptions might be catch.")
@@ -225,8 +233,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     if (!cleaned) {
       LOGGER.log(
           Level.WARNING,
-          "Cannot remove context from lockable resource waiting list. "
-              + "The context is not in the waiting list.");
+          "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
     }
     getContext().onFailure(cause);
   }

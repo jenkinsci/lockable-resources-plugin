@@ -28,8 +28,8 @@ public class PressureTest extends LockStepTestBase {
   // it depends on which node you are running
   @WithTimeout(900)
   public void pressureEnableSave() throws Exception {
-    // keep in mind, that the windows nodes at jenkins-infra are not very fast
-    pressure(Functions.isWindows() ? 5 : 20);
+  // keep in mind, that the windows nodes at jenkins-infra are not very fast
+  pressure(Functions.isWindows() ? 5 : 20);
   }
 
   @Test
@@ -46,13 +46,15 @@ public class PressureTest extends LockStepTestBase {
     final int nodesCount = (resourcesCount / 10) + 1;
     // enable node mirroring to make more chaos
     System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
+    System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES, "true");
     LockableResourcesManager lrm = LockableResourcesManager.get();
 
     // create resources
+    LOGGER.info("Create resources with labels");
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceA_" + Integer.toString(i), "label1 label2");
       lrm.createResourceWithLabel("resourceAA_" + Integer.toString(i), "label");
-      lrm.createResourceWithLabel("resourceAAA_" + Integer.toString(i), "Label1");
+      lrm.createResourceWithLabel("resourceAAA_" + Integer.toString(i), "label1");
       lrm.createResourceWithLabel("resourceAAAA_" + Integer.toString(i), "(=%/!(/)?$/ HH( RU))");
     }
 
@@ -72,25 +74,26 @@ public class PressureTest extends LockStepTestBase {
             // + "    echo 'my stage: ' + stageName;\n"
             // + "    echo 'test: label1 && label2 at ' + index;\n"
             + "    lock(label: 'label1 && label2', variable: 'someVar', quantity : 1) {\n"
-            + "      echo \"*** VAR-1 IS $env.someVar\"\n"
+            // + "      echo \"*** VAR-1 IS $env.someVar\"\n"
             + "    }\n"
             // + "    echo 'test: label2 at ' + index;\n"
-            + "    lock(label: 'label2', variable: 'someVar', quantity : 5) {\n"
-            + "      echo \"*** VAR-3 IS $env.someVar\"\n"
+            + "    lock(label: 'label1', variable: 'someVar', quantity : 5) {\n"
+            // + "      echo \"*** VAR-3 IS $env.someVar\"\n"
             + "    }\n"
             // + "    echo 'test: resource_ephemeral_' + stageName;\n"
             + "    lock('resource_ephemeral_' + stageName) {\n"
-            + "      echo \"*** locked resource_ephemeral_\" + stageName\n"
+            // + "      echo \"*** locked resource_ephemeral_\" + stageName\n"
             + "    }\n"
             // + "    echo 'test: resourceA_' + index;\n"
             + "    lock('resourceA_' + index) {\n"
-            + "      echo \"*** locked resourceA_\" + index\n"
+            // + "      echo \"*** locked resourceA_\" + index\n"
             + "    }\n"
             // recursive lock
+            // do not activate it, this break down the execution time
+            // and we need to speed up actions
             // + "    lock(label: 'label2', quantity : 1) {\n"
             // + "      lock(label: 'label2', quantity : 1, inversePrecedence : true) {\n"
-            // + "        lock(label: 'label2', quantity : 4, skipIfLocked: true,
-            // resourceSelectStrategy: 'random') {\n"
+            // + "        lock(label: 'label2', quantity : 4, skipIfLocked: true, resourceSelectStrategy: 'random') {\n"
             // + "          lock('resource_ephemeral_' + stageName) {\n"
             // + "            lock('resourceA_' + index) {\n"
             // + "              echo \"inside recursive lock \" + stageName\n"
@@ -106,10 +109,12 @@ public class PressureTest extends LockStepTestBase {
 
     // reserve 'initpipe' resource to be sure that parallel builds and stages are paused at the same
     // time.
+    LOGGER.info("Lock execution by 'initpipe'");
     lrm.createResourceWithLabel("initpipe", "sync step");
     lrm.reserve(Collections.singletonList(lrm.fromName("initpipe")), "test");
 
     // create first project and start the build
+    LOGGER.info("Create project");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "main-project");
     p.setDefinition(new CpsFlowDefinition(pipeCode, true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
@@ -118,6 +123,7 @@ public class PressureTest extends LockStepTestBase {
     List<WorkflowRun> otherBuilds = new ArrayList<>();
 
     // create extra jobs to make more chaos
+    LOGGER.info("Create extra projects");
     for (int i = 1; i <= jobsCount; i++) {
       WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "extra-project_" + i);
       p2.setDefinition(new CpsFlowDefinition(pipeCode, true));
@@ -126,16 +132,19 @@ public class PressureTest extends LockStepTestBase {
       j.waitForMessage(", waiting for execution...", b2);
     }
 
+    LOGGER.info("Create wait for builds");
     for (WorkflowRun b2 : otherBuilds) {
       j.waitForMessage(", waiting for execution...", b2);
     }
 
     // create more resources until the first job has been started
+    LOGGER.info("Create more resources");
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceB_" + Integer.toString(i), "label1");
     }
 
     // create jenkins nodes. All shall be mirrored to resources
+    LOGGER.info("Create jenkins nodes");
     for (int i = 1; i <= nodesCount; i++) {
       j.createSlave("AgentAAA_" + i, "label label1 label2", null);
       lrm.createResourceWithLabel("resourceC_" + Integer.toString(i), "label1");
@@ -144,18 +153,48 @@ public class PressureTest extends LockStepTestBase {
 
     // unreserve it now, and the fun may starts. Because all the parallel jobs and stages will be
     // "free"
+    LOGGER.info("Start the chaos");
     lrm.unreserve(Collections.singletonList(lrm.fromName("initpipe")));
 
     // create more resources until the first job has been started
+    LOGGER.info("Additional resources");
     for (int i = 1; i <= resourcesCount; i++) {
       lrm.createResourceWithLabel("resourceD_" + Integer.toString(i), "label1");
     }
 
     // create more jenkins nodes to make more chaos
+    LOGGER.info("Create slaves");
     for (int i = 1; i <= nodesCount; i++) {
       j.createSlave("AgentCCC_" + i, "label label1 label2", null);
       j.createSlave("AGENT_DDD_" + i, null, null);
     }
+
+    // simulate chaos by user actions
+    LOGGER.info("User action 'reserve'");
+    for (int i = 1; i <= resourcesCount; i++) {
+      lrm.reserve(Collections.singletonList(lrm.fromName("resourceA_" + i)), "test");
+    }
+
+    LOGGER.info("User action 'reserve' slaves");
+    for (int i = 1; i <= nodesCount; i++) {
+      lrm.reserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)), "test");
+      lrm.reserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)), "test");
+    }
+
+    LOGGER.info("User action 'reassign', 'steal', 'unreserve'");
+    for (int i = 1; i <= resourcesCount; i++) {
+      lrm.reassign(Collections.singletonList(lrm.fromName("resourceA_" + i)), "second user");
+      lrm.steal(Collections.singletonList(lrm.fromName("resourceAA_" + i)), "second user");
+      lrm.unreserve(Collections.singletonList(lrm.fromName("resourceA_" + i)));
+      lrm.unreserve(Collections.singletonList(lrm.fromName("resourceAA_" + i)));
+    }
+
+    LOGGER.info("User action 'unreserve' slaves");
+    for (int i = 1; i <= nodesCount; i++) {
+      lrm.unreserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)));
+      lrm.unreserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)));
+    }
+
 
     // wait until the first build has been stopped
     LOGGER.info("Wait for build b1");

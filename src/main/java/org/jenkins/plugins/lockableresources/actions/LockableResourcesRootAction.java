@@ -200,10 +200,8 @@ public class LockableResourcesRootAction implements RootAction {
   }
 
   // ---------------------------------------------------------------------------
-  @Restricted(NoExternalUse.class) // used by jelly
-  @Deprecated // slow down plugin execution due concurrent modification checks
+  @Restricted(NoExternalUse.class) // used by by src\main\resources\org\jenkins\plugins\lockableresources\actions\LockableResourcesRootAction\tableResources\table.jelly
   public LockableResource getResource(final String resourceName) {
-    this.informPerformanceIssue();
     return LockableResourcesManager.get().fromName(resourceName);
   }
 

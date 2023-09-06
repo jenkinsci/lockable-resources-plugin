@@ -54,7 +54,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
           required.addAll(resources.required);
         }
 
-        if (LockableResourcesManager.get().lock(required, build, null)) {
+        if (LockableResourcesManager.get().lock(required, build)) {
           build.addAction(LockedResourcesBuildAction.fromResources(required));
           listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, required);
           LOGGER.fine(build.getFullDisplayName() + " acquired lock on " + required);
