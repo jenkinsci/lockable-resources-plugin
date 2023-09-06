@@ -1487,6 +1487,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     
     List<LockableResource> candidates = new ArrayList<>();
     for (LockableResourcesStruct requiredResources : requiredResourcesList) {
+      List<LockableResource> available = new ArrayList<>();
       // filter by labels
       if (!StringUtils.isBlank(requiredResources.label)) {
         // get required amount first
@@ -1499,21 +1500,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
           }
         }
 
-        List<LockableResource> available = this.getFreeResourcesWithLabel(requiredResources.label, requiredAmount, selectStrategy, logger, candidates);
-
-        if (available == null) {
-          return null;
-        }
-        candidates.addAll(available);
+        available = this.getFreeResourcesWithLabel(requiredResources.label, requiredAmount, selectStrategy, logger);
       } else if (requiredResources.required != null) {
         // resource by name requested
-        if (!requiredResources.required.isAvailable()) {
+        if (requiredResources.required.isAvailable()) {
+          available.add(requiredResources.required);
+        } else {
+          available = null;
           if (logger)
             logger.println(requiredResources.required.getLockCause());
-          return null;
         }
-        candidates.addAll(requiredResources.required);
       }
+
+      if (available == null) {
+        // free candidates
+        for (LockableResource candidate : candidates) {
+          candidate.resetReservationForBuild();
+        }
+        return null;
+      }
+
+      candidates.addAll(requiredResources.required);
+
     }
 
     return candidates;

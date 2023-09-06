@@ -96,6 +96,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private long queueItemId = NOT_QUEUED;
   private String queueItemProject = null;
   private transient Run<?, ?> build = null;
+  private transient Run<?, ?> reservedForBuild = null;
   // Needed to make the state non-transient
   private String buildExternalizableId = null;
   private long queuingStarted = 0;
@@ -375,7 +376,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   
   /** Return true when resource is available. False otherwise */
   public boolean isAvailable() {
-    return (!this.isLocked() && !this.isReserved());
+    return (!this.isLocked() && !this.isReserved() && !this.isReservedForBuild());
   }
 
   @Exported
@@ -479,6 +480,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   public String getBuildName() {
     if (getBuild() != null) return getBuild().getFullDisplayName();
     else return null;
+  }
+
+  public boolean isReservedForBuild() {
+    return (this.reservedForBuild != null);
+  }
+  public void reserveForBuild(Run<?, ?> lockedBy) {
+    this.reservedForBuild = lockedBy;
+  }
+  
+  public void resetReservationForBuild() {
+    this.reservedForBuild = null;
   }
 
   public void setBuild(Run<?, ?> lockedBy) {
