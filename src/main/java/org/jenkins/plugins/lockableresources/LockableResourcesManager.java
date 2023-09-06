@@ -616,10 +616,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
       resource.unqueue();
       resource.setBuild(null);
       uncacheIfFreeing(resource, true, false);
-      if (resource.isEphemeral()) {
+
+      if (resource.isEphemeral() != this.stillNeeded(resource)) {
         this.resources.remove(resource);
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  /** Check if the resource is still needed (in the queue)
+   * This is a hack, it shall be never need, but the search
+   * algorithm is done in very weird way and we are running in
+   * some one callback. Therefore sometimes happens, that the
+   * ephemeral resource is still needed and we can not remove it
+   */
+  private boolean stillNeeded(LockableResource resource) {
+    for (QueuedContextStruct entry : this.queuedContexts) {
+      for(LockableResourcesStruct lrStruct : entry.getResources()) {
+        List<LockableResource> required = lrStruct.required;
+        if (required != null && required.contains(resource))
+          return true;
+      }
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------------------
