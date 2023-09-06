@@ -55,8 +55,8 @@ public class PressureTest extends LockStepTestBase {
       lrm.createResourceWithLabel("resourceA_" + Integer.toString(i), "label1 label2");
       lrm.createResourceWithLabel("resourceAA_" + Integer.toString(i), "label");
       lrm.createResourceWithLabel("resourceAAA_" + Integer.toString(i), "label1");
-      lrm.createResourceWithLabel("resourceAAAA_" + Integer.toString(i), "(=%/!(/)?$/ HH( RU))");
     }
+    lrm.createResourceWithLabel("resourceAAAA_" + Integer.toString(i), "(=%/!(/)?$/ HH( RU))");
 
     // define groovy script used by our test jobs
     String pipeCode = "";
