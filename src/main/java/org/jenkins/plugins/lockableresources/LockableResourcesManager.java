@@ -800,11 +800,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable List<String> resourceNamesToUnReserve,
       boolean inversePrecedence,
       QueuedContextStruct from) {
-    QueuedContextStruct newestEntry = null;
     int fromIndex = from != null ? this.queuedContexts.indexOf(from) + 1 : 0;
     List<QueuedContextStruct> orphan = new ArrayList<>();
     QueuedContextStruct nextEntry = null;
-    long newest = 0;
     for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
       QueuedContextStruct entry = this.queuedContexts.get(i);
       Run<?, ?> run = entry.getBuild();
@@ -818,23 +816,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         continue;
       }
 
-      if (newest == 0) {
-        newest = entry.getAddTime();
-      }
       LOGGER.finest(
-          "getNextQueuedContext: "
-              + " "
-              + run
-              + entry.getResourceDescription()
-              + " "
-              + entry.getAddTime()
-              + " vs "
-              + nextEntry.getResourceDescription()
-              + " "
-              + nextEntry.getAddTime());
-      if (nextEntry != null)
-        LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
+          "getNextQueuedContext: index: " + i + " " + entry);
+        
       if (nextEntry != null) {
+        LOGGER.finest("compare to " + nextEntry);
         boolean ignoreMe = false;
         if (inversePrecedence) {
           // in case inverse precedence ignore all old entries
@@ -848,18 +834,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
           continue;
         }
       }
-      LOGGER.finest(
+      LOGGER.info(
           "getNextQueuedContext take this: "
-              + entry.getContext().hashCode()
-              + " "
-              + entry.getResourceDescription()
-              + " "
-              + run);
+              + entry);
 
       if (checkResourcesAvailability(
               entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
           != null) {
-        newest = run.getStartTimeInMillis();
         nextEntry = entry;
       }
     }

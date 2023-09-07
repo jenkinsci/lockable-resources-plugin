@@ -116,5 +116,15 @@ public class QueuedContextStruct implements Serializable {
     return queuedAt;
   }
 
+  @Restricted(NoExternalUse.class)
+  public String toString() {
+    return "build: "
+           + this.getBuild()
+           + " resources: "
+           + this.getResourceDescription()
+           + " added at: "
+           + this.getAddTime();
+  }
+
   private static final long serialVersionUID = 1L;
 }
