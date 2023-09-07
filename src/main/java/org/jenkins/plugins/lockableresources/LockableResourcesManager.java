@@ -774,7 +774,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     return this.getNextQueuedContext(resourceNamesToUnLock, null, inversePrecedence, from);
   }
   
-  private findQueuedContext(List<LockableResource> rsources)
   // ---------------------------------------------------------------------------
   /**
    * Returns the next queued context with all its requirements satisfied.
@@ -809,28 +808,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
         continue;
       }
 
-      // FIXME I think this is wrong. Why we check for build timestamp here ?!
-      // We shall check for timestamp when the queue has been added.
-      // Ex. Build A start at time t0, Build B at t0 + 10 and build C at t0 + 20
-      // Build B -- lock('abc')
-      // Build C -- lock('abc') ... waiting for build B
-      // Build A -- lock('abc') ... waiting for build B
-      // in this case, win Build A before Build C, because it is started long time ago.
-      // But Build C was the first one in queue !!!
       if (newest == 0) {
-        newest = run.getStartTimeInMillis();
+        newest = run.getAddTime();
       }
       LOGGER.info(
-          "getNextQueuedContext: " + i + " " +
+          "getNextQueuedContext: "
               + entry.getContext().hashCode()
               + " "
               + entry.getResourceDescription()
               + " "
               + run
               + " "
-              + run.getStartTimeInMillis()
+              + run.getAddTime()
               + " vs "
-              + newest);
+              + nextEntry);
+
       if (nextEntry != null)
         LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
       if (nextEntry != null) {
@@ -847,7 +839,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           continue;
         }
       }
-      LOGGER.finest(
+      LOGGER.info(
           "getNextQueuedContext take this: "
               + entry.getContext().hashCode()
               + " "
@@ -1454,26 +1446,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
       final List<LockableResourcesStruct> requiredResourcesList,
       final @Nullable PrintStream logger,
       final @Nullable ResourceSelectStrategy selectStrategy) {
-
-        // get possible resources
-      int requiredAmount = 0; // 0 means all
-      List<LockableResource> candidates = new ArrayList<>();
-      if (StringUtils.isBlank(requiredResources.label)) {
-        candidates.addAll(requiredResources.required);
-      } else {
-        candidates.addAll(getResourcesWithLabel(requiredResources.label, null));
-        if (requiredResources.requiredNumber != null) {
-          try {
-            requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
-          } catch (NumberFormatException e) {
-            requiredAmount = 0;
-          }
-        }
-      }
-
-      if (requiredAmount == 0) {
-        requiredAmount = candidates.size();
-      }
     
     List<LockableResource> candidates = new ArrayList<>();
     for (LockableResourcesStruct requiredResources : requiredResourcesList) {
@@ -1500,6 +1472,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
           if (logger)
             logger.println(requiredResources.required.getLockCause());
         }
+      } else {
+        LOGGER.warning("getAvailableResources, Not implemented: " + requiredResources);
       }
 
       if (available == null) {
@@ -1526,8 +1500,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull String label,
     final long amount,
     final @Nullable ResourceSelectStrategy selectStrategy,
-    final @Nullable PrintStream logger,
-    List<LockableResource> toIgnore
+    final @Nullable PrintStream logger
   ) {
     List<LockableResource> found = new ArrayList<>();
 
@@ -1553,7 +1526,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
 
-    if (logger != null && !skipIfLocked) {
+    if (logger != null) {
       String msg =
           "Found "
               + found.size()
