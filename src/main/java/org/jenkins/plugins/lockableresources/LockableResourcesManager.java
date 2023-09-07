@@ -823,15 +823,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
       LOGGER.finest(
           "getNextQueuedContext: "
-              + entry.getContext().hashCode()
-              + " "
-              + entry.getResourceDescription()
               + " "
               + run
+              + entry.getResourceDescription()
               + " "
-              + run.getAddTime()
+              + entry.getAddTime()
               + " vs "
-              + nextEntry);
+              + nextEntry.getResourceDescription()
+              + " "
+              + nextEntry.getAddTime());
       if (nextEntry != null)
         LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
       if (nextEntry != null) {
