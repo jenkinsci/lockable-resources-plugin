@@ -69,7 +69,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       }
 
       // determine if there are enough resources available to proceed
-      available = lrm.getAvailableResources(requiredResourcesList, logger, resourceSelectStrategy);
+      available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
 
       if (available == null) {
         onLockFailed(logger, resourceHolderList);
@@ -141,13 +141,13 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       node = context.get(FlowNode.class);
       logger = context.get(TaskListener.class).getLogger();
       logger.println("Lock acquired on [" + resourceDescription + "]");
+      LOGGER.info("Lock acquired on [" + resourceDescription + "] by " + r);
     } catch (Exception e) {
       /// FIXME: this is dangerous, because we never free the PauseAction
       context.onFailure(e);
       return;
     }
 
-    LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
     try {
       PauseAction.endCurrentPause(node);
       BodyInvoker bodyInvoker =

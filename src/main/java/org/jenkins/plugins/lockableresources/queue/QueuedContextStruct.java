@@ -15,6 +15,8 @@ import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import hudson.model.TaskListener;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -48,6 +50,11 @@ public class QueuedContextStruct implements Serializable {
   private String variableName;
 
   private long queuedAt = 0;
+
+  // cached candidates
+  public transient List<String> candidates = null;
+
+  private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
 
   /*
    * Constructor for the QueuedContextStruct class.
@@ -119,10 +126,20 @@ public class QueuedContextStruct implements Serializable {
   }
 
   @Restricted(NoExternalUse.class)
+  public String toString() {
+    return "build: "
+           + this.getBuild()
+           + " resources: "
+           + this.getResourceDescription()
+           + " added at: "
+           + this.getAddTime();
+  }
+
+  @Restricted(NoExternalUse.class)
   public PrintStream getLogger() {
     PrintStream logger = null;
     try {
-      TaskListener taskListener = .getContext().get(TaskListener.class);
+      TaskListener taskListener = this.getContext().get(TaskListener.class);
       if (taskListener != null) {
         logger = taskListener.getLogger();
       }

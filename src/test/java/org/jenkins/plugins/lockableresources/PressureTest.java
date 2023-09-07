@@ -37,7 +37,7 @@ public class PressureTest extends LockStepTestBase {
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     // keep in mind, that the windows nodes at jenkins-infra are not very fast
-    pressure(Functions.isWindows() ? 5 : 20);
+    pressure(Functions.isWindows() ? 50 : 20);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
@@ -132,7 +132,7 @@ public class PressureTest extends LockStepTestBase {
       j.waitForMessage(", waiting for execution...", b2);
     }
 
-    LOGGER.info("Create wait for builds");
+    LOGGER.info("Wait for builds");
     for (WorkflowRun b2 : otherBuilds) {
       j.waitForMessage(", waiting for execution...", b2);
     }
