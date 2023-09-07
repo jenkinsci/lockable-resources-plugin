@@ -747,6 +747,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       boolean inversePrecedence,
       QueuedContextStruct from) {
 
+    LOGGER.fine("current queue size: " + this.queuedContexts.size());
     List<QueuedContextStruct> orphan = new ArrayList<>();
     QueuedContextStruct nextEntry = null;
     if (inversePrecedence) {
@@ -767,7 +768,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         entry.candidates = getResourcesNames(candidates);
-        LOGGER.info("take this: " + entry);
+        LOGGER.fine("take this: " + entry);
         nextEntry = entry;
         break;
       }
@@ -780,7 +781,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           orphan.add(entry);
           continue;
         }
-        LOGGER.info(
+        LOGGER.finest(
             "getNextQueuedContext: oldest win - index: " + i + " " + entry);
 
         List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
@@ -789,7 +790,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         entry.candidates = getResourcesNames(candidates);
-        LOGGER.info("take this: " + entry);
+        LOGGER.fine("take this: " + entry);
         nextEntry = entry;
         break;
       }
@@ -1158,7 +1159,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
       msg += "\nBlocked candidates: " + getCauses(candidates);
     }
-    printLogs(msg, logger);
+    printLogs(msg, logger, Level.FINE);
 
     return null;
   }
