@@ -33,7 +33,7 @@ public class PressureTest extends LockStepTestBase {
   }
 
   @Test
-  @WithTimeout(900)
+  @WithTimeout(1800)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     // keep in mind, that the windows nodes at jenkins-infra are not very fast
@@ -169,32 +169,32 @@ public class PressureTest extends LockStepTestBase {
       j.createSlave("AGENT_DDD_" + i, null, null);
     }
 
-// for some reason it crash on unix test nodes
+    // for some reason it crash on unix test nodes
     // simulate chaos by user actions
-//    LOGGER.info("User action 'reserve'");
-//    for (int i = 1; i <= resourcesCount; i++) {
-//      lrm.reserve(Collections.singletonList(lrm.fromName("resourceA_" + i)), "test");
-//    }
+    LOGGER.info("User action 'reserve'");
+    for (int i = 1; i <= resourcesCount; i++) {
+      lrm.reserve(Collections.singletonList(lrm.fromName("resourceA_" + i)), "test");
+    }
 
-//    LOGGER.info("User action 'reserve' slaves");
-//    for (int i = 1; i <= nodesCount; i++) {
-//      lrm.reserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)), "test");
-//      lrm.reserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)), "test");
-//    }
-//
-//    LOGGER.info("User action 'reassign', 'steal', 'unreserve'");
-//    for (int i = 1; i <= resourcesCount; i++) {
-//      lrm.reassign(Collections.singletonList(lrm.fromName("resourceA_" + i)), "second user");
-//      lrm.steal(Collections.singletonList(lrm.fromName("resourceAA_" + i)), "second user");
-//      lrm.unreserve(Collections.singletonList(lrm.fromName("resourceA_" + i)));
-//      lrm.unreserve(Collections.singletonList(lrm.fromName("resourceAA_" + i)));
-//    }
-//
-//    LOGGER.info("User action 'unreserve' slaves");
-//    for (int i = 1; i <= nodesCount; i++) {
-//      lrm.unreserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)));
-//      lrm.unreserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)));
-//    }
+    LOGGER.info("User action 'reserve' slaves");
+    for (int i = 1; i <= nodesCount; i++) {
+      lrm.reserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)), "test");
+      lrm.reserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)), "test");
+    }
+
+     LOGGER.info("User action 'reassign', 'steal', 'unreserve'");
+    for (int i = 1; i <= resourcesCount; i++) {
+      lrm.reassign(Collections.singletonList(lrm.fromName("resourceA_" + i)), "second user");
+      lrm.steal(Collections.singletonList(lrm.fromName("resourceAA_" + i)), "second user");
+      lrm.unreserve(Collections.singletonList(lrm.fromName("resourceA_" + i)));
+      lrm.unreserve(Collections.singletonList(lrm.fromName("resourceAA_" + i)));
+    }
+
+     LOGGER.info("User action 'unreserve' slaves");
+    for (int i = 1; i <= nodesCount; i++) {
+      lrm.unreserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)));
+      lrm.unreserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)));
+    }
 
 
     // wait until the first build has been stopped
