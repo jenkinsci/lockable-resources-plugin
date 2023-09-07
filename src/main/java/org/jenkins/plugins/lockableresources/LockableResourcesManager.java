@@ -657,8 +657,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       while (!remainingResourceNamesToUnLock.isEmpty()) {
         // check if there are resources which can be unlocked (and shall not be unlocked)
         nextContext =
-            this.getNextQueuedContext(
-                remainingResourceNamesToUnLock, inversePrecedence, nextContext);
+            this.getNextQueuedContext(inversePrecedence, nextContext);
 
         // no context is queued which can be started once these resources are free'd.
         if (nextContext == null) {
@@ -763,16 +762,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
     return resourceNames;
   }
-
-  // ---------------------------------------------------------------------------
-  /**
-   * @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct)
-   */
-  @CheckForNull
-  private QueuedContextStruct getNextQueuedContext(
-      List<String> resourceNamesToUnLock, boolean inversePrecedence, QueuedContextStruct from) {
-    return this.getNextQueuedContext(resourceNamesToUnLock, null, inversePrecedence, from);
-  }
   
   // ---------------------------------------------------------------------------
   /**
@@ -790,11 +779,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private QueuedContextStruct getNextQueuedContext(
       boolean inversePrecedence,
       QueuedContextStruct from) {
-    QueuedContextStruct newestEntry = null;
     int fromIndex = from != null ? this.queuedContexts.indexOf(from) + 1 : 0;
     List<QueuedContextStruct> orphan = new ArrayList<>();
     QueuedContextStruct nextEntry = null;
-    long newest = 0;
+    List<LockableResource> nextCandidates = null;
     for (int i = fromIndex; i < this.queuedContexts.size(); i++) {
       QueuedContextStruct entry = this.queuedContexts.get(i);
       Run<?, ?> run = entry.getBuild();
@@ -808,24 +796,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         continue;
       }
 
-      if (newest == 0) {
-        newest = run.getAddTime();
-      }
       LOGGER.info(
-          "getNextQueuedContext: "
-              + entry.getContext().hashCode()
-              + " "
-              + entry.getResourceDescription()
-              + " "
-              + run
-              + " "
-              + run.getAddTime()
-              + " vs "
-              + nextEntry);
-
-      if (nextEntry != null)
-        LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
+          "getNextQueuedContext: index: " + i + " " + entry);
+        
       if (nextEntry != null) {
+        LOGGER.info("compare to " + nextEntry);
         boolean ignoreMe = false;
         if (inversePrecedence) {
           // in case inverse precedence ignore all old entries
@@ -839,24 +814,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
           continue;
         }
       }
-      LOGGER.info(
-          "getNextQueuedContext take this: "
-              + entry.getContext().hashCode()
-              + " "
-              + entry.getResourceDescription()
-              + " "
-              + run);
 
-
-      if (this.getAvailableResources(requiredResourcesList, logger, null) != null) {
-        newest = run.getStartTimeInMillis();
+      List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
+      if (candidates != null) {
+            
+        LOGGER.info(
+            "getNextQueuedContext take this: "
+                + entry);
         nextEntry = entry;
+        nextCandidates = candidates;
       }
     }
     if (!orphan.isEmpty()) {
       this.queuedContexts.removeAll(orphan);
     }
 
+    nextEntry.candidates = getResourcesNames(nextCandidates);
     return nextEntry;
   }
 
@@ -1435,6 +1408,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 ////
 ////    return allSelected;
 ////  }
+
+  
+  // ---------------------------------------------------------------------------
+  public List<LockableResource> getAvailableResources(
+      final List<LockableResourcesStruct> requiredResourcesList)
+  {
+    return this.getAvailableResources(requiredResourcesList, null, null);
+  }
 
   // ---------------------------------------------------------------------------
   /**
