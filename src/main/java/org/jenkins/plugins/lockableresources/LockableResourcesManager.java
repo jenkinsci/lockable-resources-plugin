@@ -819,7 +819,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
 
       if (newest == 0) {
-        newest = run.getAddTime();
+        newest = entry.getAddTime();
       }
       LOGGER.finest(
           "getNextQueuedContext: "
