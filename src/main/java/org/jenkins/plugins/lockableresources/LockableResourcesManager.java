@@ -834,13 +834,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
           continue;
         }
       }
-      LOGGER.info(
-          "getNextQueuedContext take this: "
-              + entry);
 
       if (checkResourcesAvailability(
               entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
           != null) {
+            
+        LOGGER.finest(
+            "getNextQueuedContext take this: "
+                + entry);
         nextEntry = entry;
       }
     }
