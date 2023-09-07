@@ -169,7 +169,6 @@ public class PressureTest extends LockStepTestBase {
       j.createSlave("AGENT_DDD_" + i, null, null);
     }
 
-    // for some reason it crash on unix test nodes
     // simulate chaos by user actions
     LOGGER.info("User action 'reserve'");
     for (int i = 1; i <= resourcesCount; i++) {
