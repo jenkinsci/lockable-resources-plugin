@@ -818,16 +818,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         continue;
       }
 
-      // FIXME I think this is wrong. Why we check for build timestamp here ?!
-      // We shall check for timestamp when the queue has been added.
-      // Ex. Build A start at time t0, Build B at t0 + 10 and build C at t0 + 20
-      // Build B -- lock('abc')
-      // Build C -- lock('abc') ... waiting for build B
-      // Build A -- lock('abc') ... waiting for build B
-      // in this case, win Build A before Build C, because it is started long time ago.
-      // But Build C was the first one in queue !!!
       if (newest == 0) {
-        newest = run.getStartTimeInMillis();
+        newest = run.getAddTime();
       }
       LOGGER.finest(
           "getNextQueuedContext: "
@@ -837,9 +829,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
               + " "
               + run
               + " "
-              + run.getStartTimeInMillis()
+              + run.getAddTime()
               + " vs "
-              + newest);
+              + nextEntry);
       if (nextEntry != null)
         LOGGER.finest("added at: " + entry.getAddTime() + " vs " + nextEntry.getAddTime());
       if (nextEntry != null) {
