@@ -28,8 +28,8 @@ public class PressureTest extends LockStepTestBase {
   // it depends on which node you are running
   @WithTimeout(900)
   public void pressureEnableSave() throws Exception {
-  // keep in mind, that the windows nodes at jenkins-infra are not very fast
-  pressure(Functions.isWindows() ? 5 : 10);
+    // keep in mind, that the windows nodes at jenkins-infra are not very fast
+    pressure(Functions.isWindows() ? 5 : 10);
   }
 
   @Test
