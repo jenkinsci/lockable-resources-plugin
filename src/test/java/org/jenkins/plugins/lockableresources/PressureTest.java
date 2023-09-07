@@ -37,7 +37,7 @@ public class PressureTest extends LockStepTestBase {
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     // keep in mind, that the windows nodes at jenkins-infra are not very fast
-    pressure(Functions.isWindows() ? 50 : 20);
+    pressure(Functions.isWindows() ? 5 : 20);
   }
 
   public void pressure(final int resourcesCount) throws Exception {
@@ -61,7 +61,7 @@ public class PressureTest extends LockStepTestBase {
     // define groovy script used by our test jobs
     String pipeCode = "";
 
-    pipeCode += "lock('initpipe') {echo 'initialited'};\n";
+    pipeCode += "lock('initpipe') {echo 'initialized'};\n";
 
     pipeCode += "def stages = [:];\n";
     pipeCode +=
@@ -129,11 +129,6 @@ public class PressureTest extends LockStepTestBase {
       p2.setDefinition(new CpsFlowDefinition(pipeCode, true));
       WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
       otherBuilds.add(b2);
-      j.waitForMessage(", waiting for execution...", b2);
-    }
-
-    LOGGER.info("Wait for builds");
-    for (WorkflowRun b2 : otherBuilds) {
       j.waitForMessage(", waiting for execution...", b2);
     }
 

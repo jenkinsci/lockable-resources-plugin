@@ -85,6 +85,9 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource>
    * one resource must have this label).
    */
   public static void validate(String resource, String label, String resourceSelectStrategy) {
+    if (label == null && resource == null) {
+      throw new IllegalArgumentException(Messages.error_labelOrNameMustBeSpecified());
+    }
     if (label != null && !label.isEmpty() && resource != null && !resource.isEmpty()) {
       throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
     }

@@ -96,7 +96,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   private long queueItemId = NOT_QUEUED;
   private String queueItemProject = null;
   private transient Run<?, ?> build = null;
-  private transient Run<?, ?> reservedForBuild = null;
   // Needed to make the state non-transient
   private String buildExternalizableId = null;
   private long queuingStarted = 0;
@@ -376,7 +375,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   
   /** Return true when resource is available. False otherwise */
   public boolean isAvailable() {
-    return (!this.isLocked() && !this.isReserved() && !this.isReservedForBuild());
+    return (!this.isLocked() && !this.isReserved());
   }
 
   @Exported
@@ -453,23 +452,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
     final String timestamp =
         (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
-    if (isReserved()) {
+    if (this.isReserved()) {
       User user = Jenkins.get().getUser(reservedBy);
       String userText = user == null ? reservedBy : ModelHyperlinkNote.encodeTo(user);
       return String.format("The resource [%s] is reserved by %s at %s", name, userText, timestamp);
     }
-    if (isLocked()) {
+    if (this.isLocked()) {
       return String.format(
           "The resource [%s] is locked by %s at %s",
           name,
           getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()),
           timestamp);
-    }
-    if (this.isReservedForBuild()) {
-      return String.format(
-          "The resource [%s] is pre-reserved for %s",
-          name,
-          getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()));
     }
     return null;
   }
@@ -488,19 +481,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     else return null;
   }
 
-  public boolean isReservedForBuild() {
-    return (this.reservedForBuild != null);
-  }
-  public void reserveForBuild(Run<?, ?> lockedBy) {
-    this.reservedForBuild = lockedBy;
-  }
-  
-  public void resetBuildReservation() {
-    this.reservedForBuild = null;
-  }
-
   public void setBuild(Run<?, ?> lockedBy) {
-    this.resetBuildReservation();
     this.build = lockedBy;
     if (lockedBy != null) {
       this.buildExternalizableId = lockedBy.getExternalizableId();

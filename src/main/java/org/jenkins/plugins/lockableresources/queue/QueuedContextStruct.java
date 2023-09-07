@@ -96,6 +96,19 @@ public class QueuedContextStruct implements Serializable {
   }
 
   @Restricted(NoExternalUse.class)
+  public boolean isValid() {
+    if (this.getBuild() == null) {
+        // skip this one, for some reason there is no Run object for this context
+        LOGGER.warning(
+            "The queue "
+                + this
+                + " will be removed, because the build does not exists");
+        return false;
+      }
+    return true;
+  }
+
+  @Restricted(NoExternalUse.class)
   /*
    * Gets the required resources.
    */

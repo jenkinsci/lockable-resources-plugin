@@ -49,6 +49,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     Run<?, ?> run = getContext().get(Run.class);
     logger.println("Trying to acquire lock on [" + step + "]");
+    LOGGER.info("Trying to acquire lock on [" + step + "]");
 
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
@@ -61,6 +62,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         if (resource.resource != null) {
           if (lrm.createResource(resource.resource)) {
             logger.println("Resource [" + resource + "] did not exist. Created.");
+            LOGGER.info("Resource [" + resource + "] did not exist. Created.");
           }
           resources.add(resource.resource);
         }
@@ -70,17 +72,17 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
       // determine if there are enough resources available to proceed
       available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
-
-      if (available == null) {
+      if (available == null || available.isEmpty()) {
+        LOGGER.info("No available resources: " + available);
         onLockFailed(logger, resourceHolderList);
         return false;
       }
 
       final boolean lockFailed = (lrm.lock(available, run) == false);
 
-
       if (lockFailed) {
         // this here is very defensive code, and you will probably never hit it. (hopefully)
+        LOGGER.warning("Internal program error: Can not lock resources: " + available);
         onLockFailed(logger, resourceHolderList);
         return true;
       }
@@ -104,21 +106,23 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
   private void onLockFailed(PrintStream logger, List<LockableResourcesStruct> resourceHolderList) {
     LockableResourcesManager lrm = LockableResourcesManager.get();
     LockableResource resource = step.resource != null ? lrm.fromName(step.resource) : null;
-    String logMessage = "";
+    String logMessage = null;
 
-    if (resource != null) {
-      logMessage += resource.getLockCause();
-    } else {
-      logMessage += "[" + step + "] is not free";
-    }
+    if (resource != null)
+      logMessage = resource.getLockCause();
+    
+    if (logMessage == null || logMessage.isEmpty()) // we has not detailed cause (like when you use labels)
+      logMessage = "[" + step + "] is not free";
 
     if (step.skipIfLocked) {
       logMessage += ", skipping execution...";
       logger.println(logMessage);
+      LOGGER.info(logMessage);
       getContext().onSuccess(null);
     } else {
       logMessage += ", waiting for execution...";
       logger.println(logMessage);
+      LOGGER.info(logMessage);
       lrm.queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
     }
   }
@@ -141,9 +145,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       node = context.get(FlowNode.class);
       logger = context.get(TaskListener.class).getLogger();
       logger.println("Lock acquired on [" + resourceDescription + "]");
-      LOGGER.info("Lock acquired on [" + resourceDescription + "] by " + r);
+      LOGGER.info("Lock acquired on [" + resourceDescription + "] by build: " + r + ", variable: " + variable + ", inversePrecedence: " + inversePrecedence + ", lockedResources: " + lockedResources);
     } catch (Exception e) {
-      /// FIXME: this is dangerous, because we never free the PauseAction
       context.onFailure(e);
       return;
     }
@@ -158,7 +161,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                       new ArrayList<>(lockedResources.keySet()),
                       resourceDescription,
                       inversePrecedence));
-      if (variable != null && variable.length() > 0) {
+      if (variable != null && !variable.isEmpty()) {
         // set the variable for the duration of the block
         bodyInvoker.withContext(
             EnvironmentExpander.merge(
@@ -195,7 +198,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       }
       bodyInvoker.start();
     } catch (IOException | InterruptedException e) {
-      LOGGER.info("proceed done with failure " + resourceDescription);
+      LOGGER.warning("proceed done with failure " + resourceDescription);
       throw new RuntimeException(e);
     }
   }
