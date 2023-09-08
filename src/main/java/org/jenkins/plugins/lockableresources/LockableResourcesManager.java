@@ -558,7 +558,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * @deprecated use {@link
    * #boolean lock(
    *   List<LockableResource> resources,
-   *   Run<?, ?> build)
+   *   Run<?, ?> build)}
    */
   @Deprecated
   public boolean lock(
@@ -571,7 +571,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * @deprecated use {@link
    * #boolean lock(
    *   List<LockableResource> resources,
-   *   Run<?, ?> build)
+   *   Run<?, ?> build)}
    */
   @Deprecated
   public boolean lock(
