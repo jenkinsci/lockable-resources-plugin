@@ -28,8 +28,8 @@ public class PressureTest extends LockStepTestBase {
   // it depends on which node you are running
   @WithTimeout(900)
   public void pressureEnableSave() throws Exception {
-  // keep in mind, that the windows nodes at jenkins-infra are not very fast
-  pressure(Functions.isWindows() ? 10 : 30);
+    // keep in mind, that the windows nodes at jenkins-infra are not very fast
+    pressure(Functions.isWindows() ? 10 : 30);
   }
 
   @Test
@@ -93,7 +93,8 @@ public class PressureTest extends LockStepTestBase {
             // and we need to speed up actions
             // + "    lock(label: 'label2', quantity : 1) {\n"
             // + "      lock(label: 'label2', quantity : 1, inversePrecedence : true) {\n"
-            // + "        lock(label: 'label2', quantity : 4, skipIfLocked: true, resourceSelectStrategy: 'random') {\n"
+            // + "        lock(label: 'label2', quantity : 4, skipIfLocked: true,
+            // resourceSelectStrategy: 'random') {\n"
             // + "          lock('resource_ephemeral_' + stageName) {\n"
             // + "            lock('resourceA_' + index) {\n"
             // + "              echo \"inside recursive lock \" + stageName\n"
@@ -189,7 +190,6 @@ public class PressureTest extends LockStepTestBase {
       lrm.unreserve(Collections.singletonList(lrm.fromName("AgentCCC_" + i)));
       lrm.unreserve(Collections.singletonList(lrm.fromName("AGENT_DDD_" + i)));
     }
-
 
     // wait until the first build has been stopped
     LOGGER.info("Wait for build b1");

@@ -45,10 +45,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
     PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
-    ResourceSelectStrategy resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+    ResourceSelectStrategy resourceSelectStrategy =
+        ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
 
     Run<?, ?> run = getContext().get(Run.class);
-    LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.INFO, LOGGER, logger);
+    LockableResourcesManager.printLogs(
+        "Trying to acquire lock on [" + step + "]", Level.INFO, LOGGER, logger);
 
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
@@ -60,7 +62,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         List<String> resources = new ArrayList<>();
         if (resource.resource != null) {
           if (lrm.createResource(resource.resource)) {
-            LockableResourcesManager.printLogs("Resource [" + resource.resource + "] (ephemeral) did not exist. Created.", Level.INFO, LOGGER, logger);
+            LockableResourcesManager.printLogs(
+                "Resource [" + resource.resource + "] (ephemeral) did not exist. Created.",
+                Level.INFO,
+                LOGGER,
+                logger);
           }
           resources.add(resource.resource);
         }
@@ -91,7 +97,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         resourceNames.put(resource.getName(), resource.getProperties());
       }
     }
-    LockStepExecution.proceed(resourceNames, getContext(), step.toString(), step.variable, step.inversePrecedence);
+    LockStepExecution.proceed(
+        resourceNames, getContext(), step.toString(), step.variable, step.inversePrecedence);
 
     return false;
   }
@@ -106,11 +113,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     LockableResource resource = step.resource != null ? lrm.fromName(step.resource) : null;
     String logMessage = null;
 
-    if (resource != null)
-      logMessage = resource.getLockCause();
-    
-    if (logMessage == null || logMessage.isEmpty()) // we has not detailed cause (like when you use labels)
-      logMessage = "[" + step + "] is not free";
+    if (resource != null) logMessage = resource.getLockCause();
+
+    if (logMessage == null
+        || logMessage.isEmpty()) // we has not detailed cause (like when you use labels)
+    logMessage = "[" + step + "] is not free";
 
     if (step.skipIfLocked) {
       logMessage += ", skipping execution...";
@@ -139,7 +146,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     try {
       node = context.get(FlowNode.class);
       logger = context.get(TaskListener.class).getLogger();
-      LockableResourcesManager.printLogs("Lock acquired on [" + resourceDescription + "]", Level.INFO, LOGGER, logger);
+      LockableResourcesManager.printLogs(
+          "Lock acquired on [" + resourceDescription + "]", Level.INFO, LOGGER, logger);
     } catch (Exception e) {
       context.onFailure(e);
       return;
@@ -214,9 +222,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     protected void finished(StepContext context) throws Exception {
       LockableResourcesManager.get()
           .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
-      LockableResourcesManager.printLogs("Lock released on resource [" + resourceDescription + "]", Level.INFO, LOGGER, context
-          .get(TaskListener.class)
-          .getLogger());
+      LockableResourcesManager.printLogs(
+          "Lock released on resource [" + resourceDescription + "]",
+          Level.INFO,
+          LOGGER,
+          context.get(TaskListener.class).getLogger());
     }
   }
 

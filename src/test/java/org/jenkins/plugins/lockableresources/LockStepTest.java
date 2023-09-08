@@ -455,11 +455,9 @@ public class LockStepTest extends LockStepTestBase {
     p.setDefinition(
         new CpsFlowDefinition(
             // "retry(99) {\n"
-                 "    lock('resource1') {\n"
-                + "        semaphore('wait-inside')\n"
-                + "     }\n"
-                // + "}"
-                ,
+            "    lock('resource1') {\n" + "        semaphore('wait-inside')\n" + "     }\n"
+            // + "}"
+            ,
             true));
 
     JenkinsRule.WebClient wc = j.createWebClient();

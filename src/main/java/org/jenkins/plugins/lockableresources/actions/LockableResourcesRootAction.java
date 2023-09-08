@@ -200,7 +200,9 @@ public class LockableResourcesRootAction implements RootAction {
   }
 
   // ---------------------------------------------------------------------------
-  @Restricted(NoExternalUse.class) // used by by src\main\resources\org\jenkins\plugins\lockableresources\actions\LockableResourcesRootAction\tableResources\table.jelly
+  // used by by
+  // src\main\resources\org\jenkins\plugins\lockableresources\actions\LockableResourcesRootAction\tableResources\table.jelly
+  @Restricted(NoExternalUse.class)
   public LockableResource getResource(final String resourceName) {
     return LockableResourcesManager.get().fromName(resourceName);
   }

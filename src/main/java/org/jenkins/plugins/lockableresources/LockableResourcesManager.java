@@ -265,7 +265,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   @NonNull
-  private static List<LockableResource> getResourcesWithLabel(String label, final List<LockableResource> resources) {
+  private static List<LockableResource> getResourcesWithLabel(
+      String label, final List<LockableResource> resources) {
     List<LockableResource> found = new ArrayList<>();
     label = Util.fixEmpty(label);
 
@@ -324,12 +325,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @Restricted(NoExternalUse.class)
   public List<LockableResource> fromNames(List<String> names) {
     List<LockableResource> list = new ArrayList<>();
-    for(String name : names) {
+    for (String name : names) {
       // be sure it exists
       this.createResource(name);
       LockableResource r = this.fromName(name);
       if (r != null) // this is probably bug, but nobody know
-        list.add(r);
+      list.add(r);
     }
     return list;
   }
@@ -585,9 +586,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   // ---------------------------------------------------------------------------
   /** Try to lock the resource and return true if locked. */
-  public boolean lock(
-      List<LockableResource> resources,
-      Run<?, ?> build) {
+  public boolean lock(List<LockableResource> resources, Run<?, ?> build) {
 
     LOGGER.fine("lock it: " + resources + " for build " + build);
 
@@ -599,7 +598,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     String cause = getCauses(resources);
     if (!cause.isEmpty()) {
       LOGGER.warning("lock() for build " + build + " will fails, because " + cause);
-       return false; // not locked
+      return false; // not locked
     }
 
     for (LockableResource r : resources) {
@@ -630,7 +629,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
       }
     }
   }
-
 
   // ---------------------------------------------------------------------------
   public void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
@@ -665,7 +663,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
       this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
-      while (proceedNextContext(inversePrecedence));
+      while (proceedNextContext(inversePrecedence))
+        ;
 
       save();
     }
@@ -684,7 +683,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResource> requiredResourceForNextContext = this.fromNames(nextContext.candidates);
     LOGGER.finest("nextContext real candidates: " + requiredResourceForNextContext);
     // remove context from queue and process it
-
 
     Run<?, ?> build = nextContext.getBuild();
     if (build == null) {
@@ -745,8 +743,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * @return the context or null
    */
   @CheckForNull
-  private QueuedContextStruct getNextQueuedContext(
-      boolean inversePrecedence) {
+  private QueuedContextStruct getNextQueuedContext(boolean inversePrecedence) {
 
     LOGGER.fine("current queue size: " + this.queuedContexts.size());
     List<QueuedContextStruct> orphan = new ArrayList<>();
@@ -1067,7 +1064,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
           }
         }
 
-        available = this.getFreeResourcesWithLabel(requiredResources.label, requiredAmount, selectStrategy, logger, candidates);
+        available =
+            this.getFreeResourcesWithLabel(
+                requiredResources.label, requiredAmount, selectStrategy, logger, candidates);
       } else if (requiredResources.required != null) {
         // resource by name requested
 
@@ -1078,7 +1077,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         String causes = this.getCauses(available);
 
-        if (!causes.isEmpty()){
+        if (!causes.isEmpty()) {
           available = null;
         }
       } else {
@@ -1109,20 +1108,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
-  static public void printLogs(final String msg, final Level level, Logger L, final @Nullable PrintStream logger) {
+  public static void printLogs(
+      final String msg, final Level level, Logger L, final @Nullable PrintStream logger) {
     L.log(level, msg);
-
 
     if (logger != null) {
       if (level == Level.WARNING || level == Level.SEVERE)
         logger.println(level.getLocalizedName() + ": " + msg);
-      else
-        logger.println(msg);
+      else logger.println(msg);
     }
   }
 
   // ---------------------------------------------------------------------------
-  static private void printLogs(final String msg, final @Nullable PrintStream logger, final Level level) {
+  private static void printLogs(
+      final String msg, final @Nullable PrintStream logger, final Level level) {
     printLogs(msg, level, LOGGER, logger);
   }
 
@@ -1130,12 +1129,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
   @CheckForNull
   @Restricted(NoExternalUse.class)
   private List<LockableResource> getFreeResourcesWithLabel(
-    @NonNull String label,
-    long amount,
-    final @Nullable ResourceSelectStrategy selectStrategy,
-    final @Nullable PrintStream logger,
-    final List<LockableResource> alreadySelected
-  ) {
+      @NonNull String label,
+      long amount,
+      final @Nullable ResourceSelectStrategy selectStrategy,
+      final @Nullable PrintStream logger,
+      final List<LockableResource> alreadySelected) {
     List<LockableResource> found = new ArrayList<>();
 
     List<LockableResource> candidates = getResourcesWithLabel(label, alreadySelected);
@@ -1146,13 +1144,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     if (candidates.size() < amount) {
-      printLogs("Found "
-            + found.size()
-            + " possible resource(s). Waiting for correct amount: "
-            + amount
-            + "."
-            + "This may stuck, until you crate enough resources"
-            , logger, Level.WARNING);
+      printLogs(
+          "Found "
+              + found.size()
+              + " possible resource(s). Waiting for correct amount: "
+              + amount
+              + "."
+              + "This may stuck, until you crate enough resources",
+          logger,
+          Level.WARNING);
       return null; // there are not enough resources
     }
 
@@ -1190,8 +1190,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     StringBuffer buf = new StringBuffer();
     for (LockableResource resource : resources) {
       String cause = resource.getLockCause();
-      if (cause == null)
-        continue; // means it is free, not blocked
+      if (cause == null) continue; // means it is free, not blocked
 
       buf.append("\n  " + cause);
     }

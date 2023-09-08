@@ -10,6 +10,7 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Run;
+import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
@@ -17,7 +18,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import hudson.model.TaskListener;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -98,13 +98,10 @@ public class QueuedContextStruct implements Serializable {
   @Restricted(NoExternalUse.class)
   public boolean isValid() {
     if (this.getBuild() == null) {
-        // skip this one, for some reason there is no Run object for this context
-        LOGGER.warning(
-            "The queue "
-                + this
-                + " will be removed, because the build does not exists");
-        return false;
-      }
+      // skip this one, for some reason there is no Run object for this context
+      LOGGER.warning("The queue " + this + " will be removed, because the build does not exists");
+      return false;
+    }
     return true;
   }
 
@@ -141,11 +138,11 @@ public class QueuedContextStruct implements Serializable {
   @Restricted(NoExternalUse.class)
   public String toString() {
     return "build: "
-           + this.getBuild()
-           + " resources: "
-           + this.getResourceDescription()
-           + " added at: "
-           + this.getAddTime();
+        + this.getBuild()
+        + " resources: "
+        + this.getResourceDescription()
+        + " added at: "
+        + this.getAddTime();
   }
 
   @Restricted(NoExternalUse.class)
