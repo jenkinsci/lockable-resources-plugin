@@ -63,7 +63,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         if (resource.resource != null) {
           if (lrm.createResource(resource.resource)) {
             LockableResourcesManager.printLogs(
-                "Resource [" + resource.resource + "] (ephemeral) did not exist. Created.",
+                "Resource [" + resource.resource + "] did not exist. Created.",
                 Level.INFO,
                 LOGGER,
                 logger);
