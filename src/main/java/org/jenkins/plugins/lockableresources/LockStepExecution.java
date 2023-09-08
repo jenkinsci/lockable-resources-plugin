@@ -48,8 +48,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     ResourceSelectStrategy resourceSelectStrategy = ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
 
     Run<?, ?> run = getContext().get(Run.class);
-    logger.println("Trying to acquire lock on [" + step + "]");
-    LOGGER.info("Trying to acquire lock on [" + step + "]");
+    LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.INFO, LOGGER, logger);
 
     List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
@@ -61,7 +60,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         List<String> resources = new ArrayList<>();
         if (resource.resource != null) {
           if (lrm.createResource(resource.resource)) {
-            logger.println("Resource [" + resource + "] did not exist. Created.");
+            LockableResourcesManager.printLogs("Resource [" + resource.resource + "] (ephemeral) did not exist. Created.", Level.INFO, LOGGER, logger);
           }
           resources.add(resource.resource);
         }
@@ -72,7 +71,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
       // determine if there are enough resources available to proceed
       available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
       if (available == null || available.isEmpty()) {
-        LOGGER.info("No available resources: " + available);
+        LOGGER.fine("No available resources: " + available);
         onLockFailed(logger, resourceHolderList);
         return false;
       }
@@ -115,13 +114,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     if (step.skipIfLocked) {
       logMessage += ", skipping execution...";
-      logger.println(logMessage);
-      LOGGER.info(logMessage);
+      LockableResourcesManager.printLogs(logMessage, Level.INFO, LOGGER, logger);
       getContext().onSuccess(null);
     } else {
       logMessage += ", waiting for execution...";
-      logger.println(logMessage);
-      LOGGER.info(logMessage);
+      LockableResourcesManager.printLogs(logMessage, Level.INFO, LOGGER, logger);
       lrm.queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
     }
   }
@@ -140,11 +137,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     FlowNode node = null;
     PrintStream logger = null;
     try {
-      r = context.get(Run.class);
       node = context.get(FlowNode.class);
       logger = context.get(TaskListener.class).getLogger();
-      logger.println("Lock acquired on [" + resourceDescription + "]");
-      LOGGER.info("Lock acquired on [" + resourceDescription + "] by build: " + r + ", variable: " + variable + ", inversePrecedence: " + inversePrecedence + ", lockedResources: " + lockedResources);
+      LockableResourcesManager.printLogs("Lock acquired on [" + resourceDescription + "]", Level.INFO, LOGGER, logger);
     } catch (Exception e) {
       context.onFailure(e);
       return;
@@ -219,11 +214,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     protected void finished(StepContext context) throws Exception {
       LockableResourcesManager.get()
           .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
-      context
+      LockableResourcesManager.printLogs("Lock released on resource [" + resourceDescription + "]", Level.INFO, LOGGER, context
           .get(TaskListener.class)
-          .getLogger()
-          .println("Lock released on resource [" + resourceDescription + "]");
-      LOGGER.finest("Lock released on [" + resourceDescription + "]");
+          .getLogger());
     }
   }
 

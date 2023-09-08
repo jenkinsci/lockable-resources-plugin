@@ -661,7 +661,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     synchronized (this.syncResources) {
-      LOGGER.info("unlockNames " + resourceNamesToUnLock + " from build: " + build);
+      LOGGER.fine("unlockNames " + resourceNamesToUnLock + " from build: " + build);
       this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
@@ -673,11 +673,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   private boolean proceedNextContext(boolean inversePrecedence) {
     LOGGER.finest("inversePrecedence: " + inversePrecedence);
-    QueuedContextStruct nextContext = this.getNextQueuedContext(inversePrecedence, null);
+    QueuedContextStruct nextContext = this.getNextQueuedContext(inversePrecedence);
     LOGGER.finest("nextContext: " + nextContext);
     // no context is queued which can be started once these resources are free'd.
     if (nextContext == null) {
-      LOGGER.info("no context is queued which can be started once these resources are free'd.");
+      LOGGER.fine("No context is queued which can be started once these resources are free'd.");
       return false;
     }
     LOGGER.finest("nextContext candidates: " + nextContext.candidates);
@@ -690,13 +690,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (build == null) {
       // skip this context, as the build cannot be retrieved (maybe it was deleted while
       // running?)
-      LOGGER.info("skip this context, as the build cannot be retrieved");
+      LOGGER.info("Skip this context, as the build cannot be retrieved");
       return true;
     }
     boolean locked = this.lock(requiredResourceForNextContext, build);
     if (!locked) {
       // defensive line, shall never happens
-      LOGGER.warning("can not lock resources: " + requiredResourceForNextContext);
+      LOGGER.warning("Can not lock resources: " + requiredResourceForNextContext);
       // to eliminate possible endless loop
       return false;
     }
@@ -746,10 +746,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @CheckForNull
   private QueuedContextStruct getNextQueuedContext(
-      boolean inversePrecedence,
-      QueuedContextStruct from) {
+      boolean inversePrecedence) {
 
-    LOGGER.info("current queue size: " + this.queuedContexts.size());
+    LOGGER.fine("current queue size: " + this.queuedContexts.size());
     List<QueuedContextStruct> orphan = new ArrayList<>();
     QueuedContextStruct nextEntry = null;
     if (inversePrecedence) {
@@ -761,8 +760,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           orphan.add(entry);
           continue;
         }
-        LOGGER.finest(
-            "getNextQueuedContext: inversePrecedence - index: " + i + " " + entry);
+        LOGGER.finest("inversePrecedence - index: " + i + " " + entry);
 
         List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
         if (candidates == null || candidates.isEmpty()) {
@@ -783,8 +781,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           orphan.add(entry);
           continue;
         }
-        LOGGER.info(
-            "getNextQueuedContext: oldest win - index: " + i + " " + entry);
+        LOGGER.finest("oldest win - index: " + i + " " + entry);
 
         List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
         if (candidates == null || candidates.isEmpty()) {
@@ -792,7 +789,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         entry.candidates = getResourcesNames(candidates);
-        LOGGER.info("take this: " + entry + ", candidates: " + candidates);
+        LOGGER.fine("take this: " + entry + ", candidates: " + candidates);
         nextEntry = entry;
         break;
       }
@@ -880,7 +877,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
       if (doSave) {
         this.save();
       }
-      LOGGER.info("Resource [" + resource + "] " + (resource.isEphemeral() ? "(ephemeral) " : "")  + "did not exist. Created.");
     }
     return true;
   }
@@ -961,7 +957,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     synchronized (this.syncResources) {
-      LOGGER.info("unreserve " + resources);
+      LOGGER.fine("unreserve " + resources);
       unreserveResources(resources);
 
       proceedNextContext(false /*inversePrecedence*/);
@@ -1055,7 +1051,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       final @Nullable PrintStream logger,
       final @Nullable ResourceSelectStrategy selectStrategy) {
 
-    LOGGER.info("getAvailableResources, " + requiredResourcesList);
+    LOGGER.finest("getAvailableResources, " + requiredResourcesList);
     List<LockableResource> candidates = new ArrayList<>();
     for (LockableResourcesStruct requiredResources : requiredResourcesList) {
       List<LockableResource> available = new ArrayList<>();
@@ -1079,19 +1075,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // all of them in LRM
         // fromNames() also re-create the resource (ephemeral things)
         available = fromNames(getResourcesNames(requiredResources.required));
-        
+
         String causes = this.getCauses(available);
 
         if (!causes.isEmpty()){
           available = null;
-          printLogs("causes: " + causes, logger, Level.INFO);
         }
       } else {
         LOGGER.warning("getAvailableResources, Not implemented: " + requiredResources);
       }
 
       if (available == null || available.isEmpty()) {
-        LOGGER.info("No available resources found " + requiredResourcesList);
+        LOGGER.finest("No available resources found " + requiredResourcesList);
         return null;
       }
 
@@ -1114,16 +1109,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
-  // static private void printLogs(final String msg, final @Nullable PrintStream logger) {
-  //   printLogs(msg, logger, Level.INFO);
-  // }
+  static public void printLogs(final String msg, final Level level, Logger L, final @Nullable PrintStream logger) {
+    L.log(level, msg);
+
+
+    if (logger != null) {
+      if (level == Level.WARNING || level == Level.SEVERE)
+        logger.println(level.getLocalizedName() + ": " + msg);
+      else
+        logger.println(msg);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   static private void printLogs(final String msg, final @Nullable PrintStream logger, final Level level) {
-    if (logger != null)
-      logger.println(msg);
-
-    LOGGER.log(level, msg);
+    printLogs(msg, level, LOGGER, logger);
   }
 
   // ---------------------------------------------------------------------------
@@ -1146,7 +1146,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     if (candidates.size() < amount) {
-      printLogs("The label [" + label + "] is pre-reserved by the same context. Check your extra filter", logger, Level.WARNING);
+      printLogs("Found "
+            + found.size()
+            + " possible resource(s). Waiting for correct amount: "
+            + amount
+            + "."
+            + "This may stuck, until you crate enough resources"
+            , logger, Level.WARNING);
       return null; // there are not enough resources
     }
 
@@ -1182,10 +1188,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // for debug purpose
   private static String getCauses(List<LockableResource> resources) {
     StringBuffer buf = new StringBuffer();
-    LOGGER.info("getCauses, " + resources);
     for (LockableResource resource : resources) {
       String cause = resource.getLockCause();
-      LOGGER.info("getCauses, " + resource + " " + cause);
       if (cause == null)
         continue; // means it is free, not blocked
 
@@ -1205,7 +1209,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
       String resourceDescription,
       String variableName) {
     synchronized (this.syncResources) {
-      LOGGER.info("queueContext, " + requiredResources);
       for (QueuedContextStruct entry : this.queuedContexts) {
         if (entry.getContext() == context) {
           LOGGER.warning("queueContext, duplicated, " + requiredResources);
