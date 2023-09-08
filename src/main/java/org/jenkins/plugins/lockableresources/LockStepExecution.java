@@ -62,7 +62,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         if (resource.resource != null) {
           if (lrm.createResource(resource.resource)) {
             logger.println("Resource [" + resource + "] did not exist. Created.");
-            LOGGER.info("Resource [" + resource + "] did not exist. Created.");
           }
           resources.add(resource.resource);
         }

@@ -109,6 +109,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
+          /// FIXME why we need retry here, when you know it, write the comment here or remove it
             "retry(99) {\n"
                 + "    lock('resource1') {\n"
                 + "        semaphore('wait-inside')\n"
@@ -143,6 +144,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
         new CpsFlowDefinition(
+          /// FIXME why we need retry here, when you know it, write the comment here or remove it
             "retry(99) {\n"
                 + "    lock(label: 'label1', quantity: 1) {\n"
                 + "        semaphore('wait-inside')\n"

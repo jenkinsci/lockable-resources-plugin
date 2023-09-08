@@ -33,11 +33,11 @@ public class PressureTest extends LockStepTestBase {
   }
 
   @Test
-  @WithTimeout(900)
+  @WithTimeout(1800)
   public void pressureDisableSave() throws Exception {
     System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     // keep in mind, that the windows nodes at jenkins-infra are not very fast
-    pressure(Functions.isWindows() ? 20 : 40);
+    pressure(Functions.isWindows() ? 50 : 40);
   }
 
   public void pressure(final int resourcesCount) throws Exception {

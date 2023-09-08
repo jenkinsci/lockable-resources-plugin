@@ -316,9 +316,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
-  private List<LockableResource> fromNames(List<String> names) {
+  @Restricted(NoExternalUse.class)
+  public List<LockableResource> fromNames(List<String> names) {
     List<LockableResource> list = new ArrayList<>();
     for(String name : names) {
+      // be sure it exists
+      this.createResource(name);
       LockableResource r = this.fromName(name);
       if (r != null) // this is probably bug, but nobody know
         list.add(r);
@@ -582,17 +585,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
       Run<?, ?> build) {
 
     LOGGER.fine("lock it: " + resources + " for build " + build);
-    for (LockableResource r : resources) {
-      if (r.isReserved() || r.isLocked()) {
-        LOGGER.warning("lock() will fails, because " + r.getLockCause());
-        return false; // not locked
-      }
-    }
 
     if (build == null) {
       LOGGER.warning("lock() will fails, because the build does not exits. " + resources);
       return false; // not locked
     }
+
+    String cause = getCauses(resources);
+    if (!cause.isEmpty()) {
+      LOGGER.warning("lock() for build " + build + " will fails, because " + cause);
+       return false; // not locked
+    }
+
     for (LockableResource r : resources) {
       r.unqueue();
       r.setBuild(build);
@@ -604,32 +608,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
-  private void freeResources(List<LockableResource> unlockResources) {
+  private void freeResources(List<LockableResource> unlockResources, @Nullable Run<?, ?> build) {
+    LOGGER.fine("free it: " + resources);
     for (LockableResource resource : unlockResources) {
       // No more contexts, unlock resource
+      if (build != null && build != resource.getBuild()) {
+        continue; // this happens, when you push the unlock button in LRM page
+      }
       resource.unqueue();
       resource.setBuild(null);
       uncacheIfFreeing(resource, true, false);
 
-      if (resource.isEphemeral() != this.stillNeeded(resource)) {
+      if (resource.isEphemeral()) {
+        LOGGER.info("Remove ephemeral resource: " + resource);
         this.resources.remove(resource);
       }
     }
   }
 
-  // ---------------------------------------------------------------------------
-  /** Check if the resource is still needed (in the queue)
-   */
-  private boolean stillNeeded(LockableResource resource) {
-    for (QueuedContextStruct entry : this.queuedContexts) {
-      for(LockableResourcesStruct lrStruct : entry.getResources()) {
-        List<LockableResource> required = lrStruct.required;
-        if (required != null && required.contains(resource))
-          return true;
-      }
-    }
-    return false;
-  }
 
   // ---------------------------------------------------------------------------
   public void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
@@ -661,7 +657,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     synchronized (this.syncResources) {
       LOGGER.info("unlockNames " + resourceNamesToUnLock + " from build: " + build);
-      this.freeResources(fromNames(resourceNamesToUnLock));
+      this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
       while (proceedNextContext(inversePrecedence));
@@ -696,7 +692,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     if (!locked) {
       // defensive line, shall never happens
       LOGGER.warning("can not lock resources: " + requiredResourceForNextContext);
-      return true;
+      // to eliminate possible endless loop
+      return false;
     }
 
     // build env vars
@@ -747,7 +744,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       boolean inversePrecedence,
       QueuedContextStruct from) {
 
-    LOGGER.fine("current queue size: " + this.queuedContexts.size());
+    LOGGER.info("current queue size: " + this.queuedContexts.size());
     List<QueuedContextStruct> orphan = new ArrayList<>();
     QueuedContextStruct nextEntry = null;
     if (inversePrecedence) {
@@ -781,7 +778,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
           orphan.add(entry);
           continue;
         }
-        LOGGER.finest(
+        LOGGER.info(
             "getNextQueuedContext: oldest win - index: " + i + " " + entry);
 
         List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
@@ -790,7 +787,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         entry.candidates = getResourcesNames(candidates);
-        LOGGER.fine("take this: " + entry);
+        LOGGER.info("take this: " + entry + ", candidates: " + candidates);
         nextEntry = entry;
         break;
       }
@@ -860,7 +857,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // ---------------------------------------------------------------------------
   @Restricted(NoExternalUse.class)
   public boolean addResource(final LockableResource resource) {
-    return this.addResource(resource, false);
+    return this.addResource(resource, /*doSave*/ false);
   }
   // ---------------------------------------------------------------------------
   public boolean addResource(final LockableResource resource, final boolean doSave) {
@@ -871,16 +868,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return false;
       }
       if (this.resourceExist(resource.getName())) {
-        LOGGER.fine("Internal failure: We will add existing resource: " + resource + getStack());
+        LOGGER.finest("We will add existing resource: " + resource + getStack());
         return false;
       }
-      LOGGER.fine("addResource: " + resource);
       this.resources.add(resource);
       if (doSave) {
         this.save();
       }
+      LOGGER.info("Resource [" + resource + "] " + (resource.isEphemeral() ? "(ephemeral) " : "")  + "did not exist. Created.");
     }
-    LOGGER.fine("resource added: " + resource);
     return true;
   }
 
@@ -1054,7 +1050,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       final @Nullable PrintStream logger,
       final @Nullable ResourceSelectStrategy selectStrategy) {
     
-    LOGGER.finest("getAvailableResources, " + requiredResourcesList);
+    LOGGER.info("getAvailableResources, " + requiredResourcesList);
     List<LockableResource> candidates = new ArrayList<>();
     for (LockableResourcesStruct requiredResources : requiredResourcesList) {
       List<LockableResource> available = new ArrayList<>();
@@ -1072,24 +1068,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         available = this.getFreeResourcesWithLabel(requiredResources.label, requiredAmount, selectStrategy, logger, candidates);
       } else if (requiredResources.required != null) {
-        available = requiredResources.required;
         // resource by name requested
+
+        // this is a little hack. The 'requiredResources.required' is a copy, and we need to find
+        // all of them in LRM
+        // fromNames() also re-create the resource (ephemeral things)
+        available = fromNames(getResourcesNames(requiredResources.required));
         final boolean isPreReserved = !Collections.disjoint(candidates, available);
-        String causes = isPreReserved ? String.format("The resource [%s] is pre-reserved by the same context. Check your extra filter", available) : this.getCauses(available);
-        if (!causes.isEmpty()){
+
+        if (isPreReserved) {
           // FIXME I think this is failure
-          // Explain, You use filter label1 and it lock resource1 and then in extra you will lock resource1
-          // But when I allow this line, many tests will fails, and I am pretty sure it will rice
-          // exceptions on end-user pipelines 
-          if (!isPreReserved)
-            available = null;
-          printLogs(causes, logger, isPreReserved ? Level.WARNING : Level.FINE);
+          // You use filter label1 and it lock resource1 and then in extra you will lock resource1
+          // But when I allow this line, many tests will fails, and I am pretty sure it will throws
+          // exceptions on end-user pipelines
+          // So when we want to fix, it it might be braking-change
+          // Therefore keep it here as warning for now
+          printLogs(String.format("The resource [%s] is pre-reserved by the same context. Check your extra filter", requiredResources.required), logger, Level.WARNING);
+        }
+        String causes = this.getCauses(available);
+
+        if (!causes.isEmpty()){
+          available = null;
+          printLogs("causes: " + causes, logger, isPreReserved ? Level.WARNING : Level.INFO);
         }
       } else {
         LOGGER.warning("getAvailableResources, Not implemented: " + requiredResources);
       }
 
       if (available == null || available.isEmpty()) {
+        LOGGER.info("No available resources found " + requiredResourcesList);
         return null;
       }
 
@@ -1125,15 +1132,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResource> found = new ArrayList<>();
 
     final List<LockableResource> candidates = this.getResourcesWithLabel(label);
+    final long absoluteAmount = candidates.size();
     candidates.removeAll(exclude);
-    
-    if (candidates.size() < amount) {
-      printLogs("Found " + candidates.size() + " possible resource(s). Expected amount " + amount, logger);
-      return null; // there are not enough resources
-    }
 
     if (amount <= 0) {
       amount = candidates.size();
+    }
+    
+    if (candidates.size() < amount) {
+      if (absoluteAmount == amount) {
+        printLogs("Found " + candidates.size() + " possible resource(s). Expected amount " + amount, logger/*, Level.FINEST*/);
+      } else {
+        printLogs("The label [" + label + "] is pre-reserved by the same context. Check your extra filter", logger, Level.WARNING);
+      }
+      
+      return null; // there are not enough resources
     }
 
     if (selectStrategy != null && selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
@@ -1168,12 +1181,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
   // for debug purpose
   private static String getCauses(List<LockableResource> resources) {
     StringBuffer buf = new StringBuffer();
+    LOGGER.info("getCauses, " + resources);
     for (LockableResource resource : resources) {
-      if (resource.isFree()) {
-        continue;
-      }
       String cause = resource.getLockCause();
-      if (cause == null) cause = "  Unknown!!!";
+      LOGGER.info("getCauses, " + resource + " " + cause);
+      if (cause == null)
+        continue; // means it is free, not blocked
 
       buf.append("\n  " + cause);
     }

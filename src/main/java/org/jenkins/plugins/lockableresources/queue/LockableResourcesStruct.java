@@ -45,16 +45,14 @@ public class LockableResourcesStruct implements Serializable {
     queuedAt = new Date().getTime();
     required = new ArrayList<>();
 
-    LockableResourcesManager resourcesManager = LockableResourcesManager.get();
+    List<String> names = new ArrayList<>();
     for (String name : property.getResources()) {
       String resourceName = env.expand(name);
-      if (resourceName == null) {
-        continue;
-      }
-      resourcesManager.createResource(resourceName);
-      LockableResource r = resourcesManager.fromName(resourceName);
-      this.required.add(r);
+      names.add(resourceName);
     }
+
+    LockableResourcesManager lrm = LockableResourcesManager.get();
+    this.required = lrm.fromNames(names);
 
     label = env.expand(property.getLabelName());
     if (label == null) label = "";
