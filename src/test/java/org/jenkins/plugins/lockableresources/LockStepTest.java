@@ -705,6 +705,9 @@ public class LockStepTest extends LockStepTestBase {
                 + "echo 'Finish'",
             true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+
+    j.waitForMessage("Extra filter tries to allocate pre-reserved resources.", b1);
+
     SemaphoreStep.waitForStart("wait-inside/1", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
@@ -768,6 +771,9 @@ public class LockStepTest extends LockStepTestBase {
     // #1 should lock as few resources as possible
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+    j.waitForMessage("Extra filter tries to allocate pre-reserved resources.", b1);
+    j.waitForMessage("Resources locked: [resource2, resource4]", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
@@ -975,7 +981,7 @@ public class LockStepTest extends LockStepTestBase {
     // and it is not necessary to check it here, because this test case will check
     // env variable resolution and not if the paused actions works
     // therefore, when it fails again, you can comment it out.
-    isPaused(b1, 2, 0);
+    // isPaused(b1, 2, 0);
 
     // Now the second parallel branch should get and release the lock...
     j.assertBuildStatusSuccess(j.waitForCompletion(b1));

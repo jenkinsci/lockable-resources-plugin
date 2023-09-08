@@ -260,7 +260,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
    */
   @NonNull
   @Restricted(NoExternalUse.class)
-  public List<LockableResource> getResourcesWithLabel(String label) {
+  public List<LockableResource> getResourcesWithLabel(final String label) {
+    return getResourcesWithLabel(label, this.getReadOnlyResources());
+  }
+
+  @NonNull
+  private static List<LockableResource> getResourcesWithLabel(String label, final List<LockableResource> resources) {
     List<LockableResource> found = new ArrayList<>();
     label = Util.fixEmpty(label);
 
@@ -268,7 +273,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return found;
     }
 
-    for (LockableResource r : this.getReadOnlyResources()) {
+    for (LockableResource r : resources) {
       if (r != null && r.isValidLabel(label)) found.add(r);
     }
     return found;
@@ -688,7 +693,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       LOGGER.info("skip this context, as the build cannot be retrieved");
       return true;
     }
-    boolean locked = this.lock(requiredResourceForNextContext, build); 
+    boolean locked = this.lock(requiredResourceForNextContext, build);
     if (!locked) {
       // defensive line, shall never happens
       LOGGER.warning("can not lock resources: " + requiredResourceForNextContext);
@@ -726,7 +731,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
     return resourceNames;
   }
-  
+
   // ---------------------------------------------------------------------------
   /**
    * Returns the next queued context with all its requirements satisfied.
@@ -749,7 +754,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     QueuedContextStruct nextEntry = null;
     if (inversePrecedence) {
       // the last one added lock ist the newest one, and this must win
-      for (int i = this.queuedContexts.size(); i >= 0; i--) {
+      for (int i = this.queuedContexts.size() - 1; i >= 0; i--) {
         QueuedContextStruct entry = this.queuedContexts.get(i);
         // check queue list first
         if (!entry.isValid()) {
@@ -1032,7 +1037,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
     return true;
   }
-  
+
   // ---------------------------------------------------------------------------
   public List<LockableResource> getAvailableResources(
       final List<LockableResourcesStruct> requiredResourcesList) {
@@ -1049,7 +1054,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       final List<LockableResourcesStruct> requiredResourcesList,
       final @Nullable PrintStream logger,
       final @Nullable ResourceSelectStrategy selectStrategy) {
-    
+
     LOGGER.info("getAvailableResources, " + requiredResourcesList);
     List<LockableResource> candidates = new ArrayList<>();
     for (LockableResourcesStruct requiredResources : requiredResourcesList) {
@@ -1074,22 +1079,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // all of them in LRM
         // fromNames() also re-create the resource (ephemeral things)
         available = fromNames(getResourcesNames(requiredResources.required));
-        final boolean isPreReserved = !Collections.disjoint(candidates, available);
-
-        if (isPreReserved) {
-          // FIXME I think this is failure
-          // You use filter label1 and it lock resource1 and then in extra you will lock resource1
-          // But when I allow this line, many tests will fails, and I am pretty sure it will throws
-          // exceptions on end-user pipelines
-          // So when we want to fix, it it might be braking-change
-          // Therefore keep it here as warning for now
-          printLogs(String.format("The resource [%s] is pre-reserved by the same context. Check your extra filter", requiredResources.required), logger, Level.WARNING);
-        }
+        
         String causes = this.getCauses(available);
 
         if (!causes.isEmpty()){
           available = null;
-          printLogs("causes: " + causes, logger, isPreReserved ? Level.WARNING : Level.INFO);
+          printLogs("causes: " + causes, logger, Level.INFO);
         }
       } else {
         LOGGER.warning("getAvailableResources, Not implemented: " + requiredResources);
@@ -1100,6 +1095,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null;
       }
 
+      final boolean isPreReserved = !Collections.disjoint(candidates, available);
+      if (isPreReserved) {
+        // FIXME I think this is failure
+        // You use filter label1 and it lock resource1 and then in extra you will lock resource1
+        // But when I allow this line, many tests will fails, and I am pretty sure it will throws
+        // exceptions on end-user pipelines
+        // So when we want to fix, it it might be braking-change
+        // Therefore keep it here as warning for now
+        printLogs("Extra filter tries to allocate pre-reserved resources.", logger, Level.WARNING);
+        available.removeAll(candidates);
+      }
+
       candidates.addAll(available);
     }
 
@@ -1107,9 +1114,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
   }
 
   // ---------------------------------------------------------------------------
-  static private void printLogs(final String msg, final @Nullable PrintStream logger) {
-    printLogs(msg, logger, Level.INFO);
-  }
+  // static private void printLogs(final String msg, final @Nullable PrintStream logger) {
+  //   printLogs(msg, logger, Level.INFO);
+  // }
 
   // ---------------------------------------------------------------------------
   static private void printLogs(final String msg, final @Nullable PrintStream logger, final Level level) {
@@ -1127,25 +1134,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
     long amount,
     final @Nullable ResourceSelectStrategy selectStrategy,
     final @Nullable PrintStream logger,
-    final List<LockableResource> exclude
+    final List<LockableResource> alreadySelected
   ) {
     List<LockableResource> found = new ArrayList<>();
 
-    final List<LockableResource> candidates = this.getResourcesWithLabel(label);
-    final long absoluteAmount = candidates.size();
-    candidates.removeAll(exclude);
+    List<LockableResource> candidates = getResourcesWithLabel(label, alreadySelected);
+    candidates.addAll(this.getResourcesWithLabel(label));
 
     if (amount <= 0) {
       amount = candidates.size();
     }
-    
+
     if (candidates.size() < amount) {
-      if (absoluteAmount == amount) {
-        printLogs("Found " + candidates.size() + " possible resource(s). Expected amount " + amount, logger/*, Level.FINEST*/);
-      } else {
-        printLogs("The label [" + label + "] is pre-reserved by the same context. Check your extra filter", logger, Level.WARNING);
-      }
-      
+      printLogs("The label [" + label + "] is pre-reserved by the same context. Check your extra filter", logger, Level.WARNING);
       return null; // there are not enough resources
     }
 
