@@ -63,6 +63,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
    * (freestyle builds) regular Jenkins queue is used.
    */
   private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+  // remember last processed queue index
+  private transient int lastCheckedQueueIndex = -1;
 
   // cache to enable / disable saving lockable-resources state
   private int enableSave = -1;
@@ -651,9 +653,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
       this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
-      // proceedNextContext(inversePrecedence);
-      while (proceedNextContext(inversePrecedence))
-        ;
+      this.lastCheckedQueueIndex = -1;
+      while (resourceNamesToUnLock.size() > 0 && proceedNextContext(inversePrecedence)) {
+        for (String resourceName : resourceNamesToUnLock) {
+          LockableResource r = fromName(resourceName);
+          if (r == null) {
+            // probably it was ephemeral resource and does not exists now
+            // therefore we need to check the whole queue later
+            break;
+          }
+          if (!r.isFree()) {
+            // i sno more free, that means, we does not need to check it in the queue now
+            resourceNamesToUnLock.remove(resourceName);
+            break;
+          }
+        }
+      }
 
       save();
     }
@@ -736,57 +751,66 @@ public class LockableResourcesManager extends GlobalConfiguration {
   private QueuedContextStruct getNextQueuedContext(boolean inversePrecedence) {
 
     LOGGER.fine("current queue size: " + this.queuedContexts.size());
+    LOGGER.finest("current queue: " + this.queuedContexts);
     List<QueuedContextStruct> orphan = new ArrayList<>();
     QueuedContextStruct nextEntry = null;
     if (inversePrecedence) {
-      // the last one added lock ist the newest one, and this must win
-      for (int i = this.queuedContexts.size() - 1; i >= 0; i--) {
-        QueuedContextStruct entry = this.queuedContexts.get(i);
+      // the last one added lock ist the newest one, and this wins
+      if (this.lastCheckedQueueIndex == -1) {
+        this.lastCheckedQueueIndex = this.queuedContexts.size() - 1;
+      } else
+        this.lastCheckedQueueIndex++;
+      for (; this.lastCheckedQueueIndex >= 0 && nextEntry == null; this.lastCheckedQueueIndex--) {
+        QueuedContextStruct entry = this.queuedContexts.get(this.lastCheckedQueueIndex);
         // check queue list first
         if (!entry.isValid()) {
           orphan.add(entry);
           continue;
         }
-        LOGGER.finest("inversePrecedence - index: " + i + " " + entry);
+        LOGGER.finest("inversePrecedence - index: " + this.lastCheckedQueueIndex + " " + entry);
 
-        List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
-        if (candidates == null || candidates.isEmpty()) {
-          continue;
-        }
-
-        entry.candidates = getResourcesNames(candidates);
-        LOGGER.fine("take this: " + entry);
-        nextEntry = entry;
-        break;
+        nextEntry = getNextQueuedContextEntry(entry);
       }
     } else {
-      // the fist one added lock ist the oldest one, and this must win
-      for (int i = 0; i < this.queuedContexts.size(); i++) {
-        QueuedContextStruct entry = this.queuedContexts.get(i);
+      // the first one added lock is the oldest one, and this wins
+      if (this.lastCheckedQueueIndex == -1) {
+        this.lastCheckedQueueIndex = 0;
+      } else
+        this.lastCheckedQueueIndex--;
+      for (; this.lastCheckedQueueIndex < this.queuedContexts.size() && nextEntry == null; this.lastCheckedQueueIndex++) {
+        QueuedContextStruct entry = this.queuedContexts.get(this.lastCheckedQueueIndex);
         // check queue list first
         if (!entry.isValid()) {
           orphan.add(entry);
           continue;
         }
-        LOGGER.finest("oldest win - index: " + i + " " + entry);
+        LOGGER.finest("oldest win - index: " + this.lastCheckedQueueIndex + " " + entry);
 
-        List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
-        if (candidates == null || candidates.isEmpty()) {
-          continue;
-        }
-
-        entry.candidates = getResourcesNames(candidates);
-        LOGGER.fine("take this: " + entry + ", candidates: " + candidates);
-        nextEntry = entry;
-        break;
+        nextEntry = getNextQueuedContextEntry(entry);
       }
     }
 
     if (!orphan.isEmpty()) {
       this.queuedContexts.removeAll(orphan);
+      this.lastCheckedQueueIndex = -1;
     }
 
+    if (nextEntry == null) {
+      this.lastCheckedQueueIndex = -1;
+    }
     return nextEntry;
+  }
+
+  // ---------------------------------------------------------------------------
+  QueuedContextStruct getNextQueuedContextEntry(QueuedContextStruct entry) {
+    List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
+    if (candidates == null || candidates.isEmpty()) {
+      return null;
+    }
+
+    entry.candidates = getResourcesNames(candidates);
+    LOGGER.fine("take this: " + entry);
+    return entry;
   }
 
   // ---------------------------------------------------------------------------
