@@ -228,10 +228,13 @@ public class FreeStyleProjectTest {
   @Test
   public void autoCreateResource() throws IOException, InterruptedException, ExecutionException {
     FreeStyleProject f = j.createFreeStyleProject("f");
+    assertNull(LockableResourcesManager.get().fromName("resource1"));
     f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
+    assertNull(LockableResourcesManager.get().fromName("resource1"));
 
     FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
     j.waitForMessage("acquired lock on [resource1]", fb1);
+    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
     j.waitForCompletion(fb1);
 
     assertNull(LockableResourcesManager.get().fromName("resource1"));

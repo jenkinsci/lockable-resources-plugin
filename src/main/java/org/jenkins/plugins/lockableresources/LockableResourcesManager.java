@@ -173,7 +173,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     List<LockableResource> matching = new ArrayList<>();
     for (LockableResource r : this.getReadOnlyResources()) {
       Run<?, ?> rBuild = r.getBuild();
-      if (rBuild != null && rBuild == build) {
+            if (rBuild != null && rBuild == build) {
         matching.add(r);
       }
     }
@@ -325,11 +325,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
   // ---------------------------------------------------------------------------
   @Restricted(NoExternalUse.class)
-  public List<LockableResource> fromNames(List<String> names) {
+  public List<LockableResource> fromNames(final List<String> names) {
+    return fromNames(names, false);
+  }
+  
+  // ---------------------------------------------------------------------------
+  @Restricted(NoExternalUse.class)
+  public List<LockableResource> fromNames(final List<String> names, final boolean createResource) {
     List<LockableResource> list = new ArrayList<>();
     for (String name : names) {
       // be sure it exists
-      this.createResource(name);
+      if (createResource)
+        this.createResource(name);
       LockableResource r = this.fromName(name);
       if (r != null) // this is probably bug, but nobody know
       list.add(r);
@@ -644,12 +651,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
       @Nullable Run<?, ?> build,
       boolean inversePrecedence) {
     // make sure there is a list of resource names to unlock
-    if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
+        if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
       return;
     }
 
     synchronized (this.syncResources) {
-      LOGGER.fine("unlockNames " + resourceNamesToUnLock + " from build: " + build);
       this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
@@ -684,7 +690,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
       return false;
     }
     LOGGER.finest("nextContext candidates: " + nextContext.candidates);
-    List<LockableResource> requiredResourceForNextContext = this.fromNames(nextContext.candidates);
+    List<LockableResource> requiredResourceForNextContext = this.fromNames(nextContext.candidates, /*create un-existent resources */true);
     LOGGER.finest("nextContext real candidates: " + requiredResourceForNextContext);
     // remove context from queue and process it
 
@@ -1087,7 +1093,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // this is a little hack. The 'requiredResources.required' is a copy, and we need to find
         // all of them in LRM
         // fromNames() also re-create the resource (ephemeral things)
-        available = fromNames(getResourcesNames(requiredResources.required));
+        available = fromNames(getResourcesNames(requiredResources.required), /*create un-existent resources */true);
 
         String causes = this.getCauses(available);
 
