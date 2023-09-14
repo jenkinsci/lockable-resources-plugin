@@ -651,8 +651,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
-      while (proceedNextContext(inversePrecedence))
-        ;
+      proceedNextContext(inversePrecedence);
+      // while (proceedNextContext(inversePrecedence))
+        // ;
 
       save();
     }

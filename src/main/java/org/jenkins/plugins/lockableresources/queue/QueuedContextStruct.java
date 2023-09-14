@@ -97,7 +97,8 @@ public class QueuedContextStruct implements Serializable {
 
   @Restricted(NoExternalUse.class)
   public boolean isValid() {
-    if (this.getBuild() == null) {
+    Run<?, ?> run = this.getBuild();
+    if (run == null || run.isBuilding() == false) {
       // skip this one, for some reason there is no Run object for this context
       LOGGER.warning("The queue " + this + " will be removed, because the build does not exists");
       return false;

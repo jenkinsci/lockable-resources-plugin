@@ -472,6 +472,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     if (build == null && buildExternalizableId != null) {
       build = Run.fromExternalizableId(buildExternalizableId);
     }
+
+    if (build == null || build.isBuilding() == false) {
+      // the build has been stopped, killed deleted or what ever ... --> is no more running
+      // therefor free the resource now.
+      this.setBuild(null);
+    }
+
     return build;
   }
 
