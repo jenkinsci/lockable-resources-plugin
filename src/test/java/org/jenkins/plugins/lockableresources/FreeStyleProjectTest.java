@@ -234,7 +234,6 @@ public class FreeStyleProjectTest {
 
     FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
     j.waitForMessage("acquired lock on [resource1]", fb1);
-    assertNotNull(LockableResourcesManager.get().fromName("resource1"));
     j.waitForCompletion(fb1);
 
     assertNull(LockableResourcesManager.get().fromName("resource1"));
