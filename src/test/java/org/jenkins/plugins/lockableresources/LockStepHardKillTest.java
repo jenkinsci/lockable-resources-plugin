@@ -20,7 +20,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
   @Issue("JENKINS-36479")
   @Test
   public void hardKillNewBuildClearsLock() throws Exception {
-    LockableResourcesManager.get().createResource("resource1");
+    LockableResourcesManager.get().createResourceWithLabel("resource1", "label");
 
     WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
     p1.setDefinition(
