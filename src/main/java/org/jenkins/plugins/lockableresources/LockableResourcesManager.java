@@ -651,9 +651,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
       this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
       // process as many contexts as possible
-      proceedNextContext(inversePrecedence);
-      // while (proceedNextContext(inversePrecedence))
-        // ;
+      // proceedNextContext(inversePrecedence);
+      while (proceedNextContext(inversePrecedence))
+        ;
 
       save();
     }
@@ -675,9 +675,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     Run<?, ?> build = nextContext.getBuild();
     if (build == null) {
+      // this shall never happens
       // skip this context, as the build cannot be retrieved (maybe it was deleted while
       // running?)
-      LOGGER.info("Skip this context, as the build cannot be retrieved");
+      LOGGER.warning("Skip this context, as the build cannot be retrieved");
       return true;
     }
     boolean locked = this.lock(requiredResourceForNextContext, build);

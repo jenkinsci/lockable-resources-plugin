@@ -16,7 +16,7 @@ import org.jvnet.hudson.test.recipes.WithTimeout;
 
 public class PressureTest extends LockStepTestBase {
 
-  private static final Logger LOGGER = Logger.getLogger(LockStepTest.class.getName());
+  private static final Logger LOGGER = Logger.getLogger(PressureTest.class.getName());
   @Rule public JenkinsRule j = new JenkinsRule();
 
   /**
