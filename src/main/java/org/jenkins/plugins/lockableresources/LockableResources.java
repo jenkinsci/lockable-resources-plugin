@@ -17,12 +17,12 @@ import org.kohsuke.stapler.export.ExportedBean;
 @ExportedBean
 public class LockableResources extends Plugin {
 
-  public Api getApi() {
-    return new Api(this);
-  }
+    public Api getApi() {
+        return new Api(this);
+    }
 
-  @Exported
-  public List<LockableResource> getResources() {
-    return LockableResourcesManager.get().getReadOnlyResources();
-  }
+    @Exported
+    public List<LockableResource> getResources() {
+        return LockableResourcesManager.get().getReadOnlyResources();
+    }
 }

@@ -18,55 +18,52 @@ import org.junit.Test;
 
 public class ConfigurationAsCodeTest {
 
-  // ---------------------------------------------------------------------------
-  @Before
-  public void setUp() {
-    // to speed up the test
-    System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
-  }
+    // ---------------------------------------------------------------------------
+    @Before
+    public void setUp() {
+        // to speed up the test
+        System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    }
 
-  @ClassRule
-  @ConfiguredWithCode("configuration-as-code.yml")
-  public static JenkinsConfiguredWithCodeRule r = new JenkinsConfiguredWithCodeRule();
+    @ClassRule
+    @ConfiguredWithCode("configuration-as-code.yml")
+    public static JenkinsConfiguredWithCodeRule r = new JenkinsConfiguredWithCodeRule();
 
-  @Test
-  public void should_support_configuration_as_code() {
-    List<LockableResource> declaredResources =
-        LockableResourcesManager.get().getDeclaredResources();
-    assertEquals(
-        "The number of declared resources is wrong. Check your configuration-as-code.yml",
-        1,
-        declaredResources.size());
+    @Test
+    public void should_support_configuration_as_code() {
+        List<LockableResource> declaredResources =
+                LockableResourcesManager.get().getDeclaredResources();
+        assertEquals(
+                "The number of declared resources is wrong. Check your configuration-as-code.yml",
+                1,
+                declaredResources.size());
 
-    LockableResource declaredResource = declaredResources.get(0);
-    assertEquals("Resource_A", declaredResource.getName());
-    assertEquals("Description_A", declaredResource.getDescription());
-    assertEquals("Label_A", declaredResource.getLabels());
-    assertEquals("Reserved_A", declaredResource.getReservedBy());
-    assertEquals("Note A", declaredResource.getNote());
+        LockableResource declaredResource = declaredResources.get(0);
+        assertEquals("Resource_A", declaredResource.getName());
+        assertEquals("Description_A", declaredResource.getDescription());
+        assertEquals("Label_A", declaredResource.getLabels());
+        assertEquals("Reserved_A", declaredResource.getReservedBy());
+        assertEquals("Note A", declaredResource.getNote());
 
-    List<LockableResource> resources = LockableResourcesManager.get().getReadOnlyResources();
-    assertEquals(
-        "The number of resources is wrong. Check your configuration-as-code.yml",
-        1,
-        resources.size());
+        List<LockableResource> resources = LockableResourcesManager.get().getReadOnlyResources();
+        assertEquals("The number of resources is wrong. Check your configuration-as-code.yml", 1, resources.size());
 
-    LockableResource resource = resources.get(0);
-    assertEquals("Resource_A", resource.getName());
-    assertEquals("Description_A", resource.getDescription());
-    assertEquals("Label_A", resource.getLabels());
-    assertEquals("Reserved_A", resource.getReservedBy());
-    assertEquals("Note A", resource.getNote());
-  }
+        LockableResource resource = resources.get(0);
+        assertEquals("Resource_A", resource.getName());
+        assertEquals("Description_A", resource.getDescription());
+        assertEquals("Label_A", resource.getLabels());
+        assertEquals("Reserved_A", resource.getReservedBy());
+        assertEquals("Note A", resource.getNote());
+    }
 
-  @Test
-  public void should_support_configuration_export() throws Exception {
-    ConfiguratorRegistry registry = ConfiguratorRegistry.get();
-    ConfigurationContext context = new ConfigurationContext(registry);
-    CNode yourAttribute = Util.getUnclassifiedRoot(context).get("lockableResourcesManager");
-    String exported = Util.toYamlString(yourAttribute);
-    String expected = Util.toStringFromYamlFile(this, "casc_expected_output.yml");
+    @Test
+    public void should_support_configuration_export() throws Exception {
+        ConfiguratorRegistry registry = ConfiguratorRegistry.get();
+        ConfigurationContext context = new ConfigurationContext(registry);
+        CNode yourAttribute = Util.getUnclassifiedRoot(context).get("lockableResourcesManager");
+        String exported = Util.toYamlString(yourAttribute);
+        String expected = Util.toStringFromYamlFile(this, "casc_expected_output.yml");
 
-    assertThat(exported, is(expected));
-  }
+        assertThat(exported, is(expected));
+    }
 }

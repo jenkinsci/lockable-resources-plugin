@@ -18,10 +18,10 @@ import hudson.init.Initializer;
  */
 public final class FreeDeadJobs {
 
-  private FreeDeadJobs() {}
+    private FreeDeadJobs() {}
 
-  @Initializer(after = InitMilestone.JOB_LOADED)
-  public static void freePostMortemResources() {
-    LockableResourcesManager.get().freePostMortemResources();
-  }
+    @Initializer(after = InitMilestone.JOB_LOADED)
+    public static void freePostMortemResources() {
+        LockableResourcesManager.get().freePostMortemResources();
+    }
 }

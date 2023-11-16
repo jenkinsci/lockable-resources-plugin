@@ -29,136 +29,136 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
  */
 public class QueuedContextStruct implements Serializable {
 
-  /*
-   * Reference to the pipeline step context.
-   */
-  private StepContext context;
+    /*
+     * Reference to the pipeline step context.
+     */
+    private StepContext context;
 
-  /*
-   * Reference to the resources required by the step context.
-   */
-  private List<LockableResourcesStruct> lockableResourcesStruct;
+    /*
+     * Reference to the resources required by the step context.
+     */
+    private List<LockableResourcesStruct> lockableResourcesStruct;
 
-  /*
-   * Description of the required resources used within logging messages.
-   */
-  private String resourceDescription;
+    /*
+     * Description of the required resources used within logging messages.
+     */
+    private String resourceDescription;
 
-  /*
-   * Name of the variable to save the locks taken.
-   */
-  private String variableName;
+    /*
+     * Name of the variable to save the locks taken.
+     */
+    private String variableName;
 
-  private long queuedAt = 0;
+    private long queuedAt = 0;
 
-  // cached candidates
-  public transient List<String> candidates = null;
+    // cached candidates
+    public transient List<String> candidates = null;
 
-  private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
 
-  /*
-   * Constructor for the QueuedContextStruct class.
-   */
-  @Restricted(NoExternalUse.class)
-  public QueuedContextStruct(
-      StepContext context,
-      List<LockableResourcesStruct> lockableResourcesStruct,
-      String resourceDescription,
-      String variableName) {
-    this.context = context;
-    this.lockableResourcesStruct = lockableResourcesStruct;
-    this.resourceDescription = resourceDescription;
-    this.variableName = variableName;
-    this.queuedAt = new Date().getTime();
-  }
-
-  /*
-   * Gets the pipeline step context.
-   */
-  @Restricted(NoExternalUse.class)
-  public StepContext getContext() {
-    return this.context;
-  }
-
-  /** Return build, where is the resource used. */
-  @CheckForNull
-  @Restricted(NoExternalUse.class)
-  public Run<?, ?> getBuild() {
-    try {
-      if (this.getContext() == null) {
-        return null;
-      }
-      return this.getContext().get(Run.class);
-    } catch (IOException | InterruptedException e) {
-      // for some reason there is no Run object for this context
-      return null;
+    /*
+     * Constructor for the QueuedContextStruct class.
+     */
+    @Restricted(NoExternalUse.class)
+    public QueuedContextStruct(
+            StepContext context,
+            List<LockableResourcesStruct> lockableResourcesStruct,
+            String resourceDescription,
+            String variableName) {
+        this.context = context;
+        this.lockableResourcesStruct = lockableResourcesStruct;
+        this.resourceDescription = resourceDescription;
+        this.variableName = variableName;
+        this.queuedAt = new Date().getTime();
     }
-  }
 
-  @Restricted(NoExternalUse.class)
-  public boolean isValid() {
-    Run<?, ?> run = this.getBuild();
-    if (run == null || run.isBuilding() == false) {
-      // skip this one, for some reason there is no Run object for this context
-      LOGGER.warning("The queue " + this + " will be removed, because the build does not exists");
-      return false;
+    /*
+     * Gets the pipeline step context.
+     */
+    @Restricted(NoExternalUse.class)
+    public StepContext getContext() {
+        return this.context;
     }
-    return true;
-  }
 
-  @Restricted(NoExternalUse.class)
-  /*
-   * Gets the required resources.
-   */
-  public List<LockableResourcesStruct> getResources() {
-    return this.lockableResourcesStruct;
-  }
-
-  @Restricted(NoExternalUse.class)
-  /*
-   * Gets the resource description for logging messages.
-   */
-  public String getResourceDescription() {
-    return this.resourceDescription;
-  }
-
-  @Restricted(NoExternalUse.class)
-  /*
-   * Gets the variable name to save the locks taken.
-   */
-  public String getVariableName() {
-    return this.variableName;
-  }
-
-  /** Get time-ticks, when the item has been added into queue */
-  @Restricted(NoExternalUse.class)
-  public long getAddTime() {
-    return queuedAt;
-  }
-
-  @Restricted(NoExternalUse.class)
-  public String toString() {
-    return "build: "
-        + this.getBuild()
-        + " resources: "
-        + this.getResourceDescription()
-        + " added at: "
-        + this.getAddTime();
-  }
-
-  @Restricted(NoExternalUse.class)
-  public PrintStream getLogger() {
-    PrintStream logger = null;
-    try {
-      TaskListener taskListener = this.getContext().get(TaskListener.class);
-      if (taskListener != null) {
-        logger = taskListener.getLogger();
-      }
-    } catch (IOException | InterruptedException e) {
-      LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
+    /** Return build, where is the resource used. */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public Run<?, ?> getBuild() {
+        try {
+            if (this.getContext() == null) {
+                return null;
+            }
+            return this.getContext().get(Run.class);
+        } catch (IOException | InterruptedException e) {
+            // for some reason there is no Run object for this context
+            return null;
+        }
     }
-    return logger;
-  }
 
-  private static final long serialVersionUID = 1L;
+    @Restricted(NoExternalUse.class)
+    public boolean isValid() {
+        Run<?, ?> run = this.getBuild();
+        if (run == null || run.isBuilding() == false) {
+            // skip this one, for some reason there is no Run object for this context
+            LOGGER.warning("The queue " + this + " will be removed, because the build does not exists");
+            return false;
+        }
+        return true;
+    }
+
+    @Restricted(NoExternalUse.class)
+    /*
+     * Gets the required resources.
+     */
+    public List<LockableResourcesStruct> getResources() {
+        return this.lockableResourcesStruct;
+    }
+
+    @Restricted(NoExternalUse.class)
+    /*
+     * Gets the resource description for logging messages.
+     */
+    public String getResourceDescription() {
+        return this.resourceDescription;
+    }
+
+    @Restricted(NoExternalUse.class)
+    /*
+     * Gets the variable name to save the locks taken.
+     */
+    public String getVariableName() {
+        return this.variableName;
+    }
+
+    /** Get time-ticks, when the item has been added into queue */
+    @Restricted(NoExternalUse.class)
+    public long getAddTime() {
+        return queuedAt;
+    }
+
+    @Restricted(NoExternalUse.class)
+    public String toString() {
+        return "build: "
+                + this.getBuild()
+                + " resources: "
+                + this.getResourceDescription()
+                + " added at: "
+                + this.getAddTime();
+    }
+
+    @Restricted(NoExternalUse.class)
+    public PrintStream getLogger() {
+        PrintStream logger = null;
+        try {
+            TaskListener taskListener = this.getContext().get(TaskListener.class);
+            if (taskListener != null) {
+                logger = taskListener.getLogger();
+            }
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
+        }
+        return logger;
+    }
+
+    private static final long serialVersionUID = 1L;
 }

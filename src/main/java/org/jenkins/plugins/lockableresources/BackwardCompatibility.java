@@ -20,10 +20,10 @@ import hudson.init.Initializer;
 @Deprecated
 public final class BackwardCompatibility {
 
-  private BackwardCompatibility() {}
+    private BackwardCompatibility() {}
 
-  @Initializer(after = InitMilestone.JOB_LOADED)
-  public static void compatibilityMigration() {
-    LockableResourcesManager.get().compatibilityMigration();
-  }
+    @Initializer(after = InitMilestone.JOB_LOADED)
+    public static void compatibilityMigration() {
+        LockableResourcesManager.get().compatibilityMigration();
+    }
 }

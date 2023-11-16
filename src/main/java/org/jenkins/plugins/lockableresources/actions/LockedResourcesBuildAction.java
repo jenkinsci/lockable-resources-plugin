@@ -16,58 +16,58 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class LockedResourcesBuildAction implements Action {
 
-  private final List<ResourcePOJO> lockedResources;
+    private final List<ResourcePOJO> lockedResources;
 
-  public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
-    this.lockedResources = lockedResources;
-  }
-
-  public List<ResourcePOJO> getLockedResources() {
-    return lockedResources;
-  }
-
-  @Override
-  public String getIconFileName() {
-    return LockableResourcesRootAction.ICON;
-  }
-
-  @Override
-  public String getDisplayName() {
-    return "Locked Resources";
-  }
-
-  @Override
-  public String getUrlName() {
-    return "locked-resources";
-  }
-
-  public static LockedResourcesBuildAction fromResources(Collection<LockableResource> resources) {
-    List<ResourcePOJO> resPojos = new ArrayList<>();
-    for (LockableResource r : resources) resPojos.add(new ResourcePOJO(r));
-    return new LockedResourcesBuildAction(resPojos);
-  }
-
-  public static class ResourcePOJO {
-
-    private String name;
-    private String description;
-
-    public ResourcePOJO(String name, String description) {
-      this.name = name;
-      this.description = description;
+    public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
+        this.lockedResources = lockedResources;
     }
 
-    public ResourcePOJO(LockableResource r) {
-      this.name = r.getName();
-      this.description = r.getDescription();
+    public List<ResourcePOJO> getLockedResources() {
+        return lockedResources;
     }
 
-    public String getName() {
-      return name;
+    @Override
+    public String getIconFileName() {
+        return LockableResourcesRootAction.ICON;
     }
 
-    public String getDescription() {
-      return description;
+    @Override
+    public String getDisplayName() {
+        return "Locked Resources";
     }
-  }
+
+    @Override
+    public String getUrlName() {
+        return "locked-resources";
+    }
+
+    public static LockedResourcesBuildAction fromResources(Collection<LockableResource> resources) {
+        List<ResourcePOJO> resPojos = new ArrayList<>();
+        for (LockableResource r : resources) resPojos.add(new ResourcePOJO(r));
+        return new LockedResourcesBuildAction(resPojos);
+    }
+
+    public static class ResourcePOJO {
+
+        private String name;
+        private String description;
+
+        public ResourcePOJO(String name, String description) {
+            this.name = name;
+            this.description = description;
+        }
+
+        public ResourcePOJO(LockableResource r) {
+            this.name = r.getName();
+            this.description = r.getDescription();
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
 }
