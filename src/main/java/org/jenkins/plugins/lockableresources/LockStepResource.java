@@ -84,7 +84,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     }
 
     // -------------------------------------------------------------------------
-    /** Validate setp input */
+    /** Validate input parameters*/
     public static void validate(
             String resource, String label, String resourceSelectStrategy, List<LockStepResource> extra) {
         validate(resource, label, resourceSelectStrategy, extra != null);
