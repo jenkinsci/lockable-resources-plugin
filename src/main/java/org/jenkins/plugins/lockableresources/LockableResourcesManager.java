@@ -1227,11 +1227,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Override
     public synchronized void save() {
         if (enableSave == -1) {
-            // read system property and chache it.
+            // read system property and cache it.
             enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
         }
 
-        if (enableSave == 0) return; // savinig is disabled
+        if (enableSave == 0) return; // saving is disabled
 
         if (BulkChange.contains(this)) return; // no change detected
 

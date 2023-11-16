@@ -6,15 +6,25 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import java.util.concurrent.Semaphore;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.TestBuilder;
 
 public class InteroperabilityTest extends LockStepTestBase {
+
+    private static final Logger LOGGER = Logger.getLogger(InteroperabilityTest.class.getName());
+    // ---------------------------------------------------------------------------
+    @Before
+    public void setUp() {
+        // to speed up the test
+        System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    }
 
     @Rule
     public JenkinsRule j = new JenkinsRule();

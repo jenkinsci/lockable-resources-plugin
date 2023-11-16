@@ -30,9 +30,11 @@ import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDispatcher;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
@@ -44,6 +46,13 @@ public class FreeStyleProjectTest {
 
     @Rule
     public JenkinsRule j = new JenkinsRule();
+
+    // ---------------------------------------------------------------------------
+    @Before
+    public void setUp() {
+        // to speed up the test
+        System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    }
 
     @Test
     @Issue("JENKINS-34853")
@@ -209,7 +218,9 @@ public class FreeStyleProjectTest {
     @Test
     public void autoCreateResource() throws IOException, InterruptedException, ExecutionException {
         FreeStyleProject f = j.createFreeStyleProject("f");
+        assertNull(LockableResourcesManager.get().fromName("resource1"));
         f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
+        assertNull(LockableResourcesManager.get().fromName("resource1"));
 
         FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
         j.waitForMessage("acquired lock on [resource1]", fb1);
