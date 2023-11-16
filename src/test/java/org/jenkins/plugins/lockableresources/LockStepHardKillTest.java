@@ -24,35 +24,38 @@ public class LockStepHardKillTest extends LockStepTestBase {
 
     WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
     p1.setDefinition(
-      new CpsFlowDefinition(
-        "lock('resource1') {" +
-        "  echo 'JOB 1 inside'\n" +
-        // this looks strange, but don not panic
-        // the job will be killed later
-        // I use here sleep instead of semaphore, because the
-        // semaphore step is very instable (slowly ?)
-        "  sleep 600;" +
-        "  echo 'JOB 1 unblocked';" +
-       "}", true));
+        new CpsFlowDefinition(
+            "lock('resource1') {"
+                + "  echo 'JOB 1 inside'\n"
+                +
+                // this looks strange, but don not panic
+                // the job will be killed later
+                // I use here sleep instead of semaphore, because the
+                // semaphore step is very instable (slowly ?)
+                "  sleep 600;"
+                + "  echo 'JOB 1 unblocked';"
+                + "}",
+            true));
     WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
     j.waitForMessage("JOB 1 inside", b1);
 
     WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
     p2.setDefinition(
-      new CpsFlowDefinition(
-        "try {\n" +
-          "lock('resource1') {\n" +
-          "  echo 'JOB 2 inside'\n" +
-          // also here use long sleep time
-          // the job will be stopped later (but not killed)
-          "  sleep 600;" +
-          "}\n" +
-        "}\n" +
-        "catch(error) {\n" +
-        "  echo 'JOB 2 unblocked';\n"+
-        "  echo 'error:' + error;\n"+
-        "}"
-        , true));
+        new CpsFlowDefinition(
+            "try {\n"
+                + "lock('resource1') {\n"
+                + "  echo 'JOB 2 inside'\n"
+                +
+                // also here use long sleep time
+                // the job will be stopped later (but not killed)
+                "  sleep 600;"
+                + "}\n"
+                + "}\n"
+                + "catch(error) {\n"
+                + "  echo 'JOB 2 unblocked';\n"
+                + "  echo 'error:' + error;\n"
+                + "}",
+            true));
     WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
     // Make sure that b2 is blocked on b1's lock.
@@ -63,12 +66,9 @@ public class LockStepHardKillTest extends LockStepTestBase {
     // lock.
     WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
     p3.setDefinition(
-      new CpsFlowDefinition(
-        "lock('resource1') {\n" +
-        "  echo 'JOB 3 inside'\n" +
-        "}\n" +
-        "echo 'JOB 3 unblocked'",
-        true));
+        new CpsFlowDefinition(
+            "lock('resource1') {\n" + "  echo 'JOB 3 inside'\n" + "}\n" + "echo 'JOB 3 unblocked'",
+            true));
     WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
     // Make sure that b3 is also blocked still on b1's lock.
@@ -108,20 +108,20 @@ public class LockStepHardKillTest extends LockStepTestBase {
     LockableResourcesManager.get().createResource("resource1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(
-        "retry(99) {\n"
-          + "    lock('resource1') {\n"
-          + "        semaphore('wait-inside')\n"
-          + "     }\n"
-          + "}",
-        true));
+        new CpsFlowDefinition(
+            "retry(99) {\n"
+                + "    lock('resource1') {\n"
+                + "        semaphore('wait-inside')\n"
+                + "     }\n"
+                + "}",
+            true));
 
     WorkflowRun prevBuild = null;
     for (int i = 0; i < 3; i++) {
       WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
       if (prevBuild != null) {
         j.waitForMessage(
-          "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
+            "[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
         isPaused(rNext, 1, 1);
         interruptTermKill(prevBuild);
       }
@@ -143,13 +143,13 @@ public class LockStepHardKillTest extends LockStepTestBase {
     LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
     WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(
-        "retry(99) {\n"
-          + "    lock(label: 'label1', quantity: 1) {\n"
-          + "        semaphore('wait-inside')\n"
-          + "     }\n"
-          + "}",
-        true));
+        new CpsFlowDefinition(
+            "retry(99) {\n"
+                + "    lock(label: 'label1', quantity: 1) {\n"
+                + "        semaphore('wait-inside')\n"
+                + "     }\n"
+                + "}",
+            true));
 
     WorkflowRun firstPrev = null;
     WorkflowRun secondPrev = null;

@@ -47,7 +47,11 @@ public class QueuedContextStruct implements Serializable {
   /*
    * Constructor for the QueuedContextStruct class.
    */
-  public QueuedContextStruct(StepContext context, List<LockableResourcesStruct> lockableResourcesStruct, String resourceDescription, String variableName) {
+  public QueuedContextStruct(
+      StepContext context,
+      List<LockableResourcesStruct> lockableResourcesStruct,
+      String resourceDescription,
+      String variableName) {
     this.context = context;
     this.lockableResourcesStruct = lockableResourcesStruct;
     this.resourceDescription = resourceDescription;
@@ -61,7 +65,7 @@ public class QueuedContextStruct implements Serializable {
     return this.context;
   }
 
-  /** Return build, where is the resource used.*/
+  /** Return build, where is the resource used. */
   @CheckForNull
   @Restricted(NoExternalUse.class) // used by jelly
   public Run<?, ?> getBuild() {

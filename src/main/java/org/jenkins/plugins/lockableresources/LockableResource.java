@@ -53,7 +53,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 @ExportedBean(defaultVisibility = 999)
 public class LockableResource extends AbstractDescribableImpl<LockableResource>
-  implements Serializable {
+    implements Serializable {
 
   private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());
   public static final int NOT_QUEUED = 0;
@@ -62,34 +62,34 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   private final String name;
   private String description = "";
-  /** @deprecated use labelsAsList instead due performance.
+  /**
+   * @deprecated use labelsAsList instead due performance.
    */
   @Deprecated private transient String labels = null;
+
   private List<String> labelsAsList = new ArrayList<>();
   private String reservedBy = null;
   private Date reservedTimestamp = null;
   private String note = "";
 
   /**
-   * Track that a currently reserved resource was originally reserved
-   * for someone else, or locked for some other job, and explicitly
-   * taken away - e.g. for SUT post-mortems while a test job runs.
-   * Currently this does not track "who" it was taken from nor intend
-   * to give it back - just for bookkeeping and UI button naming.
-   * Cleared when the resource is unReserve'd.
+   * Track that a currently reserved resource was originally reserved for someone else, or locked
+   * for some other job, and explicitly taken away - e.g. for SUT post-mortems while a test job
+   * runs. Currently this does not track "who" it was taken from nor intend to give it back - just
+   * for bookkeeping and UI button naming. Cleared when the resource is unReserve'd.
    */
   private boolean stolen = false;
 
   /**
-   * We can use arbitrary identifier in a temporary lock (e.g. a commit hash of
-   * built/tested sources), and not overwhelm Jenkins with lots of "garbage" locks.
-   * Such locks will be automatically removed when freed, if they were not
-   * explicitly declared in the Jenkins Configure System page.
-   * If an originally ephemeral lock is later defined in configuration, it becomes
-   * a usual persistent lock. If a "usual" lock definition is deleted while it is
-   * being held, it becomes ephemeral and will disappear when freed.
+   * We can use arbitrary identifier in a temporary lock (e.g. a commit hash of built/tested
+   * sources), and not overwhelm Jenkins with lots of "garbage" locks. Such locks will be
+   * automatically removed when freed, if they were not explicitly declared in the Jenkins Configure
+   * System page. If an originally ephemeral lock is later defined in configuration, it becomes a
+   * usual persistent lock. If a "usual" lock definition is deleted while it is being held, it
+   * becomes ephemeral and will disappear when freed.
    */
   private boolean ephemeral;
+
   private List<LockableResourceProperty> properties = new ArrayList<>();
 
   private long queueItemId = NOT_QUEUED;
@@ -112,10 +112,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Deprecated private List<StepContext> queuedContexts = new ArrayList<>();
 
-  /** @deprecated Use single-argument constructor instead (since 1.8) */
+  /**
+   * @deprecated Use single-argument constructor instead (since 1.8)
+   */
   @Deprecated
   @ExcludeFromJacocoGeneratedReport
-  public LockableResource(String name, String description, String labels, String reservedBy, String note) {
+  public LockableResource(
+      String name, String description, String labels, String reservedBy, String note) {
     // todo throw exception, when the name is empty
     // todo check if the name contains only valid characters (no spaces, new lines ...)
     this.name = name;
@@ -153,7 +156,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     this.labels = null;
   }
 
-  /** @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11) */
+  /**
+   * @deprecated Replaced with LockableResourcesManager.queuedContexts (since 1.11)
+   */
   @Deprecated
   @ExcludeFromJacocoGeneratedReport
   public List<StepContext> getQueuedContexts() {
@@ -203,10 +208,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return ephemeral;
   }
 
-  /** Use getLabelsAsList instead
-   * todo This function is marked as deprecated but it is still used in tests ans
-   * jelly (config) files.
-  */
+  /**
+   * Use getLabelsAsList instead todo This function is marked as deprecated but it is still used in
+   * tests ans jelly (config) files.
+   */
   @Deprecated
   @Exported
   public String getLabels() {
@@ -216,18 +221,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return String.join(" ", this.labelsAsList);
   }
 
-  /** @deprecated no equivalent at the time.
-   * todo It shall be created new one function selLabelsAsList() and use that one.
-   * But it must be checked and changed all config.jelly files and
-   * this might takes more time as expected.
-   * That the reason why a deprecated function/property is still data-bound-setter
+  /**
+   * @deprecated no equivalent at the time. todo It shall be created new one function
+   *     selLabelsAsList() and use that one. But it must be checked and changed all config.jelly
+   *     files and this might takes more time as expected. That the reason why a deprecated
+   *     function/property is still data-bound-setter
    */
   // @Deprecated can not be used, because of JCaC
   @DataBoundSetter
   public void setLabels(String labels) {
     // todo use label parser from Jenkins.Label to allow the same syntax
     this.labelsAsList = new ArrayList<>();
-    for(String label : labels.split("\\s+")) {
+    for (String label : labels.split("\\s+")) {
       if (label == null || label.isEmpty()) {
         continue;
       }
@@ -237,6 +242,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /**
    * Get labels of this resource
+   *
    * @return List of assigned labels.
    */
   @Exported
@@ -246,6 +252,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /**
    * Checks if the resource has label *labelToFind*
+   *
    * @param labelToFind Label to find.
    * @return {@code true} if this resource contains the label.
    */
@@ -254,7 +261,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return this.labelsContain(labelToFind);
   }
 
-  //----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
   public boolean isValidLabel(String candidate, Map<String, Object> params) {
     if (candidate == null || candidate.isEmpty()) {
       return false;
@@ -266,16 +273,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
     final Label labelExpression = Label.parseExpression(candidate);
     Set<LabelAtom> atomLabels = new HashSet<>();
-    for(String label : this.getLabelsAsList()) {
+    for (String label : this.getLabelsAsList()) {
       atomLabels.add(new LabelAtom(label));
     }
 
     return labelExpression.matches(atomLabels);
   }
 
-  //----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
   /**
    * Checks if the resource contain label *candidate*.
+   *
    * @param candidate Labels to find.
    * @return {@code true} if resource contains label *candidate*
    */
@@ -304,8 +312,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
    */
   @Restricted(NoExternalUse.class)
   public boolean scriptMatches(
-    @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
-    throws ExecutionException {
+      @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+      throws ExecutionException {
     Binding binding = new Binding(params);
     binding.setVariable("resourceName", name);
     binding.setVariable("resourceDescription", description);
@@ -313,22 +321,22 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     binding.setVariable("resourceNote", note);
     try {
       Object result =
-        script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
+          script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
       if (LOGGER.isLoggable(Level.FINE)) {
         LOGGER.fine(
-          "Checked resource "
-            + name
-            + " for "
-            + script.getScript()
-            + " with "
-            + binding
-            + " -> "
-            + result);
+            "Checked resource "
+                + name
+                + " for "
+                + script.getScript()
+                + " with "
+                + binding
+                + " -> "
+                + result);
       }
       return (Boolean) result;
     } catch (Exception e) {
       throw new ExecutionException(
-        "Cannot get boolean result out of groovy expression. See system log for more info", e);
+          "Cannot get boolean result out of groovy expression. See system log for more info", e);
     }
   }
 
@@ -339,7 +347,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   @DataBoundSetter
   public void setReservedTimestamp(final Date reservedTimestamp) {
-    this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
+    this.reservedTimestamp =
+        reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
   }
 
   @Exported
@@ -347,7 +356,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     return reservedBy;
   }
 
-  /** Return true when resource is free. False otherwise*/
+  /** Return true when resource is free. False otherwise */
   public boolean isFree() {
     return (!this.isLocked() && !this.isReserved() && !this.isQueued());
   }
@@ -370,6 +379,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
 
   /**
    * Function check if the resources is reserved by currently logged user
+   *
    * @return true when reserved by current user, false otherwise.
    */
   @Restricted(NoExternalUse.class) // called by jelly
@@ -423,7 +433,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   @CheckForNull
   public String getLockCause() {
     final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
-    final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
+    final String timestamp =
+        (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
     if (isReserved()) {
       return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
     }
@@ -526,7 +537,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
   }
 
   /**
-   * Copy unconfigurable properties from another instance. Normally, called after "lockable resource" configuration change.
+   * Copy unconfigurable properties from another instance. Normally, called after "lockable
+   * resource" configuration change.
+   *
    * @param sourceResource resource with properties to copy from
    */
   public void copyUnconfigurableProperties(final LockableResource sourceResource) {
@@ -536,18 +549,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource>
     }
   }
 
-  /** Tell LRM to recycle this resource, including notifications for
-   * whoever may be waiting in the queue so they can proceed immediately.
-   * WARNING: Do not use this from inside the lock step closure which
-   * originally locked this resource, to avoid nasty surprises!
-   * Just stick with unReserve() and close the closure, if needed.
+  /**
+   * Tell LRM to recycle this resource, including notifications for whoever may be waiting in the
+   * queue so they can proceed immediately. WARNING: Do not use this from inside the lock step
+   * closure which originally locked this resource, to avoid nasty surprises! Just stick with
+   * unReserve() and close the closure, if needed.
    */
   public void recycle() {
     try {
       List<LockableResource> resources = new ArrayList<>();
       resources.add(this);
-      org.jenkins.plugins.lockableresources.LockableResourcesManager.get().
-        recycle(resources);
+      org.jenkins.plugins.lockableresources.LockableResourcesManager.get().recycle(resources);
     } catch (Exception e) {
       this.reset();
     }

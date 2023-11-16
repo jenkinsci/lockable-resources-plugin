@@ -22,11 +22,11 @@ import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
-import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
-import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest;
@@ -40,36 +40,36 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 public class LockableResourcesRootAction implements RootAction {
 
   public static final PermissionGroup PERMISSIONS_GROUP =
-    new PermissionGroup(
-      LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
+      new PermissionGroup(
+          LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
   public static final Permission UNLOCK =
-    new Permission(
-      PERMISSIONS_GROUP,
-      Messages.LockableResourcesRootAction_UnlockPermission(),
-      Messages._LockableResourcesRootAction_UnlockPermission_Description(),
-      Jenkins.ADMINISTER,
-      PermissionScope.JENKINS);
+      new Permission(
+          PERMISSIONS_GROUP,
+          Messages.LockableResourcesRootAction_UnlockPermission(),
+          Messages._LockableResourcesRootAction_UnlockPermission_Description(),
+          Jenkins.ADMINISTER,
+          PermissionScope.JENKINS);
   public static final Permission RESERVE =
-    new Permission(
-      PERMISSIONS_GROUP,
-      Messages.LockableResourcesRootAction_ReservePermission(),
-      Messages._LockableResourcesRootAction_ReservePermission_Description(),
-      Jenkins.ADMINISTER,
-      PermissionScope.JENKINS);
+      new Permission(
+          PERMISSIONS_GROUP,
+          Messages.LockableResourcesRootAction_ReservePermission(),
+          Messages._LockableResourcesRootAction_ReservePermission_Description(),
+          Jenkins.ADMINISTER,
+          PermissionScope.JENKINS);
   public static final Permission STEAL =
-    new Permission(
-      PERMISSIONS_GROUP,
-      Messages.LockableResourcesRootAction_StealPermission(),
-      Messages._LockableResourcesRootAction_StealPermission_Description(),
-      Jenkins.ADMINISTER,
-      PermissionScope.JENKINS);
+      new Permission(
+          PERMISSIONS_GROUP,
+          Messages.LockableResourcesRootAction_StealPermission(),
+          Messages._LockableResourcesRootAction_StealPermission_Description(),
+          Jenkins.ADMINISTER,
+          PermissionScope.JENKINS);
   public static final Permission VIEW =
-    new Permission(
-      PERMISSIONS_GROUP,
-      Messages.LockableResourcesRootAction_ViewPermission(),
-      Messages._LockableResourcesRootAction_ViewPermission_Description(),
-      Jenkins.ADMINISTER,
-      PermissionScope.JENKINS);
+      new Permission(
+          PERMISSIONS_GROUP,
+          Messages.LockableResourcesRootAction_ViewPermission(),
+          Messages._LockableResourcesRootAction_ViewPermission_Description(),
+          Jenkins.ADMINISTER,
+          PermissionScope.JENKINS);
 
   public static final String ICON = "symbol-lock-closed";
 
@@ -108,6 +108,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   /**
    * Get amount of free resources assigned to given *label*
+   *
    * @param label Label to search.
    * @return Amount of free labels.
    */
@@ -118,7 +119,8 @@ public class LockableResourcesRootAction implements RootAction {
   /**
    * Get percentage (0-100) usage of resources assigned to given *label*
    *
-   * Used by {@code actions/LockableResourcesRootAction/index.jelly}
+   * <p>Used by {@code actions/LockableResourcesRootAction/index.jelly}
+   *
    * @since 2.19
    * @param label Label to search.
    * @return Percentage usages of *label* around all resources
@@ -129,11 +131,12 @@ public class LockableResourcesRootAction implements RootAction {
     if (allCount == 0) {
       return allCount;
     }
-    return (int)((double)this.getFreeResourceAmount(label) / (double)allCount * 100);
+    return (int) ((double) this.getFreeResourceAmount(label) / (double) allCount * 100);
   }
 
   /**
    * Get all existing labels as list.
+   *
    * @return All possible labels.
    */
   public Set<String> getAllLabels() {
@@ -142,6 +145,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   /**
    * Get amount of all labels.
+   *
    * @return Amount of all labels.
    */
   public int getNumberOfAllLabels() {
@@ -151,7 +155,8 @@ public class LockableResourcesRootAction implements RootAction {
   /**
    * Get amount of resources assigned to given *label*
    *
-   * Used by {@code actions/LockableResourcesRootAction/index.jelly}
+   * <p>Used by {@code actions/LockableResourcesRootAction/index.jelly}
+   *
    * @param label Label to search.
    * @return Amount of assigned resources.
    */
@@ -172,7 +177,7 @@ public class LockableResourcesRootAction implements RootAction {
   public LockableResourcesStruct getOldestQueue() {
     LockableResourcesStruct oldest = null;
     for (QueuedContextStruct context : this.getCurrentQueuedContext()) {
-      for(LockableResourcesStruct resourceStruct : context.getResources()) {
+      for (LockableResourcesStruct resourceStruct : context.getResources()) {
         if (resourceStruct.queuedAt == 0) {
           // Older versions of this plugin might miss this information.
           // Therefore skip it here.
@@ -188,8 +193,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doUnlock(StaplerRequest req, StaplerResponse rsp)
-    throws IOException, ServletException
-  {
+      throws IOException, ServletException {
     Jenkins.get().checkPermission(UNLOCK);
 
     List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -204,8 +208,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doReserve(StaplerRequest req, StaplerResponse rsp)
-    throws IOException, ServletException
-  {
+      throws IOException, ServletException {
     Jenkins.get().checkPermission(RESERVE);
 
     List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -216,7 +219,10 @@ public class LockableResourcesRootAction implements RootAction {
     String userName = getUserName();
     if (userName != null) {
       if (!LockableResourcesManager.get().reserve(resources, userName)) {
-        rsp.sendError(423, Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
+        rsp.sendError(
+            423,
+            Messages.error_resourceAlreadyLocked(
+                LockableResourcesManager.getResourcesNames(resources)));
         return;
       }
     }
@@ -225,8 +231,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doSteal(StaplerRequest req, StaplerResponse rsp)
-    throws IOException, ServletException
-  {
+      throws IOException, ServletException {
     Jenkins.get().checkPermission(STEAL);
 
     List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -244,8 +249,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doReassign(StaplerRequest req, StaplerResponse rsp)
-    throws IOException, ServletException
-  {
+      throws IOException, ServletException {
     Jenkins.get().checkPermission(STEAL);
 
     String userName = getUserName();
@@ -277,8 +281,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doUnreserve(StaplerRequest req, StaplerResponse rsp)
-    throws IOException, ServletException
-  {
+      throws IOException, ServletException {
     Jenkins.get().checkPermission(RESERVE);
 
     List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -289,8 +292,7 @@ public class LockableResourcesRootAction implements RootAction {
     String userName = getUserName();
     for (LockableResource resource : resources) {
       if ((userName == null || !userName.equals(resource.getReservedBy()))
-          && !Jenkins.get().hasPermission(Jenkins.ADMINISTER)
-      ) {
+          && !Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
         throw new AccessDeniedException3(Jenkins.getAuthentication2(), RESERVE);
       }
     }
@@ -302,8 +304,7 @@ public class LockableResourcesRootAction implements RootAction {
 
   @RequirePOST
   public void doReset(StaplerRequest req, StaplerResponse rsp)
-    throws IOException, ServletException
-  {
+      throws IOException, ServletException {
     Jenkins.get().checkPermission(UNLOCK);
     // Should this also be permitted by "STEAL"?..
 
@@ -342,8 +343,10 @@ public class LockableResourcesRootAction implements RootAction {
     }
   }
 
-  private List<LockableResource> getResourcesFromRequest(final StaplerRequest req, final StaplerResponse rsp) throws IOException, ServletException {
-    // todo, when you try to improve the API to use multiple resources (a list instead of single one)
+  private List<LockableResource> getResourcesFromRequest(
+      final StaplerRequest req, final StaplerResponse rsp) throws IOException, ServletException {
+    // todo, when you try to improve the API to use multiple resources (a list instead of single
+    // one)
     // this will be the best place to change it. Probably it will be enough to add a code piece here
     // like req.getParameter("resources"); And split the content by some delimiter like ' ' (space)
     String name = req.getParameter("resource");

@@ -7,8 +7,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
 
-import org.htmlunit.FailingHttpStatusCodeException;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import org.htmlunit.FailingHttpStatusCodeException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
@@ -38,9 +38,9 @@ public class LockableResourceApiTest {
   public void apiUsageHttpGet() {
     JenkinsRule.WebClient wc = j.createWebClient();
     FailingHttpStatusCodeException e =
-      assertThrows(
-        FailingHttpStatusCodeException.class,
-        () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
+        assertThrows(
+            FailingHttpStatusCodeException.class,
+            () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
     assertThat(e.getStatusCode(), is(405));
   }
 }

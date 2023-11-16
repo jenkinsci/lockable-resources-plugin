@@ -15,10 +15,13 @@ public class LockableResourcesCandidatesStruct {
   }
 
   @Override
-  public String toString()
-  {
-    return "LockableResourcesCandidatesStruct [candidates=" + candidates + ", requiredAmount=" + requiredAmount
-      + ", selected=" + selected + "]";
+  public String toString() {
+    return "LockableResourcesCandidatesStruct [candidates="
+        + candidates
+        + ", requiredAmount="
+        + requiredAmount
+        + ", selected="
+        + selected
+        + "]";
   }
-
 }

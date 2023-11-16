@@ -38,7 +38,8 @@ public class LockableResourcesStruct implements Serializable {
   @CheckForNull private final SerializableSecureGroovyScript serializableResourceMatchScript;
 
   @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
-  @CheckForNull private transient SecureGroovyScript resourceMatchScript;
+  @CheckForNull
+  private transient SecureGroovyScript resourceMatchScript;
 
   private static final long serialVersionUID = 1L;
 
@@ -79,13 +80,13 @@ public class LockableResourcesStruct implements Serializable {
   }
 
   public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
+      @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
     this(resources, label, quantity);
     requiredVar = variable;
   }
 
   public LockableResourcesStruct(
-    @Nullable List<String> resources, @Nullable String label, int quantity) {
+      @Nullable List<String> resources, @Nullable String label, int quantity) {
     queuedAt = new Date().getTime();
     required = new ArrayList<>();
     if (resources != null) {
@@ -134,26 +135,24 @@ public class LockableResourcesStruct implements Serializable {
   @Override
   public String toString() {
     return "Required resources: "
-      + this.required
-      + ", Required label: "
-      + this.label
-      + ", Required label script: "
-      + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
-      + ", Variable name: "
-      + this.requiredVar
-      + ", Number of resources: "
-      + this.requiredNumber;
+        + this.required
+        + ", Required label: "
+        + this.label
+        + ", Required label script: "
+        + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
+        + ", Variable name: "
+        + this.requiredVar
+        + ", Number of resources: "
+        + this.requiredNumber;
   }
 
-  /** Returns timestamp when the resource has been added into queue.*/
+  /** Returns timestamp when the resource has been added into queue. */
   @Restricted(NoExternalUse.class) // used by jelly
   public Date getQueuedTimestamp() {
     return new Date(this.queuedAt);
   }
 
-  /** Check if the queue takes too long.
-    At the moment "too long" means over 1 hour.
-  */
+  /** Check if the queue takes too long. At the moment "too long" means over 1 hour. */
   @Restricted(NoExternalUse.class) // used by jelly
   public boolean takeTooLong() {
     return (new Date().getTime() - this.queuedAt) > 3600000L;

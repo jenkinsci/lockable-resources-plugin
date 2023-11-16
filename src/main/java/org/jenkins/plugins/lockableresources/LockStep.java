@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -118,31 +117,26 @@ public class LockStep extends Step implements Serializable {
     }
 
     @RequirePOST
-    public AutoCompletionCandidates doAutoCompleteResource(@QueryParameter String value,
-      @AncestorInPath Item item) {
+    public AutoCompletionCandidates doAutoCompleteResource(
+        @QueryParameter String value, @AncestorInPath Item item) {
       return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
     }
 
     @RequirePOST
     public static FormValidation doCheckLabel(
-      @QueryParameter String value,
-      @QueryParameter String resource,
-      @AncestorInPath Item item) {
+        @QueryParameter String value, @QueryParameter String resource, @AncestorInPath Item item) {
       return LockStepResource.DescriptorImpl.doCheckLabel(value, resource, item);
     }
 
     @RequirePOST
     public static FormValidation doCheckResource(
-      @QueryParameter String value,
-      @QueryParameter String label,
-      @AncestorInPath Item item) {
+        @QueryParameter String value, @QueryParameter String label, @AncestorInPath Item item) {
       return LockStepResource.DescriptorImpl.doCheckLabel(label, value, item);
     }
 
     @RequirePOST
     public static FormValidation doCheckResourceSelectStrategy(
-      @QueryParameter String resourceSelectStrategy,
-      @AncestorInPath Item item) {
+        @QueryParameter String resourceSelectStrategy, @AncestorInPath Item item) {
       // check permission, security first
       if (item != null) {
         item.checkPermission(Item.CONFIGURE);
@@ -153,7 +147,13 @@ public class LockStep extends Step implements Serializable {
         try {
           ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
         } catch (IllegalArgumentException e) {
-          return FormValidation.error(Messages.error_invalidResourceSelectionStrategy(resourceSelectStrategy, Arrays.stream(ResourceSelectStrategy.values()).map(Enum::toString).map(strategy -> strategy.toLowerCase(Locale.ENGLISH)).collect(Collectors.joining(", "))));
+          return FormValidation.error(
+              Messages.error_invalidResourceSelectionStrategy(
+                  resourceSelectStrategy,
+                  Arrays.stream(ResourceSelectStrategy.values())
+                      .map(Enum::toString)
+                      .map(strategy -> strategy.toLowerCase(Locale.ENGLISH))
+                      .collect(Collectors.joining(", "))));
         }
       }
       return FormValidation.ok();
@@ -169,8 +169,8 @@ public class LockStep extends Step implements Serializable {
   public String toString() {
     if (extra != null && !extra.isEmpty()) {
       return getResources().stream()
-        .map(res -> "{" + res.toString() + "}")
-        .collect(Collectors.joining(","));
+          .map(res -> "{" + res.toString() + "}")
+          .collect(Collectors.joining(","));
     } else if (resource != null || label != null) {
       return LockStepResource.toString(resource, label, quantity);
     } else {

@@ -1,5 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.Assert.assertNull;
+
 import com.google.common.base.Joiner;
 import hudson.model.Result;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -9,29 +11,29 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
-import static org.junit.Assert.assertNull;
-
 public class DeclarativePipelineTest {
-  @Rule
-  public JenkinsRule j = new JenkinsRule();
+  @Rule public JenkinsRule j = new JenkinsRule();
 
   @Test
   public void lockByIdInOptionsSection() throws Exception {
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(m("pipeline {",
-        " agent none",
-        " options {",
-        "  lock resource: 'resource1'",
-        " }",
-        " stages {",
-        "  stage('test') {",
-        "   steps {",
-        "    echo 'foo'",
-        "   }",
-        "  }",
-        " }",
-        "}"), true));
+        new CpsFlowDefinition(
+            m(
+                "pipeline {",
+                " agent none",
+                " options {",
+                "  lock resource: 'resource1'",
+                " }",
+                " stages {",
+                "  stage('test') {",
+                "   steps {",
+                "    echo 'foo'",
+                "   }",
+                "  }",
+                " }",
+                "}"),
+            true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -44,19 +46,22 @@ public class DeclarativePipelineTest {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(m("pipeline {",
-        " agent none",
-        " options {",
-        "  lock label: 'label1', resource : null",
-        " }",
-        " stages {",
-        "  stage('test') {",
-        "   steps {",
-        "    echo 'foo'",
-        "   }",
-        "  }",
-        " }",
-        "}"), true));
+        new CpsFlowDefinition(
+            m(
+                "pipeline {",
+                " agent none",
+                " options {",
+                "  lock label: 'label1', resource : null",
+                " }",
+                " stages {",
+                "  stage('test') {",
+                "   steps {",
+                "    echo 'foo'",
+                "   }",
+                "  }",
+                " }",
+                "}"),
+            true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -68,20 +73,23 @@ public class DeclarativePipelineTest {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(m("pipeline {",
-        " agent none",
-        " stages {",
-        "  stage('test') {",
-        "   steps {",
-        "    script {",
-        "       lock(label: 'label1', resource : null, variable: 'LABEL_LOCKED', quantity: 1) {",
-        "         echo \"Lock acquired: ${LABEL_LOCKED}\"",
-        "       }",
-        "     }",
-        "   }",
-        "  }",
-        " }",
-        "}"), true));
+        new CpsFlowDefinition(
+            m(
+                "pipeline {",
+                " agent none",
+                " stages {",
+                "  stage('test') {",
+                "   steps {",
+                "    script {",
+                "       lock(label: 'label1', resource : null, variable: 'LABEL_LOCKED', quantity: 1) {",
+                "         echo \"Lock acquired: ${LABEL_LOCKED}\"",
+                "       }",
+                "     }",
+                "   }",
+                "  }",
+                " }",
+                "}"),
+            true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -93,18 +101,21 @@ public class DeclarativePipelineTest {
     LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(m("pipeline {",
-        " agent none",
-        " stages {",
-        "  stage('test') {",
-        "   steps {",
-        "     lock(label: 'label1', resource : null, variable: 'LABEL_LOCKED', quantity: 1) {",
-        "       echo \"Lock acquired: ${LABEL_LOCKED}\"",
-        "     }",
-        "   }",
-        "  }",
-        " }",
-        "}"), true));
+        new CpsFlowDefinition(
+            m(
+                "pipeline {",
+                " agent none",
+                " stages {",
+                "  stage('test') {",
+                "   steps {",
+                "     lock(label: 'label1', resource : null, variable: 'LABEL_LOCKED', quantity: 1) {",
+                "       echo \"Lock acquired: ${LABEL_LOCKED}\"",
+                "     }",
+                "   }",
+                "  }",
+                " }",
+                "}"),
+            true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.SUCCESS, b1);
@@ -115,18 +126,21 @@ public class DeclarativePipelineTest {
   public void missingLabel() throws Exception {
     WorkflowJob p = j.createProject(WorkflowJob.class, "p");
     p.setDefinition(
-      new CpsFlowDefinition(m("pipeline {",
-        " agent none",
-        " stages {",
-        "  stage('test') {",
-        "   steps {",
-        "     lock() {",
-        "       echo \"This will still be executed\"",
-        "     }",
-        "   }",
-        "  }",
-        " }",
-        "}"), true));
+        new CpsFlowDefinition(
+            m(
+                "pipeline {",
+                " agent none",
+                " stages {",
+                "  stage('test') {",
+                "   steps {",
+                "     lock() {",
+                "       echo \"This will still be executed\"",
+                "     }",
+                "   }",
+                "  }",
+                " }",
+                "}"),
+            true));
     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
     j.waitForCompletion(b1);
     j.assertBuildStatus(Result.FAILURE, b1);
