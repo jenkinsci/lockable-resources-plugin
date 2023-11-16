@@ -465,7 +465,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if (build == null && buildExternalizableId != null) {
             build = Run.fromExternalizableId(buildExternalizableId);
         }
-
         return build;
     }
 
