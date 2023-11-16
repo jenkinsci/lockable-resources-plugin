@@ -5,20 +5,23 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 
 public class LockableResourcesCandidatesStruct {
 
-  public List<LockableResource> candidates;
-  public int requiredAmount;
-  public List<LockableResource> selected;
+    public List<LockableResource> candidates;
+    public int requiredAmount;
+    public List<LockableResource> selected;
 
-  public LockableResourcesCandidatesStruct(List<LockableResource> candidates, int requiredAmount) {
-    this.candidates = candidates;
-    this.requiredAmount = requiredAmount;
-  }
+    public LockableResourcesCandidatesStruct(List<LockableResource> candidates, int requiredAmount) {
+        this.candidates = candidates;
+        this.requiredAmount = requiredAmount;
+    }
 
-  @Override
-  public String toString()
-  {
-    return "LockableResourcesCandidatesStruct [candidates=" + candidates + ", requiredAmount=" + requiredAmount
-      + ", selected=" + selected + "]";
-  }
-
+    @Override
+    public String toString() {
+        return "LockableResourcesCandidatesStruct [candidates="
+                + candidates
+                + ", requiredAmount="
+                + requiredAmount
+                + ", selected="
+                + selected
+                + "]";
+    }
 }

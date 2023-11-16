@@ -11,19 +11,20 @@ import org.jvnet.hudson.test.BuildWatcher;
 
 public class LockStepTestBase {
 
-  @ClassRule public static BuildWatcher buildWatcher = new BuildWatcher();
+    @ClassRule
+    public static BuildWatcher buildWatcher = new BuildWatcher();
 
-  protected void isPaused(WorkflowRun run, int count, int effectivePauses) {
-    int pauseActions = 0, pausedActions = 0;
-    for (FlowNode node : new FlowGraphWalker(run.getExecution())) {
-      for (PauseAction pauseAction : PauseAction.getPauseActions(node)) {
-        ++pauseActions;
-        if (pauseAction.isPaused()) {
-          ++pausedActions;
+    protected void isPaused(WorkflowRun run, int count, int effectivePauses) {
+        int pauseActions = 0, pausedActions = 0;
+        for (FlowNode node : new FlowGraphWalker(run.getExecution())) {
+            for (PauseAction pauseAction : PauseAction.getPauseActions(node)) {
+                ++pauseActions;
+                if (pauseAction.isPaused()) {
+                    ++pausedActions;
+                }
+            }
         }
-      }
+        assertEquals(count, pauseActions);
+        assertEquals(effectivePauses, pausedActions);
     }
-    assertEquals(count, pauseActions);
-    assertEquals(effectivePauses, pausedActions);
-  }
 }
