@@ -50,8 +50,8 @@ public class LockStepTest extends LockStepTestBase {
         p.setDefinition(
                 new CpsFlowDefinition("lock() {\n" + "  echo 'Nothing locked.'\n" + "}\n" + "echo 'Finish'", true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-        j.assertLogContains("Lock acquired on [nothing]", b1);
+        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
+        j.assertLogContains("Either resource label or resource name must be specified", b1);
     }
 
     @Test
