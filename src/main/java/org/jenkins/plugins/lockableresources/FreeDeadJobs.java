@@ -20,27 +20,27 @@ import java.util.logging.Logger;
  */
 @ExcludeFromJacocoGeneratedReport
 public final class FreeDeadJobs {
-  private static final Logger LOG = Logger.getLogger(FreeDeadJobs.class.getName());
+    private static final Logger LOG = Logger.getLogger(FreeDeadJobs.class.getName());
 
-  private FreeDeadJobs() {}
+    private FreeDeadJobs() {}
 
-  @Initializer(after = InitMilestone.JOB_LOADED)
-  public static void freePostMortemResources() {
+    @Initializer(after = InitMilestone.JOB_LOADED)
+    public static void freePostMortemResources() {
 
-    LockableResourcesManager lrm = LockableResourcesManager.get();
-    synchronized (lrm) {
-      LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
-      for (LockableResource resource : lrm.getResources()) {
-        if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
-          LOG.log(
-              Level.INFO,
-              "lockable-resources-plugin reset resource "
-                  + resource.getName()
-                  + " due post mortem job: "
-                  + resource.getBuildName());
-          resource.recycle();
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        synchronized (lrm) {
+            LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
+            for (LockableResource resource : lrm.getResources()) {
+                if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
+                    LOG.log(
+                            Level.INFO,
+                            "lockable-resources-plugin reset resource "
+                                    + resource.getName()
+                                    + " due post mortem job: "
+                                    + resource.getBuildName());
+                    resource.recycle();
+                }
+            }
         }
-      }
     }
-  }
 }

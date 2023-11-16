@@ -6,10 +6,5 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({
-  ElementType.METHOD,
-  ElementType.TYPE,
-  ElementType.ANNOTATION_TYPE,
-  ElementType.CONSTRUCTOR
-})
+@Target({ElementType.METHOD, ElementType.TYPE, ElementType.ANNOTATION_TYPE, ElementType.CONSTRUCTOR})
 public @interface ExcludeFromJacocoGeneratedReport {}
