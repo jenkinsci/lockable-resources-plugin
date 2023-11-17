@@ -235,6 +235,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null;
     }
 
+    // ---------------------------------------------------------------------------
+    /** Checks if given resource exist. */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public boolean resourceExist(@CheckForNull String resourceName) {
+        return this.fromName(resourceName) != null;
+    }
+
+    // ---------------------------------------------------------------------------
     public synchronized boolean queue(List<LockableResource> resources, long queueItemId, String queueProjectName) {
         for (LockableResource r : resources) {
             if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
