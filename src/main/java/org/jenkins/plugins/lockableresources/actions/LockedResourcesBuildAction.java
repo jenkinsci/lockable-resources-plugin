@@ -22,7 +22,7 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 // -----------------------------------------------------------------------------
 /** BuildAction for lockable resources.
  * Shows usage of resources in the build page.
- * url: <jobUrl>/<buildNr>/locked-resources/
+ * url: jobUrl/buildNr/locked-resources/
  */
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
