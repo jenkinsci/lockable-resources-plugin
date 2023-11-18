@@ -9,10 +9,12 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.Action;
+import hudson.model.Run;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
 public class LockedResourcesBuildAction implements Action {
 
@@ -33,12 +35,38 @@ public class LockedResourcesBuildAction implements Action {
 
     @Override
     public String getDisplayName() {
+        /// FIXME move to localization files
         return "Locked Resources";
     }
 
     @Override
     public String getUrlName() {
         return "locked-resources";
+    }
+
+    public static void updateAction(Run<?, ?> build, List<String> resourceNames) {
+        LockedResourcesBuildAction action = build.getAction(LockedResourcesBuildAction.class);
+
+        if (action == null) {
+            List<ResourcePOJO> resPojos = new ArrayList<>();
+            action = new LockedResourcesBuildAction(resPojos);
+            build.addAction(action);
+        }
+
+        for (String name : resourceNames) {
+            LockableResource r = LockableResourcesManager.get().fromName(name);
+            action.add(new ResourcePOJO(r));
+        }
+    }
+
+    public void add(ResourcePOJO r) {
+        for (ResourcePOJO pojo : this.lockedResources) {
+            if (pojo.getName().equals(r.getName())) {
+                pojo.inc();
+                return;
+            }
+        }
+        this.lockedResources.add(r);
     }
 
     public static LockedResourcesBuildAction fromResources(Collection<LockableResource> resources) {
@@ -51,6 +79,7 @@ public class LockedResourcesBuildAction implements Action {
 
         private String name;
         private String description;
+        private int count = 1;
 
         public ResourcePOJO(String name, String description) {
             this.name = name;
@@ -63,11 +92,19 @@ public class LockedResourcesBuildAction implements Action {
         }
 
         public String getName() {
-            return name;
+            return this.name;
         }
 
         public String getDescription() {
-            return description;
+            return this.description;
+        }
+
+        public int getCounter() {
+            return this.count;
+        }
+
+        public void inc() {
+            this.count++;
         }
     }
 }
