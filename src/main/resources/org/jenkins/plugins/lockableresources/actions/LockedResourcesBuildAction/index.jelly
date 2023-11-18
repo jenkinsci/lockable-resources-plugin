@@ -22,54 +22,62 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
+<!-- LockedResourcesBuildAction
+  Shows used lockable-resources in the build.
+ -->
 <?jelly escape-by-default='true'?>
 <j:jelly 
   xmlns:i="jelly:fmt" xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:t="/lib/hudson">
   <j:set var="title" value="${it.displayName}" />
   <l:layout title="${title}">
+    <!-- side panel -->
     <j:invokeStatic var="currentThread" className="java.lang.Thread" method="currentThread" />
     <j:invoke var="buildClass" on="${currentThread.contextClassLoader}" method="loadClass">
       <j:arg value="hudson.model.Run" />
     </j:invoke>
     <j:set var="build" value="${request.findAncestorObject(buildClass)}" />
     <st:include page="sidepanel.jelly" it="${build}" />
+    <!-- main panel -->
     <l:main-panel>
-	  <t:buildCaption it="${build}">${%header.resources}</t:buildCaption>
-      <p>${%header.resources.list}</p>
+      <l:app-bar title="${%app.bar.used.resources}">
+      <a class="jenkins-button" href="${resURL}/lockable-resources/">
+         <l:icon src="${it.getIconFileName()}" />
+          ${%app.bar.resources}
+        </a>
+        <t:help href="https://github.com/jenkinsci/lockable-resources-plugin#locked-resources-build-page" />
+      </l:app-bar>
 
       <st:adjunct includes="io.jenkins.plugins.data-tables"/>
-    <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
+      <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
-  <div class="table-responsive">
-    <table
-        class="jenkins-table jenkins-!-margin-bottom-4 data-table"
-        id="used-lockable-resources-by-build"
-        isLoaded="true"
-        data-remember-search-text="true"
-        data-columns-definition="[null, null, null, null]"
-        data-table-configuration="{}"
-      >
-        <thead>
-          <th>${%table.column.index}</th>
-          <th>${%table.column.name}</th>
-          <th>${%table.column.description}</th>
-          <th>${%table.column.counter}</th>
-        </thead>
-        <tbody>
-          <j:forEach var="resource" items="${it.lockedResources}" varStatus="idx">
-            <tr>
-              <td>${idx.index + 1}</td>
-              <td>${resource.name}</td>
-              <td>${resource.description}</td>
-              <td>${resource.counter}</td>
-            </tr>
-          </j:forEach>
-        </tbody>
-      </table>
-  </div>
-  <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
-
-  <script type="text/javascript" src="${resURL}/plugin/data-tables-api/js/table.js"/>
+      <div class="table-responsive">
+        <table
+            class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+            id="used-lockable-resources-by-build"
+            isLoaded="true"
+            data-remember-search-text="true"
+            data-columns-definition="[null, null, null, null]"
+            data-table-configuration="{}"
+          >
+            <thead>
+              <th>${%table.column.index}</th>
+              <th>${%table.column.name}</th>
+              <th>${%table.column.description}</th>
+              <th>${%table.column.counter}</th>
+            </thead>
+            <tbody>
+              <j:forEach var="resource" items="${it.lockedResources}" varStatus="idx">
+                <tr>
+                  <td>${idx.index + 1}</td>
+                  <td>${resource.name}</td>
+                  <td>${resource.description}</td>
+                  <td>${resource.counter}</td>
+                </tr>
+              </j:forEach>
+            </tbody>
+          </table>
+      </div>
+      <script type="text/javascript" src="${resURL}/plugin/data-tables-api/js/table.js"/>
     </l:main-panel>
   </l:layout>
 </j:jelly>
