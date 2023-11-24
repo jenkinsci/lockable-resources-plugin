@@ -77,7 +77,8 @@ public class LockedResourcesBuildAction implements Action {
 
         for (String name : resourceNames) {
             LockableResource r = LockableResourcesManager.get().fromName(name);
-            action.add(new ResourcePOJO(r));
+            if (r != null) action.add(new ResourcePOJO(r));
+            else action.add(new ResourcePOJO(name, ""));
         }
     }
 
