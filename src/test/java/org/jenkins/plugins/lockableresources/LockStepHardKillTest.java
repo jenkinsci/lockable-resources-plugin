@@ -21,7 +21,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     @Issue("JENKINS-36479")
     @Test
     public void hardKillNewBuildClearsLock() throws Exception {
-        LockableResourcesManager.get().createResource("resource1");
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label");
 
         WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
         p1.setDefinition(new CpsFlowDefinition(
@@ -105,6 +105,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
+                /// FIXME why we need retry here, when you know it, write the comment here or remove it
                 "retry(99) {\n" + "    lock('resource1') {\n" + "        semaphore('wait-inside')\n" + "     }\n" + "}",
                 true));
 
@@ -134,6 +135,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
+                /// FIXME why we need retry here, when you know it, write the comment here or remove it
                 "retry(99) {\n"
                         + "    lock(label: 'label1', quantity: 1) {\n"
                         + "        semaphore('wait-inside')\n"

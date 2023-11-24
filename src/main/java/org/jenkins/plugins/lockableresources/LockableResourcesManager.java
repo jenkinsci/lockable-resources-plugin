@@ -264,6 +264,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return null;
     }
 
+    // ---------------------------------------------------------------------------
+    /** Checks if given resource exist. */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public boolean resourceExist(@CheckForNull String resourceName) {
+        return this.fromName(resourceName) != null;
+    }
+
+    // ---------------------------------------------------------------------------
     public synchronized boolean queue(List<LockableResource> resources, long queueItemId, String queueProjectName) {
         for (LockableResource r : resources) {
             if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
@@ -1256,11 +1265,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Override
     public synchronized void save() {
         if (enableSave == -1) {
-            // read system property and chache it.
+            // read system property and cache it.
             enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
         }
 
-        if (enableSave == 0) return; // savinig is disabled
+        if (enableSave == 0) return; // saving is disabled
 
         if (BulkChange.contains(this)) return; // no change detected
 
