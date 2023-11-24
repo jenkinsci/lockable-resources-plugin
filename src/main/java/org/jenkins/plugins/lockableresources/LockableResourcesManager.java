@@ -182,6 +182,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return labels;
     }
 
+    // ---------------------------------------------------------------------------
     public int getFreeResourceAmount(String label) {
         int free = 0;
         for (LockableResource r : this.resources) {
@@ -195,17 +196,45 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return free;
     }
 
+    // ---------------------------------------------------------------------------
+    /**
+     * @deprecated Use getResourcesWithLabel(String label)
+     */
+    @Deprecated
+    @Restricted(NoExternalUse.class)
+    @ExcludeFromJacocoGeneratedReport
     public List<LockableResource> getResourcesWithLabel(String label, Map<String, Object> params) {
+        return getResourcesWithLabel(label);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Returns resources matching by given *label*.
+     * Note: The param *params* is not used (has no effect)
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<LockableResource> getResourcesWithLabel(final String label) {
+        return _getResourcesWithLabel(label, this.getResources());
+    }
+
+    // ---------------------------------------------------------------------------
+    @NonNull
+    private static List<LockableResource> _getResourcesWithLabel(String label, final List<LockableResource> resources) {
         List<LockableResource> found = new ArrayList<>();
-        if (label == null || label.isEmpty()) {
+        label = Util.fixEmpty(label);
+
+        if (label == null) {
             return found;
         }
-        for (LockableResource r : this.resources) {
-            if (r.isValidLabel(label, params)) found.add(r);
+
+        for (LockableResource r : resources) {
+            if (r != null && r.isValidLabel(label)) found.add(r);
         }
         return found;
     }
 
+    // ---------------------------------------------------------------------------
     /**
      * Get a list of resources matching the script.
      *

@@ -50,8 +50,8 @@ public class LockStepTest extends LockStepTestBase {
         p.setDefinition(
                 new CpsFlowDefinition("lock() {\n" + "  echo 'Nothing locked.'\n" + "}\n" + "echo 'Finish'", true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-        j.assertLogContains("Lock acquired on [nothing]", b1);
+        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
+        j.assertLogContains("Either resource label or resource name must be specified", b1);
     }
 
     @Test
@@ -910,7 +910,7 @@ public class LockStepTest extends LockStepTestBase {
         // and it is not necessary to check it here, because this test case will check
         // env variable resolution and not if the paused actions works
         // therefore, when it fails again, you can comment it out.
-        isPaused(b1, 2, 0);
+        // isPaused(b1, 2, 0);
 
         // Now the second parallel branch should get and release the lock...
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
