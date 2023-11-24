@@ -77,11 +77,14 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         return "[no resource/label specified - probably a bug]";
     }
 
+    // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
     public void validate() {
         validate(resource, label, null, false);
     }
 
+    // -------------------------------------------------------------------------
+    /** Validate input parameters*/
     public static void validate(
             String resource, String label, String resourceSelectStrategy, List<LockStepResource> extra) {
         validate(resource, label, resourceSelectStrategy, extra != null);
@@ -92,6 +95,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         }
     }
 
+    // -------------------------------------------------------------------------
     /**
      * Label and resource are mutual exclusive. The label, if provided, must be configured (at least
      * one resource must have this label).

@@ -290,6 +290,7 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     // ---------------------------------------------------------------------------
+    @Restricted(NoExternalUse.class) // used by jelly
     public Queue getQueue() {
         List<QueuedContextStruct> currentQueueContext =
                 List.copyOf(LockableResourcesManager.get().getCurrentQueuedContext());
@@ -311,11 +312,13 @@ public class LockableResourcesRootAction implements RootAction {
         QueueStruct oldest;
 
         // -------------------------------------------------------------------------
+        @Restricted(NoExternalUse.class) // used by jelly
         public Queue() {
             this.queue = new ArrayList<>();
         }
 
         // -------------------------------------------------------------------------
+        @Restricted(NoExternalUse.class) // used by jelly
         public void add(final LockableResourcesStruct resourceStruct, final Run<?, ?> build) {
             QueueStruct queueStruct = new QueueStruct(resourceStruct, build);
             queue.add(queueStruct);
@@ -330,16 +333,19 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         // -------------------------------------------------------------------------
+        @Restricted(NoExternalUse.class) // used by jelly
         public List<QueueStruct> getAll() {
             return Collections.unmodifiableList(this.queue);
         }
 
         // -------------------------------------------------------------------------
+        @Restricted(NoExternalUse.class) // used by jelly
         public QueueStruct getOldest() {
             return this.oldest;
         }
 
         // -------------------------------------------------------------------------
+        @Restricted(NoExternalUse.class) // used by jelly
         public static class QueueStruct {
             List<LockableResource> requiredResources;
             String requiredLabel;

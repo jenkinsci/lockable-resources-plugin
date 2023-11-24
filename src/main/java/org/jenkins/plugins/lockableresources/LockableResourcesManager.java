@@ -255,8 +255,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     /**
-     * Returns resources matching by given *label*. Note: The param *params* is not used (has no
-     * effect)
+     * Returns resources matching by given *label*.
+     * Note: The param *params* is not used (has no effect)
      */
     @NonNull
     @Restricted(NoExternalUse.class)
