@@ -14,6 +14,18 @@ computers, etc.) that can be used by builds. If a build requires a resource
 which is already locked, it will wait for the resource to be free.
 
 ----
+## Support
+
+“Open source” does not mean “includes free support”
+
+You can support the contributor and buy him a coffee.
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/mpokornyetm) 
+Every second invested in an open-source project is a second you can't invest in your own family / friends / hobby.
+That`s the reason, why supporting the contributors is so important.
+
+Thx very much for supporting me.
+
+----
 
 ## Usage
 
