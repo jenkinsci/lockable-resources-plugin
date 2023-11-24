@@ -40,7 +40,7 @@ public class NodesMirrorTest {
             Thread.sleep(100);
         }
 
-        LOGGER.info("check aganet: FirstAgent");
+        LOGGER.info("check agent: FirstAgent");
         LockableResource firstAgent = LockableResourcesManager.get().fromName("FirstAgent");
 
         assertEquals("FirstAgent", firstAgent.getName());

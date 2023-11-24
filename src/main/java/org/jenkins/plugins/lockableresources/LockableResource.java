@@ -274,6 +274,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     // ----------------------------------------------------------------------------
+    /** Check if the given *candidate* label is valid or not.
+     * candidate may be one label or Label expression (see also
+     * https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#node-allocate-node).
+     * Valid means that the resource contains the label or the Label-expression matched
+     * labels.
+     */
     public boolean isValidLabel(String candidate) {
         if (candidate == null || candidate.isEmpty()) {
             return false;
