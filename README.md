@@ -23,7 +23,7 @@ You can support the contributor and buy him a coffee.
 Every second invested in an open-source project is a second you can't invest in your own family / friends / hobby.
 That`s the reason, why supporting the contributors is so important.
 
-Thx very much for supporting me.
+Thx very much for supporting us.
 
 ----
 
