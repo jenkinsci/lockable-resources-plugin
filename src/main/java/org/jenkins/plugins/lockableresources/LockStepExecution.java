@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
@@ -110,10 +111,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             String resourceDescription,
             final String variable,
             boolean inversePrecedence) {
-        Run<?, ?> r;
+        Run<?, ?> build;
         FlowNode node;
         try {
-            r = context.get(Run.class);
+            build = context.get(Run.class);
             node = context.get(FlowNode.class);
             context.get(TaskListener.class).getLogger().println("Lock acquired on [" + resourceDescription + "]");
         } catch (Exception e) {
@@ -121,8 +122,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             return;
         }
 
-        LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + r.getExternalizableId());
+        LOGGER.finest("Lock acquired on [" + resourceDescription + "] by " + build.getExternalizableId());
         try {
+
+            LockedResourcesBuildAction.updateAction(build, new ArrayList<>(lockedResources.keySet()));
             PauseAction.endCurrentPause(node);
             BodyInvoker bodyInvoker = context.newBodyInvoker()
                     .withCallback(new Callback(

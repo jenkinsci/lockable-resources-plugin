@@ -11,10 +11,19 @@ import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.misc.Util;
 import io.jenkins.plugins.casc.model.CNode;
 import java.util.List;
+import org.jenkins.plugins.lockableresources.util.Constants;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 public class ConfigurationAsCodeTest {
+
+    // ---------------------------------------------------------------------------
+    @Before
+    public void setUp() {
+        // to speed up the test
+        System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    }
 
     @ClassRule
     @ConfiguredWithCode("configuration-as-code.yml")
