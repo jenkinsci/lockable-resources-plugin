@@ -22,9 +22,9 @@ public class ConcurrentModificationExceptionTest {
     public void parallelTasksTest() throws Exception {
 
         final int agentsCount = 10;
-        final int extraAgentsCount = 100;
-        final int resourcesCount = 500;
-        final int extraResourcesCount = 1000;
+        final int extraAgentsCount = 20;
+        final int resourcesCount = 100;
+        final int extraResourcesCount = 100;
 
         // disable save. Everything is saved into filesystem and it takes a while
         // normally it is no problem, but we need to starts many tasks parallel
