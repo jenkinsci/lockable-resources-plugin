@@ -789,18 +789,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class)
     public boolean addResource(@Nullable final LockableResource resource, final boolean doSave) {
 
+        if (resource == null || resource.getName() == null || resource.getName().isEmpty()) {
+            LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
+            return false;
+        }
         synchronized (this.syncResources) {
-            if (resource == null
-                    || resource.getName() == null
-                    || resource.getName().isEmpty()) {
-                LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
-                return false;
-            }
             if (this.resourceExist(resource.getName())) {
                 LOGGER.finest("We will add existing resource: " + resource + getStack());
                 return false;
             }
             this.resources.add(resource);
+            LOGGER.fine("Resource added : " + resource);
             if (doSave) {
                 this.save();
             }
