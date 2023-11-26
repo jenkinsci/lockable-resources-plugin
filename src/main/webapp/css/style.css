@@ -50,3 +50,7 @@ table.dataTable td, table.dataTable th {
 .table-properties>tbody>tr>td {
   height: 1rem;
 }
+
+.width-100 {
+  width: 100%;
+}

@@ -57,19 +57,19 @@ THE SOFTWARE.
     >
       <colgroup>
         <!-- index -->
-        <col class="col-width-0 text-end" />
+        <col class="text-end" />
         <!-- resouce -->
-        <col class="col-width-5 text-end" />
+        <col class="width-100 text-end" />
         <!-- status -->
-        <col class="col-width-2 text-end" />
+        <col class="width-100 text-end" />
         <!-- timestamp -->
-        <col class="col-width-1 text-end" />
+        <col class="width-100 text-end" />
         <!-- labels -->
-        <col class="col-width-5 text-end" />
+        <col class="width-100 text-end" />
         <!-- properties -->
-        <col class="col-width-5 text-end" />
+        <col class="width-100 text-end" />
         <!-- actions -->
-        <col action="col-width-1 text-end" />
+        <col action="width-100 text-end" />
       </colgroup>
       <thead>
         <th data-class-name="index">${%resources.table.column.index}</th>
