@@ -20,6 +20,12 @@ public class ConcurrentModificationExceptionTest {
 
     @Test
     public void parallelTasksTest() throws Exception {
+
+        final int agentsCount = 10;
+        final int extraAgentsCount = 100;
+        final int resourcesCount = 500;
+        final int extraResourcesCount = 1000;
+
         // disable save. Everything is saved into filesystem and it takes a while
         // normally it is no problem, but we need to starts many tasks parallel
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
@@ -27,13 +33,13 @@ public class ConcurrentModificationExceptionTest {
         // Do not mirror nodes now. We will allow it later in parallel tasks
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "false");
         LOGGER.info("add agents");
-        for (int i = 1; i <= 50; i++) j.createSlave("Agent_" + i, "label label2", null);
+        for (int i = 1; i <= agentsCount; i++) j.createSlave("Agent_" + i, "label label2", null);
         LOGGER.info("add agents done");
 
         LockableResourcesManager LRM = LockableResourcesManager.get();
 
         LOGGER.info("add resources");
-        for (int i = 1; i <= 500; i++) LRM.createResourceWithLabel("resource_" + i, "label label2");
+        for (int i = 1; i <= resourcesCount; i++) LRM.createResourceWithLabel("resource_" + i, "label label2");
         LOGGER.info("add resources done");
 
         TimerTask taskBackwardCompatibility = new TimerTask() {
@@ -61,10 +67,11 @@ public class ConcurrentModificationExceptionTest {
         TimerTask taskCreateAgents = new TimerTask() {
             public void run() {
                 LOGGER.info("create extra slaves");
-                for (int i = 1; i <= 50; i++) {
+                for (int i = 1; i <= extraAgentsCount; i++) {
                     try {
                         j.createSlave("ExtraAgent_" + i, "label label2", null);
-                        j.jenkins.removeNode(j.jenkins.getNode("Agent_" + i));
+                        Thread.sleep(5);
+                        j.jenkins.removeNode(j.jenkins.getNode("ExtraAgent_" + i));
                         Thread.sleep(5);
                     } catch (Exception error) {
                         LOGGER.warning(error.toString());
@@ -76,7 +83,7 @@ public class ConcurrentModificationExceptionTest {
         TimerTask taskCreateResources = new TimerTask() {
             public void run() {
                 LOGGER.info("create extra resources");
-                for (int i = 1; i <= 500; i++) {
+                for (int i = 1; i <= extraResourcesCount; i++) {
 
                     try {
                         if (LockableResourcesManager.get()
@@ -107,15 +114,26 @@ public class ConcurrentModificationExceptionTest {
         LOGGER.info("wait for resources");
         for (int i = 1; i <= 100; i++) {
             Thread.sleep(500);
-            LOGGER.info("wait for resources " + i + " " + LRM.resourceExist("ExtraResource_500") + " "
-                    + LRM.resourceExist("ExtraAgent_50") + " " + LRM.resourceExist("Agent_100"));
-            if (LRM.resourceExist("ExtraResource_500")
-                    && LRM.resourceExist("ExtraAgent_50")
-                    && !LRM.resourceExist("Agent_50")) break;
+            LOGGER.info("wait for resources " + i + " " + LRM.resourceExist("ExtraResource_" + extraResourcesCount)
+                    + " " + LRM.resourceExist("ExtraAgent_" + extraAgentsCount) + " "
+                    + LRM.resourceExist("Agent_" + agentsCount));
+            if (LRM.resourceExist("ExtraResource_" + extraResourcesCount)
+                    && !LRM.resourceExist("ExtraAgent_" + extraAgentsCount)
+                    && LRM.resourceExist("Agent_" + agentsCount)) break;
         }
 
-        assertNotNull(LockableResourcesManager.get().fromName("ExtraResource_500"));
-        assertNotNull(LockableResourcesManager.get().fromName("ExtraAgent_50"));
-        assertNull(LockableResourcesManager.get().fromName("Agent_50"));
+        // normally is is bad idea to make so much assertions, but we need verify if all works fine
+        for (int i = 1; i <= resourcesCount; i++) {
+            assertNotNull(LockableResourcesManager.get().fromName("resource_" + i));
+        }
+        for (int i = 1; i <= extraResourcesCount; i++) {
+            assertNotNull(LockableResourcesManager.get().fromName("ExtraResource_" + i));
+        }
+        for (int i = 1; i <= extraAgentsCount; i++) {
+            assertNull(LockableResourcesManager.get().fromName("ExtraAgent_" + i));
+        }
+        for (int i = 1; i <= agentsCount; i++) {
+            assertNotNull(LockableResourcesManager.get().fromName("Agent_" + i));
+        }
     }
 }
