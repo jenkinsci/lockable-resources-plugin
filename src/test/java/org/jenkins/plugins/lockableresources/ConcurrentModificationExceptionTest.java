@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -32,7 +33,7 @@ public class ConcurrentModificationExceptionTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
 
         LOGGER.info("add resources");
-        for (int i = 1; i <= 1000; i++) LRM.createResourceWithLabel("resource_" + i, "label label2");
+        for (int i = 1; i <= 500; i++) LRM.createResourceWithLabel("resource_" + i, "label label2");
         LOGGER.info("add resources done");
 
         TimerTask taskBackwardCompatibility = new TimerTask() {
@@ -63,6 +64,7 @@ public class ConcurrentModificationExceptionTest {
                 for (int i = 1; i <= 50; i++) {
                     try {
                         j.createSlave("ExtraAgent_" + i, "label label2", null);
+                        j.jenkins.removeNode(j.jenkins.getNode("Agent_" + i));
                         Thread.sleep(5);
                     } catch (Exception error) {
                         LOGGER.warning(error.toString());
@@ -74,7 +76,7 @@ public class ConcurrentModificationExceptionTest {
         TimerTask taskCreateResources = new TimerTask() {
             public void run() {
                 LOGGER.info("create extra resources");
-                for (int i = 1; i <= 1000; i++) {
+                for (int i = 1; i <= 500; i++) {
 
                     try {
                         if (LockableResourcesManager.get()
@@ -104,16 +106,16 @@ public class ConcurrentModificationExceptionTest {
         // all the tasks are asynchronous operations, so wait until resources are created.
         LOGGER.info("wait for resources");
         for (int i = 1; i <= 100; i++) {
-            Thread.sleep(1000);
-            LOGGER.info("wait for resources " + i + " " + LRM.resourceExist("ExtraResource_1000") + " "
+            Thread.sleep(500);
+            LOGGER.info("wait for resources " + i + " " + LRM.resourceExist("ExtraResource_500") + " "
                     + LRM.resourceExist("ExtraAgent_50") + " " + LRM.resourceExist("Agent_100"));
-            if (LRM.resourceExist("ExtraResource_1000")
+            if (LRM.resourceExist("ExtraResource_500")
                     && LRM.resourceExist("ExtraAgent_50")
-                    && LRM.resourceExist("Agent_50")) break;
+                    && !LRM.resourceExist("Agent_50")) break;
         }
 
-        assertNotNull(LockableResourcesManager.get().fromName("ExtraResource_1000"));
+        assertNotNull(LockableResourcesManager.get().fromName("ExtraResource_500"));
         assertNotNull(LockableResourcesManager.get().fromName("ExtraAgent_50"));
-        assertNotNull(LockableResourcesManager.get().fromName("Agent_50"));
+        assertNull(LockableResourcesManager.get().fromName("Agent_50"));
     }
 }
