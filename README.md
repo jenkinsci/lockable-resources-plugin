@@ -174,7 +174,7 @@ lock(label: 'labelA || labelB || labelC', variable : 'someVar', quantity : 100) 
 lock(label: 'label1', extra: [[resource: 'resource1']]) {
 	echo 'Do something now or never!'
 }
-echo 'Finish'"
+echo 'Finish'
 ```
 
 ```groovy
