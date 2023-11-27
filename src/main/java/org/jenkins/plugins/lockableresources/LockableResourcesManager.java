@@ -812,7 +812,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     /** Creates the resource if it does not exist. */
-    public boolean createResource(String name) {
+    public boolean createResource(@CheckForNull String name) {
         name = Util.fixEmptyAndTrim(name);
         LockableResource resource = new LockableResource(name);
         resource.setEphemeral(true);
@@ -821,7 +821,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    public boolean createResourceWithLabel(String name, String label) {
+    public boolean createResourceWithLabel(@CheckForNull String name, @CheckForNull String label) {
         name = Util.fixEmptyAndTrim(name);
         label = Util.fixEmptyAndTrim(label);
         LockableResource resource = new LockableResource(name);
@@ -832,7 +832,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public boolean createResourceWithLabelAndProperties(
-            String name, String label, final Map<String, String> properties) {
+            @CheckForNull String name, @CheckForNull String label, final Map<String, String> properties) {
         if (properties == null) {
             return false;
         }
@@ -855,11 +855,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     @Restricted(NoExternalUse.class)
-    public boolean addResource(final LockableResource resource) {
+    public boolean addResource(@Nullable final LockableResource resource) {
         return this.addResource(resource, /*doSave*/ false);
     }
     // ---------------------------------------------------------------------------
-    public boolean addResource(final LockableResource resource, final boolean doSave) {
+    @Restricted(NoExternalUse.class)
+    public boolean addResource(@Nullable final LockableResource resource, final boolean doSave) {
 
         synchronized (this.syncResources) {
             if (resource == null

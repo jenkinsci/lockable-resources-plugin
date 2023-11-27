@@ -14,6 +14,7 @@ import static java.text.DateFormat.SHORT;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import groovy.lang.Binding;
 import hudson.Extension;
 import hudson.Util;
@@ -130,7 +131,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundConstructor
-    public LockableResource(String name) {
+    public LockableResource(@CheckForNull String name) {
         this.name = Util.fixNull(name);
         // todo throw exception, when the name is empty
         // todo check if the name contains only valid characters (no spaces, new lines ...)
@@ -185,7 +186,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundSetter
-    public void setDescription(String description) {
+    public void setDescription(@Nullable String description) {
         this.description = Util.fixNull(description);
     }
 
@@ -195,7 +196,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundSetter
-    public void setNote(String note) {
+    public void setNote(@Nullable String note) {
         this.note = Util.fixNull(note);
     }
 
@@ -230,7 +231,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     // @Deprecated can not be used, because of JCaC
     @DataBoundSetter
-    public void setLabels(String labels) {
+    public void setLabels(@Nullable String labels) {
         labels = Util.fixNull(labels);
         // todo use label parser from Jenkins.Label to allow the same syntax
         this.labelsAsList = new ArrayList<>();
@@ -259,7 +260,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      * @return {@code true} if this resource contains the label.
      */
     @Exported
-    public boolean hasLabel(String labelToFind) {
+    public boolean hasLabel(@CheckForNull String labelToFind) {
         return this.labelsContain(labelToFind);
     }
 
@@ -277,10 +278,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     /** Check if the given *candidate* label is valid or not.
      * candidate may be one label or Label expression (see also
      * https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#node-allocate-node).
-     * Valid means that the resource contains the label or the Label-expression matched
-     * labels.
+     * Valid means that the resource contains the label or the Label-expression matched.
      */
-    public boolean isValidLabel(String candidate) {
+    public boolean isValidLabel(@Nullable String candidate) {
         if (candidate == null || candidate.isEmpty()) {
             return false;
         }
@@ -315,7 +315,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundSetter
-    public void setProperties(List<LockableResourceProperty> properties) {
+    public void setProperties(@Nullable List<LockableResourceProperty> properties) {
         this.properties = (properties == null ? new ArrayList<>() : properties);
     }
 
@@ -361,7 +361,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     @DataBoundSetter
-    public void setReservedTimestamp(final Date reservedTimestamp) {
+    public void setReservedTimestamp(@Nullable final Date reservedTimestamp) {
         this.reservedTimestamp = reservedTimestamp == null ? null : new Date(reservedTimestamp.getTime());
     }
 
@@ -480,7 +480,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         else return null;
     }
 
-    public void setBuild(Run<?, ?> lockedBy) {
+    public void setBuild(@Nullable Run<?, ?> lockedBy) {
         this.build = lockedBy;
         if (lockedBy != null) {
             this.buildExternalizableId = lockedBy.getExternalizableId();
