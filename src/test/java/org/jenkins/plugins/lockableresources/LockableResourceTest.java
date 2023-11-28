@@ -11,94 +11,94 @@ import org.junit.Test;
 
 public class LockableResourceTest {
 
-  LockableResource instance = new LockableResource("r1");
+    LockableResource instance = new LockableResource("r1");
 
-  // Not sure how useful this is...
-  @Test
-  public void testGetters() {
-    assertEquals("r1", instance.getName());
-    assertEquals("", instance.getDescription());
-    assertEquals("", instance.getLabels());
-    assertEquals("", instance.getNote());
-    assertNull(instance.getReservedBy());
-    assertNull(instance.getReservedTimestamp());
-    assertFalse(instance.isReserved());
-    assertFalse(instance.isQueued());
-    assertFalse(instance.isQueued(0));
-    assertFalse(instance.isQueuedByTask(1));
-    assertFalse(instance.isLocked());
-    assertNull(instance.getBuild());
-    assertEquals(0, instance.getQueueItemId());
-    assertNull(instance.getQueueItemProject());
-  }
+    // Not sure how useful this is...
+    @Test
+    public void testGetters() {
+        assertEquals("r1", instance.getName());
+        assertEquals("", instance.getDescription());
+        assertEquals("", instance.getLabels());
+        assertEquals("", instance.getNote());
+        assertNull(instance.getReservedBy());
+        assertNull(instance.getReservedTimestamp());
+        assertFalse(instance.isReserved());
+        assertFalse(instance.isQueued());
+        assertFalse(instance.isQueued(0));
+        assertFalse(instance.isQueuedByTask(1));
+        assertFalse(instance.isLocked());
+        assertNull(instance.getBuild());
+        assertEquals(0, instance.getQueueItemId());
+        assertNull(instance.getQueueItemProject());
+    }
 
-  @Test
-  public void testNote() {
-    final LockableResource resource = new LockableResource("Name 1");
+    @Test
+    public void testNote() {
+        final LockableResource resource = new LockableResource("Name 1");
 
-    assertEquals("", resource.getNote());
+        assertEquals("", resource.getNote());
 
-    resource.setNote("Note 1");
-    assertEquals("Note 1", resource.getNote());
+        resource.setNote("Note 1");
+        assertEquals("Note 1", resource.getNote());
 
-    resource.setNote("Note B");
-    assertEquals("Note B", resource.getNote());
+        resource.setNote("Note B");
+        assertEquals("Note B", resource.getNote());
 
-    resource.setNote("");
-    assertEquals("", resource.getNote());
-  }
+        resource.setNote("");
+        assertEquals("", resource.getNote());
+    }
 
-  @Test
-  public void testUnqueue() {
-    instance.unqueue();
-  }
+    @Test
+    public void testUnqueue() {
+        instance.unqueue();
+    }
 
-  @Test
-  public void testSetBuild() {
-    instance.setBuild(null);
-  }
+    @Test
+    public void testSetBuild() {
+        instance.setBuild(null);
+    }
 
-  @Test
-  public void testSetReservedBy() {
-    instance.setReservedBy("");
-  }
+    @Test
+    public void testSetReservedBy() {
+        instance.setReservedBy("");
+    }
 
-  @Test
-  public void testReservedTimestamp() {
-    instance.setReservedTimestamp(null);
-    assertNull(instance.getReservedTimestamp());
+    @Test
+    public void testReservedTimestamp() {
+        instance.setReservedTimestamp(null);
+        assertNull(instance.getReservedTimestamp());
 
-    final Date date = new Date();
-    instance.setReservedTimestamp(date);
-    assertEquals(date, instance.getReservedTimestamp());
-  }
+        final Date date = new Date();
+        instance.setReservedTimestamp(date);
+        assertEquals(date, instance.getReservedTimestamp());
+    }
 
-  @Test
-  public void testReserve() {
-    instance.reserve("testUser1");
-    assertEquals("testUser1", instance.getReservedBy());
-    assertNotNull(instance.getReservedTimestamp());
-  }
+    @Test
+    public void testReserve() {
+        instance.reserve("testUser1");
+        assertEquals("testUser1", instance.getReservedBy());
+        assertNotNull(instance.getReservedTimestamp());
+    }
 
-  @Test
-  public void testUnReserve() {
-    instance.unReserve();
-    assertNull(instance.getReservedBy());
-    assertNull(instance.getReservedTimestamp());
-  }
+    @Test
+    public void testUnReserve() {
+        instance.unReserve();
+        assertNull(instance.getReservedBy());
+        assertNull(instance.getReservedTimestamp());
+    }
 
-  @Test
-  public void testReset() {
-    instance.reset();
-  }
+    @Test
+    public void testReset() {
+        instance.reset();
+    }
 
-  @Test
-  public void testToString() {
-    assertEquals("r1", instance.toString());
-  }
+    @Test
+    public void testToString() {
+        assertEquals("r1", instance.toString());
+    }
 
-  @Test
-  public void testEquals() {
-    assertNotEquals(null, instance);
-  }
+    @Test
+    public void testEquals() {
+        assertNotEquals(null, instance);
+    }
 }

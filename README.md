@@ -5,13 +5,25 @@
 [![Jenkins Plugin Installs](https://img.shields.io/jenkins/plugin/i/lockable-resources.svg?color=blue)](https://plugins.jenkins.io/lockable-resources)
 [![Build Status](https://ci.jenkins.io/buildStatus/icon?job=Plugins%2Flockable-resources-plugin%2Fmaster)](https://ci.jenkins.io/job/Plugins/job/lockable-resources-plugin/job/master/)
 [![GitHub license](https://img.shields.io/github/license/jenkinsci/lockable-resources-plugin.svg)](https://github.com/jenkinsci/lockable-resources-plugin/blob/master/LICENSE.txt)
-[![Maintenance](https://img.shields.io/maintenance/yes/2022.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
+[![Maintenance](https://img.shields.io/maintenance/yes/2023.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
 [![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin)
 [![Join the chat at https://gitter.im/jenkinsci/lockable-resources](https://badges.gitter.im/jenkinsci/lockable-resources.svg)](https://gitter.im/jenkinsci/lockable-resources?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
 which is already locked, it will wait for the resource to be free.
+
+----
+## Support
+
+“Open source” does not mean “includes free support”
+
+You can support the contributor and buy him a coffee.
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/mpokornyetm) 
+Every second invested in an open-source project is a second you can't invest in your own family / friends / hobby.
+That`s the reason, why supporting the contributors is so important.
+
+Thx very much for supporting us.
 
 ----
 
@@ -100,11 +112,12 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 }
 ```
 
-#### Resolve a variable configured with the resource name
+#### Resolve a variable configured with the resource name and properties 
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
   echo env.LOCKED_RESOURCE
+  echo env.LOCKED_RESOURCE_PROP_ABC
 }
 ```
 
@@ -117,9 +130,11 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
 
   // first lock
   echo env.LOCKED_RESOURCE0
+  echo env.LOCKED_RESOURCE0_PROP_ABC
 
   // second lock
   echo env.LOCKED_RESOURCE1
+  echo env.LOCKED_RESOURCE1_PROP_ABC
 }
 ```
 
@@ -135,13 +150,31 @@ Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
 documentation.
 
+### Jenkins label parser allows sophisticated filtering
+
+The plugin uses the Jenkins-internal label parser for filtering lockable resources. A full list of supported operators and syntax examples can be found in the [official documentation](https://www.jenkins.io/doc/pipeline/steps/workflow-durable-task-step/#node-allocate-node).
+
+```groovy
+lock(label: 'labelA && labelB', variable : 'someVar') {
+    echo 'labelA && labelB acquired by: ' + env.someVar;
+}
+
+lock(label: 'labelA || labelB', variable : 'someVar') {
+    echo 'labelA || labelB acquired by: ' + env.someVar;
+}
+
+lock(label: 'labelA || labelB || labelC', variable : 'someVar', quantity : 100) {
+    echo 'labelA || labelB || labelC acquired by: ' + env.someVar;
+}
+```
+
 #### Multiple resource lock
 
 ```groovy
 lock(label: 'label1', extra: [[resource: 'resource1']]) {
 	echo 'Do something now or never!'
 }
-echo 'Finish'"
+echo 'Finish'
 ```
 
 ```groovy
@@ -162,6 +195,52 @@ echo 'Finish'
 More examples are [here](src/doc/examples/readme.md).
 
 ----
+
+## Node mirroring
+
+Lockable resources plugin allow to mirror nodes (agents) into lockable resources. This eliminate effort by re-creating resources on every node change.
+
+That means when you create new node, it will be also created new lockable-resource with the same name. When the node has been deleted, lockable-resource will be deleted too.
+
+Following properties are mirrored:
+
+- name.
+- labels. Please note, that labels still contains node-name self.
+- description.
+
+To allow this behavior start jenkins with option `-Dorg.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR=true` or run this groovy code.
+
+```groovy
+System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "true");
+```
+
+> *Note:* When the node has been deleted, during the lockable-resource is locked / reserved / queued, then the lockable-resource will be NOT deleted.
+
+----
+
+## Improve performance
+
+To be safe thread over all jobs and resources, need to be all operations synchronized.
+This might lead to slow down your jobs. The jenkins self, has low CPU usage, but your jobs are very slow. Why?
+
+The most time are spend to write the lockable-resources states into local file system. This is important to get the correct state after Jenkins reboots.
+
+To eliminate this saving time has been added a property *DISABLE_SAVE*.
+
++ The best way is to use it with JCaC plugin. So you are sure, you have still correct
+resources on Jenkins start.
++ When you set pipeline durability level to *PERFORMANCE_OPTIMIZED*, it makes also sense to set this property to true.
+
+> *Note:* Keep in mind, that you will lost all your manual changes!
+
+> *Note:* This option is experimental. It has been tested in many scenarios, but no body know.
+
+To allow this behavior start jenkins with option `-Dorg.jenkins.plugins.lockableresources.DISABLE_SAVE=true` or run this groovy code.
+
+```groovy
+System.setProperty("org.jenkins.plugins.lockableresources.DISABLE_SAVE", "true");
+```
+
 ## Configuration as Code
 
 This plugin can be configured via
@@ -179,6 +258,10 @@ unclassified:
         reservedBy: "Reserved due maintenance window"
       - name: "S7_1200_2"
         labels: "plc:S7 model:1200"
+      - name: "Resource-with-properties"
+        properties:
+          - name: "Property-A"
+            value: "Value"
 ```
 
 Properties *description*, *labels* and *reservedBy* are optional.

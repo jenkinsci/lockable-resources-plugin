@@ -40,3 +40,17 @@ table.dataTable td, table.dataTable th {
     -webkit-box-sizing: inherit;
     box-sizing: content-inherit;
 }
+
+
+.table-properties {
+  border-width: 0px;
+  -webkit-border-vertical-spacing: unset;
+}
+
+.table-properties>tbody>tr>td {
+  height: 1rem;
+}
+
+.width-100 {
+  width: 100%;
+}

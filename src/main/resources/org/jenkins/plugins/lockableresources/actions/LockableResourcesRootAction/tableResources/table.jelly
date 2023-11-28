@@ -29,38 +29,65 @@ THE SOFTWARE.
   xmlns:i="jelly:fmt"
   xmlns:st="jelly:stapler"
   >
-
   <st:adjunct includes="io.jenkins.plugins.data-tables"/>
+
   <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
   <div class="table-responsive">
-    <table class="jenkins-table jenkins-!-margin-bottom-4 data-table"
-           id="lockable-resources"
-          isLoaded="true"
-          data-columns-definition="[null, null, null, null, null]"
-          data-table-configuration="{}">
+    <table
+      class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+      id="lockable-resources"
+      data-remember-search-text="true"
+      isLoaded="true"
+      data-columns-definition="[null, null, null, null, null, null, null]"
+      data-table-configuration='
+      {
+        "responsive": {
+          "details": {
+            "type": "column"
+          }
+        },
+        "columnDefs": [
+            { "targets": "index", "className": "dt-control" },
+            { "targets": "properties", "visible": false }
+        ],
+        "order": [ 0, "asc" ],
+        "stateSave": true
+      }'
+    >
       <colgroup>
+        <!-- index -->
+        <col class="text-end" />
         <!-- resouce -->
-        <col class="col-width-5 text-end" />
+        <col class="width-100 text-end" />
         <!-- status -->
-        <col class="col-width-2 text-end" />
+        <col class="width-100 text-end" />
         <!-- timestamp -->
-        <col class="col-width-1 text-end" />
+        <col class="width-100 text-end" />
         <!-- labels -->
-        <col class="col-width-5 text-end" />
+        <col class="width-100 text-end" />
+        <!-- properties -->
+        <col class="width-100 text-end" />
         <!-- actions -->
-        <col action="col-width-1 text-end" />
+        <col action="width-100 text-end" />
       </colgroup>
       <thead>
-        <th>${%resources.table.column.resource}</th>
-        <th>${%resources.table.column.status}</th>
-        <th>${%resources.table.column.timestamp}</th>
-        <th>${%resources.table.column.labels}</th>
-        <th>${%resources.table.column.action}</th>
+        <th data-class-name="index">${%resources.table.column.index}</th>
+        <th data-class-name="resource">${%resources.table.column.resource}</th>
+        <th data-class-name="status">${%resources.table.column.status}</th>
+        <th data-class-name="timestamp">${%resources.table.column.timestamp}</th>
+        <th data-class-name="labels">${%resources.table.column.labels}</th>
+        <th data-class-name="properties">${%resources.table.column.properties}</th>
+        <th data-class-name="action">${%resources.table.column.action}</th>
       </thead>
       <tbody>
-        <j:forEach var="resource" items="${it.resources}" indexVar="i">
+        <j:forEach var="resource" items="${it.resources}" varStatus="idx">
           <tr data-resource-name="${resource.name}">
+            <!-- **************************************************************
+                 Index
+            -->
+            <td>${idx.index + 1}</td>
+
             <!-- **************************************************************
                  Column with common resource data
             -->
@@ -199,7 +226,7 @@ THE SOFTWARE.
             -->
             <td>
               <!--todo replace it by getLabelsAsList() -->
-              <j:forEach var="label" items="${resource.getLabelsAsList()}" indexVar="i">
+              <j:forEach var="label" items="${resource.getLabelsAsList()}">
                 <a class="jenkins-table__link model-link" href="${rootURL}/label/${label}">
                   ${label}
                   <button class="jenkins-menu-dropdown-chevron"></button
@@ -208,6 +235,25 @@ THE SOFTWARE.
               </j:forEach>
             </td>
 
+            <!-- **************************************************************
+                 Table with assigned properties
+            -->
+            <td class="jenkins-!-padding-0">
+              <j:if test="${resource.properties.size() gt 0}">
+                <div class="table-responsive">
+                  <table class="jenkins-table jenkins-!-margin-0 table-properties">
+                    <tbody>
+                     <j:forEach var="property" items="${resource.properties}">
+                        <tr>
+                          <td>${property.name}</td>
+                          <td>${property.value}</td>
+                        </tr>
+                      </j:forEach>
+                    </tbody>
+                  </table>
+                </div>
+              </j:if>
+            </td>
 
             <!-- **************************************************************
                  Action column
@@ -288,4 +334,7 @@ THE SOFTWARE.
     </table>
   </div>
   <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
+
+
+
 </j:jelly>

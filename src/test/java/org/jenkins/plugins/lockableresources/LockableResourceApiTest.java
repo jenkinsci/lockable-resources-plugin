@@ -7,8 +7,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
 
-import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import org.htmlunit.FailingHttpStatusCodeException;
+import org.jenkins.plugins.lockableresources.util.Constants;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
@@ -16,31 +18,37 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 public class LockableResourceApiTest {
 
-  @Rule public JenkinsRule j = new JenkinsRule();
+    // ---------------------------------------------------------------------------
+    @Before
+    public void setUp() {
+        // to speed up the test
+        System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    }
 
-  @Test
-  public void reserveUnreserveApi() throws Exception {
-    LockableResourcesManager.get().createResource("a1");
+    @Rule
+    public JenkinsRule j = new JenkinsRule();
 
-    j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
-    j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
+    @Test
+    public void reserveUnreserveApi() throws Exception {
+        LockableResourcesManager.get().createResource("a1");
 
-    JenkinsRule.WebClient wc = j.createWebClient();
-    wc.login("user");
-    TestHelpers.clickButton(wc, "reserve");
-    assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(true));
-    TestHelpers.clickButton(wc, "unreserve");
-    assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(false));
-  }
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
 
-  @Test
-  @Issue("SECURITY-1958")
-  public void apiUsageHttpGet() {
-    JenkinsRule.WebClient wc = j.createWebClient();
-    FailingHttpStatusCodeException e =
-      assertThrows(
-        FailingHttpStatusCodeException.class,
-        () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
-    assertThat(e.getStatusCode(), is(405));
-  }
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login("user");
+        TestHelpers.clickButton(wc, "reserve");
+        assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(true));
+        TestHelpers.clickButton(wc, "unreserve");
+        assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(false));
+    }
+
+    @Test
+    @Issue("SECURITY-1958")
+    public void apiUsageHttpGet() {
+        JenkinsRule.WebClient wc = j.createWebClient();
+        FailingHttpStatusCodeException e = assertThrows(
+                FailingHttpStatusCodeException.class, () -> wc.goTo("lockable-resources/reserve?resource=resource1"));
+        assertThat(e.getStatusCode(), is(405));
+    }
 }

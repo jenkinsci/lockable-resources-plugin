@@ -24,18 +24,18 @@ THE SOFTWARE.
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
 
-  <j:set var="queue" value="${it.getCurrentQueuedContext()}"/>
+  <j:set var="queue" value="${it.getQueue()}"/>
 
   <div class="row py-3">
+    <j:set var="oldestQueue" value="${queue.getOldest()}"/>
     <j:choose>
-      <j:when test="${queue.size() == 0}">
+      <j:when test="${oldestQueue == null}">
         <h2>${%queue.isEmpty}</h2>
       </j:when>
       <j:otherwise>
-        <j:set var="oldestQueue" value="${it.getOldestQueue()}"/>
-        <j:if test="${oldestQueue != null and oldestQueue.takeTooLong()}">
-          <script type="text/javascript">notificationBar.show('${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}', notificationBar.WARNING)</script>
-          <p class="jenkins-!-warning-color">${%queue.warning.count(queue.size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}</p>
+        <j:if test="${oldestQueue.takeTooLong()}">
+          <script type="text/javascript">notificationBar.show('${%queue.warning.count(queue.getAll().size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}', notificationBar.WARNING)</script>
+          <p class="jenkins-!-warning-color">${%queue.warning.count(queue.getAll().size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}</p>
           <pre>${%queue.warning.count.detail}</pre>
        </j:if>
       </j:otherwise>
@@ -50,53 +50,125 @@ THE SOFTWARE.
       class="jenkins-table jenkins-!-margin-bottom-4 data-table"
       id="lockable-resources-queue"
       isLoaded="true"
-      data-columns-definition="[null, null, null, null, null]"
+      data-remember-search-text="true"
+      data-columns-definition="[null, null, null, null, null, null]"
       data-table-configuration="{}"
     >
-      <colgroup>
-        <!-- request-type -->
-        <col class="col-width-1 text-end" />
-        <!-- resouce -->
-        <col class="col-width-4 text-end" />
-        <!-- requested.by -->
-        <col class="col-width-2 text-end" />
-        <!-- requested.at  -->
-        <col class="col-width-1 text-end" />
-        <!-- reason -->
-        <col class="col-width-3 text-end" />
-      </colgroup>
       <thead>
+        <th>${%queue.table.column.index}</th>
         <th>${%queue.table.column.request.type}</th>
         <th>${%queue.table.column.request.info}</th>
+        <th>${%queue.table.column.reason}</th>
         <th>${%queue.table.column.requested.by}</th>
         <th>${%queue.table.column.requested.at}</th>
-        <th>${%queue.table.column.reason}</th>
       </thead>
       <tbody>
-        <j:forEach var="queuedItem" items="${queue}">
-          <j:set var="build" value="${queuedItem.getBuild()}"/>
-          <j:forEach var="queuedResource" items="${queuedItem.getResources()}">
-            <tr>
-              <td><st:include page="request_type/cell" it="${queuedResource}"/></td>
-              <td><st:include page="request/cell" it="${queuedResource}"/></td>
-              <td>
-                <j:choose>
-                  <j:when test="${build != null}">
-                    <a class="jenkins-table__link jenkins-table__badge model-link inside" href="${rootURL + '/' + build.url}">${build.fullDisplayName}</a>
-                  </j:when>
-                  <j:otherwise>
-                    ${%N/A}
-                  </j:otherwise>
-                </j:choose>
-              </td>
-              <td data-order="${queuedResource.queuedAt}">
-                <j:if test="${queuedResource.queuedAt gt 0}">
-                  ${%ago(h.getTimeSpanString(queuedResource.getQueuedTimestamp()))}
-                </j:if>
-              </td>
-              <td><st:include page="reason/cell" from="${queuedResource}"/></td>
-            </tr>
-          </j:forEach>
+        <j:forEach var="queuedItem" items="${queue.getAll()}" varStatus="idx">
+          <tr>
+            <td>${idx.index + 1}</td>
+              <j:choose>
+                <!-- *************** resources *************** -->
+                <j:when test="${queuedItem.resourcesMatch()}">
+                  <td>${%type.resources}</td>
+                  <j:forEach var="resource" items="${queuedItem.requiredResources}">
+                    <td>
+                      <div class="row justify-content">
+                        <div class="row justify-content-end">
+                          <div class="col-auto">
+                            <strong>${resource.name}</strong>
+                          </div>
+                          <div class="col">
+                            <j:if test="${resource.ephemeral}">
+                              <span class="static-label">${%resources.ephemeral}</span>
+                            </j:if>
+                          </div>
+                        </div>
+                        <j:if test="${resource.description != null and !resource.description.isEmpty()}">
+                          <div class="row">
+                            <div class="col">
+                              ${resource.description}
+                            </div>
+                          </div>
+                        </j:if>
+                      </div>
+                    </td>
+                    <td>
+                      <j:choose>
+                        <j:when test="${resource.reservedBy != null}">
+                          ${%resource.status.reservedBy(resource.reservedBy)}
+                        </j:when>
+                        <j:when test="${resource.locked}">
+                          ${%resource.status.locked(rootURL + '/' + resource.build.url, resource.build.fullDisplayName)}
+                        </j:when>
+                        <j:when test="${resource.queued}">
+                          ${%resource.status.queuedBy(resource.queueItemProject, resource.queueItemId)}
+                        </j:when>
+                           <!-- Resource is (or it looks so) free. This shall newer happens here. But nobody know-->
+                        <j:otherwise>
+                          ${%resource.status.free}
+                        </j:otherwise>
+                      </j:choose>
+                      <j:if test="${resource.reservedTimestamp != null}">
+                        ${%ago(h.getTimeSpanString(resource.reservedTimestamp))}
+                      </j:if>
+                    </td>
+                  </j:forEach>
+                </j:when>
+
+                <!-- *************** labels *************** -->
+                <j:when test="${queuedItem.labelsMatch()}">
+                  <td>${%type.label}</td>
+                  <td>
+                    <a class="jenkins-table__link model-link" href="${rootURL}/label/${queuedItem.requiredLabel}">
+                      ${queuedItem.requiredLabel}
+                      <button class="jenkins-menu-dropdown-chevron"></button>
+                    </a>
+                  </td>
+                  <td>
+                    <j:choose>
+                      <j:when test="${queuedItem.requiredNumber gt 0}">
+                        ${%label.requiredNumber(queuedItem.requiredNumber)}
+                      </j:when>
+                      <j:otherwise>
+                        ${%label.requiredAll}
+                      </j:otherwise>
+                    </j:choose>
+                  </td>
+                </j:when>
+
+                <!-- *************** groovy expression *************** -->
+                <!-- Groovy expressions are currently supported only in free-style jobs.
+                     Free-style jobs does not update this queue and therefore can not be shown here.
+                     This lines are prepared in case we want to support it in pipeline as well -->
+                <j:when test="${!queuedItem.scriptMatch()}">
+                  <td>${%type.groovy}</td>
+                  <td>${%groovy.code}</td>
+                  <td>${%groovy.status}</td>
+                </j:when>
+                <j:otherwise>
+                  <!-- when you hit this, it is a bug -->
+                  <td>${%N/A}</td>
+                  <td>${%N/A}</td>
+                  <td>${%N/A}</td>
+                </j:otherwise>
+              </j:choose>
+            <td>
+              <j:choose>
+                <j:set var="build" value="${queuedItem.build}"/>
+                <j:when test="${build != null}">
+                  <a class="jenkins-table__link jenkins-table__badge model-link inside" href="${rootURL + '/' + build.url}">${build.fullDisplayName}</a>
+                </j:when>
+                <j:otherwise>
+                  ${%N/A}
+                </j:otherwise>
+              </j:choose>
+            </td>
+            <td data-order="${queuedItem.queuedAt}">
+              <j:if test="${queuedItem.queuedAt gt 0}">
+                ${%ago(h.getTimeSpanString(queuedItem.getQueuedTimestamp()))}
+              </j:if>
+            </td>
+          </tr>
         </j:forEach>
       </tbody>
     </table>

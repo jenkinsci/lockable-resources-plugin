@@ -19,10 +19,10 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: crowdin action
-        uses: crowdin/github-action@v1.6.0
+        uses: crowdin/github-action@v1.15.2
         with:
           upload_translations: false
           download_translations: true

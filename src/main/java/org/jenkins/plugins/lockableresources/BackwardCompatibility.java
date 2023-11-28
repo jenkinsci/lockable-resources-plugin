@@ -27,25 +27,29 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 @Deprecated
 @ExcludeFromJacocoGeneratedReport
 public final class BackwardCompatibility {
-  private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
+    private static final Logger LOG = Logger.getLogger(BackwardCompatibility.class.getName());
 
-  private BackwardCompatibility() {}
+    private BackwardCompatibility() {}
 
-  @Initializer(after = InitMilestone.JOB_LOADED)
-  public static void compatibilityMigration() {
-    List<LockableResource> resources = LockableResourcesManager.get().getResources();
-    LOG.log(Level.FINE, "lockable-resource-plugin compatibility migration task run for " + resources.size() + " resources");
-    for (LockableResource resource : resources) {
-      List<StepContext> queuedContexts = resource.getQueuedContexts();
-      if (!queuedContexts.isEmpty()) {
-        for (StepContext queuedContext : queuedContexts) {
-          List<String> resourcesNames = new ArrayList<>();
-          resourcesNames.add(resource.getName());
-          LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-          LockableResourcesManager.get().queueContext(queuedContext, Collections.singletonList(resourceHolder), resource.getName(), null);
+    @Initializer(after = InitMilestone.JOB_LOADED)
+    public static void compatibilityMigration() {
+        List<LockableResource> resources = LockableResourcesManager.get().getResources();
+        LOG.log(
+                Level.FINE,
+                "lockable-resources-plugin compatibility migration task run for " + resources.size() + " resources");
+        for (LockableResource resource : resources) {
+            List<StepContext> queuedContexts = resource.getQueuedContexts();
+            if (!queuedContexts.isEmpty()) {
+                for (StepContext queuedContext : queuedContexts) {
+                    List<String> resourcesNames = new ArrayList<>();
+                    resourcesNames.add(resource.getName());
+                    LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
+                    LockableResourcesManager.get()
+                            .queueContext(
+                                    queuedContext, Collections.singletonList(resourceHolder), resource.getName(), null);
+                }
+                queuedContexts.clear();
+            }
         }
-        queuedContexts.clear();
-      }
     }
-  }
 }
