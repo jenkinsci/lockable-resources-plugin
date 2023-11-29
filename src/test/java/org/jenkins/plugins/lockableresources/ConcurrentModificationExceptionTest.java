@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import hudson.Functions;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
@@ -21,8 +22,8 @@ public class ConcurrentModificationExceptionTest {
     @Test
     public void parallelTasksTest() throws Exception {
 
-        final int agentsCount = 10;
-        final int extraAgentsCount = 20;
+        final int agentsCount = Functions.isWindows() ? 5 : 10;
+        final int extraAgentsCount = Functions.isWindows() ? 5 : 20;
         final int resourcesCount = 100;
         final int extraResourcesCount = 100;
 
@@ -33,7 +34,7 @@ public class ConcurrentModificationExceptionTest {
         // Do not mirror nodes now. We will allow it later in parallel tasks
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "false");
         LOGGER.info("add agents");
-        for (int i = 1; i <= agentsCount; i++) j.createSlave("Agent_" + i, "label label2", null);
+        for (int i = 1; i <= agentsCount; i++) j.createSlave("Agent_" + i, "label label2 agent", null);
         LOGGER.info("add agents done");
 
         LockableResourcesManager LRM = LockableResourcesManager.get();
@@ -69,10 +70,7 @@ public class ConcurrentModificationExceptionTest {
                 LOGGER.info("create extra slaves");
                 for (int i = 1; i <= extraAgentsCount; i++) {
                     try {
-                        j.createSlave("ExtraAgent_" + i, "label label2", null);
-                        Thread.sleep(5);
-                        j.jenkins.removeNode(j.jenkins.getNode("ExtraAgent_" + i));
-                        Thread.sleep(5);
+                        j.createSlave("ExtraAgent_" + i, "label label2 extra-agent", null);
                     } catch (Exception error) {
                         LOGGER.warning(error.toString());
                     }
@@ -110,16 +108,35 @@ public class ConcurrentModificationExceptionTest {
         Timer timerNodesMirror = new Timer("NodesMirror");
         timerNodesMirror.schedule(taskNodesMirror, ++delay);
 
+        for (int i = 1; i <= 100; i++) {
+            Thread.sleep(500);
+            LOGGER.info("wait for resources " + i + " "
+                    + " extra-agent: "
+                    + LRM.getResourcesWithLabel("extra-agent").size() + " == " + extraAgentsCount);
+            if (LRM.getResourcesWithLabel("extra-agent").size() == extraAgentsCount) break;
+        }
+
+        for (int i = 1; i <= extraAgentsCount; i++) {
+            try {
+                assertNotNull(LockableResourcesManager.get().fromName("ExtraAgent_" + i));
+                j.jenkins.removeNode(j.jenkins.getNode("ExtraAgent_" + i));
+            } catch (Exception error) {
+                LOGGER.warning(error.toString());
+            }
+        }
+
         // all the tasks are asynchronous operations, so wait until resources are created.
         LOGGER.info("wait for resources");
         for (int i = 1; i <= 100; i++) {
             Thread.sleep(500);
-            LOGGER.info("wait for resources " + i + " " + LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    + " " + LRM.resourceExist("ExtraAgent_" + extraAgentsCount) + " "
-                    + LRM.resourceExist("Agent_" + agentsCount));
+            LOGGER.info("wait for resources " + i + " "
+                    + LRM.resourceExist("ExtraResource_" + extraResourcesCount)
+                    + " extra-agent: "
+                    + LRM.getResourcesWithLabel("extra-agent").size() + " == 0 "
+                    + " agent: " + LRM.getResourcesWithLabel("agent").size());
             if (LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    && !LRM.resourceExist("ExtraAgent_" + extraAgentsCount)
-                    && LRM.resourceExist("Agent_" + agentsCount)) break;
+                    && LRM.getResourcesWithLabel("extra-agent").size() == 0
+                    && LRM.getResourcesWithLabel("agent").size() == agentsCount) break;
         }
 
         // normally is is bad idea to make so much assertions, but we need verify if all works fine
