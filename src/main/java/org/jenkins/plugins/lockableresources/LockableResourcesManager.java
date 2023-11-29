@@ -218,7 +218,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesWithLabel(final String label) {
-        return _getResourcesWithLabel(label, this.getResources());
+        synchronized (this.syncResources) {
+            return _getResourcesWithLabel(label, this.getResources());
+        }
     }
 
     // ---------------------------------------------------------------------------

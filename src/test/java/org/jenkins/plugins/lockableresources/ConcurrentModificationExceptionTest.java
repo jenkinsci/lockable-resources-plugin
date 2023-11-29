@@ -33,7 +33,7 @@ public class ConcurrentModificationExceptionTest {
         // Do not mirror nodes now. We will allow it later in parallel tasks
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "false");
         LOGGER.info("add agents");
-        for (int i = 1; i <= agentsCount; i++) j.createSlave("Agent_" + i, "label label2", null);
+        for (int i = 1; i <= agentsCount; i++) j.createSlave("Agent_" + i, "label label2 agent", null);
         LOGGER.info("add agents done");
 
         LockableResourcesManager LRM = LockableResourcesManager.get();
@@ -69,7 +69,7 @@ public class ConcurrentModificationExceptionTest {
                 LOGGER.info("create extra slaves");
                 for (int i = 1; i <= extraAgentsCount; i++) {
                     try {
-                        j.createSlave("ExtraAgent_" + i, "label label2", null);
+                        j.createSlave("ExtraAgent_" + i, "label label2 extra-agent", null);
                         Thread.sleep(5);
                         j.jenkins.removeNode(j.jenkins.getNode("ExtraAgent_" + i));
                         Thread.sleep(5);
@@ -114,12 +114,14 @@ public class ConcurrentModificationExceptionTest {
         LOGGER.info("wait for resources");
         for (int i = 1; i <= 100; i++) {
             Thread.sleep(500);
-            LOGGER.info("wait for resources " + i + " " + LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    + " " + LRM.resourceExist("ExtraAgent_" + extraAgentsCount) + " "
-                    + LRM.resourceExist("Agent_" + agentsCount));
+            LOGGER.info("wait for resources " + i + " "
+                    + LRM.resourceExist("ExtraResource_" + extraResourcesCount)
+                    + " agent-extra: "
+                    + LRM.getResourcesWithLabel("agent-extra").size() + " != " + extraAgentsCount
+                    + " agent: " + LRM.getResourcesWithLabel("agent").size());
             if (LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    && !LRM.resourceExist("ExtraAgent_" + extraAgentsCount)
-                    && LRM.resourceExist("Agent_" + agentsCount)) break;
+                    && LRM.getResourcesWithLabel("agent-extra").size() == 0
+                    && LRM.getResourcesWithLabel("agent").size() == agentsCount) break;
         }
 
         // normally is is bad idea to make so much assertions, but we need verify if all works fine
