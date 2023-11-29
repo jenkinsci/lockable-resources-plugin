@@ -71,9 +71,6 @@ public class ConcurrentModificationExceptionTest {
                 for (int i = 1; i <= extraAgentsCount; i++) {
                     try {
                         j.createSlave("ExtraAgent_" + i, "label label2 extra-agent", null);
-                        Thread.sleep(5);
-                        j.jenkins.removeNode(j.jenkins.getNode("ExtraAgent_" + i));
-                        Thread.sleep(5);
                     } catch (Exception error) {
                         LOGGER.warning(error.toString());
                     }
@@ -111,17 +108,34 @@ public class ConcurrentModificationExceptionTest {
         Timer timerNodesMirror = new Timer("NodesMirror");
         timerNodesMirror.schedule(taskNodesMirror, ++delay);
 
+        for (int i = 1; i <= 100; i++) {
+            Thread.sleep(500);
+            LOGGER.info("wait for resources " + i + " "
+                    + " extra-agent: "
+                    + LRM.getResourcesWithLabel("extra-agent").size() + " == " + extraAgentsCount);
+            if (LRM.getResourcesWithLabel("extra-agent").size() == extraAgentsCount) break;
+        }
+
+        for (int i = 1; i <= extraAgentsCount; i++) {
+            try {
+                assertNotNull(LockableResourcesManager.get().fromName("ExtraAgent_" + i));
+                j.jenkins.removeNode(j.jenkins.getNode("ExtraAgent_" + i));
+            } catch (Exception error) {
+                LOGGER.warning(error.toString());
+            }
+        }
+
         // all the tasks are asynchronous operations, so wait until resources are created.
         LOGGER.info("wait for resources");
         for (int i = 1; i <= 100; i++) {
             Thread.sleep(500);
             LOGGER.info("wait for resources " + i + " "
                     + LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    + " agent-extra: "
-                    + LRM.getResourcesWithLabel("agent-extra").size() + " != " + extraAgentsCount
+                    + " extra-agent: "
+                    + LRM.getResourcesWithLabel("extra-agent").size() + " == 0 "
                     + " agent: " + LRM.getResourcesWithLabel("agent").size());
             if (LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    && LRM.getResourcesWithLabel("agent-extra").size() == 0
+                    && LRM.getResourcesWithLabel("extra-agent").size() == 0
                     && LRM.getResourcesWithLabel("agent").size() == agentsCount) break;
         }
 
