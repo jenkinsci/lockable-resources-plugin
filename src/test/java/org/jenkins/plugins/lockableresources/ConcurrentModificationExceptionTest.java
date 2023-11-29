@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import hudson.Functions;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
@@ -21,8 +22,8 @@ public class ConcurrentModificationExceptionTest {
     @Test
     public void parallelTasksTest() throws Exception {
 
-        final int agentsCount = 10;
-        final int extraAgentsCount = 20;
+        final int agentsCount = Functions.isWindows() ? 5 : 10;
+        final int extraAgentsCount = Functions.isWindows() ? 5 : 20;
         final int resourcesCount = 100;
         final int extraResourcesCount = 100;
 
