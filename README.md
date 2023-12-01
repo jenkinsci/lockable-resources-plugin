@@ -241,6 +241,21 @@ To allow this behavior start jenkins with option `-Dorg.jenkins.plugins.lockable
 System.setProperty("org.jenkins.plugins.lockableresources.DISABLE_SAVE", "true");
 ```
 
+## Detailed lock cause
+
+Tle plugin step lock() will inform you in the build log detailed block cause. The size of cause depends on count of ordered resources and size of current queue. To eliminate big unreadable logs we limited the size. To see all cause change the properties as follow:
+
+```groovy
+System.setProperty("org.jenkins.plugins.lockableresources.PRINT_BLOCKED_RESOURCE", "-1");
+System.setProperty("org.jenkins.plugins.lockableresources.PRINT_QUEUE_INFO", "-1");
+```
+
+PRINT_BLOCKED_RESOURCE means how many of ordered resources are printed. Per default 2.
+PRINT_QUEUE_INFO how many queue items are printed. Per default 2.
+
+ 0 means disabled
+ -1 means all / unlimited.
+
 ## Configuration as Code
 
 This plugin can be configured via

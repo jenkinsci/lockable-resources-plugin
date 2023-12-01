@@ -947,8 +947,8 @@ public class LockStepTest extends LockStepTestBase {
     public void reserveInsideLockHonoured() throws Exception {
 
         // to see detailed lock causes
-        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, -1);
-        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, -1);
+        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, "-1");
+        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, "-1");
 
         // Use-case is a job keeping the resource reserved so it can use
         // it in other stages and free it later, not all in one closure
