@@ -710,8 +710,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                         // skip this one, for some reason there is no Run object for this context
                         orphan.add(entry);
                     } else if (run.getStartTimeInMillis() > newest) {
-                            newest = run.getStartTimeInMillis();
-                            newestEntry = entry;
+                        newest = run.getStartTimeInMillis();
+                        newestEntry = entry;
                     }
                 }
             }
