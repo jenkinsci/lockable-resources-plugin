@@ -250,8 +250,8 @@ System.setProperty("org.jenkins.plugins.lockableresources.PRINT_BLOCKED_RESOURCE
 System.setProperty("org.jenkins.plugins.lockableresources.PRINT_QUEUE_INFO", "-1");
 ```
 
-PRINT_BLOCKED_RESOURCE means how many of ordered resources are printed. Per default 2.
-PRINT_QUEUE_INFO how many queue items are printed. Per default 2.
+*PRINT_BLOCKED_RESOURCE* means how many of ordered resources are printed. Per default 2.
+*PRINT_QUEUE_INFO* how many queue items are printed. Per default 2.
 
  0 means disabled
  -1 means all / unlimited.
