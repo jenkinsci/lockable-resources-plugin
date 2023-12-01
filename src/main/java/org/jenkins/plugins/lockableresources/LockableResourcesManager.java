@@ -608,7 +608,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                                         + "proceed with lock; this could be a legitimate state if the build waiting "
                                         + "for the lock was deleted or hard killed. More information is logged at "
                                         + "Level.FINE for debugging purposes.");
-                        unlockNames(remainingResourceNamesToUnLock, nextBuild, inversePrecedence);
+                        unlockNames(remainingResourceNamesToUnLock, null, inversePrecedence);
                         return;
                     } else {
                         requiredResource.setBuild(nextBuild);
