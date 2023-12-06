@@ -55,6 +55,9 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
+    /** Object to synchronized operations over LRM */
+    public static final transient Object syncResources = new Object();
+
     private List<LockableResource> resources;
     private transient Cache<Long, List<LockableResource>> cachedCandidates =
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
@@ -221,7 +224,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesWithLabel(final String label) {
-        return _getResourcesWithLabel(label, this.getResources());
+        synchronized (this.syncResources) {
+            return _getResourcesWithLabel(label, this.getResources());
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -268,6 +273,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
         return null;
+    }
+
+    // ---------------------------------------------------------------------------
+    private String getStack() {
+        StringBuffer buf = new StringBuffer();
+        for (StackTraceElement st : Thread.currentThread().getStackTrace()) {
+            buf.append("\n" + st);
+        }
+        return buf.toString();
     }
 
     // ---------------------------------------------------------------------------
@@ -729,59 +743,74 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return Collections.unmodifiableList(this.queuedContexts);
     }
 
+    // ---------------------------------------------------------------------------
     /** Creates the resource if it does not exist. */
-    public synchronized boolean createResource(String name) {
+    public boolean createResource(@CheckForNull String name) {
         name = Util.fixEmptyAndTrim(name);
-        if (name != null) {
-            LockableResource existent = fromName(name);
-            if (existent == null) {
-                LockableResource resource = new LockableResource(name);
-                resource.setEphemeral(true);
-                getResources().add(resource);
-                save();
-                return true;
-            }
-        }
-        return false;
+        LockableResource resource = new LockableResource(name);
+        resource.setEphemeral(true);
+
+        return this.addResource(resource, /*doSave*/ true);
     }
 
-    public synchronized boolean createResourceWithLabel(String name, String label) {
+    // ---------------------------------------------------------------------------
+    public boolean createResourceWithLabel(@CheckForNull String name, @CheckForNull String label) {
         name = Util.fixEmptyAndTrim(name);
-        if (name != null && label != null) {
-            LockableResource existent = fromName(name);
-            if (existent == null) {
-                LockableResource resource = new LockableResource(name);
-                resource.setLabels(label);
-                getResources().add(resource);
-                save();
-                return true;
-            }
-        }
-        return false;
+        label = Util.fixEmptyAndTrim(label);
+        LockableResource resource = new LockableResource(name);
+        resource.setLabels(label);
+
+        return this.addResource(resource, /*doSave*/ true);
     }
 
+    // ---------------------------------------------------------------------------
+    public boolean createResourceWithLabelAndProperties(
+            @CheckForNull String name, @CheckForNull String label, final Map<String, String> properties) {
+        if (properties == null) {
+            return false;
+        }
+
+        name = Util.fixEmptyAndTrim(name);
+        label = Util.fixEmptyAndTrim(label);
+        LockableResource resource = new LockableResource(name);
+        resource.setLabels(label);
+        resource.setProperties(properties.entrySet().stream()
+                .map(e -> {
+                    LockableResourceProperty p = new LockableResourceProperty();
+                    p.setName(e.getKey());
+                    p.setValue(e.getValue());
+                    return p;
+                })
+                .collect(Collectors.toList()));
+
+        return this.addResource(resource, /*doSave*/ true);
+    }
+
+    // ---------------------------------------------------------------------------
     @Restricted(NoExternalUse.class)
-    public synchronized boolean createResourceWithLabelAndProperties(
-            String name, String label, Map<String, String> properties) {
-        if (name != null && label != null && properties != null) {
-            LockableResource existent = fromName(name);
-            if (existent == null) {
-                LockableResource resource = new LockableResource(name);
-                resource.setLabels(label);
-                resource.setProperties(properties.entrySet().stream()
-                        .map(e -> {
-                            LockableResourceProperty p = new LockableResourceProperty();
-                            p.setName(e.getKey());
-                            p.setValue(e.getValue());
-                            return p;
-                        })
-                        .collect(Collectors.toList()));
-                getResources().add(resource);
-                save();
-                return true;
+    public boolean addResource(@Nullable final LockableResource resource) {
+        return this.addResource(resource, /*doSave*/ false);
+    }
+    // ---------------------------------------------------------------------------
+    @Restricted(NoExternalUse.class)
+    public boolean addResource(@Nullable final LockableResource resource, final boolean doSave) {
+
+        if (resource == null || resource.getName() == null || resource.getName().isEmpty()) {
+            LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
+            return false;
+        }
+        synchronized (this.syncResources) {
+            if (this.resourceExist(resource.getName())) {
+                LOGGER.finest("We will add existing resource: " + resource + getStack());
+                return false;
+            }
+            this.resources.add(resource);
+            LOGGER.fine("Resource added : " + resource);
+            if (doSave) {
+                this.save();
             }
         }
-        return false;
+        return true;
     }
 
     /**

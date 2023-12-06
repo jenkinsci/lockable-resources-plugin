@@ -28,7 +28,7 @@ public final class FreeDeadJobs {
     public static void freePostMortemResources() {
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (lrm) {
+        synchronized (lrm.syncResources) {
             LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
             for (LockableResource resource : lrm.getResources()) {
                 if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
