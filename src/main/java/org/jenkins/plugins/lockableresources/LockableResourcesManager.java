@@ -17,6 +17,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
+import hudson.console.ModelHyperlinkNote;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
@@ -69,6 +70,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // cache to enable / disable saving lockable-resources state
     private int enableSave = -1;
+
+    private static final int enabledBlockedCount =
+            SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, 2);
+    private static final int enabledCausesCount =
+            SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, 2);
 
     @SuppressFBWarnings(
             value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
@@ -607,21 +613,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
                 // lock all (old and new resources)
                 for (LockableResource requiredResource : requiredResourceForNextContext) {
-                    try {
-                        requiredResource.setBuild(nextContext.getContext().get(Run.class));
-                        resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
-                    } catch (Exception e) {
+                    Run<?, ?> nextBuild = nextContext.getBuild();
+                    if (nextBuild == null) {
                         // skip this context, as the build cannot be retrieved (maybe it was deleted while
                         // running?)
-                        LOGGER.log(
-                                Level.WARNING,
+                        LOGGER.warning(
                                 "Skipping queued context for lock. Cannot get the Run object from the context to "
                                         + "proceed with lock; this could be a legitimate state if the build waiting "
                                         + "for the lock was deleted or hard killed. More information is logged at "
                                         + "Level.FINE for debugging purposes.");
-                        LOGGER.log(Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
-                        unlockNames(remainingResourceNamesToUnLock, build, inversePrecedence);
+                        unlockNames(remainingResourceNamesToUnLock, null, inversePrecedence);
                         return;
+                    } else {
+                        requiredResource.setBuild(nextBuild);
+                        resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
                     }
                 }
 
@@ -713,15 +718,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 if (checkResourcesAvailability(
                                 entry.getResources(), null, resourceNamesToUnLock, resourceNamesToUnReserve)
                         != null) {
-                    try {
-                        Run<?, ?> run = entry.getContext().get(Run.class);
-                        if (run != null && run.getStartTimeInMillis() > newest) {
-                            newest = run.getStartTimeInMillis();
-                            newestEntry = entry;
-                        }
-                    } catch (IOException | InterruptedException e) {
+
+                    Run<?, ?> run = entry.getBuild();
+                    if (run == null) {
                         // skip this one, for some reason there is no Run object for this context
                         orphan.add(entry);
+                    } else if (run.getStartTimeInMillis() > newest) {
+                        newest = run.getStartTimeInMillis();
+                        newestEntry = entry;
                     }
                 }
             }
@@ -928,10 +932,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             // lock all (old and new resources)
             for (LockableResource requiredResource : requiredResourceForNextContext) {
-                try {
-                    requiredResource.setBuild(nextContext.getContext().get(Run.class));
-                    resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
-                } catch (Exception e) {
+                Run<?, ?> build = nextContext.getBuild();
+                if (build == null) {
                     // skip this context, as the build cannot be retrieved (maybe it was deleted while
                     // running?)
                     LOGGER.log(
@@ -940,8 +942,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
                                     + "proceed with lock; this could be a legitimate state if the build waiting for "
                                     + "the lock was deleted or hard killed. More information is logged at "
                                     + "Level.FINE for debugging purposes.");
-                    LOGGER.log(Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
                     return;
+                } else {
+                    requiredResource.setBuild(build);
+                    resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
                 }
             }
 
@@ -1242,11 +1246,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 // As soon as we know we can not fulfill the overall requirement
                 // (not enough of something from that list), we bail out quickly.
                 if (logger != null && !skipIfLocked) {
-                    logger.println("Found "
-                            + selected.size()
-                            + " available resource(s). Waiting for correct amount: "
-                            + requiredAmount
-                            + ".");
+
+                    String msg = "Found " + selected.size() + " available resource(s). Waiting for correct amount: "
+                            + requiredAmount + ".";
+
+                    if (enabledBlockedCount != 0) {
+                        msg += "\nBlocking causes: " + this.getCauses(candidates);
+                    }
+
+                    logger.println(msg);
                 }
                 return null;
             }
@@ -1255,6 +1263,79 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         return allSelected;
+    }
+
+    // ---------------------------------------------------------------------------
+    // for debug purpose
+    private String getCauses(List<LockableResource> resources) {
+        StringBuffer buf = new StringBuffer();
+        int currentSize = 0;
+        for (LockableResource resource : resources) {
+            String cause = resource.getLockCauseDetail();
+            if (cause == null) continue; // means it is free, not blocked
+
+            currentSize++;
+            if (enabledBlockedCount > 0 && currentSize == enabledBlockedCount) {
+                buf.append("\n  ...");
+                break;
+            }
+            buf.append("\n  " + cause);
+
+            final String queueCause = getQueueCause(resource);
+            if (!queueCause.isEmpty()) {
+                buf.append(queueCause);
+            }
+        }
+        return buf.toString();
+    }
+
+    // ---------------------------------------------------------------------------
+    // for debug purpose
+    private String getQueueCause(final LockableResource resource) {
+        Map<Run<?, ?>, Integer> usage = new HashMap<Run<?, ?>, Integer>();
+
+        for (QueuedContextStruct entry : this.queuedContexts) {
+
+            Run<?, ?> build = entry.getBuild();
+            if (build == null) {
+                LOGGER.warning("Why we don`t have the build? " + entry);
+                continue;
+            }
+
+            int count = 0;
+            if (usage.containsKey(build)) {
+                count = usage.get(build);
+            }
+
+            for (LockableResourcesStruct _struct : entry.getResources()) {
+                if (_struct.isResourceRequired(resource)) {
+                    LOGGER.fine("found " + resource + " " + count);
+                    count++;
+                    break;
+                }
+            }
+
+            usage.put(build, count);
+        }
+
+        StringBuffer buf = new StringBuffer();
+        int currentSize = 0;
+        for (Map.Entry<Run<?, ?>, Integer> entry : usage.entrySet()) {
+            Run<?, ?> build = entry.getKey();
+            int count = entry.getValue();
+
+            if (build != null && count > 0) {
+                currentSize++;
+                buf.append("\n    Queued " + count + " time(s) by build " + " " + build.getFullDisplayName() + " "
+                        + ModelHyperlinkNote.encodeTo(build));
+
+                if (currentSize >= enabledCausesCount) {
+                    buf.append("\n    ...");
+                    break;
+                }
+            }
+        }
+        return buf.toString();
     }
 
     /*
