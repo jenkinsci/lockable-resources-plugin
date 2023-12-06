@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.logging.Logger;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -944,6 +945,11 @@ public class LockStepTest extends LockStepTestBase {
     @Test
     // @Issue("JENKINS-XXXXX")
     public void reserveInsideLockHonoured() throws Exception {
+
+        // to see detailed lock causes
+        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, "-1");
+        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, "-1");
+
         // Use-case is a job keeping the resource reserved so it can use
         // it in other stages and free it later, not all in one closure
         // Variant: using the LockableResourcesManager to manipulate

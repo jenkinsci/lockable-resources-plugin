@@ -9,4 +9,10 @@ public class Constants {
     /// **Keep in mind, that you will lost all your manual changed properties**
     /// The best way is to use it with JCaC plugin.
     public static final String SYSTEM_PROPERTY_DISABLE_SAVE = "org.jenkins.plugins.lockableresources.DISABLE_SAVE";
+    /// Enable to print lock causes. Keep in mind, that the log output may grove depends on count of
+    /// blocked resources.
+    public static final String SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE =
+            "org.jenkins.plugins.lockableresources.PRINT_BLOCKED_RESOURCE";
+    public static final String SYSTEM_PROPERTY_PRINT_QUEUE_INFO =
+            "org.jenkins.plugins.lockableresources.PRINT_QUEUE_INFO";
 }

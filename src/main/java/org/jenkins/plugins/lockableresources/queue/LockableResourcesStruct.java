@@ -90,6 +90,7 @@ public class LockableResourcesStruct implements Serializable {
         queuedAt = new Date().getTime();
         required = new ArrayList<>();
         if (resources != null) {
+            /// FIXME do we shall check here if resources.size() >= quantity
             for (String resource : resources) {
                 LockableResource r = LockableResourcesManager.get().fromName(resource);
                 if (r != null) {
@@ -156,5 +157,14 @@ public class LockableResourcesStruct implements Serializable {
     @Restricted(NoExternalUse.class) // used by jelly
     public boolean takeTooLong() {
         return (new Date().getTime() - this.queuedAt) > 3600000L;
+    }
+
+    /** Check if the *resource* is required by this struct / queue */
+    @Restricted(NoExternalUse.class)
+    public boolean isResourceRequired(final LockableResource resource) {
+        if (resource == null) {
+            return false;
+        }
+        return LockableResourcesManager.getResourcesNames(this.required).contains(resource.getName());
     }
 }
