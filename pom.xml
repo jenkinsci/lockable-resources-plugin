@@ -43,6 +43,11 @@
       <name>Antonio Muñiz</name>
       <email>amuniz@cloudbees.com</email>
     </developer>
+    <developer>
+      <id>mPokornyETM</id>
+      <name>Martin Pokorny</name>
+      <email>martin.pokorny@etm.at</email>
+    </developer>
   </developers>
 
   <scm>
