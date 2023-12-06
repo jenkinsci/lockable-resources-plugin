@@ -22,7 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+<j:jelly
+  xmlns:j="jelly:core"
+  xmlns:l="/lib/layout"
+  xmlns:st="jelly:stapler">
+  <st:adjunct includes="io.jenkins.plugins.data-tables"/>
 
   <j:set var="queue" value="${it.getQueue()}"/>
 
@@ -52,7 +56,14 @@ THE SOFTWARE.
       isLoaded="true"
       data-remember-search-text="true"
       data-columns-definition="[null, null, null, null, null, null]"
-      data-table-configuration="{}"
+      data-table-configuration='
+      {
+        "stateSave": true,
+        "lengthMenu": [
+          [10, 25, 50, 100, -1],
+          [10, 25, 50, 100, "${%table.settings.page.length.all}"]
+        ]
+      }'
     >
       <thead>
         <th>${%queue.table.column.index}</th>

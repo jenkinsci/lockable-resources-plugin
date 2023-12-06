@@ -52,8 +52,12 @@ THE SOFTWARE.
             { "targets": "properties", "visible": false }
         ],
         "order": [ 0, "asc" ],
-        "stateSave": true
-      }'
+        "stateSave": true,
+        "lengthMenu": [
+          [10, 25, 50, 100, -1],
+          [10, 25, 50, 100, "${%table.settings.page.length.all}"]
+        ]
+       }'
     >
       <colgroup>
         <!-- index -->
