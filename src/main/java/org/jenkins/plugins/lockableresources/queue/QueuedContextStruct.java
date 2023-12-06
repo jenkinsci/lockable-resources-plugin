@@ -13,6 +13,8 @@ import hudson.model.Run;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -44,6 +46,8 @@ public class QueuedContextStruct implements Serializable {
      */
     private String variableName;
 
+    private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
+
     /*
      * Constructor for the QueuedContextStruct class.
      */
@@ -73,6 +77,7 @@ public class QueuedContextStruct implements Serializable {
             return this.getContext().get(Run.class);
         } catch (IOException | InterruptedException e) {
             // for some reason there is no Run object for this context
+            LOGGER.log(Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
             return null;
         }
     }
