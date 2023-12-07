@@ -91,6 +91,7 @@ public class QueuedContextStruct implements Serializable {
             return this.getContext().get(Run.class);
         } catch (IOException | InterruptedException e) {
             // for some reason there is no Run object for this context
+            LOGGER.log(Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
             return null;
         }
     }

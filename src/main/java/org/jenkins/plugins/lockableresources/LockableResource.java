@@ -281,7 +281,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      * Valid means that the resource contains the label or the Label-expression matched.
      */
     public boolean isValidLabel(@Nullable String candidate) {
-        if (candidate == null || candidate.isEmpty()) {
+        candidate = Util.fixEmptyAndTrim(Util.fixNull(candidate));
+        if (candidate == null) {
             return false;
         }
 
@@ -461,6 +462,32 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if (this.isLocked()) {
             return String.format(
                     "The resource [%s] is locked by %s at %s",
+                    name, getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()), timestamp);
+        }
+        return null;
+    }
+
+    /**
+     * Resolve the lock detailed cause for this resource.
+     * Note: this function is used in lock() step and not in the UI. Therefor
+     *       moving text into localization files does not make really sense.
+     *
+     * @return the lock cause or null if not locked
+     */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public String getLockCauseDetail() {
+        if (this.isReserved()) {
+            User user = Jenkins.get().getUser(reservedBy);
+            String userText = user == null ? reservedBy : ModelHyperlinkNote.encodeTo(user);
+            return String.format("The resource [%s] is reserved by %s.", name, userText);
+        }
+        if (this.isLocked()) {
+            final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+            Date since = this.getReservedTimestamp();
+            final String timestamp = (since == null ? "<unknown>" : format.format(since));
+            return String.format(
+                    "The resource [%s] is locked by build %s since %s.",
                     name, getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()), timestamp);
         }
         return null;

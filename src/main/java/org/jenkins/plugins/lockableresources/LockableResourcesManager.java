@@ -17,6 +17,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
+import hudson.console.ModelHyperlinkNote;
 import hudson.model.Run;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -52,7 +53,9 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
 
+    /** Object to synchronized operations over LRM */
     public static final transient Object syncResources = new Object();
+
     private List<LockableResource> resources;
     private transient Cache<Long, List<LockableResource>> cachedCandidates =
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
@@ -68,6 +71,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // cache to enable / disable saving lockable-resources state
     private int enableSave = -1;
+
+    private static final int enabledBlockedCount =
+            SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, 2);
+    private static final int enabledCausesCount =
+            SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, 2);
 
     // ---------------------------------------------------------------------------
     /** C-tor */
@@ -261,7 +269,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesWithLabel(final String label) {
-        return getResourcesWithLabel(label, this.getReadOnlyResources());
+        synchronized (this.syncResources) {
+            return getResourcesWithLabel(label, this.getResources());
+        }
     }
 
     @NonNull
@@ -862,18 +872,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class)
     public boolean addResource(@Nullable final LockableResource resource, final boolean doSave) {
 
+        if (resource == null || resource.getName() == null || resource.getName().isEmpty()) {
+            LOGGER.warning("Internal failure: We will add wrong resource: '" + resource + "' " + getStack());
+            return false;
+        }
         synchronized (this.syncResources) {
-            if (resource == null
-                    || resource.getName() == null
-                    || resource.getName().isEmpty()) {
-                LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
-                return false;
-            }
             if (this.resourceExist(resource.getName())) {
                 LOGGER.finest("We will add existing resource: " + resource + getStack());
                 return false;
             }
             this.resources.add(resource);
+            LOGGER.fine("Resource added : " + resource);
             if (doSave) {
                 this.save();
             }
@@ -1167,8 +1176,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         String msg = "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
-        if (SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES)) {
-            msg += "\nBlocked candidates: " + getCauses(candidates);
+        if (enabledBlockedCount != 0) {
+            msg += "\nBlocking causes: " + getCauses(candidates);
         }
         printLogs(msg, logger, Level.FINE);
 
@@ -1177,18 +1186,77 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     // for debug purpose
-    private static String getCauses(List<LockableResource> resources) {
+    private String getCauses(List<LockableResource> resources) {
         StringBuffer buf = new StringBuffer();
+        int currentSize = 0;
         for (LockableResource resource : resources) {
-            String cause = resource.getLockCause();
+            String cause = resource.getLockCauseDetail();
             if (cause == null) continue; // means it is free, not blocked
 
+            currentSize++;
+            if (enabledBlockedCount > 0 && currentSize == enabledBlockedCount) {
+                buf.append("\n  ...");
+                break;
+            }
             buf.append("\n  " + cause);
+
+            final String queueCause = getQueueCause(resource);
+            if (!queueCause.isEmpty()) {
+                buf.append(queueCause);
+            }
         }
         return buf.toString();
     }
 
     // ---------------------------------------------------------------------------
+    // for debug purpose
+    private String getQueueCause(final LockableResource resource) {
+        Map<Run<?, ?>, Integer> usage = new HashMap<Run<?, ?>, Integer>();
+
+        for (QueuedContextStruct entry : this.queuedContexts) {
+
+            Run<?, ?> build = entry.getBuild();
+            if (build == null) {
+                LOGGER.warning("Why we don`t have the build? " + entry);
+                continue;
+            }
+
+            int count = 0;
+            if (usage.containsKey(build)) {
+                count = usage.get(build);
+            }
+
+            for (LockableResourcesStruct _struct : entry.getResources()) {
+                if (_struct.isResourceRequired(resource)) {
+                    LOGGER.fine("found " + resource + " " + count);
+                    count++;
+                    break;
+                }
+            }
+
+            usage.put(build, count);
+        }
+
+        StringBuffer buf = new StringBuffer();
+        int currentSize = 0;
+        for (Map.Entry<Run<?, ?>, Integer> entry : usage.entrySet()) {
+            Run<?, ?> build = entry.getKey();
+            int count = entry.getValue();
+
+            if (build != null && count > 0) {
+                currentSize++;
+                buf.append("\n    Queued " + count + " time(s) by build " + " " + build.getFullDisplayName() + " "
+                        + ModelHyperlinkNote.encodeTo(build));
+
+                if (currentSize >= enabledCausesCount) {
+                    buf.append("\n    ...");
+                    break;
+                }
+            }
+        }
+        return buf.toString();
+    }
+
     /*
      * Adds the given context and the required resources to the queue if
      * this context is not yet queued.

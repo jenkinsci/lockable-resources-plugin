@@ -21,6 +21,8 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 public class LockableResourcesStruct implements Serializable {
 
@@ -49,6 +51,9 @@ public class LockableResourcesStruct implements Serializable {
         List<String> names = new ArrayList<>();
         for (String name : property.getResources()) {
             String resourceName = env.expand(name);
+            if (resourceName == null) {
+                continue;
+            }
             names.add(resourceName);
         }
 
@@ -86,6 +91,7 @@ public class LockableResourcesStruct implements Serializable {
         queuedAt = new Date().getTime();
         required = new ArrayList<>();
         if (resources != null) {
+            /// FIXME do we shall check here if resources.size() >= quantity
             for (String resource : resources) {
                 LockableResource r = LockableResourcesManager.get().fromName(resource);
                 if (r != null) {
@@ -147,5 +153,14 @@ public class LockableResourcesStruct implements Serializable {
             str += ", Number of resources: " + this.requiredNumber;
         }
         return str;
+    }
+
+    /** Check if the *resource* is required by this struct / queue */
+    @Restricted(NoExternalUse.class)
+    public boolean isResourceRequired(final LockableResource resource) {
+        if (resource == null) {
+            return false;
+        }
+        return LockableResourcesManager.getResourcesNames(this.required).contains(resource.getName());
     }
 }

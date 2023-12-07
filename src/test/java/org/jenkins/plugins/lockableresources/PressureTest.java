@@ -48,7 +48,7 @@ public class PressureTest extends LockStepTestBase {
         final int nodesCount = (resourcesCount / 10) + 1;
         // enable node mirroring to make more chaos
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
-        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_LOCK_CAUSES, "false");
+        System.setProperty(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, "0");
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
         // create resources

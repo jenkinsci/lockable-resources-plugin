@@ -22,11 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler">
+<j:jelly
+  xmlns:j="jelly:core"
+  xmlns:st="jelly:stapler">
   <j:set var="allLabels" value="${it.getLabelsList()}" />
   <j:if test="${allLabels.size() != 0}">
     <st:adjunct includes="io.jenkins.plugins.data-tables"/>
     <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
+
     <div class="table-responsive">
       <table
         class="jenkins-table jenkins-!-margin-bottom-4 data-table"
@@ -34,7 +37,14 @@ THE SOFTWARE.
         isLoaded="true"
         data-remember-search-text="true"
         data-columns-definition="[null, null, null, null]"
-        data-table-configuration="{}"
+        data-table-configuration='
+        {
+          "stateSave": true,
+          "lengthMenu": [
+            [10, 25, 50, 100, -1],
+            [10, 25, 50, 100, "${%table.settings.page.length.all}"]
+          ]
+        }'
       >
         <thead>
           <th>${%labels.table.column.labels}</th>
