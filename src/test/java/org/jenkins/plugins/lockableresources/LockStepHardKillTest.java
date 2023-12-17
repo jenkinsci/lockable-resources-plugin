@@ -152,9 +152,9 @@ public class LockStepHardKillTest extends LockStepTestBase {
             j.waitForMessage("Trying to acquire lock on", secondNext);
 
             if (firstPrev != null) {
-                j.waitForMessage(", waiting for execution...", firstNext);
+                j.waitForMessage(", waiting for execution ...", firstNext);
                 isPaused(firstNext, 1, 1);
-                j.waitForMessage(", waiting for execution...", secondNext);
+                j.waitForMessage(", waiting for execution ...", secondNext);
                 isPaused(secondNext, 1, 1);
             }
 

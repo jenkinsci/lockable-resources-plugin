@@ -1083,9 +1083,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 available = fromNames(
                         getResourcesNames(requiredResources.required), /*create un-existent resources */ true);
 
-                String causes = this.getCauses(available);
-
-                if (!causes.isEmpty()) {
+                if (!this.areAllAvailable(available)) {
                     available = null;
                 }
             } else {
@@ -1113,6 +1111,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         return candidates;
+    }
+
+    // ---------------------------------------------------------------------------
+    private boolean areAllAvailable(List<LockableResource> resources) {
+        for (LockableResource resource : resources) {
+            if (!resource.isFree()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // ---------------------------------------------------------------------------
@@ -1318,5 +1326,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
             }
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    /** For testing purpose. */
+    @Restricted(NoExternalUse.class)
+    public LockableResource getFirst() {
+        return this.getResources().get(0);
     }
 }

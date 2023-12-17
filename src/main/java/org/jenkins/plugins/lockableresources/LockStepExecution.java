@@ -107,23 +107,32 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
      * resources if the resource is known, we could output the active/blocking job/build
      */
     private void onLockFailed(PrintStream logger, List<LockableResourcesStruct> resourceHolderList) {
-        LockableResourcesManager lrm = LockableResourcesManager.get();
-        LockableResource resource = step.resource != null ? lrm.fromName(step.resource) : null;
-        String logMessage = null;
-
-        if (resource != null) logMessage = resource.getLockCause();
-
-        if (logMessage == null || logMessage.isEmpty()) // we has not detailed cause (like when you use labels)
-        logMessage = "[" + step + "] is not free";
 
         if (step.skipIfLocked) {
-            logMessage += ", skipping execution...";
-            LockableResourcesManager.printLogs(logMessage, Level.INFO, LOGGER, logger);
+            this.printBlockCause(logger, resourceHolderList);
+            LockableResourcesManager.printLogs(
+                    "[" + step + "] is not free, skipping execution ...", Level.INFO, LOGGER, logger);
             getContext().onSuccess(null);
         } else {
-            logMessage += ", waiting for execution...";
-            LockableResourcesManager.printLogs(logMessage, Level.INFO, LOGGER, logger);
+            this.printBlockCause(logger, resourceHolderList);
+            LockableResourcesManager.printLogs(
+                    "[" + step + "] is not free, waiting for execution ...", Level.INFO, LOGGER, logger);
+            LockableResourcesManager lrm = LockableResourcesManager.get();
             lrm.queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
+        }
+    }
+
+    private void printBlockCause(PrintStream logger, List<LockableResourcesStruct> resourceHolderList) {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        LockableResource resource = this.step.resource != null ? lrm.fromName(this.step.resource) : null;
+
+        if (resource != null) {
+            final String logMessage = resource.getLockCauseDetail();
+            if (logMessage != null && !logMessage.isEmpty())
+                LockableResourcesManager.printLogs(logMessage, Level.INFO, LOGGER, logger);
+        } else {
+            // looks like ordered by label
+            lrm.getAvailableResources(resourceHolderList, logger, null);
         }
     }
 

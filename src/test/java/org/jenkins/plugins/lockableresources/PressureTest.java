@@ -120,7 +120,7 @@ public class PressureTest extends LockStepTestBase {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "main-project");
         p.setDefinition(new CpsFlowDefinition(pipeCode, true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-        j.waitForMessage(", waiting for execution...", b1);
+        j.waitForMessage(", waiting for execution ...", b1);
 
         List<WorkflowRun> otherBuilds = new ArrayList<>();
 
@@ -131,7 +131,7 @@ public class PressureTest extends LockStepTestBase {
             p2.setDefinition(new CpsFlowDefinition(pipeCode, true));
             WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
             otherBuilds.add(b2);
-            j.waitForMessage(", waiting for execution...", b2);
+            j.waitForMessage(", waiting for execution ...", b2);
         }
 
         // create more resources until the first job has been started
