@@ -1410,7 +1410,7 @@ public class LockStepTest extends LockStepTestBase {
         // check: The resource [resource1] is reserved by test at Sep 1, 2023, 8:29 PM, skipping
         // execution...
         j.assertLogContains("The resource [resource1] is reserved by test", b1);
-        j.assertLogContains(", skipping execution...", b1);
+        j.assertLogContains(", skipping execution ...", b1);
         j.assertLogNotContains("Running body", b1);
     }
 
