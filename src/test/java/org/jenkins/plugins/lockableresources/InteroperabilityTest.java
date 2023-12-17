@@ -53,8 +53,8 @@ public class InteroperabilityTest extends LockStepTestBase {
         FreeStyleBuild f1 = f.scheduleBuild2(0).waitForStart();
 
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-        LOGGER.info("wait for: [resource1] is locked by " + f1.getFullDisplayName());
-        j.waitForMessage("[resource1] is locked by " + f1.getFullDisplayName(), b1);
+        LOGGER.info("wait for: [resource1] is locked by build " + f1.getFullDisplayName());
+        j.waitForMessage("[resource1] is locked by build " + f1.getFullDisplayName(), b1);
         isPaused(b1, 1, 1);
         semaphore.release();
 

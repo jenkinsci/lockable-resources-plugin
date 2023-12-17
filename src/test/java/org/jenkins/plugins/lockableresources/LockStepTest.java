@@ -265,12 +265,12 @@ public class LockStepTest extends LockStepTestBase {
 
         WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
         // Ensure that b2 reaches the lock before b3
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
         WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
         // Both 2 and 3 are waiting for locking resource1
 
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b3);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
 
         // Unlock resource1
@@ -306,12 +306,12 @@ public class LockStepTest extends LockStepTestBase {
 
         WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
         // Ensure that b2 reaches the lock before b3
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
         WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
         // Both 2 and 3 are waiting for locking resource1
 
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b3);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
 
         // Unlock resource1
@@ -355,7 +355,7 @@ public class LockStepTest extends LockStepTestBase {
         // lock
         j.waitForMessage("Lock acquired on [resource1]", b1);
         SemaphoreStep.success("before-a/1", null);
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b1);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b1);
         isPaused(b1, 2, 1);
 
         SemaphoreStep.success("wait-b/1", null);
@@ -396,7 +396,7 @@ public class LockStepTest extends LockStepTestBase {
         p2.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
         // Make sure that b2 is blocked on b1's lock.
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
 
         // Now b2 is still sitting waiting for a lock. Create b3 and launch it to verify order of
@@ -404,7 +404,7 @@ public class LockStepTest extends LockStepTestBase {
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
         p3.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b3);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
 
         b1.delete();
@@ -441,7 +441,7 @@ public class LockStepTest extends LockStepTestBase {
         for (int i = 0; i < 3; i++) {
             WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
             if (prevBuild != null) {
-                j.waitForMessage("[resource1] is locked by " + prevBuild.getFullDisplayName(), rNext);
+                j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
                 isPaused(rNext, 1, 1);
                 // List<LockableResource> resources = new ArrayList<>();
                 // resources.add(LockableResourcesManager.get().fromName("resource1"));
@@ -485,7 +485,7 @@ public class LockStepTest extends LockStepTestBase {
         for (int i = 0; i < 5; i++) {
             WorkflowRun rNext = job.scheduleBuild2(0).waitForStart();
             if (toUnlock != null) {
-                j.waitForMessage("[resource1] is locked by " + toUnlock.getFullDisplayName(), rNext);
+                j.waitForMessage("[resource1] is locked by build " + toUnlock.getFullDisplayName(), rNext);
                 isPaused(rNext, 1, 1);
                 SemaphoreStep.success("wait-inside-1/" + i, null);
             }
@@ -571,14 +571,14 @@ public class LockStepTest extends LockStepTestBase {
         p2.setDefinition(new CpsFlowDefinition(
                 "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
 
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
         p3.setDefinition(new CpsFlowDefinition(
                 "lock('resource2') {\n" + "	semaphore 'wait-inside-p3'\n" + "}\n" + "echo 'Finish'", true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource2] is locked by " + b1.getFullDisplayName(), b3);
+        j.waitForMessage("[resource2] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
 
         // Unlock resources
@@ -620,7 +620,7 @@ public class LockStepTest extends LockStepTestBase {
         p2.setDefinition(new CpsFlowDefinition(
                 "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
 
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
@@ -672,7 +672,7 @@ public class LockStepTest extends LockStepTestBase {
         p2.setDefinition(new CpsFlowDefinition(
                 "lock('resource1') {\n" + "	semaphore 'wait-inside-p2'\n" + "}\n" + "echo 'Finish'", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
 
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");

@@ -30,12 +30,12 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             SemaphoreStep.waitForStart("wait-inside/1", b1);
             WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
             // Ensure that b2 reaches the lock before b3
-            j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b2);
+            j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
             isPaused(b2, 1, 1);
             WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
             // Both 2 and 3 are waiting for locking resource1
 
-            j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName(), b3);
+            j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
             isPaused(b3, 1, 1);
         });
 
@@ -52,7 +52,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
 
             j.waitForMessage("Lock acquired on [resource1]", b2);
             isPaused(b2, 1, 0);
-            j.assertLogContains("[resource1] is locked by " + b1.getFullDisplayName(), b3);
+            j.assertLogContains("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
             isPaused(b3, 1, 1);
             SemaphoreStep.success("wait-inside/2", null);
             SemaphoreStep.waitForStart("wait-inside/3", b3);
