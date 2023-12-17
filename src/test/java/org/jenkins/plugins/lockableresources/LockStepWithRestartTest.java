@@ -112,7 +112,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             p.setDefinition(new CpsFlowDefinition(
                     "lock('resource1') {\n" + "  echo 'inside'\n" + "}\n" + "echo 'Finish'", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-            j.waitForMessage("The resource [resource1] is reserved by user at", b1);
+            j.waitForMessage("The resource [resource1] is reserved by user", b1);
             isPaused(b1, 1, 1);
 
             FreeStyleProject f = j.createFreeStyleProject("f");
