@@ -608,7 +608,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     private void freeResources(List<LockableResource> unlockResources, @Nullable Run<?, ?> build) {
-        LOGGER.fine("free it: " + resources);
+        LOGGER.fine("free it: " + unlockResources);
         for (LockableResource resource : unlockResources) {
             // No more contexts, unlock resource
             if (build != null && build != resource.getBuild()) {
