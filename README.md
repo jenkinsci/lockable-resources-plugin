@@ -117,7 +117,7 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
   echo env.LOCKED_RESOURCE
-  echo env.LOCKED_RESOURCE_PROP_ABC
+  echo env.LOCKED_RESOURCE0_PROP_ABC
 }
 ```
 
