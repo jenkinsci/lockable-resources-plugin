@@ -719,7 +719,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return resourceNames;
     }
 
-    /** Returns names (IDs) off all existing resources (inc ephemeral) */
+    // ---------------------------------------------------------------------------
+    /** Returns names (IDs) off all existing resources (inclusive ephemeral) */
     @Restricted(NoExternalUse.class)
     public List<String> getAllResourcesNames() {
         synchronized (this.syncResources) {
