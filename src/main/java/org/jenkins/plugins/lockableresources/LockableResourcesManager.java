@@ -227,9 +227,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    /** Get amount of free resources contained given *label* */
+    /** Get amount of free resources contained given *label*
+     *   This method is deprecated (no where used) and is not tested.
+     */
     @NonNull
     @Restricted(NoExternalUse.class)
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     public int getFreeResourceAmount(String label) {
         int free = 0;
         label = Util.fixEmpty(label);
@@ -252,6 +256,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * @deprecated Use getResourcesWithLabel(String label)
+     * Note: The param *params* is not used (has no effect)
      */
     @Deprecated
     @Restricted(NoExternalUse.class)
@@ -263,7 +268,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * Returns resources matching by given *label*.
-     * Note: The param *params* is not used (has no effect)
      */
     @NonNull
     @Restricted(NoExternalUse.class)
