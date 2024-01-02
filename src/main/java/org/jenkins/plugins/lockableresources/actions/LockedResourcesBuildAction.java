@@ -77,12 +77,7 @@ public class LockedResourcesBuildAction implements Action {
 
         for (String name : resourceNames) {
             LockableResource r = LockableResourcesManager.get().fromName(name);
-            if (r != null) {
-                action.add(new ResourcePOJO(r));
-            } else {
-                // probably a ephemeral resource has been deleted
-                action.add(new ResourcePOJO(name, ""));
-            }
+            action.add(new ResourcePOJO(r));
         }
     }
 
@@ -106,11 +101,7 @@ public class LockedResourcesBuildAction implements Action {
     @Restricted(NoExternalUse.class)
     public static LockedResourcesBuildAction fromResources(Collection<LockableResource> resources) {
         List<ResourcePOJO> resPojos = new ArrayList<>();
-        for (LockableResource r : resources) {
-            if (r != null) {
-                resPojos.add(new ResourcePOJO(r));
-            }
-        }
+        for (LockableResource r : resources) resPojos.add(new ResourcePOJO(r));
         return new LockedResourcesBuildAction(resPojos);
     }
 
