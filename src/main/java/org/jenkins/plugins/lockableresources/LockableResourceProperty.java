@@ -8,7 +8,9 @@ import java.io.Serializable;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
+@ExportedBean(defaultVisibility = 999)
 public class LockableResourceProperty extends AbstractDescribableImpl<LockableResourceProperty>
         implements Serializable {
 
