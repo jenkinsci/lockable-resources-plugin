@@ -97,6 +97,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Get all resources - read only The same as getResources() but unmodifiable list. The
      * getResources() is unsafe to use because of possible concurrent modification exception.
      */
+    @Restricted(NoExternalUse.class)
     public List<LockableResource> getReadOnlyResources() {
         synchronized (this.syncResources) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.resources));
