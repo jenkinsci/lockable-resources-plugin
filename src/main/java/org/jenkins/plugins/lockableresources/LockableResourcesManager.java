@@ -270,12 +270,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesWithLabel(final String label) {
         synchronized (this.syncResources) {
-            return getResourcesWithLabel(label, this.getResources());
+            return _getResourcesWithLabel(label, this.getResources());
         }
     }
 
+    // ---------------------------------------------------------------------------
     @NonNull
-    private static List<LockableResource> getResourcesWithLabel(String label, final List<LockableResource> resources) {
+    private static List<LockableResource> _getResourcesWithLabel(String label, final List<LockableResource> resources) {
         List<LockableResource> found = new ArrayList<>();
         label = Util.fixEmpty(label);
 
@@ -492,7 +493,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     candidates.retainAll(this.resources);
                 } else {
                     candidates = (systemGroovyScript == null)
-                            ? getResourcesWithLabel(requiredResources.label, params)
+                            ? getResourcesWithLabel(requiredResources.label)
                             : getResourcesMatchingScript(systemGroovyScript, params);
                     cachedCandidates.put(queueItemId, candidates);
                 }
@@ -1149,7 +1150,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             final List<LockableResource> alreadySelected) {
         List<LockableResource> found = new ArrayList<>();
 
-        List<LockableResource> candidates = getResourcesWithLabel(label, alreadySelected);
+        List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
         candidates.addAll(this.getResourcesWithLabel(label));
 
         if (amount <= 0) {
