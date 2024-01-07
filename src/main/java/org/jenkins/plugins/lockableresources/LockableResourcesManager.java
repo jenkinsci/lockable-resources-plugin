@@ -76,6 +76,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private static final int enabledCausesCount =
             SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, 2);
 
+    // ---------------------------------------------------------------------------
+    /** C-tor */
     @SuppressFBWarnings(
             value = "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
             justification = "Common Jenkins pattern to call method that can be overridden")
@@ -84,13 +86,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
         load();
     }
 
+    // ---------------------------------------------------------------------------
+    /** Get all resources Includes declared, ephemeral and node resources */
     public List<LockableResource> getResources() {
-        return resources;
+        return this.resources;
     }
 
-    public synchronized List<LockableResource> getDeclaredResources() {
+    // ---------------------------------------------------------------------------
+    /**
+     * Get all resources - read only The same as getResources() but unmodifiable list. The
+     * getResources() is unsafe to use because of possible concurrent modification exception.
+     */
+    @Restricted(NoExternalUse.class)
+    public List<LockableResource> getReadOnlyResources() {
+        synchronized (this.syncResources) {
+            return new ArrayList<>(Collections.unmodifiableCollection(this.resources));
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Get declared resources, means only defined in config file (xml or JCaC yaml). */
+    public List<LockableResource> getDeclaredResources() {
         ArrayList<LockableResource> declaredResources = new ArrayList<>();
-        for (LockableResource r : resources) {
+        for (LockableResource r : this.getReadOnlyResources()) {
             if (!r.isEphemeral() && !r.isNodeResource()) {
                 declaredResources.add(r);
             }
@@ -98,49 +116,56 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return declaredResources;
     }
 
+    // ---------------------------------------------------------------------------
+    /** Set all declared resources (do not includes ephemeral and node resources). */
     @DataBoundSetter
-    public synchronized void setDeclaredResources(List<LockableResource> declaredResources) {
-        Map<String, LockableResource> lockedResources = new HashMap<>();
-        for (LockableResource r : this.resources) {
-            if (!r.isLocked()) continue;
-            lockedResources.put(r.getName(), r);
-        }
-
-        // Removed from configuration locks became ephemeral.
-        ArrayList<LockableResource> mergedResources = new ArrayList<>();
-        Set<String> addedLocks = new HashSet<>();
-        for (LockableResource r : declaredResources) {
-            if (!addedLocks.add(r.getName())) {
-                continue;
+    public void setDeclaredResources(List<LockableResource> declaredResources) {
+        synchronized (this.syncResources) {
+            Map<String, LockableResource> lockedResources = new HashMap<>();
+            for (LockableResource r : this.resources) {
+                if (!r.isLocked()) continue;
+                lockedResources.put(r.getName(), r);
             }
-            LockableResource locked = lockedResources.remove(r.getName());
-            if (locked != null) {
-                // Merge already locked lock.
-                locked.setDescription(r.getDescription());
-                locked.setLabels(r.getLabels());
-                locked.setEphemeral(false);
-                locked.setNote(r.getNote());
-                mergedResources.add(locked);
-                continue;
+
+            // Removed from configuration locks became ephemeral.
+            ArrayList<LockableResource> mergedResources = new ArrayList<>();
+            Set<String> addedLocks = new HashSet<>();
+            for (LockableResource r : declaredResources) {
+                if (!addedLocks.add(r.getName())) {
+                    continue;
+                }
+                LockableResource locked = lockedResources.remove(r.getName());
+                if (locked != null) {
+                    // Merge already locked lock.
+                    locked.setDescription(r.getDescription());
+                    locked.setLabels(r.getLabels());
+                    locked.setEphemeral(false);
+                    locked.setNote(r.getNote());
+                    mergedResources.add(locked);
+                    continue;
+                }
+                mergedResources.add(r);
             }
-            mergedResources.add(r);
-        }
 
-        for (LockableResource r : lockedResources.values()) {
-            // Removed locks became ephemeral.
-            r.setDescription("");
-            r.setLabels("");
-            r.setNote("");
-            r.setEphemeral(true);
-            mergedResources.add(r);
-        }
+            for (LockableResource r : lockedResources.values()) {
+                // Removed locks became ephemeral.
+                r.setDescription("");
+                r.setLabels("");
+                r.setNote("");
+                r.setEphemeral(true);
+                mergedResources.add(r);
+            }
 
-        this.resources = mergedResources;
+            this.resources = mergedResources;
+        }
     }
 
+    // ---------------------------------------------------------------------------
+    /** Get all resources used by project. */
+    @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesFromProject(String fullName) {
         List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : resources) {
+        for (LockableResource r : this.getReadOnlyResources()) {
             String rName = r.getQueueItemProject();
             if (rName != null && rName.equals(fullName)) {
                 matching.add(r);
@@ -149,9 +174,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return matching;
     }
 
+    // ---------------------------------------------------------------------------
+    /** Get all resources used by build. */
+    @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
         List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : resources) {
+        for (LockableResource r : this.getReadOnlyResources()) {
             Run<?, ?> rBuild = r.getBuild();
             if (rBuild != null && rBuild == build) {
                 matching.add(r);
@@ -160,17 +188,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return matching;
     }
 
-    // ----------------------------------------------------------------------------
-    @SuppressFBWarnings(value = "NP_LOAD_OF_KNOWN_NULL_VALUE", justification = "null value is checked correctly")
+    // ---------------------------------------------------------------------------
+    /**
+     * Check if the label is valid. Valid in this context means, if is configured on someone resource.
+     */
+    @Restricted(NoExternalUse.class)
     public Boolean isValidLabel(@Nullable String label) {
         if (label == null || label.isEmpty()) {
             return false;
         }
-        if (this.getAllLabels().contains(label)) return true;
 
-        final Map<String, Object> params = null;
-        for (LockableResource r : this.resources) {
-            if (r.isValidLabel(label, params)) {
+        for (LockableResource r : this.getReadOnlyResources()) {
+            if (r != null && r.isValidLabel(label)) {
                 return true;
             }
         }
@@ -178,10 +207,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return false;
     }
 
-    // ----------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    /** Returns all configured labels. */
+    @NonNull
+    @Restricted(NoExternalUse.class)
     public Set<String> getAllLabels() {
         Set<String> labels = new HashSet<>();
-        for (LockableResource r : this.resources) {
+        for (LockableResource r : this.getReadOnlyResources()) {
+            if (r == null) {
+                continue;
+            }
             List<String> toAdd = r.getLabelsAsList();
             if (toAdd.isEmpty()) {
                 continue;
@@ -192,13 +227,26 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /** Get amount of free resources contained given *label*
+     *   This method is deprecated (no where used) and is not tested.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     public int getFreeResourceAmount(String label) {
         int free = 0;
-        for (LockableResource r : this.resources) {
-            if (r.isLocked() || r.isQueued() || r.isReserved()) {
+        label = Util.fixEmpty(label);
+
+        if (label == null) {
+            return free;
+        }
+
+        for (LockableResource r : this.getResourcesWithLabel(label)) {
+            if (r == null) {
                 continue;
             }
-            if (r.hasLabel(label)) {
+            if (r.isFree()) {
                 free++;
             }
         }
@@ -208,6 +256,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * @deprecated Use getResourcesWithLabel(String label)
+     * Note: The param *params* is not used (has no effect)
      */
     @Deprecated
     @Restricted(NoExternalUse.class)
@@ -219,7 +268,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * Returns resources matching by given *label*.
-     * Note: The param *params* is not used (has no effect)
      */
     @NonNull
     @Restricted(NoExternalUse.class)
@@ -247,7 +295,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     /**
-     * Get a list of resources matching the script.
+     * Returns a list of resources matching by given *script*.
      *
      * @param script Script
      * @param params Additional parameters
@@ -257,11 +305,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @since 2.0
      */
     @NonNull
+    @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesMatchingScript(
             @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params) throws ExecutionException {
         List<LockableResource> found = new ArrayList<>();
-        for (LockableResource r : this.resources) {
-            if (r.scriptMatches(script, params)) found.add(r);
+        synchronized (this.syncResources) {
+            for (LockableResource r : this.resources) {
+                if (r.scriptMatches(script, params)) found.add(r);
+            }
         }
         return found;
     }
@@ -412,7 +463,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 candidates.retainAll(resources);
             } else {
                 candidates = (systemGroovyScript == null)
-                        ? getResourcesWithLabel(requiredResources.label, params)
+                        ? getResourcesWithLabel(requiredResources.label)
                         : getResourcesMatchingScript(systemGroovyScript, params);
                 cachedCandidates.put(queueItemId, candidates);
             }
@@ -458,7 +509,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // Return false if another item queued for this project -> bail out
     private boolean checkCurrentResourcesStatus(
             List<LockableResource> selected, String project, long taskId, Logger log) {
-        for (LockableResource r : resources) {
+        for (LockableResource r : this.resources) {
             // This project might already have something in queue
             String rProject = r.getQueueItemProject();
             if (rProject != null && rProject.equals(project)) {
@@ -469,7 +520,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     // The project has another buildable item waiting -> bail out
                     log.log(
                             Level.FINEST,
-                            "{0} has another build " + "that already queued resource {1}. Continue queueing.",
+                            "{0} has another build that already queued resource {1}. Continue queueing.",
                             new Object[] {project, r});
                     return false;
                 }
@@ -673,6 +724,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return resourceNames;
     }
 
+    // ---------------------------------------------------------------------------
+    /** Returns names (IDs) off all existing resources (inclusive ephemeral) */
+    @Restricted(NoExternalUse.class)
+    public List<String> getAllResourcesNames() {
+        synchronized (this.syncResources) {
+            return getResourcesNames(this.resources);
+        }
+    }
+
     /**
      * @see #getNextQueuedContext(List, List, boolean, QueuedContextStruct)
      */
@@ -737,10 +797,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return newestEntry;
     }
 
+    // ---------------------------------------------------------------------------
     /** Returns current queue */
     @Restricted(NoExternalUse.class) // used by jelly
     public List<QueuedContextStruct> getCurrentQueuedContext() {
-        return Collections.unmodifiableList(this.queuedContexts);
+        synchronized (this.syncResources) {
+            return Collections.unmodifiableList(this.queuedContexts);
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -796,7 +859,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public boolean addResource(@Nullable final LockableResource resource, final boolean doSave) {
 
         if (resource == null || resource.getName() == null || resource.getName().isEmpty()) {
-            LOGGER.warning("Internal failure: We will add wrong resource: " + resource + getStack());
+            LOGGER.warning("Internal failure: We will add wrong resource: '" + resource + "' " + getStack());
             return false;
         }
         synchronized (this.syncResources) {
@@ -819,7 +882,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     public synchronized boolean reserve(List<LockableResource> resources, String userName) {
         for (LockableResource r : resources) {
-            if (r.isReserved() || r.isLocked() || r.isQueued()) {
+            if (!r.isFree()) {
                 return false;
             }
         }
@@ -852,7 +915,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     public synchronized void reassign(List<LockableResource> resources, String userName) {
         for (LockableResource r : resources) {
-            if (r.isReserved() || r.isLocked() || r.isQueued()) {
+            if (!r.isFree()) {
                 r.unReserve();
             }
             r.setReservedBy(userName);
@@ -1234,6 +1297,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 if (selected.size() >= requiredAmount) {
                     break;
                 }
+                // TODO: it shall be used isFree() here, but in that case we need to change the
+                // logic in parametrized builds and that is much more effort as I want to spend here now
                 if (!rs.isReserved() && !rs.isLocked()) {
                     selected.add(rs);
                 }
@@ -1372,8 +1437,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return (LockableResourcesManager) Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
     }
 
+    // ---------------------------------------------------------------------------
     @Override
-    public synchronized void save() {
+    public void save() {
         if (enableSave == -1) {
             // read system property and cache it.
             enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
@@ -1381,12 +1447,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (enableSave == 0) return; // saving is disabled
 
-        if (BulkChange.contains(this)) return; // no change detected
+        synchronized (this.syncResources) {
+            if (BulkChange.contains(this)) return;
 
-        try {
-            getConfigFile().write(this);
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
+            try {
+                getConfigFile().write(this);
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
+            }
         }
     }
 

@@ -76,9 +76,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     /**
      * Track that a currently reserved resource was originally reserved for someone else, or locked
-     * for some other job, and explicitly taken away - e.g. for SUT post-mortems while a test job
-     * runs. Currently this does not track "who" it was taken from nor intend to give it back - just
-     * for bookkeeping and UI button naming. Cleared when the resource is unReserve'd.
+     * for some other job, and explicitly taken away - e.g. for SUT post-mortem while a test job runs.
+     * Currently this does not track "who" it was taken from nor intend to give it back - just for
+     * bookkeeping and UI button naming. Cleared when the resource is unReserve'd.
      */
     private boolean stolen = false;
 
@@ -372,6 +372,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     /** Return true when resource is free. False otherwise */
+    @Exported
     public boolean isFree() {
         return (!this.isLocked() && !this.isReserved() && !this.isQueued());
     }
@@ -566,8 +567,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public void unReserve() {
-        setReservedBy(null);
-        setReservedTimestamp(null);
+        this.setReservedBy(null);
+        this.setReservedTimestamp(null);
         this.stolen = false;
     }
 

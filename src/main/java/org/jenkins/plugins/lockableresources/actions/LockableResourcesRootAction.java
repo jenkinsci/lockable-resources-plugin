@@ -110,7 +110,7 @@ public class LockableResourcesRootAction implements RootAction {
     @Exported
     @Restricted(NoExternalUse.class) // used by jelly
     public List<LockableResource> getResources() {
-        return LockableResourcesManager.get().getResources();
+        return LockableResourcesManager.get().getReadOnlyResources();
     }
 
     // ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ public class LockableResourcesRootAction implements RootAction {
     public LinkedHashMap<String, LockableResourcesLabel> getLabelsList() {
         LinkedHashMap<String, LockableResourcesLabel> map = new LinkedHashMap<>();
 
-        for (LockableResource r : LockableResourcesManager.get().getResources()) {
+        for (LockableResource r : LockableResourcesManager.get().getReadOnlyResources()) {
             if (r == null || r.getName().isEmpty()) {
                 continue; // defensive, shall never happens, but ...
             }
