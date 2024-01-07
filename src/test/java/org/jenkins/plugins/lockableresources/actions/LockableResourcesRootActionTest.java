@@ -385,6 +385,7 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
         this.LRM.createResourceWithLabel("resource-A", "resource-label-1 ");
         this.LRM.createResourceWithLabel("resource-B", "resource-label-1 resource-label-2");
         this.LRM.createResourceWithLabel(" resource-C", "resource-label-1 \n \t \r resource-label-2 resource-label-3");
+        this.LRM.createResourceWithLabel("resource-D", null);
 
         Set<String> expectedLabels = new HashSet<>();
         expectedLabels.add("resource-label-1");

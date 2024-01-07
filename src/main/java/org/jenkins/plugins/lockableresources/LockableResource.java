@@ -259,7 +259,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      * @param labelToFind Label to find.
      * @return {@code true} if this resource contains the label.
      */
-    @Exported
+    @Restricted(NoExternalUse.class)
     public boolean hasLabel(@CheckForNull String labelToFind) {
         return this.labelsContain(labelToFind);
     }
@@ -372,6 +372,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     /** Return true when resource is free. False otherwise */
+    @Exported
     public boolean isFree() {
         return (!this.isLocked() && !this.isReserved() && !this.isQueued());
     }
@@ -451,6 +452,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      * @return the lock cause or null if not locked
      */
     @CheckForNull
+    @Exported
     public String getLockCause() {
         final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
         final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));

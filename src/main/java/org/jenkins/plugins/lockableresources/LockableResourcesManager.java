@@ -98,6 +98,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Get all resources - read only The same as getResources() but unmodifiable list. The
      * getResources() is unsafe to use because of possible concurrent modification exception.
      */
+    @Restricted(NoExternalUse.class)
     public List<LockableResource> getReadOnlyResources() {
         synchronized (this.syncResources) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.resources));
@@ -193,7 +194,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Check if the label is valid. Valid in this context means, if is configured on someone resource.
      */
     @Restricted(NoExternalUse.class)
-    @SuppressFBWarnings(value = "NP_LOAD_OF_KNOWN_NULL_VALUE", justification = "null value is checked correctly")
     public Boolean isValidLabel(@Nullable String label) {
         if (label == null || label.isEmpty()) {
             return false;
@@ -228,9 +228,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    /** Get amount of free resources contained given *label* */
+    /** Get amount of free resources contained given *label*
+     *   This method is deprecated (no where used) and is not tested.
+     */
     @NonNull
     @Restricted(NoExternalUse.class)
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     public int getFreeResourceAmount(String label) {
         int free = 0;
         label = Util.fixEmpty(label);
@@ -253,6 +257,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * @deprecated Use getResourcesWithLabel(String label)
+     * Note: The param *params* is not used (has no effect)
      */
     @Deprecated
     @Restricted(NoExternalUse.class)
@@ -264,7 +269,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * Returns resources matching by given *label*.
-     * Note: The param *params* is not used (has no effect)
      */
     @NonNull
     @Restricted(NoExternalUse.class)
@@ -306,8 +310,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public List<LockableResource> getResourcesMatchingScript(
             @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params) throws ExecutionException {
         List<LockableResource> found = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
-            if (r.scriptMatches(script, params)) found.add(r);
+        synchronized (this.syncResources) {
+            for (LockableResource r : this.resources) {
+                if (r.scriptMatches(script, params)) found.add(r);
+            }
         }
         return found;
     }
@@ -732,6 +738,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
         return resourceNames;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Returns names (IDs) off all existing resources (inclusive ephemeral) */
+    @Restricted(NoExternalUse.class)
+    public List<String> getAllResourcesNames() {
+        synchronized (this.syncResources) {
+            return getResourcesNames(this.resources);
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -1175,7 +1190,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         for (LockableResource r : candidates) {
-            if (r.isAvailable()) {
+            // TODO: it shall be used isFree() here, but in that case we need to change the
+            // logic in parametrized builds and that is much more effort as I want to spend here now
+            if (!rs.isReserved() && !rs.isLocked()) {
                 found.add(r);
             }
 
