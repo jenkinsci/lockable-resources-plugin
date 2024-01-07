@@ -65,7 +65,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
         }
 
-        
         // determine if there are enough resources available to proceed
         List<LockableResource> available = LockableResourcesManager.get()
                 .checkResourcesAvailability(
