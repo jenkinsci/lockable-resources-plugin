@@ -1192,7 +1192,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource r : candidates) {
             // TODO: it shall be used isFree() here, but in that case we need to change the
             // logic in parametrized builds and that is much more effort as I want to spend here now
-            if (!rs.isReserved() && !rs.isLocked()) {
+            if (!r.isReserved() && !r.isLocked()) {
                 found.add(r);
             }
 
