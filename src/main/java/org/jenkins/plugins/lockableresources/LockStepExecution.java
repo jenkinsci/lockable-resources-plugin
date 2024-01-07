@@ -43,6 +43,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     public boolean start() throws Exception {
         step.validate();
 
+        // normally it might raise a exception, but we check it in the function .validate()
+        // therefore we can skip the try-catch here.
+        ResourceSelectStrategy resourceSelectStrategy =
+                ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+
         getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
         PrintStream logger = getContext().get(TaskListener.class).getLogger();
         logger.println("Trying to acquire lock on [" + step + "]");
@@ -60,14 +65,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
         }
 
-        ResourceSelectStrategy resourceSelectStrategy;
-        try {
-            resourceSelectStrategy =
-                    ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
-        } catch (IllegalArgumentException e) {
-            logger.println("Error: invalid resourceSelectStrategy: " + step.resourceSelectStrategy);
-            return true;
-        }
+        
         // determine if there are enough resources available to proceed
         List<LockableResource> available = LockableResourcesManager.get()
                 .checkResourcesAvailability(
