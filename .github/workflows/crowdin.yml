@@ -15,6 +15,7 @@ permissions:
 jobs:
   synchronize-with-crowdin:
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'jenkinsci'
 
     steps:
 
