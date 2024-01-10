@@ -104,10 +104,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
     public void hardKillWithWaitingRuns() throws Exception {
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                /// FIXME why we need retry here, when you know it, write the comment here or remove it
-                "retry(99) {\n" + "    lock('resource1') {\n" + "        semaphore('wait-inside')\n" + "     }\n" + "}",
-                true));
+        p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore('wait-inside') }", true));
 
         WorkflowRun prevBuild = null;
         for (int i = 0; i < 3; i++) {
@@ -134,14 +131,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                /// FIXME why we need retry here, when you know it, write the comment here or remove it
-                "retry(99) {\n"
-                        + "    lock(label: 'label1', quantity: 1) {\n"
-                        + "        semaphore('wait-inside')\n"
-                        + "     }\n"
-                        + "}",
-                true));
+        p.setDefinition(new CpsFlowDefinition("lock(label: 'label1', quantity: 1) { semaphore('wait-inside')}", true));
 
         WorkflowRun firstPrev = null;
         WorkflowRun secondPrev = null;

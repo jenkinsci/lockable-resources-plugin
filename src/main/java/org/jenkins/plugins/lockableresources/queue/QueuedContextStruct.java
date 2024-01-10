@@ -10,7 +10,6 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Run;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.logging.Level;
@@ -75,9 +74,12 @@ public class QueuedContextStruct implements Serializable {
     public Run<?, ?> getBuild() {
         try {
             return this.getContext().get(Run.class);
-        } catch (IOException | InterruptedException e) {
+        } catch (Exception e) {
             // for some reason there is no Run object for this context
-            LOGGER.log(Level.FINE, "Cannot get the Run object from the context to proceed with lock", e);
+            LOGGER.log(
+                    Level.WARNING,
+                    "Cannot get the build object from the context to proceed with lock. The build probably does not exists (deleted?)",
+                    e);
             return null;
         }
     }
