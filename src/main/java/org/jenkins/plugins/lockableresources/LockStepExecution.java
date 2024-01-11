@@ -43,11 +43,13 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
     public boolean start() throws Exception {
         step.validate();
 
-        getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
-        PrintStream logger = getContext().get(TaskListener.class).getLogger();
-
+        // normally it might raise a exception, but we check it in the function .validate()
+        // therefore we can skip the try-catch here.
         ResourceSelectStrategy resourceSelectStrategy =
                 ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+
+        getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
+        PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
         Run<?, ?> run = getContext().get(Run.class);
         LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.INFO, LOGGER, logger);
