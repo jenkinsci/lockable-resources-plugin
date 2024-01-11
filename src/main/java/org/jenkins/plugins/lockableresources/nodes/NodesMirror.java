@@ -61,20 +61,22 @@ public class NodesMirror extends ComputerListener {
 
     // ---------------------------------------------------------------------------
     private static void deleteNotExistingNodes() {
-        Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
-        while (resourceIterator.hasNext()) {
-            LockableResource resource = resourceIterator.next();
-            if (!resource.isNodeResource() || (Jenkins.get().getNode(resource.getName()) != null)) {
-                continue;
-            }
-            if (resource.isFree()) {
-                // we can remove this resource. Is newer used currently
-                LOGGER.config("lockable-resources-plugin: remove node resource '" + resource.getName() + "'.");
-                resourceIterator.remove();
-            } else {
-                LOGGER.warning("lockable-resources-plugin: can not remove node-resource '"
-                        + resource.getName()
-                        + "'. The resource is currently used (not free).");
+        synchronized (lrm.syncResources) {
+            Iterator<LockableResource> resourceIterator = lrm.getResources().iterator();
+            while (resourceIterator.hasNext()) {
+                LockableResource resource = resourceIterator.next();
+                if (!resource.isNodeResource() || (Jenkins.get().getNode(resource.getName()) != null)) {
+                    continue;
+                }
+                if (resource.isFree()) {
+                    // we can remove this resource. Is newer used currently
+                    LOGGER.config("lockable-resources-plugin: remove node resource '" + resource.getName() + "'.");
+                    resourceIterator.remove();
+                } else {
+                    LOGGER.warning("lockable-resources-plugin: can not remove node-resource '"
+                            + resource.getName()
+                            + "'. The resource is currently used (not free).");
+                }
             }
         }
     }
