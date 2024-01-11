@@ -535,6 +535,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return lock(resources, build, context, null, null, false);
     }
 
+    @Restricted(NoExternalUse.class)
+    public synchronized boolean lock(List<LockableResource> resources, Run<?, ?> build) {
+        return lock(resources, build, null);
+    }
+
     /** Try to lock the resource and return true if locked. */
     public synchronized boolean lock(
             List<LockableResource> resources,
