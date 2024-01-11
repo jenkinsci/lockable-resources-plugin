@@ -1042,11 +1042,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     /**
-     * Make the lockable resource re-usable and notify the queue(s), if any WARNING: Do not use this
-     * from inside the lock step closure which originally locked this resource, to avoid nasty
-     * surprises! Namely, this *might* let a second consumer use the resource quickly, but when the
-     * original closure ends and unlocks again that resource, a third consumer might then effectively
-     * hijack it from the second one.
+     * Make the lockable resource re-usable and notify the queue(s), if any.
+     * <p>
+     * WARNING: Do not use this from inside the lock step closure which originally locked this resource,
+     * to avoid nasty surprises! Namely, this *might* let a second consumer use the resource quickly,
+     * but when the original closure ends and unlocks again that resource, a third consumer might then
+     * effectively hijack it from the second one.
      */
     public synchronized void recycle(List<LockableResource> resources) {
         // Not calling reset() because that also un-queues the resource
