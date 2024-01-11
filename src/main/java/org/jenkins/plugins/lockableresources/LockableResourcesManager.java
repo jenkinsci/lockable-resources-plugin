@@ -509,20 +509,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // Return false if another item queued for this project -> bail out
     private boolean checkCurrentResourcesStatus(
             List<LockableResource> selected, String project, long taskId, Logger log) {
-        for (LockableResource r : this.resources) {
-            // This project might already have something in queue
-            String rProject = r.getQueueItemProject();
-            if (rProject != null && rProject.equals(project)) {
-                if (r.isQueuedByTask(taskId)) {
-                    // this item has queued the resource earlier
-                    selected.add(r);
-                } else {
-                    // The project has another buildable item waiting -> bail out
-                    log.log(
-                            Level.FINEST,
-                            "{0} has another build that already queued resource {1}. Continue queueing.",
-                            new Object[] {project, r});
-                    return false;
+        synchronized (this.syncResources) {
+            for (LockableResource r : this.resources) {
+                // This project might already have something in queue
+                String rProject = r.getQueueItemProject();
+                if (rProject != null && rProject.equals(project)) {
+                    if (r.isQueuedByTask(taskId)) {
+                        // this item has queued the resource earlier
+                        selected.add(r);
+                    } else {
+                        // The project has another buildable item waiting -> bail out
+                        log.log(
+                                Level.FINEST,
+                                "{0} has another build that already queued resource {1}. Continue queueing.",
+                                new Object[] {project, r});
+                        return false;
+                    }
                 }
             }
         }
@@ -571,23 +573,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     private synchronized void freeResources(List<String> unlockResourceNames, @Nullable Run<?, ?> build) {
-        for (String unlockResourceName : unlockResourceNames) {
-            Iterator<LockableResource> resourceIterator = this.resources.iterator();
-            while (resourceIterator.hasNext()) {
-                LockableResource resource = resourceIterator.next();
-                if (resource != null
-                        && resource.getName() != null
-                        && resource.getName().equals(unlockResourceName)) {
-                    if (build == null
-                            || (resource.getBuild() != null
-                                    && build.getExternalizableId()
-                                            .equals(resource.getBuild().getExternalizableId()))) {
-                        // No more contexts, unlock resource
-                        resource.unqueue();
-                        resource.setBuild(null);
-                        uncacheIfFreeing(resource, true, false);
-                        if (resource.isEphemeral()) {
-                            resourceIterator.remove();
+        synchronized (this.syncResources) {
+            for (String unlockResourceName : unlockResourceNames) {
+                Iterator<LockableResource> resourceIterator = this.resources.iterator();
+                while (resourceIterator.hasNext()) {
+                    LockableResource resource = resourceIterator.next();
+                    if (resource != null
+                            && resource.getName() != null
+                            && resource.getName().equals(unlockResourceName)) {
+                        if (build == null
+                                || (resource.getBuild() != null
+                                        && build.getExternalizableId()
+                                                .equals(resource.getBuild().getExternalizableId()))) {
+                            // No more contexts, unlock resource
+                            resource.unqueue();
+                            resource.setBuild(null);
+                            uncacheIfFreeing(resource, true, false);
+                            if (resource.isEphemeral()) {
+                                resourceIterator.remove();
+                            }
                         }
                     }
                 }
@@ -1056,10 +1060,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         final List<LockableResource> oldDeclaredResources = new ArrayList<>(getDeclaredResources());
 
         try (BulkChange bc = new BulkChange(this)) {
-            // reset resources to default which are not currently locked
-            this.resources.removeIf(resource -> !resource.isLocked());
-            req.bindJSON(this, json);
-            bc.commit();
+            synchronized (this.syncResources) {
+                // reset resources to default which are not currently locked
+                this.resources.removeIf(resource -> !resource.isLocked());
+                req.bindJSON(this, json);
+                bc.commit();
+            }
         } catch (IOException exception) {
             LOGGER.log(Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
             return false;
