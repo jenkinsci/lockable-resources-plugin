@@ -270,8 +270,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
             value = Util.fixEmptyAndTrim(value);
 
-            for (String l : LockableResourcesManager.get().getAllLabels())
-                if (value != null && l.startsWith(value)) c.add(l);
+            if (value == null) {
+                return c;
+            }
+            for (String l : LockableResourcesManager.get().getAllLabels()) {
+                if (l.startsWith(value)) {
+                    c.add(l);
+                }
+            }
 
             return c;
         }
@@ -286,10 +292,13 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
             value = Util.fixEmptyAndTrim(value);
 
-            if (value != null) {
-                List<String> allNames = LockableResourcesManager.get().getAllResourcesNames();
-                for (String name : allNames) {
-                    if (name.startsWith(value)) c.add(name);
+            if (value == null) {
+                return c;
+            }
+            List<String> allNames = LockableResourcesManager.get().getAllResourcesNames();
+            for (String name : allNames) {
+                if (name.startsWith(value)) {
+                    c.add(name);
                 }
             }
 
