@@ -58,7 +58,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
 
         // Make sure that b2 is blocked on b1's lock.
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b2);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
 
         // Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the
@@ -69,7 +69,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
         // Make sure that b3 is also blocked still on b1's lock.
-        j.waitForMessage("[resource1] is locked by " + b1.getFullDisplayName() + ", waiting...", b3);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
 
         // Kill b1 hard.
@@ -110,7 +110,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         for (int i = 0; i < 3; i++) {
             WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
             if (prevBuild != null) {
-                j.waitForMessage("[resource1] is locked by " + prevBuild.getFullDisplayName() + ", waiting...", rNext);
+                j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
                 isPaused(rNext, 1, 1);
                 interruptTermKill(prevBuild);
             }
@@ -142,9 +142,9 @@ public class LockStepHardKillTest extends LockStepTestBase {
             j.waitForMessage("Trying to acquire lock on", secondNext);
 
             if (firstPrev != null) {
-                j.waitForMessage("is locked, waiting...", firstNext);
+                j.waitForMessage(", waiting for execution ...", firstNext);
                 isPaused(firstNext, 1, 1);
-                j.waitForMessage("is locked, waiting...", secondNext);
+                j.waitForMessage(", waiting for execution ...", secondNext);
                 isPaused(secondNext, 1, 1);
             }
 

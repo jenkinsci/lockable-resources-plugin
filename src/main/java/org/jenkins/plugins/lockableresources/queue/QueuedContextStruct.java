@@ -10,7 +10,11 @@ package org.jenkins.plugins.lockableresources.queue;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Run;
+import hudson.model.TaskListener;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,11 +49,17 @@ public class QueuedContextStruct implements Serializable {
      */
     private String variableName;
 
+    private long queuedAt = 0;
+
+    // cached candidates
+    public transient List<String> candidates = null;
+
     private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
 
     /*
      * Constructor for the QueuedContextStruct class.
      */
+    @Restricted(NoExternalUse.class)
     public QueuedContextStruct(
             StepContext context,
             List<LockableResourcesStruct> lockableResourcesStruct,
@@ -59,20 +69,25 @@ public class QueuedContextStruct implements Serializable {
         this.lockableResourcesStruct = lockableResourcesStruct;
         this.resourceDescription = resourceDescription;
         this.variableName = variableName;
+        this.queuedAt = new Date().getTime();
     }
 
     /*
      * Gets the pipeline step context.
      */
+    @Restricted(NoExternalUse.class)
     public StepContext getContext() {
         return this.context;
     }
 
     /** Return build, where is the resource used. */
     @CheckForNull
-    @Restricted(NoExternalUse.class) // used by jelly
+    @Restricted(NoExternalUse.class)
     public Run<?, ?> getBuild() {
         try {
+            if (this.getContext() == null) {
+                return null;
+            }
             return this.getContext().get(Run.class);
         } catch (Exception e) {
             // for some reason there is no Run object for this context
@@ -84,6 +99,18 @@ public class QueuedContextStruct implements Serializable {
         }
     }
 
+    @Restricted(NoExternalUse.class)
+    public boolean isValid() {
+        Run<?, ?> run = this.getBuild();
+        if (run == null || run.isBuilding() == false) {
+            // skip this one, for some reason there is no Run object for this context
+            LOGGER.warning("The queue " + this + " will be removed, because the build does not exists");
+            return false;
+        }
+        return true;
+    }
+
+    @Restricted(NoExternalUse.class)
     /*
      * Gets the required resources.
      */
@@ -91,6 +118,7 @@ public class QueuedContextStruct implements Serializable {
         return this.lockableResourcesStruct;
     }
 
+    @Restricted(NoExternalUse.class)
     /*
      * Gets the resource description for logging messages.
      */
@@ -98,11 +126,42 @@ public class QueuedContextStruct implements Serializable {
         return this.resourceDescription;
     }
 
+    @Restricted(NoExternalUse.class)
     /*
      * Gets the variable name to save the locks taken.
      */
     public String getVariableName() {
         return this.variableName;
+    }
+
+    /** Get time-ticks, when the item has been added into queue */
+    @Restricted(NoExternalUse.class)
+    public long getAddTime() {
+        return queuedAt;
+    }
+
+    @Restricted(NoExternalUse.class)
+    public String toString() {
+        return "build: "
+                + this.getBuild()
+                + " resources: "
+                + this.getResourceDescription()
+                + " added at: "
+                + this.getAddTime();
+    }
+
+    @Restricted(NoExternalUse.class)
+    public PrintStream getLogger() {
+        PrintStream logger = null;
+        try {
+            TaskListener taskListener = this.getContext().get(TaskListener.class);
+            if (taskListener != null) {
+                logger = taskListener.getLogger();
+            }
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.FINE, "Could not get logger for next context: " + e, e);
+        }
+        return logger;
     }
 
     private static final long serialVersionUID = 1L;
