@@ -52,7 +52,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
         Run<?, ?> run = getContext().get(Run.class);
-        LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.INFO, LOGGER, logger);
+        LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
         List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
