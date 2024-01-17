@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
@@ -28,8 +29,10 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     public String resource = null;
 
     @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String label = null;
 
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public int quantity = 0;
 
     LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
