@@ -48,16 +48,17 @@ public class LockableResourcesStruct implements Serializable {
         queuedAt = new Date().getTime();
         required = new ArrayList<>();
 
-        LockableResourcesManager resourcesManager = LockableResourcesManager.get();
+        List<String> names = new ArrayList<>();
         for (String name : property.getResources()) {
             String resourceName = env.expand(name);
             if (resourceName == null) {
                 continue;
             }
-            resourcesManager.createResource(resourceName);
-            LockableResource r = resourcesManager.fromName(resourceName);
-            this.required.add(r);
+            names.add(resourceName);
         }
+
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        this.required = lrm.fromNames(names, /*create un-existent resources */ true);
 
         label = env.expand(property.getLabelName());
         if (label == null) label = "";
@@ -135,28 +136,23 @@ public class LockableResourcesStruct implements Serializable {
 
     @Override
     public String toString() {
-        return "Required resources: "
-                + this.required
-                + ", Required label: "
-                + this.label
-                + ", Required label script: "
-                + (this.resourceMatchScript != null ? this.resourceMatchScript.getScript() : "")
-                + ", Variable name: "
-                + this.requiredVar
-                + ", Number of resources: "
-                + this.requiredNumber;
-    }
-
-    /** Returns timestamp when the resource has been added into queue. */
-    @Restricted(NoExternalUse.class) // used by jelly
-    public Date getQueuedTimestamp() {
-        return new Date(this.queuedAt);
-    }
-
-    /** Check if the queue takes too long. At the moment "too long" means over 1 hour. */
-    @Restricted(NoExternalUse.class) // used by jelly
-    public boolean takeTooLong() {
-        return (new Date().getTime() - this.queuedAt) > 3600000L;
+        String str = "";
+        if (this.required != null && !this.required.isEmpty()) {
+            str += "Required resources: " + this.required;
+        }
+        if (this.label != null && !this.label.isEmpty()) {
+            str += "Required label: " + this.label;
+        }
+        if (this.resourceMatchScript != null) {
+            str += "Required label script: " + this.resourceMatchScript.getScript();
+        }
+        if (this.requiredVar != null) {
+            str += ", Variable name: " + this.requiredVar;
+        }
+        if (this.requiredNumber != null) {
+            str += ", Number of resources: " + this.requiredNumber;
+        }
+        return str;
     }
 
     /** Check if the *resource* is required by this struct / queue */

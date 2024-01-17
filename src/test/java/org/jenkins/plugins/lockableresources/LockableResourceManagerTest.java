@@ -28,7 +28,7 @@ public class LockableResourceManagerTest {
     public void validationFailure() throws Exception {
         RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
         LockableResourcesManager.get().createResource("resource1");
-        LockableResource r = LockableResourcesManager.get().getResources().get(0);
+        LockableResource r = LockableResourcesManager.get().getFirst();
         r.setLabels("some-label");
 
         assertEquals(

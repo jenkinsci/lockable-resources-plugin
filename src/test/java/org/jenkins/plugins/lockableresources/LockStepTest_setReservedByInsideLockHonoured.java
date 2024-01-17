@@ -196,7 +196,7 @@ public class LockStepTest_setReservedByInsideLockHonoured extends LockStepTestBa
         j.waitForMessage("Locked resource cause 2-2", b1);
         j.assertLogContains("Locked resource cause 1-5", b1);
 
-        j.assertLogContains("is locked, waiting...", b1);
+        j.assertLogContains(", waiting for execution ...", b1);
 
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
 

@@ -31,8 +31,8 @@ public class ConfigurationAsCodeTest {
 
     @Test
     public void should_support_configuration_as_code() {
-        List<LockableResource> declaredResources =
-                LockableResourcesManager.get().getDeclaredResources();
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
                 "The number of declared resources is wrong. Check your configuration-as-code.yml",
                 1,
@@ -45,10 +45,12 @@ public class ConfigurationAsCodeTest {
         assertEquals("Reserved_A", declaredResource.getReservedBy());
         assertEquals("Note A", declaredResource.getNote());
 
-        List<LockableResource> resources = LockableResourcesManager.get().getResources();
-        assertEquals("The number of resources is wrong. Check your configuration-as-code.yml", 1, resources.size());
+        assertEquals(
+                "The number of resources is wrong. Check your configuration-as-code.yml",
+                1,
+                LRM.getResources().size());
 
-        LockableResource resource = resources.get(0);
+        LockableResource resource = LRM.getFirst();
         assertEquals("Resource_A", resource.getName());
         assertEquals("Description_A", resource.getDescription());
         assertEquals("Label_A", resource.getLabels());

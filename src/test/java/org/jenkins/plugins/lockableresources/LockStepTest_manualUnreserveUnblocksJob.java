@@ -43,7 +43,7 @@ public class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
         p.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "    echo('I am inside')\n" + "}\n", true));
 
         WorkflowRun r = p.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is locked, waiting...", r);
+        j.waitForMessage("[resource1] is not free, waiting for execution ...", r);
         j.assertLogNotContains("I am inside", r);
         TestHelpers.clickButton(wc, "unreserve");
         j.waitForMessage("I am inside", r);
