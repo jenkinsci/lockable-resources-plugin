@@ -1,7 +1,10 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.Assert.assertFalse;
+
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
+import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import java.util.Collections;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -10,6 +13,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.Rule;
 import org.junit.Test;
+import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.JenkinsSessionRule;
 
 public class LockStepWithRestartTest extends LockStepTestBase {
@@ -143,6 +147,47 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             isPaused(b1, 1, 0);
 
             j.waitUntilNoActivity();
+        });
+    }
+
+    @Test
+    public void checkQueueAfterRestart() throws Throwable {
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+
+            lrm.createResourceWithLabel("resource1", "label");
+            lrm.createResourceWithLabel("resource2", "label");
+            WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition("lock(label: 'label', quantity: 1) { echo 'inside lock' }", true));
+
+            j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+            j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
+
+            lrm.reserve(Collections.singletonList(lrm.fromName("resource1")), "test");
+            lrm.reserve(Collections.singletonList(lrm.fromName("resource2")), "test");
+
+            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("The resource [resource1] is reserved by test.", b1);
+        });
+
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
+            WorkflowRun b1 = p.getBuildByNumber(1);
+
+            j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+            j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
+
+            JenkinsRule.WebClient wc = j.createWebClient();
+            wc.login("user");
+            TestHelpers.clickButton(wc, "unreserve");
+
+            lrm.unreserve(Collections.singletonList(lrm.fromName("resource1")));
+
+            assertFalse(lrm.fromName("resource1").isReserved());
+
+            j.waitForMessage("Lock acquired on [Label: label, Quantity: 1]", b1);
+            j.waitForMessage("Lock released on resource [Label: label, Quantity: 1]", b1);
         });
     }
 }
