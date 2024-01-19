@@ -176,8 +176,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                             @Override
                             public void expand(@NonNull EnvVars env) {
                                 final LinkedHashMap<String, String> variables = new LinkedHashMap<>();
-                                final String resourceNames =
-                                        lockedResources.keySet().stream().collect(Collectors.joining(","));
+                                final String resourceNames = String.join(",", lockedResources.keySet());
                                 variables.put(variable, resourceNames);
                                 int index = 0;
                                 for (Entry<String, List<LockableResourceProperty>> lockResourceEntry :

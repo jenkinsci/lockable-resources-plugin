@@ -236,7 +236,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             String label = Util.fixEmptyAndTrim(labelName);
             String script = Util.fixEmptyAndTrim(resourceMatchScript);
 
-            if (number == null || number.equals("") || number.trim().equals("0")) {
+            if (number == null || number.isEmpty() || number.trim().equals("0")) {
                 return FormValidation.ok();
             }
 

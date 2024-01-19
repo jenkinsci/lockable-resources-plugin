@@ -358,9 +358,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     private String getStack() {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (StackTraceElement st : Thread.currentThread().getStackTrace()) {
-            buf.append("\n" + st);
+            buf.append("\n").append(st);
         }
         return buf.toString();
     }
@@ -1213,7 +1213,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     // for debug purpose
     private String getCauses(List<LockableResource> resources) {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         int currentSize = 0;
         for (LockableResource resource : resources) {
             String cause = resource.getLockCauseDetail();
@@ -1224,7 +1224,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 buf.append("\n  ...");
                 break;
             }
-            buf.append("\n  " + cause);
+            buf.append("\n  ").append(cause);
 
             final String queueCause = getQueueCause(resource);
             if (!queueCause.isEmpty()) {
@@ -1237,7 +1237,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     // for debug purpose
     private String getQueueCause(final LockableResource resource) {
-        Map<Run<?, ?>, Integer> usage = new HashMap<Run<?, ?>, Integer>();
+        Map<Run<?, ?>, Integer> usage = new HashMap<>();
 
         for (QueuedContextStruct entry : this.queuedContexts) {
 
@@ -1263,7 +1263,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             usage.put(build, count);
         }
 
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         int currentSize = 0;
         for (Map.Entry<Run<?, ?>, Integer> entry : usage.entrySet()) {
             Run<?, ?> build = entry.getKey();
@@ -1271,8 +1271,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             if (build != null && count > 0) {
                 currentSize++;
-                buf.append("\n    Queued " + count + " time(s) by build " + " " + build.getFullDisplayName() + " "
-                        + ModelHyperlinkNote.encodeTo(build));
+                buf.append("\n    Queued ")
+                        .append(count)
+                        .append(" time(s) by build ")
+                        .append(" ")
+                        .append(build.getFullDisplayName())
+                        .append(" ")
+                        .append(ModelHyperlinkNote.encodeTo(build));
 
                 if (currentSize >= enabledCausesCount) {
                     buf.append("\n    ...");
