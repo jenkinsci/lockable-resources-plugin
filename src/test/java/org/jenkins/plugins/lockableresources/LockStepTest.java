@@ -428,12 +428,7 @@ public class LockStepTest extends LockStepTestBase {
     public void unlockButtonWithWaitingRuns() throws Exception {
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                // "retry(99) {\n"
-                "    lock('resource1') {\n" + "        semaphore('wait-inside')\n" + "     }\n"
-                // + "}"
-                ,
-                true));
+        p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore('wait-inside') }", true));
 
         JenkinsRule.WebClient wc = j.createWebClient();
 
