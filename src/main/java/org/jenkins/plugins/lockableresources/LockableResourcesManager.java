@@ -626,7 +626,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             uncacheIfFreeing(resource, true, false);
 
             if (resource.isEphemeral()) {
-                LOGGER.info("Remove ephemeral resource: " + resource);
+                LOGGER.fine("Remove ephemeral resource: " + resource);
                 this.resources.remove(resource);
             }
         }
