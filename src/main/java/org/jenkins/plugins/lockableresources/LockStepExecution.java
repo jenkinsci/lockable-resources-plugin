@@ -66,7 +66,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     if (lrm.createResource(resource.resource)) {
                         LockableResourcesManager.printLogs(
                                 "Resource [" + resource.resource + "] did not exist. Created.",
-                                Level.INFO,
+                                Level.FINE,
                                 LOGGER,
                                 logger);
                     }
@@ -113,12 +113,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         if (step.skipIfLocked) {
             this.printBlockCause(logger, resourceHolderList);
             LockableResourcesManager.printLogs(
-                    "[" + step + "] is not free, skipping execution ...", Level.INFO, LOGGER, logger);
+                    "[" + step + "] is not free, skipping execution ...", Level.FINE, LOGGER, logger);
             getContext().onSuccess(null);
         } else {
             this.printBlockCause(logger, resourceHolderList);
             LockableResourcesManager.printLogs(
-                    "[" + step + "] is not free, waiting for execution ...", Level.INFO, LOGGER, logger);
+                    "[" + step + "] is not free, waiting for execution ...", Level.FINE, LOGGER, logger);
             LockableResourcesManager lrm = LockableResourcesManager.get();
             lrm.queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
         }
@@ -154,7 +154,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             node = context.get(FlowNode.class);
             logger = context.get(TaskListener.class).getLogger();
             LockableResourcesManager.printLogs(
-                    "Lock acquired on [" + resourceDescription + "]", Level.INFO, LOGGER, logger);
+                    "Lock acquired on [" + resourceDescription + "]", Level.FINE, LOGGER, logger);
         } catch (Exception e) {
             context.onFailure(e);
             return;
@@ -224,7 +224,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
             LockableResourcesManager.printLogs(
                     "Lock released on resource [" + resourceDescription + "]",
-                    Level.INFO,
+                    Level.FINE,
                     LOGGER,
                     context.get(TaskListener.class).getLogger());
         }
