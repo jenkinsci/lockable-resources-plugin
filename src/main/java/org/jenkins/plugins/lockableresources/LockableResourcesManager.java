@@ -1274,7 +1274,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 buf.append("\n    Queued ")
                         .append(count)
                         .append(" time(s) by build ")
-                        .append(" ")
                         .append(build.getFullDisplayName())
                         .append(" ")
                         .append(ModelHyperlinkNote.encodeTo(build));
