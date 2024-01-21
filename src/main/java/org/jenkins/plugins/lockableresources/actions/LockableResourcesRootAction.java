@@ -279,14 +279,14 @@ public class LockableResourcesRootAction implements RootAction {
     // ---------------------------------------------------------------------------
     private void informPerformanceIssue() {
         String method = Thread.currentThread().getStackTrace()[2].getMethodName();
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (StackTraceElement st : Thread.currentThread().getStackTrace()) {
-            buf.append("\n" + st);
+            buf.append("\n").append(st);
         }
         LOGGER.warning("lockable-resources-plugin: The method "
                 + method
                 + " has been deprecated due performance issues. When you see this message, please inform plugin developers:"
-                + buf.toString());
+                + buf);
     }
 
     // ---------------------------------------------------------------------------

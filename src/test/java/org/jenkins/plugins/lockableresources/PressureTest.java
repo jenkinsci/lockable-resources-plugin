@@ -54,10 +54,10 @@ public class PressureTest extends LockStepTestBase {
         // create resources
         LOGGER.info("Create resources with labels");
         for (int i = 1; i <= resourcesCount; i++) {
-            lrm.createResourceWithLabel("resourceA_" + Integer.toString(i), "label1 label2");
-            lrm.createResourceWithLabel("resourceAA_" + Integer.toString(i), "label");
-            lrm.createResourceWithLabel("resourceAAA_" + Integer.toString(i), "label1");
-            lrm.createResourceWithLabel("resourceAAAA_" + Integer.toString(i), "(=%/!(/)?$/ HH( RU))");
+            lrm.createResourceWithLabel("resourceA_" + i, "label1 label2");
+            lrm.createResourceWithLabel("resourceAA_" + i, "label");
+            lrm.createResourceWithLabel("resourceAAA_" + i, "label1");
+            lrm.createResourceWithLabel("resourceAAAA_" + i, "(=%/!(/)?$/ HH( RU))");
         }
 
         // define groovy script used by our test jobs
@@ -137,14 +137,14 @@ public class PressureTest extends LockStepTestBase {
         // create more resources until the first job has been started
         LOGGER.info("Create more resources");
         for (int i = 1; i <= resourcesCount; i++) {
-            lrm.createResourceWithLabel("resourceB_" + Integer.toString(i), "label1");
+            lrm.createResourceWithLabel("resourceB_" + i, "label1");
         }
 
         // create jenkins nodes. All shall be mirrored to resources
         LOGGER.info("Create jenkins nodes");
         for (int i = 1; i <= nodesCount; i++) {
             j.createSlave("AgentAAA_" + i, "label label1 label2", null);
-            lrm.createResourceWithLabel("resourceC_" + Integer.toString(i), "label1");
+            lrm.createResourceWithLabel("resourceC_" + i, "label1");
             j.createSlave("AGENT_BBB_" + i, null, null);
         }
 
@@ -156,7 +156,7 @@ public class PressureTest extends LockStepTestBase {
         // create more resources until the first job has been started
         LOGGER.info("Additional resources");
         for (int i = 1; i <= resourcesCount; i++) {
-            lrm.createResourceWithLabel("resourceD_" + Integer.toString(i), "label1");
+            lrm.createResourceWithLabel("resourceD_" + i, "label1");
         }
 
         // create more jenkins nodes to make more chaos
