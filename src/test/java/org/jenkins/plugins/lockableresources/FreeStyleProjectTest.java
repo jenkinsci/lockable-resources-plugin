@@ -358,7 +358,7 @@ public class FreeStyleProjectTest {
         synchronized (fb1) {
             fb1.notifyAll();
         }
-        j.assertLogContains("Continue", fb1);
+        j.waitForMessage("Continue", fb1);
         j.waitForMessage("released lock on [resource1]", fb1);
         j.waitForCompletion(fb1);
 
