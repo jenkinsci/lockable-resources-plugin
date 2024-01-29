@@ -57,8 +57,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             for (ParameterValue p : pa.getParameters()) {
                 try {
                     String value = p.createVariableResolver(null).resolve(p.getName());
-                    if (value != null)
-                        env.put(p.getName(), value);
+                    if (value != null) env.put(p.getName(), value);
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Unable to resolve parameter, " + p.getName(), e);
                 }
@@ -79,7 +78,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             try {
                 resourceNumber = Integer.parseInt(resources.requiredNumber);
             } catch (NumberFormatException e) {
-                LOGGER.log(Level.WARNING, "Failed to convert the required number to an integer, " + resources.requiredNumber, e);
+                LOGGER.log(
+                        Level.WARNING,
+                        "Failed to convert the required number to an integer, " + resources.requiredNumber,
+                        e);
                 resourceNumber = 0;
             }
         }

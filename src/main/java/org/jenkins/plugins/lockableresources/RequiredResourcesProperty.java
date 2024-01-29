@@ -159,7 +159,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String value,
                 @QueryParameter String labelName,
                 @QueryParameter boolean script,
-                @AncestorInPath AbstractProject<?,?> project) {
+                @AncestorInPath AbstractProject<?, ?> project) {
             // check permission, security first
             checkPermission(project);
 
@@ -205,7 +205,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String value,
                 @QueryParameter String resourceNames,
                 @QueryParameter boolean script,
-                @AncestorInPath AbstractProject<?,?> project) {
+                @AncestorInPath AbstractProject<?, ?> project) {
             // check permission, security first
             checkPermission(project);
 
@@ -237,7 +237,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String resourceNames,
                 @QueryParameter String labelName,
                 @QueryParameter String resourceMatchScript,
-                @AncestorInPath AbstractProject<?,?> project) {
+                @AncestorInPath AbstractProject<?, ?> project) {
             // check permission, security first
             checkPermission(project);
 
@@ -268,14 +268,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             if (names != null) {
                 numResources = names.split("\\s+").length;
             } else if (label != null) {
-                numResources = LockableResourcesManager.get().getResourcesWithLabel(label, null).size();
+                numResources = LockableResourcesManager.get()
+                        .getResourcesWithLabel(label, null)
+                        .size();
             } else if (script != null) {
                 numResources = Integer.MAX_VALUE;
             }
 
             if (numAsInt > numResources) {
-                return FormValidation.error(
-                        String.format(Messages.error_givenAmountIsGreaterThanResourcesAmount(), numAsInt, numResources));
+                return FormValidation.error(String.format(
+                        Messages.error_givenAmountIsGreaterThanResourcesAmount(), numAsInt, numResources));
             }
             return FormValidation.ok();
         }
