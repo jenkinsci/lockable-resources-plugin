@@ -89,7 +89,9 @@ public class LockedResourcesBuildAction implements Action {
     // -------------------------------------------------------------------------
     /** Add the resource to build action.*/
     @Restricted(NoExternalUse.class)
-    private void add(ResourcePOJO r) {
+    // since the list *this.lockedResources* might be updated from multiple (parallel)
+    // stages, this operation need to be synchronized
+    private synchronized void add(ResourcePOJO r) {
         for (ResourcePOJO pojo : this.lockedResources) {
             if (pojo.getName().equals(r.getName())) {
                 pojo.inc();
