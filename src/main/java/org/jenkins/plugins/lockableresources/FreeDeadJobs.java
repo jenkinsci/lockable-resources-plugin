@@ -11,6 +11,8 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,17 +31,22 @@ public final class FreeDeadJobs {
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
         synchronized (lrm.syncResources) {
+            List<LockableResource> orphan = new ArrayList<>();
             LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
             for (LockableResource resource : lrm.getResources()) {
                 if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
-                    LOG.log(
-                            Level.INFO,
-                            "lockable-resources-plugin reset resource "
-                                    + resource.getName()
-                                    + " due post mortem job: "
-                                    + resource.getBuildName());
-                    resource.recycle();
+                    orphan.add(resource);
                 }
+            }
+
+            for (LockableResource resource : orphan) {
+                LOG.log(
+                        Level.INFO,
+                        "lockable-resources-plugin reset resource "
+                                + resource.getName()
+                                + " due post mortem job: "
+                                + resource.getBuildName());
+                resource.recycle();
             }
         }
     }
