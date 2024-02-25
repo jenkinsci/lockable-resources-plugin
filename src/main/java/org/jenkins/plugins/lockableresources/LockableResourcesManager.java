@@ -1179,7 +1179,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                             + " possible resource(s). Waiting for correct amount: "
                             + amount
                             + "."
-                            + "This may stuck, until you crate enough resources",
+                            + "This may remain stuck, until you create enough resources",
                     logger,
                     Level.WARNING);
             return null; // there are not enough resources
