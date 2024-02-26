@@ -28,6 +28,9 @@
       <f:entry title="${%entry.resourceNumber.title}" field="resourceNumber">
         <f:textbox/>
       </f:entry>
+      <f:entry title="${%entry.priority.title}" field="priority">
+        <f:number/>
+      </f:entry>
     </f:nested>
   </f:optionalBlock>
 </j:jelly>

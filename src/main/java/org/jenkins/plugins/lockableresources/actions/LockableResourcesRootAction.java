@@ -298,7 +298,7 @@ public class LockableResourcesRootAction implements RootAction {
 
         for (QueuedContextStruct context : currentQueueContext) {
             for (LockableResourcesStruct resourceStruct : context.getResources()) {
-                queue.add(resourceStruct, context.getBuild());
+                queue.add(resourceStruct, context);
             }
         }
 
@@ -319,8 +319,8 @@ public class LockableResourcesRootAction implements RootAction {
 
         // -------------------------------------------------------------------------
         @Restricted(NoExternalUse.class) // used by jelly
-        public void add(final LockableResourcesStruct resourceStruct, final Run<?, ?> build) {
-            QueueStruct queueStruct = new QueueStruct(resourceStruct, build);
+        public void add(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context) {
+            QueueStruct queueStruct = new QueueStruct(resourceStruct, context);
             queue.add(queueStruct);
             if (resourceStruct.queuedAt == 0) {
                 // Older versions of this plugin might miss this information.
@@ -352,17 +352,23 @@ public class LockableResourcesRootAction implements RootAction {
             String groovyScript;
             String requiredNumber;
             long queuedAt = 0;
+            int priority = 0;
+            String id = null;
             Run<?, ?> build;
 
-            public QueueStruct(final LockableResourcesStruct resourceStruct, final Run<?, ?> build) {
+            public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context) {
                 this.requiredResources = resourceStruct.required;
                 this.requiredLabel = resourceStruct.label;
                 this.requiredNumber = resourceStruct.requiredNumber;
                 this.queuedAt = resourceStruct.queuedAt;
-                this.build = build;
+                this.build = context.getBuild();
+                this.priority = context.getPriority();
+                this.id = context.getId();
 
                 final SecureGroovyScript systemGroovyScript = resourceStruct.getResourceMatchScript();
-                if (systemGroovyScript != null) this.groovyScript = systemGroovyScript.getScript();
+                if (systemGroovyScript != null) {
+                    this.groovyScript = systemGroovyScript.getScript();
+                }
             }
 
             // -----------------------------------------------------------------------
@@ -423,6 +429,25 @@ public class LockableResourcesRootAction implements RootAction {
             public Date getQueuedTimestamp() {
                 return new Date(this.queuedAt);
             }
+
+            // -----------------------------------------------------------------------
+            /** Returns queue priority. */
+            @Restricted(NoExternalUse.class) // used by jelly
+            public int getPriority() {
+                if (this.id == null) {
+                    return 0;
+                }
+                return this.priority;
+            }
+
+            @Restricted(NoExternalUse.class)
+            public String getId() {
+                if (this.id == null) {
+                    return "NN";
+                }
+                return this.id;
+            }
+
 
             @Restricted(NoExternalUse.class) // used by jelly
             public boolean resourcesMatch() {
@@ -622,6 +647,34 @@ public class LockableResourcesRootAction implements RootAction {
 
             rsp.forwardToPreviousPage(req);
         }
+    }
+
+    
+
+    // ---------------------------------------------------------------------------
+    @RequirePOST
+    public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(UNLOCK);
+
+        final String queueId = req.getParameter("id");
+        final String newIndexStr = req.getParameter("index");
+
+        LOGGER.fine("doChangeQueueOrder, id: " + queueId + " newIndexStr: " + newIndexStr);
+
+        final int newIndex;
+        try {
+          newIndex = Integer.parseInt(newIndexStr);
+        } catch (NumberFormatException e) {
+           rsp.sendError(423, Messages.error_isNotANumber(newIndexStr));
+           return;
+        }
+
+        if (LockableResourcesManager.get().changeQueueOrder(queueId, newIndex - 1) == false) {
+           rsp.sendError(423, Messages.error_invalidIndex(newIndexStr));
+           return;
+        }
+    
+        rsp.forwardToPreviousPage(req);
     }
 
     // ---------------------------------------------------------------------------

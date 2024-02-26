@@ -75,7 +75,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         }
         // make sure there is an actual resource specified
         if (resource != null) {
-            return resource;
+            return "Resource: " + resource;
         }
         return "[no resource/label specified - probably a bug]";
     }

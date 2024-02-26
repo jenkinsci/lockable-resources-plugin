@@ -7,6 +7,26 @@ function find_resource_name(element) {
   return resourceName;
 }
 
+function changeQueueOrder(button, queueId) {
+
+  dialog
+      .prompt(i18n("queue-title"), {
+        message: i18n("queue-message", queueId),
+        minWidth: "450px",
+        maxWidth: "600px" })
+      .then(
+        (newPosition) => {
+          var form = document.createElement("form");
+          form.setAttribute("method", "POST");
+          form.setAttribute("action", "changeQueueOrder?id=" + queueId + "&index=" + newPosition);
+          crumb.appendToForm(form);
+          document.body.appendChild(form);
+          form.submit();
+          notificationBar.show(i18n("queue-on-success"), notificationBar.SUCCESS);
+        }
+      );
+}
+
 function resource_action(button, action) {
   // TODO: Migrate to form:link after Jenkins 2.233 (for button-styled links)
   var form = document.createElement('form');
@@ -16,7 +36,7 @@ function resource_action(button, action) {
   crumb.appendToForm(form);
   document.body.appendChild(form);
   form.submit();
-  notificationBar.show(action + ' was successfully performed on ' + resourceName, notificationBar.SUCCESS);
+  notificationBar.show(i18n("action-success", action, resourceName), notificationBar.SUCCESS);
 }
 
 function replaceNote(element, resourceName) {
@@ -80,3 +100,9 @@ jQuery(document).ready(function() {
       }
   });
 } );
+
+
+
+function i18n(messageId, arg0, arg1) {
+  return document.querySelector("#i18n").getAttribute("data-" + messageId).replace("{0}", arg0).replace("{1}", arg1);
+}

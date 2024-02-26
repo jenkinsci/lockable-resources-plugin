@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import java.util.UUID;
 
 /*
  * This class is used to queue pipeline contexts
@@ -49,12 +50,14 @@ public class QueuedContextStruct implements Serializable {
      */
     private String variableName;
 
-    private long queuedAt = 0;
+    private int priority = 0;
 
     // cached candidates
     public transient List<String> candidates = null;
 
     private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
+
+    private transient String id = null;
 
     /*
      * Constructor for the QueuedContextStruct class.
@@ -64,12 +67,34 @@ public class QueuedContextStruct implements Serializable {
             StepContext context,
             List<LockableResourcesStruct> lockableResourcesStruct,
             String resourceDescription,
-            String variableName) {
+            String variableName,
+            int priority) {
         this.context = context;
         this.lockableResourcesStruct = lockableResourcesStruct;
         this.resourceDescription = resourceDescription;
         this.variableName = variableName;
-        this.queuedAt = new Date().getTime();
+        this.priority = priority;
+        this.id = UUID.randomUUID().toString();
+    }
+
+    @Restricted(NoExternalUse.class)
+    public int compare(QueuedContextStruct other) {
+        if (this.priority > other.getPriority()) return -1;
+        else if (this.priority == other.getPriority()) return 0;
+        else return 1;
+    }
+
+    @Restricted(NoExternalUse.class)
+    public int getPriority() {
+        return this.priority;
+    }
+
+    @Restricted(NoExternalUse.class)
+    public String getId() {
+        if (this.id == null) {
+            this.id  = UUID.randomUUID().toString();
+        }
+        return this.id;
     }
 
     /*
@@ -131,20 +156,17 @@ public class QueuedContextStruct implements Serializable {
         return this.variableName;
     }
 
-    /** Get time-ticks, when the item has been added into queue */
-    @Restricted(NoExternalUse.class)
-    public long getAddTime() {
-        return queuedAt;
-    }
-
     @Restricted(NoExternalUse.class)
     public String toString() {
         return "build: "
                 + this.getBuild()
                 + " resources: "
                 + this.getResourceDescription()
-                + " added at: "
-                + this.getAddTime();
+                + " priority: "
+                + this.priority
+                + " id: "
+                + this.getId()
+                ;
     }
 
     @Restricted(NoExternalUse.class)

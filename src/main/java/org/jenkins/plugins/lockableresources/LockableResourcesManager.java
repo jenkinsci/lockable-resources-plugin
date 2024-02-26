@@ -624,30 +624,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resource.unqueue();
             resource.setBuild(null);
             uncacheIfFreeing(resource, true, false);
-
-            if (resource.isEphemeral()) {
-                LOGGER.info("Remove ephemeral resource: " + resource);
-                this.resources.remove(resource);
-            }
         }
+        removeEphemeralResources(unlockResources);
     }
 
     // ---------------------------------------------------------------------------
     public void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-        unlock(resourcesToUnLock, build, false);
+        List<String> resourceNamesToUnLock = LockableResourcesManager.getResourcesNames(resourcesToUnLock);
+        this.unlockNames(resourceNamesToUnLock, build);
     }
 
     // ---------------------------------------------------------------------------
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     public void unlock(
             @Nullable List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
-        List<String> resourceNamesToUnLock = LockableResourcesManager.getResourcesNames(resourcesToUnLock);
-        this.unlockNames(resourceNamesToUnLock, build, inversePrecedence);
+        unlock(resourcesToUnLock, build);
     }
 
-    // ---------------------------------------------------------------------------
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     public void unlockNames(
             @Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
+        this.unlockNames(resourceNamesToUnLock, build);
+    }
+    // ---------------------------------------------------------------------------
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    public void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build) {
         // make sure there is a list of resource names to unlock
         if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
             return;
@@ -658,7 +661,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             // process as many contexts as possible
             this.lastCheckedQueueIndex = -1;
-            while (resourceNamesToUnLock.size() > 0 && proceedNextContext(inversePrecedence)) {
+            while (resourceNamesToUnLock.size() > 0 && proceedNextContext()) {
                 for (String resourceName : resourceNamesToUnLock) {
                     LockableResource r = fromName(resourceName);
                     if (r == null) {
@@ -678,9 +681,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
     }
 
-    private boolean proceedNextContext(boolean inversePrecedence) {
-        LOGGER.finest("inversePrecedence: " + inversePrecedence);
-        QueuedContextStruct nextContext = this.getNextQueuedContext(inversePrecedence);
+    private boolean proceedNextContext() {
+        QueuedContextStruct nextContext = this.getNextQueuedContext();
         LOGGER.finest("nextContext: " + nextContext);
         // no context is queued which can be started once these resources are free'd.
         if (nextContext == null) {
@@ -722,8 +724,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 resourcesToLock,
                 nextContext.getContext(),
                 nextContext.getResourceDescription(),
-                nextContext.getVariableName(),
-                inversePrecedence);
+                nextContext.getVariableName());
         return true;
     }
 
@@ -753,65 +754,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /**
      * Returns the next queued context with all its requirements satisfied.
      *
-     * @param resourceNamesToUnLock resource names locked at the moment but available if required (as
-     *     they are going to be unlocked soon)
-     * @param resourceNamesToUnReserve resource names reserved at the moment but available if required
-     *     (as they are going to be un-reserved soon)
-     * @param inversePrecedence false pick up context as they are in the queue or true to take the
-     *     most recent one (satisfying requirements)
-     * @return the context or null
      */
     @CheckForNull
-    private QueuedContextStruct getNextQueuedContext(boolean inversePrecedence) {
+    private QueuedContextStruct getNextQueuedContext() {
 
         LOGGER.fine("current queue size: " + this.queuedContexts.size());
         LOGGER.finest("current queue: " + this.queuedContexts);
         List<QueuedContextStruct> orphan = new ArrayList<>();
         QueuedContextStruct nextEntry = null;
-        if (inversePrecedence) {
-            // the last one added lock ist the newest one, and this wins
-            if (this.lastCheckedQueueIndex == -1) {
-                this.lastCheckedQueueIndex = this.queuedContexts.size() - 1;
-            } else this.lastCheckedQueueIndex++;
-            for (; this.lastCheckedQueueIndex >= 0 && nextEntry == null; this.lastCheckedQueueIndex--) {
-                QueuedContextStruct entry = this.queuedContexts.get(this.lastCheckedQueueIndex);
-                // check queue list first
-                if (!entry.isValid()) {
-                    orphan.add(entry);
-                    continue;
-                }
-                LOGGER.finest("inversePrecedence - index: " + this.lastCheckedQueueIndex + " " + entry);
 
-                nextEntry = getNextQueuedContextEntry(entry);
-            }
-        } else {
-            // the first one added lock is the oldest one, and this wins
-            if (this.lastCheckedQueueIndex == -1) {
-                this.lastCheckedQueueIndex = 0;
-            } else this.lastCheckedQueueIndex--;
-            for (;
-                    this.lastCheckedQueueIndex < this.queuedContexts.size() && nextEntry == null;
-                    this.lastCheckedQueueIndex++) {
-                QueuedContextStruct entry = this.queuedContexts.get(this.lastCheckedQueueIndex);
-                // check queue list first
-                if (!entry.isValid()) {
-                    orphan.add(entry);
-                    continue;
-                }
-                LOGGER.finest("oldest win - index: " + this.lastCheckedQueueIndex + " " + entry);
+        // the first one added lock is the oldest one, and this wins
 
-                nextEntry = getNextQueuedContextEntry(entry);
+        for (int idx = 0; idx < this.queuedContexts.size() && nextEntry == null; idx++) {
+            QueuedContextStruct entry = this.queuedContexts.get(idx);
+            // check queue list first
+            if (!entry.isValid()) {
+                orphan.add(entry);
+                continue;
             }
+            LOGGER.finest("oldest win - index: " + idx + " " + entry);
+
+            nextEntry = getNextQueuedContextEntry(entry);
         }
 
         if (!orphan.isEmpty()) {
             this.queuedContexts.removeAll(orphan);
-            this.lastCheckedQueueIndex = -1;
         }
 
-        if (nextEntry == null) {
-            this.lastCheckedQueueIndex = -1;
-        }
         return nextEntry;
     }
 
@@ -983,7 +952,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             LOGGER.fine("unreserve " + resources);
             unreserveResources(resources);
 
-            proceedNextContext(false /*inversePrecedence*/);
+            proceedNextContext();
 
             save();
         }
@@ -1024,6 +993,40 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
     }
 
+    @Restricted(NoExternalUse.class)
+    public boolean changeQueueOrder(final String queueId, final int newIndex) {
+        if (newIndex < 0) {
+            LOGGER.warning("Given index is < 0. " + newIndex);
+            return false;
+        }
+        synchronized (this.syncResources) {
+            
+            if (newIndex > this.queuedContexts.size() - 1) {
+              LOGGER.warning("Given index is > queue. " + newIndex + " vs " + this.queuedContexts.size());
+              return false;
+            }
+
+            QueuedContextStruct queueItem = null;
+            int oldIndex = -1;
+            for (int i = 0; i < this.queuedContexts.size(); i++) {
+                QueuedContextStruct entry = this.queuedContexts.get(i);
+                if (entry.getId().equals(queueId)) {
+                    oldIndex = i;
+                    break;
+                }
+            }
+
+            if (oldIndex < 0) {
+                LOGGER.warning("The queued entry does not exist, " + queueId);
+                return false; // no more exists !?
+            }
+            
+            Collections.swap(this.queuedContexts, oldIndex, newIndex);
+        }
+        return true;
+    }
+    
+
     // ---------------------------------------------------------------------------
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) {
@@ -1059,6 +1062,30 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     public List<LockableResource> getAvailableResources(final List<LockableResourcesStruct> requiredResourcesList) {
         return this.getAvailableResources(requiredResourcesList, null, null);
+    }
+
+    // ---------------------------------------------------------------------------
+    public List<LockableResource> getAvailableResources(final QueuedContextStruct entry) {
+        return this.getAvailableResources(entry.getResources(), entry.getLogger(), null);
+    }
+
+    public void removeEphemeralResources(List<LockableResource> resources) {
+        synchronized (this.syncResources) {
+            List<LockableResource> toBeRemoved = new ArrayList<>();
+            for (LockableResource resource : resources) {
+                if (resource.isEphemeral()) {
+                    LOGGER.info("Remove ephemeral resource: " + resource);
+                    toBeRemoved.add(resource);
+                }
+            }
+            removeResources(toBeRemoved);
+        }
+    }
+
+    public void removeResources(List<LockableResource> toBeRemoved) {
+        synchronized (this.syncResources) {
+            this.resources.removeAll(toBeRemoved);
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -1287,11 +1314,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Adds the given context and the required resources to the queue if
      * this context is not yet queued.
      */
+    @Restricted(NoExternalUse.class)
     public void queueContext(
             StepContext context,
             List<LockableResourcesStruct> requiredResources,
             String resourceDescription,
-            String variableName) {
+            String variableName,
+            boolean inversePrecedence,
+            int priority) {
         synchronized (this.syncResources) {
             for (QueuedContextStruct entry : this.queuedContexts) {
                 if (entry.getContext() == context) {
@@ -1300,8 +1330,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
             }
 
-            this.queuedContexts.add(
-                    new QueuedContextStruct(context, requiredResources, resourceDescription, variableName));
+            int queueIndex = 0;
+            QueuedContextStruct newQueueItem =
+                    new QueuedContextStruct(context, requiredResources, resourceDescription, variableName, priority);
+
+            if (inversePrecedence) {
+                queueIndex = 0;
+            } else {
+                queueIndex = this.queuedContexts.size() - 1;
+                for (; queueIndex > 0; queueIndex--) {
+                    QueuedContextStruct entry = this.queuedContexts.get(queueIndex);
+                    // LOGGER.info("compare " + entry.toString());
+                    if (entry.compare(newQueueItem) > 0) {
+                        continue;
+                    }
+                    break;
+                }
+                queueIndex++;
+            }
+
+            this.queuedContexts.add(queueIndex, newQueueItem);
+            printLogs(requiredResources + " added into queue at position " + queueIndex, newQueueItem.getLogger(), Level.INFO);
+
             save();
         }
     }
