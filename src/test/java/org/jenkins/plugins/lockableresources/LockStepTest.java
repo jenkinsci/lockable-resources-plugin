@@ -275,16 +275,16 @@ public class LockStepTest extends LockStepTestBase {
 
         // Unlock resource1
         SemaphoreStep.success("wait-inside/1", null);
-        j.waitForMessage("Lock released on resource [resource1]", b1);
+        j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b1, 1, 0);
 
         // #2 gets the lock before #3 (in the order as they requested the lock)
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         SemaphoreStep.success("wait-inside/2", null);
         j.assertBuildStatusSuccess(j.waitForCompletion(b2));
         isPaused(b2, 1, 0);
-        j.waitForMessage("Lock acquired on [resource1]", b3);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b3);
         SemaphoreStep.success("wait-inside/3", null);
         j.waitForMessage("Finish", b3);
         j.assertBuildStatusSuccess(j.waitForCompletion(b3));
@@ -316,15 +316,15 @@ public class LockStepTest extends LockStepTestBase {
 
         // Unlock resource1
         SemaphoreStep.success("wait-inside/1", null);
-        j.waitForMessage("Lock released on resource [resource1]", b1);
+        j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b1, 1, 0);
 
         // #3 gets the lock before #2 because of inversePrecedence
-        j.waitForMessage("Lock acquired on [resource1]", b3);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b3);
         SemaphoreStep.success("wait-inside/2", null);
         isPaused(b3, 1, 0);
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         SemaphoreStep.success("wait-inside/3", null);
         j.waitForMessage("Finish", b3);
         j.assertBuildStatusSuccess(j.waitForCompletion(b3));
@@ -353,14 +353,14 @@ public class LockStepTest extends LockStepTestBase {
         SemaphoreStep.waitForStart("before-a/1", b1);
         // both messages are in the log because branch b acquired the lock and branch a is waiting to
         // lock
-        j.waitForMessage("Lock acquired on [resource1]", b1);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b1);
         SemaphoreStep.success("before-a/1", null);
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b1);
         isPaused(b1, 2, 1);
 
         SemaphoreStep.success("wait-b/1", null);
 
-        j.waitForMessage("Lock acquired on [resource1]", b1);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b1);
         SemaphoreStep.waitForStart("inside-a/1", b1);
         isPaused(b1, 2, 0);
         SemaphoreStep.success("inside-a/1", null);
@@ -410,15 +410,15 @@ public class LockStepTest extends LockStepTestBase {
         b1.delete();
 
         // Verify that b2 gets the lock.
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         SemaphoreStep.success("wait-inside/2", b2);
         // Verify that b2 releases the lock and finishes successfully.
-        j.waitForMessage("Lock released on resource [resource1]", b2);
+        j.waitForMessage("Lock released on resource [Resource: resource1]", b2);
         j.assertBuildStatusSuccess(j.waitForCompletion(b2));
         isPaused(b2, 1, 0);
 
         // Now b3 should get the lock and do its thing.
-        j.waitForMessage("Lock acquired on [resource1]", b3);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b3);
         SemaphoreStep.success("wait-inside/3", b3);
         j.assertBuildStatusSuccess(j.waitForCompletion(b3));
         isPaused(b3, 1, 0);
@@ -444,7 +444,7 @@ public class LockStepTest extends LockStepTestBase {
                 TestHelpers.clickButton(wc, "unlock");
             }
 
-            j.waitForMessage("Lock acquired on [resource1]", rNext);
+            j.waitForMessage("Trying to acquire lock on [Resource: resource1]", rNext);
             SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
             isPaused(rNext, 1, 0);
 
@@ -578,12 +578,12 @@ public class LockStepTest extends LockStepTestBase {
 
         // Unlock resources
         SemaphoreStep.success("wait-inside/1", null);
-        j.waitForMessage("Lock released on resource [{resource1},{resource2}]", b1);
+        j.waitForMessage("Lock released on resource [{Resource: resource1},{Resource: resource2}]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b1, 1, 0);
 
         // Both get their lock
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         j.waitForMessage("Lock acquired on [resource2]", b3);
 
         SemaphoreStep.success("wait-inside-p2/1", null);
@@ -632,7 +632,7 @@ public class LockStepTest extends LockStepTestBase {
         isPaused(b2, 1, 0);
 
         // Both get their lock
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         j.waitForMessage("Lock acquired on [Label: label1]", b3);
 
         SemaphoreStep.success("wait-inside-p2/1", null);
@@ -679,12 +679,12 @@ public class LockStepTest extends LockStepTestBase {
 
         // Unlock resources
         SemaphoreStep.success("wait-inside/1", null);
-        j.waitForMessage("Lock released on resource [{Label: label1},{resource1}]", b1);
+        j.waitForMessage("Lock released on resource [{Label: label1},{Resource: resource1}]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b1, 1, 0);
 
         // #2 gets the lock before #3 (in the order as they requested the lock)
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         SemaphoreStep.success("wait-inside-p2/1", null);
         j.waitForMessage("Finish", b2);
         j.assertBuildStatusSuccess(j.waitForCompletion(b2));
@@ -758,7 +758,9 @@ public class LockStepTest extends LockStepTestBase {
 
         // Unlock resources
         SemaphoreStep.success("wait-inside/1", null);
-        j.waitForMessage("Lock released on resource [{resource4},{resource2},{Label: label1, Quantity: 2}]", b1);
+        j.waitForMessage(
+                "Lock released on resource [{Resource: resource4},{Resource: resource2},{Label: label1, Quantity: 2}]",
+                b1);
         j.assertLogContains("Resources locked: [resource2, resource4]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b1, 1, 0);

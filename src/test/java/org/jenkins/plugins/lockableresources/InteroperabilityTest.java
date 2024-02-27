@@ -59,8 +59,8 @@ public class InteroperabilityTest extends LockStepTestBase {
         semaphore.release();
 
         // Wait for lock after the freestyle finishes
-        LOGGER.info("wait for2: Lock released on resource [resource1]");
-        j.waitForMessage("Lock released on resource [resource1]", b1);
+        LOGGER.info("wait for2: Lock released on resource [Resource: resource1]");
+        j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
         isPaused(b1, 1, 0);
         j.assertBuildStatusSuccess(j.waitForCompletion(f1));
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
