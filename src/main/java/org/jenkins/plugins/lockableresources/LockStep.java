@@ -192,7 +192,11 @@ public class LockStep extends Step implements Serializable {
                     .map(res -> "{" + res.toString() + "}")
                     .collect(Collectors.joining(","));
         } else if (resource != null || label != null) {
-            return LockStepResource.toString(resource, label, quantity) + ", Priority: " + this.priority;
+            String ret = LockStepResource.toString(resource, label, quantity);
+            if (this.priority != 0) {
+                ret += ", Priority: " + this.priority;
+            }
+            return ret;
         } else {
             return "nothing";
         }

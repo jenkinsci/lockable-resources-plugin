@@ -448,7 +448,6 @@ public class LockableResourcesRootAction implements RootAction {
                 return this.id;
             }
 
-
             @Restricted(NoExternalUse.class) // used by jelly
             public boolean resourcesMatch() {
                 return (requiredResources != null && requiredResources.size() > 0);
@@ -649,11 +648,10 @@ public class LockableResourcesRootAction implements RootAction {
         }
     }
 
-    
-
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp) throws IOException, ServletException {
+    public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp)
+            throws IOException, ServletException {
         Jenkins.get().checkPermission(UNLOCK);
 
         final String queueId = req.getParameter("id");
@@ -663,17 +661,17 @@ public class LockableResourcesRootAction implements RootAction {
 
         final int newIndex;
         try {
-          newIndex = Integer.parseInt(newIndexStr);
+            newIndex = Integer.parseInt(newIndexStr);
         } catch (NumberFormatException e) {
-           rsp.sendError(423, Messages.error_isNotANumber(newIndexStr));
-           return;
+            rsp.sendError(423, Messages.error_isNotANumber(newIndexStr));
+            return;
         }
 
         if (LockableResourcesManager.get().changeQueueOrder(queueId, newIndex - 1) == false) {
-           rsp.sendError(423, Messages.error_invalidIndex(newIndexStr));
-           return;
+            rsp.sendError(423, Messages.error_invalidIndex(newIndexStr));
+            return;
         }
-    
+
         rsp.forwardToPreviousPage(req);
     }
 

@@ -14,14 +14,13 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
-import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import java.util.UUID;
 
 /*
  * This class is used to queue pipeline contexts
@@ -92,7 +91,7 @@ public class QueuedContextStruct implements Serializable {
     @Restricted(NoExternalUse.class)
     public String getId() {
         if (this.id == null) {
-            this.id  = UUID.randomUUID().toString();
+            this.id = UUID.randomUUID().toString();
         }
         return this.id;
     }
@@ -168,8 +167,7 @@ public class QueuedContextStruct implements Serializable {
                 + " priority: "
                 + this.priority
                 + " id: "
-                + this.getId()
-                ;
+                + this.getId();
     }
 
     @Restricted(NoExternalUse.class)

@@ -1000,10 +1000,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return false;
         }
         synchronized (this.syncResources) {
-            
             if (newIndex > this.queuedContexts.size() - 1) {
-              LOGGER.warning("Given index is > queue. " + newIndex + " vs " + this.queuedContexts.size());
-              return false;
+                LOGGER.warning("Given index is > queue. " + newIndex + " vs " + this.queuedContexts.size());
+                return false;
             }
 
             QueuedContextStruct queueItem = null;
@@ -1020,12 +1019,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 LOGGER.warning("The queued entry does not exist, " + queueId);
                 return false; // no more exists !?
             }
-            
+
             Collections.swap(this.queuedContexts, oldIndex, newIndex);
         }
         return true;
     }
-    
 
     // ---------------------------------------------------------------------------
     @Override
@@ -1356,7 +1354,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             this.queuedContexts.add(queueIndex, newQueueItem);
-            printLogs(requiredResources + " added into queue at position " + queueIndex, newQueueItem.getLogger(), Level.INFO);
+            printLogs(
+                    requiredResources + " added into queue at position " + queueIndex,
+                    newQueueItem.getLogger(),
+                    Level.INFO);
 
             save();
         }
