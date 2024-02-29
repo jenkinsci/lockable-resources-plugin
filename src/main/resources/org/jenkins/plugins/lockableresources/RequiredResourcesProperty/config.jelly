@@ -13,7 +13,8 @@
   xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
   <f:optionalBlock title="${%optionalBlock.title}"
     name="required-lockable-resources"
-    checked="${instance!=null}">
+    checked="${instance!=null}"
+    help="/plugin/lockable-resources/help/help-required-lockable-resources.html">
     <f:nested>
       <f:entry title="${%entry.resourceNames.title}" field="resourceNames">
         <f:textbox autoCompleteDelimChar=" "/>
@@ -21,7 +22,8 @@
       <f:entry title="${%entry.labelName.title}" field="labelName">
         <f:textbox autoCompleteDelimChar=" "/>
       </f:entry>
-      <f:optionalProperty title="${%optionalProperty.resourceMatchScript.title}" field="resourceMatchScript"/>
+      <f:optionalProperty title="${%optionalProperty.resourceMatchScript.title}" field="resourceMatchScript"
+        help="/plugin/lockable-resources/help/help-resourceMatchScript.html"/>
       <f:entry title="${%entry.resourceNamesVar.title}" field="resourceNamesVar">
         <f:textbox/>
       </f:entry>
