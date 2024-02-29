@@ -11,7 +11,9 @@ package org.jenkins.plugins.lockableresources.queue;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
+import hudson.matrix.Axis;
 import hudson.matrix.MatrixConfiguration;
+import hudson.matrix.MatrixProject;
 import hudson.model.AbstractProject;
 import hudson.model.Job;
 import hudson.model.ParametersDefinitionProperty;
@@ -19,6 +21,7 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -69,8 +72,19 @@ public final class Utils {
 
     @Nonnull
     public static List<String> getProjectParameterNames(AbstractProject<?, ?> project) {
+        List<String> names = new ArrayList<>();
+
+        if (project instanceof MatrixProject) {
+            Iterator<Axis> axisIter = ((MatrixProject) project).getAxes().iterator();
+            while (axisIter.hasNext()) {
+                names.add(axisIter.next().getName());
+            }
+        }
+
         ParametersDefinitionProperty params = project.getProperty(ParametersDefinitionProperty.class);
-        if (params != null) return params.getParameterDefinitionNames();
+        if (params != null) names.addAll(params.getParameterDefinitionNames());
+
+        if (!names.isEmpty()) return names;
         return Collections.emptyList();
     }
 

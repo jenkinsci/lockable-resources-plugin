@@ -45,7 +45,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             synchronized (lrm.syncResources) {
                 Job<?, ?> proj = Utils.getProject(build);
                 List<LockableResource> required = new ArrayList<>();
-                EnvVars env = new EnvVars(((AbstractBuild) build).getBuildVariables());
+                EnvVars env = new EnvVars(((AbstractBuild<?, ?>) build).getBuildVariables());
                 LockableResourcesStruct resources = Utils.requiredResources(proj, env);
 
                 if (resources != null) {
