@@ -631,7 +631,7 @@ public class LockStepTest extends LockStepTestBase {
 
         // Unlock resources
         SemaphoreStep.success("wait-inside/1", null);
-        j.waitForMessage("Lock released on resource [{Label: label1},{resource1}]", b1);
+        j.waitForMessage("Lock released on resource [{Label: label1},{Resource: resource1}]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b2, 1, 0);
 
