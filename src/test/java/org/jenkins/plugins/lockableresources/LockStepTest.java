@@ -588,7 +588,7 @@ public class LockStepTest extends LockStepTestBase {
 
         // Both get their lock
         j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
-        j.waitForMessage("Lock acquired on [resource2]", b3);
+        j.waitForMessage("Lock acquired on [Resource: resource2]", b3);
 
         SemaphoreStep.success("wait-inside-p2/1", null);
         SemaphoreStep.success("wait-inside-p3/1", null);
