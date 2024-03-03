@@ -435,11 +435,15 @@ public class LockStepTest extends LockStepTestBase {
         WorkflowRun prevBuild = null;
         for (int i = 0; i < 3; i++) {
             WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
+            LOGGER.info("start build " + rNext);
             if (prevBuild != null) {
+                LOGGER.info("" + rNext + " waits for locked by " + prevBuild);
                 j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
+                LOGGER.info("is paused " + rNext);
                 isPaused(rNext, 1, 1);
                 // List<LockableResource> resources = new ArrayList<>();
                 // resources.add(LockableResourcesManager.get().fromName("resource1"));
+                LOGGER.info("unlock resource1");
                 // LockableResourcesManager.get().unlock(resources, null);
                 TestHelpers.clickButton(wc, "unlock");
             }

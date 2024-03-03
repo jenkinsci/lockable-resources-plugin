@@ -66,8 +66,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * (freestyle builds) regular Jenkins queue is used.
      */
     private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
-    // remember last processed queue index
-    private transient int lastCheckedQueueIndex = -1;
 
     // cache to enable / disable saving lockable-resources state
     private int enableSave = -1;
@@ -338,7 +336,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     @Restricted(NoExternalUse.class)
-    public List<LockableResource> fromNames(final List<String> names) {
+    public List<LockableResource> fromNames(@Nullable final List<String> names) {
+        if (names == null) {
+            return null;
+        }
         return fromNames(names, false);
     }
 
@@ -615,7 +616,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     private void freeResources(List<LockableResource> unlockResources, @Nullable Run<?, ?> build) {
+
         LOGGER.fine("free it: " + unlockResources);
+
+        // make sure there is a list of resource names to unlock
+        if (unlockResources == null || unlockResources.isEmpty()) {
+            return;
+        }
+
+        List<LockableResource> toBeRemoved = new ArrayList<>();
         for (LockableResource resource : unlockResources) {
             // No more contexts, unlock resource
             if (build != null && build != resource.getBuild()) {
@@ -624,8 +633,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resource.unqueue();
             resource.setBuild(null);
             uncacheIfFreeing(resource, true, false);
+
+            if (resource.isEphemeral()) {
+                LOGGER.info("Remove ephemeral resource: " + resource);
+                toBeRemoved.add(resource);
+            }
         }
-        removeEphemeralResources(unlockResources);
+        // remove all ephemeral resources
+        removeResources(toBeRemoved);
     }
 
     // ---------------------------------------------------------------------------
@@ -651,6 +666,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build) {
+
         // make sure there is a list of resource names to unlock
         if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
             return;
@@ -659,22 +675,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         synchronized (this.syncResources) {
             this.freeResources(this.fromNames(resourceNamesToUnLock), build);
 
-            // process as many contexts as possible
-            this.lastCheckedQueueIndex = -1;
-            while (resourceNamesToUnLock.size() > 0 && proceedNextContext()) {
-                for (String resourceName : resourceNamesToUnLock) {
-                    LockableResource r = fromName(resourceName);
-                    if (r == null) {
-                        // probably it was ephemeral resource and does not exists now
-                        // therefore we need to check the whole queue later
-                        break;
-                    }
-                    if (!r.isFree()) {
-                        // i sno more free, that means, we does not need to check it in the queue now
-                        resourceNamesToUnLock.remove(resourceName);
-                        break;
-                    }
-                }
+            while (proceedNextContext()) {
+                // process as many contexts as possible
             }
 
             save();
@@ -769,6 +771,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             QueuedContextStruct entry = this.queuedContexts.get(idx);
             // check queue list first
             if (!entry.isValid()) {
+                LOGGER.fine("well be removed: " + idx + " " + entry);
                 orphan.add(entry);
                 continue;
             }
@@ -1065,20 +1068,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     public List<LockableResource> getAvailableResources(final QueuedContextStruct entry) {
         return this.getAvailableResources(entry.getResources(), entry.getLogger(), null);
-    }
-
-    // ---------------------------------------------------------------------------
-    public void removeEphemeralResources(List<LockableResource> resources) {
-        synchronized (this.syncResources) {
-            List<LockableResource> toBeRemoved = new ArrayList<>();
-            for (LockableResource resource : resources) {
-                if (resource.isEphemeral()) {
-                    LOGGER.info("Remove ephemeral resource: " + resource);
-                    toBeRemoved.add(resource);
-                }
-            }
-            removeResources(toBeRemoved);
-        }
     }
 
     // ---------------------------------------------------------------------------

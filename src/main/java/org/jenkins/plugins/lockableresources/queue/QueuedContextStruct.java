@@ -56,7 +56,7 @@ public class QueuedContextStruct implements Serializable {
 
     private static final Logger LOGGER = Logger.getLogger(QueuedContextStruct.class.getName());
 
-    private transient String id = null;
+    private String id = null;
 
     /*
      * Constructor for the QueuedContextStruct class.
