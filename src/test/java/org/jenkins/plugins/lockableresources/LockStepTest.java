@@ -346,7 +346,7 @@ public class LockStepTest extends LockStepTestBase {
       expected lock order: j1 -> j5 -> j3 -> j2 -> j4 -> j6
     */
     @Issue("GITHUB-560")
-    public void lockInverseOrder() throws Exception {
+    public void lockInverseOrder2() throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
 
@@ -487,6 +487,143 @@ public class LockStepTest extends LockStepTestBase {
         j.assertLogContains("locked 6", b6);
 
         // release 6. (last) lock (on build 6)
+        SemaphoreStep.success("wait-inside/6", null);
+
+        // wait for all jobs
+        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+        j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+        j.assertBuildStatusSuccess(j.waitForCompletion(b3));
+        j.assertBuildStatusSuccess(j.waitForCompletion(b4));
+        j.assertBuildStatusSuccess(j.waitForCompletion(b5));
+        j.assertBuildStatusSuccess(j.waitForCompletion(b6));
+    }
+
+    @Test
+    @Issue("GITHUB-560")
+    public void lockWithPrio() throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+
+        // just dummy build to acquire lock
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(resource: 'resource1', priority: 0) {\n"
+                        + "     echo 'locked 1'\n"
+                        + "	semaphore 'wait-inside'\n"
+                        + "}\n"
+                        + "echo 'Finish'",
+                true));
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+        // build with default priority
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(resource: 'resource1') {\n"
+                        + "     echo 'locked 2'\n"
+                        + "	semaphore 'wait-inside'\n"
+                        + "}\n"
+                        + "echo 'Finish'",
+                true));
+        WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
+
+        // build with negative prio
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(resource: 'resource1', priority: -1) {\n"
+                        + "     echo 'locked 3'\n"
+                        + "	semaphore 'wait-inside'\n"
+                        + "}\n"
+                        + "echo 'Finish'",
+                true));
+        WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
+
+        // build with positive (low) prio
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(resource: 'resource1', priority: 10) {\n"
+                        + "     echo 'locked 4'\n"
+                        + "	semaphore 'wait-inside'\n"
+                        + "}\n"
+                        + "echo 'Finish'",
+                true));
+        WorkflowRun b4 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b4);
+
+        // build with negative (lowest) prio
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(resource: 'resource1', priority: -2) {\n"
+                        + "     echo 'locked 5'\n"
+                        + "	semaphore 'wait-inside'\n"
+                        + "}\n"
+                        + "echo 'Finish'",
+                true));
+        WorkflowRun b5 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b5);
+
+        // build with positive (highest) prio
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(resource: 'resource1', priority: 100) {\n"
+                        + "     echo 'locked 6'\n"
+                        + "	semaphore 'wait-inside'\n"
+                        + "}\n"
+                        + "echo 'Finish'",
+                true));
+        WorkflowRun b6 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b6);
+
+        // check logs
+        j.assertLogContains("locked 1", b1);
+        j.assertLogNotContains("locked 2", b2);
+        j.assertLogNotContains("locked 3", b3);
+        j.assertLogNotContains("locked 4", b4);
+        j.assertLogNotContains("locked 5", b5);
+        j.assertLogNotContains("locked 6", b6);
+
+        // release first lock (on build 1)
+        SemaphoreStep.success("wait-inside/1", null);
+        j.waitForMessage("Lock released on resource", b1);
+
+        SemaphoreStep.waitForStart("wait-inside/2", b6);
+        j.assertLogNotContains("locked 2", b2);
+        j.assertLogNotContains("locked 3", b3);
+        j.assertLogNotContains("locked 4", b4);
+        j.assertLogNotContains("locked 5", b5);
+        j.assertLogContains("locked 6", b6);
+
+        // release 2. lock (on build 6)
+        SemaphoreStep.success("wait-inside/2", null);
+        j.waitForMessage("Lock released on resource", b6);
+
+        SemaphoreStep.waitForStart("wait-inside/3", b4);
+        j.assertLogNotContains("locked 2", b2);
+        j.assertLogNotContains("locked 3", b3);
+        j.assertLogContains("locked 4", b4);
+        j.assertLogNotContains("locked 5", b5);
+
+        // release 3. lock (on build 4)
+        SemaphoreStep.success("wait-inside/3", null);
+        j.waitForMessage("Lock released on resource", b4);
+
+        SemaphoreStep.waitForStart("wait-inside/4", b2);
+        j.assertLogContains("locked 2", b2);
+        j.assertLogNotContains("locked 3", b3);
+        j.assertLogNotContains("locked 5", b5);
+
+        // release 4. lock (on build 2)
+        SemaphoreStep.success("wait-inside/4", null);
+        j.waitForMessage("Lock released on resource", b2);
+
+        SemaphoreStep.waitForStart("wait-inside/5", b2);
+        j.assertLogContains("locked 3", b3);
+        j.assertLogNotContains("locked 5", b5);
+
+        // release 5. lock (on build 3)
+        SemaphoreStep.success("wait-inside/5", null);
+        j.waitForMessage("Lock released on resource", b3);
+
+        SemaphoreStep.waitForStart("wait-inside/6", b5);
+        j.assertLogContains("locked 5", b5);
+
+        // release 6. (last) lock (on build 5)
         SemaphoreStep.success("wait-inside/6", null);
 
         // wait for all jobs
