@@ -435,14 +435,22 @@ public class LockableResourcesRootAction implements RootAction {
             @Restricted(NoExternalUse.class) // used by jelly
             public int getPriority() {
                 if (this.id == null) {
+                    // defensive
+                    // in case of jenkins update from older version and you have some queue
+                    // might happens, that there are no priority set
                     return 0;
                 }
                 return this.priority;
             }
 
+            // -----------------------------------------------------------------------
+            /** Returns queue ID. */
             @Restricted(NoExternalUse.class)
             public String getId() {
                 if (this.id == null) {
+                    // defensive
+                    // in case of jenkins update from older version and you have some queue
+                    // might happens, that there are no priority set
                     return "NN";
                 }
                 return this.id;
@@ -649,6 +657,8 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     // ---------------------------------------------------------------------------
+    /** Change queue order (item position) */
+    @Restricted(NoExternalUse.class) // used by jelly
     @RequirePOST
     public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp)
             throws IOException, ServletException {

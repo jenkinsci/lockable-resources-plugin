@@ -1075,6 +1075,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /** Function removes all given resources */
     public void removeResources(List<LockableResource> toBeRemoved) {
         synchronized (this.syncResources) {
             this.resources.removeAll(toBeRemoved);
