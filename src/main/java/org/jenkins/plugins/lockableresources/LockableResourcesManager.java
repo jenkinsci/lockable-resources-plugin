@@ -644,6 +644,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     public void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
         List<String> resourceNamesToUnLock = LockableResourcesManager.getResourcesNames(resourcesToUnLock);
         this.unlockNames(resourceNamesToUnLock, build);
@@ -996,7 +998,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
     }
 
-    @Restricted(NoExternalUse.class)
+    // ---------------------------------------------------------------------------
+    /** Change the order (position) of the given item in the queue*/
+    @Restricted(NoExternalUse.class) // used by jelly
     public boolean changeQueueOrder(final String queueId, final int newIndex) {
         if (newIndex < 0) {
             LOGGER.warning("Given index is < 0. " + newIndex);
