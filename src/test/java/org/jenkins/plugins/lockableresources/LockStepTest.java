@@ -500,17 +500,17 @@ public class LockStepTest extends LockStepTestBase {
 
     @Test
     @Issue("GITHUB-560")
-    /** 
-      start time | job | resource  | priority
-      ------     |---  |---        |---
-      00:01      | j1  | resource1 | 0
-      00:02      | j2  | resource1 | <default == 0>
-      00:03      | j3  | resource1 | -1
-      00:04      | j4  | resource1 | 10
-      00:05      | j5  | resource1 | -2
-      00:06      | j6  | resource1 | 100
-
-      expected lock order: j1 -> j6 -> j4 -> j2 -> j3 -> j5
+    /**
+     * start time | job | resource  | priority
+     * ------     |---  |---        |---
+     * 00:01      | j1  | resource1 | 0
+     * 00:02      | j2  | resource1 | <default == 0>
+     * 00:03      | j3  | resource1 | -1
+     * 00:04      | j4  | resource1 | 10
+     * 00:05      | j5  | resource1 | -2
+     * 00:06      | j6  | resource1 | 100
+     *
+     * expected lock order: j1 -> j6 -> j4 -> j2 -> j3 -> j5
      */
     public void lockWithPrio() throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label");
