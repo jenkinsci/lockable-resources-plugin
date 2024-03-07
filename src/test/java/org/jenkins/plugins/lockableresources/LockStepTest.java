@@ -1713,6 +1713,19 @@ public class LockStepTest extends LockStepTestBase {
     }
 
     @Test
+    public void inversePrecedenceAndPriorityAreSet() throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "lock(label: 'label1', inversePrecedence: true, priority: -1000000000, resourceSelectStrategy: '') {}",
+                true));
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
+        j.assertLogContains("Inverse precedence is not combinable with priority !", b1);
+        isPaused(b1, 0, 0);
+    }
+
+    @Test
     public void skipIfLocked() throws Exception {
         LockableResourcesManager lm = LockableResourcesManager.get();
         lm.createResourceWithLabel("resource1", "label1");

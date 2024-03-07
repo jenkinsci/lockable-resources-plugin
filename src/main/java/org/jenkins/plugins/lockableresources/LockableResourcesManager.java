@@ -1001,15 +1001,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /** Change the order (position) of the given item in the queue*/
     @Restricted(NoExternalUse.class) // used by jelly
-    public boolean changeQueueOrder(final String queueId, final int newIndex) {
-        if (newIndex < 0) {
-            LOGGER.warning("Given index is < 0. " + newIndex);
-            return false;
-        }
+    public void changeQueueOrder(final String queueId, final int newPosition) throws IOException {
         synchronized (this.syncResources) {
-            if (newIndex > this.queuedContexts.size() - 1) {
-                LOGGER.warning("Given index is > queue. " + newIndex + " vs " + this.queuedContexts.size());
-                return false;
+            if (newPosition < 0 || newPosition >= this.queuedContexts.size()) {
+                throw new IOException(Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
             }
 
             QueuedContextStruct queueItem = null;
@@ -1023,13 +1018,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             if (oldIndex < 0) {
-                LOGGER.warning("The queued entry does not exist, " + queueId);
-                return false; // no more exists !?
+                // no more exists !?
+                throw new IOException(Messages.error_queueDoesNotExist(queueId));
             }
 
-            Collections.swap(this.queuedContexts, oldIndex, newIndex);
+            Collections.swap(this.queuedContexts, oldIndex, newPosition);
         }
-        return true;
     }
 
     // ---------------------------------------------------------------------------
@@ -1332,7 +1326,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             QueuedContextStruct newQueueItem =
                     new QueuedContextStruct(context, requiredResources, resourceDescription, variableName, priority);
 
-            if (inversePrecedence) {
+            if (inversePrecedence && priority == 0) {
                 queueIndex = 0;
             } else {
                 queueIndex = this.queuedContexts.size() - 1;

@@ -677,8 +677,10 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
-        if (LockableResourcesManager.get().changeQueueOrder(queueId, newIndex - 1) == false) {
-            rsp.sendError(423, Messages.error_invalidIndex(newIndexStr));
+        try {
+            LockableResourcesManager.get().changeQueueOrder(queueId, newIndex - 1);
+        } catch (IOException e) {
+            rsp.sendError(423, e.toString().replace("java.io.IOException: ", ""));
             return;
         }
 

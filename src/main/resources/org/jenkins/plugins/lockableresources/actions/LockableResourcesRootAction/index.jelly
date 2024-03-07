@@ -51,7 +51,7 @@
           </ul>
           <!-- Tab panes -->
           <div class="tab-content">
-            <div class="tab-pane active jenkins-!-margin-top-1" id="resources" role="tabpanel" aria-labelledby="resources-tab">
+            <div class="tab-pane jenkins-!-margin-top-1 active" id="resources" role="tabpanel" aria-labelledby="resources-tab">
               <st:include page="tableResources/table"/>
             </div>
           </div>

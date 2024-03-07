@@ -34,7 +34,9 @@ THE SOFTWARE.
             data-queue-title="${%queue.change.title}"
             data-queue-message="${%queue.change.message}"
             data-queue-on-success="${%queue.change.on.success}"
-            data-action-success="${%action.success}"
+            data-queue-on-fail="${%queue.change.on.fail}"
+            data-action-on-success="${%action.on.success}"
+            data-action-on-fail="${%action.on.fail}"
              />
 
   <j:set var="queue" value="${it.getQueue()}"/>
@@ -76,19 +78,30 @@ THE SOFTWARE.
     >
       <thead>
         <th>${%queue.table.column.index}</th>
+        <th>${%queue.table.column.action}</th>
         <th>${%queue.table.column.request.type}</th>
         <th>${%queue.table.column.request.info}</th>
         <th>${%queue.table.column.reason}</th>
         <th>${%queue.table.column.requested.by}</th>
         <th>${%queue.table.column.requested.at}</th>
         <th>${%queue.table.column.priority}</th>
-        <th>${%queue.table.column.action}</th>
         <th>${%queue.table.column.id}</th>
       </thead>
       <tbody>
         <j:forEach var="queuedItem" items="${queue.getAll()}" varStatus="idx">
           <tr>
             <td>${idx.index + 1}</td>
+            <td>
+              <l:hasPermission permission="${it.UNLOCK}">
+                <button
+                  onClick="changeQueueOrder(this, '${queuedItem.id}');"
+                  class="jenkins-button jenkins-!-success-color"
+                  tooltip="${%btn.changeOrder.detail} ${queuedItem.id}"
+                >
+                  ${%btn.changeOrder}
+                </button>
+              </l:hasPermission>
+            </td>
               <j:choose>
                 <!-- *************** resources *************** -->
                 <j:when test="${queuedItem.resourcesMatch()}">
@@ -193,17 +206,6 @@ THE SOFTWARE.
             </td>
             <td>
               ${queuedItem.priority}
-            </td>
-            <td>
-              <l:hasPermission permission="${it.UNLOCK}">
-                <button
-                  onClick="changeQueueOrder(this, '${queuedItem.id}');"
-                  class="jenkins-button jenkins-!-success-color"
-                  tooltip="${%btn.changeOrder.detail} ${queuedItem.id}"
-                >
-                  ${%btn.changeOrder}
-                </button>
-              </l:hasPermission>
             </td>
             <td>
               ${queuedItem.id}

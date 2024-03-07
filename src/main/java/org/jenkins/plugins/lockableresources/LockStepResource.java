@@ -83,14 +83,19 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
     public void validate() {
-        validate(resource, label, null, false);
+        validate(resource, label, null, false, 0, false);
     }
 
     // -------------------------------------------------------------------------
     /** Validate input parameters*/
     public static void validate(
-            String resource, String label, String resourceSelectStrategy, List<LockStepResource> extra) {
-        validate(resource, label, resourceSelectStrategy, extra != null);
+            String resource,
+            String label,
+            String resourceSelectStrategy,
+            List<LockStepResource> extra,
+            int priority,
+            boolean inversePrecedence) {
+        validate(resource, label, resourceSelectStrategy, extra != null, priority, inversePrecedence);
         if (extra != null) {
             for (LockStepResource e : extra) {
                 e.validate();
@@ -103,10 +108,21 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
      * Label and resource are mutual exclusive. The label, if provided, must be configured (at least
      * one resource must have this label).
      */
-    public static void validate(String resource, String label, String resourceSelectStrategy, boolean hasExtra) {
+    public static void validate(
+            String resource,
+            String label,
+            String resourceSelectStrategy,
+            boolean hasExtra,
+            int priority,
+            boolean inversePrecedence) {
         if (!hasExtra && label == null && resource == null) {
             throw new IllegalArgumentException(Messages.error_labelOrNameMustBeSpecified());
         }
+
+        if (priority != 0 && inversePrecedence) {
+            throw new IllegalArgumentException(Messages.error_inversePrecedenceAndPriorityAreSet());
+        }
+
         if (label != null && !label.isEmpty() && resource != null && !resource.isEmpty()) {
             throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
         }
