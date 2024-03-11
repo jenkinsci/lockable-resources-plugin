@@ -1721,7 +1721,7 @@ public class LockStepTest extends LockStepTestBase {
                 true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
-        j.assertLogContains("Inverse precedence is not combinable with priority !", b1);
+        j.assertLogContains("Inverse precedence is not combinable with priority!", b1);
         isPaused(b1, 0, 0);
     }
 
