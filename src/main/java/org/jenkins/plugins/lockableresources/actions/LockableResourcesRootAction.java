@@ -74,6 +74,12 @@ public class LockableResourcesRootAction implements RootAction {
             Messages._LockableResourcesRootAction_ViewPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
+    public static final Permission QUEUE = new Permission(
+            PERMISSIONS_GROUP,
+            Messages.LockableResourcesRootAction_QueueChangeOrderPermission(),
+            Messages._LockableResourcesRootAction_QueueChangeOrderPermission_Description(),
+            Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
 
     public static final String ICON = "symbol-lock-closed";
 
@@ -391,7 +397,7 @@ public class LockableResourcesRootAction implements RootAction {
             @NonNull
             @Restricted(NoExternalUse.class) // used by jelly
             public String getRequiredNumber() {
-                return this.requiredNumber == null ? "N/A" : this.requiredNumber;
+                return this.requiredNumber == null ? "0" : this.requiredNumber;
             }
 
             // -----------------------------------------------------------------------
@@ -662,7 +668,7 @@ public class LockableResourcesRootAction implements RootAction {
     @RequirePOST
     public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp)
             throws IOException, ServletException {
-        Jenkins.get().checkPermission(UNLOCK);
+        Jenkins.get().checkPermission(QUEUE);
 
         final String queueId = req.getParameter("id");
         final String newIndexStr = req.getParameter("index");

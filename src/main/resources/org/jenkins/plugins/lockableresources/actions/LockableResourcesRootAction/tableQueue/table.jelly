@@ -92,7 +92,7 @@ THE SOFTWARE.
           <tr>
             <td>${idx.index + 1}</td>
             <td>
-              <l:hasPermission permission="${it.UNLOCK}">
+              <l:hasPermission permission="${it.QUEUE}">
                 <button
                   onClick="changeQueueOrder(this, '${queuedItem.id}');"
                   class="jenkins-button jenkins-!-success-color"
