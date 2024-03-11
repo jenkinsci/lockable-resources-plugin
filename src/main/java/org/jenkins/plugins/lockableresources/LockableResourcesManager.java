@@ -1004,7 +1004,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public void changeQueueOrder(final String queueId, final int newPosition) throws IOException {
         synchronized (this.syncResources) {
             if (newPosition < 0 || newPosition >= this.queuedContexts.size()) {
-                throw new IOException(Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
+                throw new IOException(
+                        Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
             }
 
             QueuedContextStruct queueItem = null;
