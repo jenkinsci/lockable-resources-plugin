@@ -104,7 +104,7 @@ pipeline {
 #### Take first position in queue
 
 ```groovy
-lock(resource: 'staging-server', priority: true) {
+lock(resource: 'staging-server', inversePrecedence: true) {
     node {
         servers.deploy 'staging'
     }
@@ -112,7 +112,7 @@ lock(resource: 'staging-server', priority: true) {
 }
 ```
 
-> This option is ignored if "priority" is specified.
+> It is not allowed to mixed **inversePrecedence** and **priority**.
 
 start time | job | resource | inversePrecedence
 ------ |--- |--- |---
@@ -123,7 +123,7 @@ start time | job | resource | inversePrecedence
 00:05 | j5 | resource1 | true
 00:06 | j6 | resource1 | false
 
-expected lock order: j1 -> j5 -> j3 -> j2 -> j4 -> j6
+Resulting lock order: j1 -> j5 -> j3 -> j2 -> j4 -> j6
 
 #### lock (queue) priority
 
@@ -145,7 +145,7 @@ lock(resource: 'staging-server', priority: 10) {
   00:05      | j5  | resource1 | -2
   00:06      | j6  | resource1 | 100
 
-  expected lock order: j1 -> j6 -> j4 -> j2 -> j3 -> j5
+  Resulting lock order: j1 -> j6 -> j4 -> j2 -> j3 -> j5
 
 #### Resolve a variable configured with the resource name and properties 
 

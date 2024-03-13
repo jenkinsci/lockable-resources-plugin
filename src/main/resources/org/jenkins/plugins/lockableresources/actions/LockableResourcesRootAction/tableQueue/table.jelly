@@ -41,7 +41,7 @@ THE SOFTWARE.
 
   <j:set var="queue" value="${it.getQueue()}"/>
 
-  <div class="row py-3">
+  <div class="row py-3 queuebar">
     <j:set var="oldestQueue" value="${queue.getOldest()}"/>
     <j:choose>
       <j:when test="${oldestQueue == null}">

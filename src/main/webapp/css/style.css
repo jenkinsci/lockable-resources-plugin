@@ -54,3 +54,7 @@ table.dataTable td, table.dataTable th {
 .width-100 {
   width: 100%;
 }
+
+.queuebar:empty {
+  display: none;
+}
