@@ -2,6 +2,8 @@ package org.jenkins.plugins.lockableresources.actions;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -330,8 +332,10 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
         // system must be permitted to create resource
         resource = this.createResource("resource1");
         // when the resource is not reserved, the doSteal action reserve it for you
+        assertNull(resource.getReservedTimestamp());
         action.doSteal(req, rsp);
         assertTrue("is reserved by system", resource.isReserved());
+        assertNotNull(resource.getReservedTimestamp());
 
         // somebody
         SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
@@ -344,15 +348,18 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
         SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
         action.doReset(req, rsp);
         assertFalse("unreserved", resource.isReserved());
+        assertNull(resource.getReservedTimestamp());
 
         // switch to user1 and reserve it
         action.doReserve(req, rsp);
         assertTrue("is reserved by user1", resource.isReserved());
+        assertNotNull(resource.getReservedTimestamp());
 
         // switch to user with STEAL permission
         SecurityContextHolder.getContext().setAuthentication(this.steal_user.impersonate2());
         action.doSteal(req, rsp);
         assertEquals("reserved by user", this.steal_user.getId(), resource.getReservedBy());
+        assertNotNull(resource.getReservedTimestamp());
 
         // invalid params. Just check if it crash here
         SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
