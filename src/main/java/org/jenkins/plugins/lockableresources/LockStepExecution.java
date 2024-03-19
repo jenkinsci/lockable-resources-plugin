@@ -98,7 +98,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                 resourceNames.put(resource.getName(), resource.getProperties());
             }
         }
-        LockStepExecution.proceed(resourceNames, getContext(), step.toString(), step.variable, step.inversePrecedence);
+        LockStepExecution.proceed(resourceNames, getContext(), step.toString(), step.variable);
 
         return false;
     }
@@ -120,7 +120,13 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             LockableResourcesManager.printLogs(
                     "[" + step + "] is not free, waiting for execution ...", Level.FINE, LOGGER, logger);
             LockableResourcesManager lrm = LockableResourcesManager.get();
-            lrm.queueContext(getContext(), resourceHolderList, step.toString(), step.variable);
+            lrm.queueContext(
+                    getContext(),
+                    resourceHolderList,
+                    step.toString(),
+                    step.variable,
+                    step.inversePrecedence,
+                    step.priority);
         }
     }
 
@@ -144,8 +150,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
             String resourceDescription,
-            final String variable,
-            boolean inversePrecedence) {
+            final String variable) {
         Run<?, ?> build;
         FlowNode node = null;
         PrintStream logger = null;
@@ -165,8 +170,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             LockedResourcesBuildAction.updateAction(build, new ArrayList<>(lockedResources.keySet()));
             PauseAction.endCurrentPause(node);
             BodyInvoker bodyInvoker = context.newBodyInvoker()
-                    .withCallback(new Callback(
-                            new ArrayList<>(lockedResources.keySet()), resourceDescription, inversePrecedence));
+                    .withCallback(new Callback(new ArrayList<>(lockedResources.keySet()), resourceDescription));
             if (variable != null && !variable.isEmpty()) {
                 // set the variable for the duration of the block
                 bodyInvoker.withContext(
@@ -210,18 +214,15 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         private static final long serialVersionUID = -2024890670461847666L;
         private final List<String> resourceNames;
         private final String resourceDescription;
-        private final boolean inversePrecedence;
 
-        Callback(List<String> resourceNames, String resourceDescription, boolean inversePrecedence) {
+        Callback(List<String> resourceNames, String resourceDescription) {
             this.resourceNames = resourceNames;
             this.resourceDescription = resourceDescription;
-            this.inversePrecedence = inversePrecedence;
         }
 
         @Override
         protected void finished(StepContext context) throws Exception {
-            LockableResourcesManager.get()
-                    .unlockNames(this.resourceNames, context.get(Run.class), this.inversePrecedence);
+            LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class));
             LockableResourcesManager.printLogs(
                     "Lock released on resource [" + resourceDescription + "]",
                     Level.FINE,

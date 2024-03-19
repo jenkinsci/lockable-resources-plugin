@@ -254,8 +254,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             }
 
             if (numResources < numAsInt) {
-                return FormValidation.error(
-                        String.format(Messages.error_givenAmountIsGreaterThatResurcesAmount(), numAsInt, numResources));
+                return FormValidation.error(String.format(
+                        Messages.error_givenAmountIsGreaterThatResourcesAmount(), numAsInt, numResources));
             }
             return FormValidation.ok();
         }

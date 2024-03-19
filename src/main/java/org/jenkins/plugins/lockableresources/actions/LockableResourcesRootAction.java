@@ -74,6 +74,12 @@ public class LockableResourcesRootAction implements RootAction {
             Messages._LockableResourcesRootAction_ViewPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
+    public static final Permission QUEUE = new Permission(
+            PERMISSIONS_GROUP,
+            Messages.LockableResourcesRootAction_QueueChangeOrderPermission(),
+            Messages._LockableResourcesRootAction_QueueChangeOrderPermission_Description(),
+            Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
 
     public static final String ICON = "symbol-lock-closed";
 
@@ -298,7 +304,7 @@ public class LockableResourcesRootAction implements RootAction {
 
         for (QueuedContextStruct context : currentQueueContext) {
             for (LockableResourcesStruct resourceStruct : context.getResources()) {
-                queue.add(resourceStruct, context.getBuild());
+                queue.add(resourceStruct, context);
             }
         }
 
@@ -319,8 +325,8 @@ public class LockableResourcesRootAction implements RootAction {
 
         // -------------------------------------------------------------------------
         @Restricted(NoExternalUse.class) // used by jelly
-        public void add(final LockableResourcesStruct resourceStruct, final Run<?, ?> build) {
-            QueueStruct queueStruct = new QueueStruct(resourceStruct, build);
+        public void add(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context) {
+            QueueStruct queueStruct = new QueueStruct(resourceStruct, context);
             queue.add(queueStruct);
             if (resourceStruct.queuedAt == 0) {
                 // Older versions of this plugin might miss this information.
@@ -352,17 +358,23 @@ public class LockableResourcesRootAction implements RootAction {
             String groovyScript;
             String requiredNumber;
             long queuedAt = 0;
+            int priority = 0;
+            String id = null;
             Run<?, ?> build;
 
-            public QueueStruct(final LockableResourcesStruct resourceStruct, final Run<?, ?> build) {
+            public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context) {
                 this.requiredResources = resourceStruct.required;
                 this.requiredLabel = resourceStruct.label;
                 this.requiredNumber = resourceStruct.requiredNumber;
                 this.queuedAt = resourceStruct.queuedAt;
-                this.build = build;
+                this.build = context.getBuild();
+                this.priority = context.getPriority();
+                this.id = context.getId();
 
                 final SecureGroovyScript systemGroovyScript = resourceStruct.getResourceMatchScript();
-                if (systemGroovyScript != null) this.groovyScript = systemGroovyScript.getScript();
+                if (systemGroovyScript != null) {
+                    this.groovyScript = systemGroovyScript.getScript();
+                }
             }
 
             // -----------------------------------------------------------------------
@@ -385,7 +397,7 @@ public class LockableResourcesRootAction implements RootAction {
             @NonNull
             @Restricted(NoExternalUse.class) // used by jelly
             public String getRequiredNumber() {
-                return this.requiredNumber == null ? "N/A" : this.requiredNumber;
+                return this.requiredNumber == null ? "0" : this.requiredNumber;
             }
 
             // -----------------------------------------------------------------------
@@ -422,6 +434,32 @@ public class LockableResourcesRootAction implements RootAction {
             @Restricted(NoExternalUse.class) // used by jelly
             public Date getQueuedTimestamp() {
                 return new Date(this.queuedAt);
+            }
+
+            // -----------------------------------------------------------------------
+            /** Returns queue priority. */
+            @Restricted(NoExternalUse.class) // used by jelly
+            public int getPriority() {
+                if (this.id == null) {
+                    // defensive
+                    // in case of jenkins update from older version and you have some queue
+                    // might happens, that there are no priority set
+                    return 0;
+                }
+                return this.priority;
+            }
+
+            // -----------------------------------------------------------------------
+            /** Returns queue ID. */
+            @Restricted(NoExternalUse.class)
+            public String getId() {
+                if (this.id == null) {
+                    // defensive
+                    // in case of jenkins update from older version and you have some queue
+                    // might happens, that there are no priority set
+                    return "NN";
+                }
+                return this.id;
             }
 
             @Restricted(NoExternalUse.class) // used by jelly
@@ -622,6 +660,37 @@ public class LockableResourcesRootAction implements RootAction {
 
             rsp.forwardToPreviousPage(req);
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Change queue order (item position) */
+    @Restricted(NoExternalUse.class) // used by jelly
+    @RequirePOST
+    public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(QUEUE);
+
+        final String queueId = req.getParameter("id");
+        final String newIndexStr = req.getParameter("index");
+
+        LOGGER.fine("doChangeQueueOrder, id: " + queueId + " newIndexStr: " + newIndexStr);
+
+        final int newIndex;
+        try {
+            newIndex = Integer.parseInt(newIndexStr);
+        } catch (NumberFormatException e) {
+            rsp.sendError(423, Messages.error_isNotANumber(newIndexStr));
+            return;
+        }
+
+        try {
+            LockableResourcesManager.get().changeQueueOrder(queueId, newIndex - 1);
+        } catch (IOException e) {
+            rsp.sendError(423, e.toString().replace("java.io.IOException: ", ""));
+            return;
+        }
+
+        rsp.forwardToPreviousPage(req);
     }
 
     // ---------------------------------------------------------------------------
