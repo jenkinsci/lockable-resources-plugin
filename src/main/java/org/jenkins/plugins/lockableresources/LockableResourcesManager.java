@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -913,6 +914,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 r.setStolen();
             }
             unlock(resources, null, false);
+            // unlock() nulls resource.reservedTimestamp via resource.setBuild(null), so set it afterwards
+            Date date = new Date();
+            for (LockableResource r : resources) {
+                r.setReservedTimestamp(date);
+            }
             save();
         }
         return true;
