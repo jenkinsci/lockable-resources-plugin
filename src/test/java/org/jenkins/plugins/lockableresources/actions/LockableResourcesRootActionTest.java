@@ -11,12 +11,16 @@ import hudson.model.User;
 import hudson.security.AccessDeniedException3;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -375,6 +379,60 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     // ---------------------------------------------------------------------------
     @Test
     public void testDoUnreserve() {}
+
+    // ---------------------------------------------------------------------------
+    @Test
+    public void testDoChangeQueueOrder() throws Exception {
+
+        when(req.getMethod()).thenReturn("POST");
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+        LockableResource resource = this.createResource("resource1");
+
+        assertEquals("initial queue size", 0, action.getQueue().getAll().size());
+
+        // start few jobs to simulate queue
+        action.doReserve(req, rsp);
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "    echo('I am inside')\n" + "}\n", true));
+
+        WorkflowRun r1 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r1);
+        WorkflowRun r2 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r2);
+        WorkflowRun r3 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r3);
+
+        List<LockableResourcesRootAction.Queue.QueueStruct> queueItems =
+                action.getQueue().getAll();
+        assertEquals("queue size", 3, queueItems.size());
+
+        // nobody (system user)
+        // system must be permitted to create resource
+        // when the resource is not reserved, the doSteal action reserve it for you
+        String id = queueItems.get(0).getId();
+        when(req.getParameter("id")).thenReturn(id);
+        when(req.getParameter("index")).thenReturn("2");
+        action.doChangeQueueOrder(req, rsp);
+        queueItems = action.getQueue().getAll();
+        assertEquals("is reserved by system", id, queueItems.get(1).getId());
+
+        // invalid params. Just check if it crash here
+        when(req.getParameter("id")).thenReturn("in-valid-ID");
+        when(req.getParameter("index")).thenReturn("2");
+        action.doChangeQueueOrder(req, rsp);
+
+        when(req.getParameter("id")).thenReturn(id);
+        when(req.getParameter("index")).thenReturn("in-valid-position");
+        action.doChangeQueueOrder(req, rsp);
+
+        when(req.getParameter("id")).thenReturn(id);
+        when(req.getParameter("index")).thenReturn("0");
+        action.doChangeQueueOrder(req, rsp);
+
+        when(req.getParameter("id")).thenReturn(id);
+        when(req.getParameter("index")).thenReturn("4");
+        action.doChangeQueueOrder(req, rsp);
+    }
 
     // ---------------------------------------------------------------------------
     @Test
