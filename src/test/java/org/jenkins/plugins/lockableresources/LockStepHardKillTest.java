@@ -79,21 +79,21 @@ public class LockStepHardKillTest extends LockStepTestBase {
         j.assertBuildStatus(Result.ABORTED, b1);
 
         // Verify that b2 gets the lock.
-        j.waitForMessage("Lock acquired on [resource1]", b2);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
         j.waitForMessage("JOB 2 inside", b2);
         j.assertLogNotContains("JOB 3 inside", b3);
 
         // terminate current step
         b2.doTerm();
         // Verify that b2 releases the lock and finishes successfully.
-        j.waitForMessage("Lock released on resource [resource1]", b2);
+        j.waitForMessage("Lock released on resource [Resource: resource1]", b2);
         j.waitForMessage("JOB 2 unblocked", b2);
         j.assertBuildStatusSuccess(j.waitForCompletion(b2));
         isPaused(b2, 1, 0);
 
         // Now b3 should get the lock and do its thing.
-        j.waitForMessage("Lock acquired on [resource1]", b3);
-        j.waitForMessage("Lock released on resource [resource1]", b3);
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b3);
+        j.waitForMessage("Lock released on resource [Resource: resource1]", b3);
         j.waitForMessage("JOB 3 unblocked", b3);
         j.assertBuildStatusSuccess(j.waitForCompletion(b3));
         isPaused(b3, 1, 0);
@@ -115,7 +115,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
                 interruptTermKill(prevBuild);
             }
 
-            j.waitForMessage("Lock acquired on [resource1]", rNext);
+            j.waitForMessage("Trying to acquire lock on [Resource: resource1]", rNext);
 
             SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
             isPaused(rNext, 1, 0);

@@ -52,16 +52,16 @@ public class LockStepWithRestartTest extends LockStepTestBase {
 
             // Unlock resource1
             SemaphoreStep.success("wait-inside-lockOrderRestart/1", null);
-            j.waitForMessage("Lock released on resource [resource1]", b1);
+            j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
             isPaused(b1, 1, 0);
 
-            j.waitForMessage("Lock acquired on [resource1]", b2);
+            j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
             isPaused(b2, 1, 0);
             j.assertLogContains("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
             isPaused(b3, 1, 1);
             SemaphoreStep.success("wait-inside-lockOrderRestart/2", null);
             SemaphoreStep.waitForStart("wait-inside-lockOrderRestart/3", b3);
-            j.assertLogContains("Lock acquired on [resource1]", b3);
+            j.assertLogContains("Trying to acquire lock on [Resource: resource1]", b3);
             SemaphoreStep.success("wait-inside-lockOrderRestart/3", null);
             j.waitForMessage("Finish", b3);
             isPaused(b3, 1, 0);
@@ -95,7 +95,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
 
             // Unlock resource1
             SemaphoreStep.success("wait-inside-interoperabilityOnRestart/1", null);
-            j.waitForMessage("Lock released on resource [resource1]", b1);
+            j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
             isPaused(b1, 1, 0);
 
             FreeStyleBuild fb1;
@@ -141,7 +141,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             manager.createResource("resource1");
             manager.unreserve(Collections.singletonList(manager.fromName("resource1")));
 
-            j.waitForMessage("Lock released on resource [resource1]", b1);
+            j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
             isPaused(b1, 1, 0);
             j.waitForMessage("Finish", b1);
             isPaused(b1, 1, 0);
@@ -196,7 +196,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
         final int resourceCount = 50;
         sessions.then(j -> {
             for (int i = 1; i <= resourceCount; i++) {
-                LockableResourcesManager.get().createResource("resource" + i);
+                LockableResourcesManager.get().createResourceWithLabel("resource" + i, "label");
             }
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -234,14 +234,14 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             for (int i = 1; i <= resourceCount; i++) {
                 SemaphoreStep.success("wait-inside-lockOrderRestart-" + i + "/1", null);
             }
-            j.waitForMessage("Lock released on resource [resource" + resourceCount + "]", b1);
-            j.waitForMessage("Lock acquired on [resource" + resourceCount + "]", b2);
+            j.waitForMessage("Lock released on resource [Resource: resource" + resourceCount + "]", b1);
+            j.waitForMessage("Lock acquired on [Resource: resource" + resourceCount + "]", b2);
             j.assertLogContains("[resource" + resourceCount + "] is locked by build " + b1.getFullDisplayName(), b3);
             for (int i = 1; i <= resourceCount; i++) {
                 SemaphoreStep.success("wait-inside-lockOrderRestart-" + i + "/2", null);
             }
             SemaphoreStep.waitForStart("wait-inside-lockOrderRestart-" + resourceCount + "/3", b3);
-            j.assertLogContains("Lock acquired on [resource" + resourceCount + "]", b3);
+            j.assertLogContains("Lock acquired on [Resource: resource" + resourceCount + "]", b3);
             for (int i = 1; i <= resourceCount; i++) {
                 SemaphoreStep.success("wait-inside-lockOrderRestart-" + i + "/3", null);
             }
