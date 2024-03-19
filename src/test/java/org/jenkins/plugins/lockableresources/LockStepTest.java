@@ -1387,6 +1387,7 @@ public class LockStepTest extends LockStepTestBase {
         p.setDefinition(new CpsFlowDefinition("lock(label: 'invalidLabel') {\n" + "}\n", true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
+        j.waitUntilNoActivity();
         j.assertLogContains("The resource label does not exist: invalidLabel", b1);
         isPaused(b1, 0, 0);
     }

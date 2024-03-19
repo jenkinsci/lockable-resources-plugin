@@ -15,8 +15,12 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Item;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.Result;
+import hudson.model.StringParameterDefinition;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.triggers.TimerTrigger;
@@ -145,6 +149,57 @@ public class FreeStyleProjectTest {
     }
 
     @Test
+    @Issue("JENKINS-30308")
+    public void configRoundTripWithParam() throws Exception {
+        FreeStyleProject withParam = j.createFreeStyleProject("withparam");
+        withParam.addProperty(new ParametersDefinitionProperty(
+                new StringParameterDefinition("param1", "some-resource", "parameter 1")));
+        withParam.addProperty(new RequiredResourcesProperty("${param1}", null, null, null, null));
+        FreeStyleProject withParamRoundTrip = j.configRoundtrip(withParam);
+
+        ParametersDefinitionProperty paramsProp = withParamRoundTrip.getProperty(ParametersDefinitionProperty.class);
+        assertNotNull(paramsProp);
+
+        RequiredResourcesProperty resourcesProp = withParamRoundTrip.getProperty(RequiredResourcesProperty.class);
+        assertNotNull(resourcesProp);
+        assertEquals("${param1}", resourcesProp.getResourceNames());
+        assertNull(resourcesProp.getResourceNamesVar());
+        assertNull(resourcesProp.getResourceNumber());
+        assertNull(resourcesProp.getLabelName());
+        assertNull(resourcesProp.getResourceMatchScript());
+    }
+
+    @Test
+    public void configRoundTripWithLabelParam() throws Exception {
+        FreeStyleProject withLabel = j.createFreeStyleProject("withLabelParam");
+        withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "${labelParam}", null));
+        FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
+
+        RequiredResourcesProperty withLabelProp = withLabelRoundTrip.getProperty(RequiredResourcesProperty.class);
+        assertNotNull(withLabelProp);
+        assertNull(withLabelProp.getResourceNames());
+        assertNull(withLabelProp.getResourceNamesVar());
+        assertNull(withLabelProp.getResourceNumber());
+        assertEquals("${labelParam}", withLabelProp.getLabelName());
+        assertNull(withLabelProp.getResourceMatchScript());
+    }
+
+    @Test
+    public void configRoundTripWithNumParam() throws Exception {
+        FreeStyleProject withNum = j.createFreeStyleProject("withNumParam");
+        withNum.addProperty(new RequiredResourcesProperty(null, null, "${resNum}", "some-resources", null));
+        FreeStyleProject withNumRoundTrip = j.configRoundtrip(withNum);
+
+        RequiredResourcesProperty withNumProp = withNumRoundTrip.getProperty(RequiredResourcesProperty.class);
+        assertNotNull(withNumProp);
+        assertNull(withNumProp.getResourceNames());
+        assertNull(withNumProp.getResourceNamesVar());
+        assertEquals("${resNum}", withNumProp.getResourceNumber());
+        assertEquals("some-resources", withNumProp.getLabelName());
+        assertNull(withNumProp.getResourceMatchScript());
+    }
+
+    @Test
     public void configRoundTripWithScript() throws Exception {
         FreeStyleProject withScript = j.createFreeStyleProject("withScript");
         SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
@@ -230,6 +285,153 @@ public class FreeStyleProjectTest {
     }
 
     @Test
+    @Issue("JENKINS-30308")
+    public void autoCreateResourceFromParameter() throws Exception {
+        ParametersDefinitionProperty params =
+                new ParametersDefinitionProperty(new StringParameterDefinition("param1", "resource1", "parameter 1"));
+
+        FreeStyleProject f = j.createFreeStyleProject("f");
+        f.addProperty(params);
+        f.addProperty(new RequiredResourcesProperty("${param1}", null, null, null, null));
+
+        FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(fb1);
+        assertEquals("resource1", fb1.getBuildVariableResolver().resolve("param1"));
+        j.assertLogContains("acquired lock on [resource1]", fb1);
+        j.waitUntilNoActivity();
+
+        assertNull(LockableResourcesManager.get().fromName("resource1"));
+    }
+
+    @Test
+    @Issue("JENKINS-30308")
+    public void parallelResourceFromParameter() throws Exception {
+        LockableResourcesManager lm = LockableResourcesManager.get();
+        lm.createResource("resource1");
+        lm.createResource("resource2");
+        lm.createResource("resource3");
+
+        StringParameterDefinition param1Def = new StringParameterDefinition("param1", "", "parameter 1");
+
+        FreeStyleProject f = j.createFreeStyleProject("f");
+        f.setConcurrentBuild(true);
+        f.addProperty(new ParametersDefinitionProperty(param1Def));
+        f.addProperty(new RequiredResourcesProperty("${param1}", null, null, null, null));
+        f.getBuildersList().add(new WaitBuilder());
+
+        List<ParameterValue> values1 = new ArrayList<ParameterValue>();
+        values1.add(param1Def.createValue("resource1"));
+        FreeStyleBuild fb1 = f.scheduleBuild2(0, new ParametersAction(values1)).waitForStart();
+        j.waitForMessage("acquired lock on [resource1]", fb1);
+        j.waitForMessage("Waiting...", fb1);
+        j.assertLogNotContains("Continue", fb1);
+        Thread.sleep(100);
+
+        List<ParameterValue> values2 = new ArrayList<ParameterValue>();
+        values2.add(param1Def.createValue("resource2"));
+        FreeStyleBuild fb2 = f.scheduleBuild2(0, new ParametersAction(values2)).waitForStart();
+        j.waitForMessage("acquired lock on [resource2]", fb2);
+        j.waitForMessage("Waiting...", fb2);
+        j.assertLogNotContains("Continue", fb2);
+
+        List<ParameterValue> values3 = new ArrayList<ParameterValue>();
+        values3.add(param1Def.createValue("resource1"));
+        QueueTaskFuture<FreeStyleBuild> qt3 = f.scheduleBuild2(0, new ParametersAction(values3));
+        TestHelpers.waitForQueue(j.jenkins, f, Queue.BlockedItem.class);
+
+        Queue.BlockedItem blockedItem = (Queue.BlockedItem) j.jenkins.getQueue().getItem(f);
+        assertThat(
+                blockedItem.getCauseOfBlockage(),
+                is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesLocked.class)));
+
+        synchronized (fb2) {
+            fb2.notifyAll();
+        }
+        Thread.sleep(100);
+
+        blockedItem = (Queue.BlockedItem) j.jenkins.getQueue().getItem(f);
+        assertThat(
+                blockedItem.getCauseOfBlockage(),
+                is(instanceOf(LockableResourcesQueueTaskDispatcher.BecauseResourcesLocked.class)));
+
+        j.assertLogNotContains("Continue", fb1);
+        synchronized (fb1) {
+            fb1.notifyAll();
+        }
+        j.waitForMessage("Continue", fb1);
+        j.waitForMessage("released lock on [resource1]", fb1);
+        j.waitForCompletion(fb1);
+
+        FreeStyleBuild fb3 = qt3.waitForStart();
+        j.waitForMessage("acquired lock on [resource1]", fb3);
+        j.waitForMessage("Waiting...", fb3);
+        j.assertLogNotContains("Continue", fb3);
+        synchronized (fb3) {
+            fb3.notifyAll();
+        }
+
+        j.waitUntilNoActivity();
+        assertTrue(
+                String.format(
+                        "#1 build should be started before the build of #2. #1 started at %d, #2 finished at %d",
+                        fb1.getStartTimeInMillis(), fb2.getStartTimeInMillis()),
+                fb1.getStartTimeInMillis() < fb2.getStartTimeInMillis());
+
+        long fb1EndTime = fb1.getStartTimeInMillis() + fb1.getDuration();
+        long fb2EndTime = fb2.getStartTimeInMillis() + fb2.getDuration();
+        assertTrue(
+                String.format(
+                        "#2 build should be finished before the build of #1. #1 finished at %d, #2 finished at %d",
+                        fb1EndTime, fb2EndTime),
+                fb2EndTime < fb1EndTime);
+        assertTrue(
+                String.format(
+                        "#3 build should be started after the build of #1. #1 finished at %d, #3 started at %d",
+                        fb1EndTime, fb3.getStartTimeInMillis()),
+                fb1EndTime < fb3.getStartTimeInMillis());
+    }
+
+    @Test
+    public void labelFromParameter() throws IOException, InterruptedException, ExecutionException {
+        LockableResourcesManager lm = LockableResourcesManager.get();
+        lm.createResourceWithLabel("resource1", "resource");
+        lm.createResourceWithLabel("resource2", "resource");
+
+        ParametersDefinitionProperty params = new ParametersDefinitionProperty(
+                new StringParameterDefinition("labelParam", "resource", "parameter 1"));
+
+        FreeStyleProject f = j.createFreeStyleProject("f");
+        f.addProperty(params);
+        f.addProperty(new RequiredResourcesProperty(null, null, null, "${labelParam}", null));
+
+        FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(fb1);
+        assertEquals("resource", fb1.getBuildVariableResolver().resolve("labelParam"));
+        j.assertLogContains("acquired lock on [resource1, resource2]", fb1);
+    }
+
+    @Test
+    public void resourceNumberFromParameter() throws IOException, InterruptedException, ExecutionException {
+        LockableResourcesManager lm = LockableResourcesManager.get();
+        lm.createResourceWithLabel("resource1", "resource");
+        lm.createResourceWithLabel("resource2", "resource");
+        lm.createResourceWithLabel("resource3", "resource");
+        lm.reserve(List.of(lm.fromName("resource1")), "user1");
+
+        ParametersDefinitionProperty params =
+                new ParametersDefinitionProperty(new StringParameterDefinition("numParam", "2", "parameter 1"));
+
+        FreeStyleProject f = j.createFreeStyleProject("f");
+        f.addProperty(params);
+        f.addProperty(new RequiredResourcesProperty(null, null, "${numParam}", "resource", null));
+
+        FreeStyleBuild fb1 = f.scheduleBuild2(0).waitForStart();
+        j.waitForCompletion(fb1);
+        assertEquals("2", fb1.getBuildVariableResolver().resolve("numParam"));
+        j.assertLogContains("acquired lock on [resource2, resource3]", fb1);
+    }
+
+    @Test
     public void competingLabelLocks() throws IOException, InterruptedException, ExecutionException {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "group1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "group2");
@@ -278,6 +480,21 @@ public class FreeStyleProjectTest {
             listener.getLogger()
                     .println(
                             "resourceNameVar: " + build.getEnvironment(listener).get("resourceNameVar"));
+            return true;
+        }
+    }
+
+    private static class WaitBuilder extends TestBuilder {
+
+        @Override
+        public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+                throws InterruptedException {
+            listener.getLogger().println("Waiting...");
+
+            synchronized (build) {
+                build.wait();
+            }
+            listener.getLogger().println("Continue");
             return true;
         }
     }
