@@ -32,7 +32,7 @@ THE SOFTWARE.
 
     <div class="table-responsive">
       <table
-        class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+        class="jenkins-!-margin-bottom-4 table table-striped display data-table"
         id="lockable-resources-labels"
         isLoaded="true"
         data-remember-search-text="true"
@@ -47,7 +47,7 @@ THE SOFTWARE.
         }'
       >
         <thead>
-          <th>${%labels.table.column.labels}</th>
+          <th class="width-100">${%labels.table.column.labels}</th>
           <th>${%labels.table.column.assigned}</th>
           <th>${%labels.table.column.free}</th>
           <th>${%labels.table.column.percentage}</th>
