@@ -86,6 +86,7 @@
     <dependency>
       <groupId>io.jenkins.plugins</groupId>
       <artifactId>data-tables-api</artifactId>
+      <version>v2.0.3-1</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
