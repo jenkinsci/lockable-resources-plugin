@@ -17,10 +17,13 @@
     <f:checkbox title="${%entry.inversePrecedence.checkbox.title}"/>
   </f:entry>
   <f:entry field="skipIfLocked">
-    <f:checkbox title="${%entry.inversePrecedence.skipIfLocked.title}"/>
+    <f:checkbox title="${%entry.skipIfLocked.title}"/>
   </f:entry>
   <f:entry title="${%entry.resourceSelectStrategy.title}" field="resourceSelectStrategy">
     <f:textbox/>
+  </f:entry>
+  <f:entry title="${%entry.priority.title}" field="priority">
+    <f:number/>
   </f:entry>
   <f:entry title="${%entry.extra.title}">
     <f:repeatable field="extra" header="" minimum="0" add="${%entry.extra.add}">

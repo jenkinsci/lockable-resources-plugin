@@ -52,7 +52,9 @@ public final class BackwardCompatibility {
                                         queuedContext,
                                         Collections.singletonList(resourceHolder),
                                         resource.getName(),
-                                        null);
+                                        null,
+                                        false,
+                                        0);
                     }
                     queuedContexts.clear();
                 }

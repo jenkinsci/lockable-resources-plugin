@@ -61,6 +61,9 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public List<LockStepResource> extra = null;
 
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public int priority = 0;
+
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
     // is not required)
@@ -103,6 +106,11 @@ public class LockStep extends Step implements Serializable {
     @DataBoundSetter
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    @DataBoundSetter
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     @DataBoundSetter
@@ -184,7 +192,11 @@ public class LockStep extends Step implements Serializable {
                     .map(res -> "{" + res.toString() + "}")
                     .collect(Collectors.joining(","));
         } else if (resource != null || label != null) {
-            return LockStepResource.toString(resource, label, quantity);
+            String ret = LockStepResource.toString(resource, label, quantity);
+            if (this.priority != 0) {
+                ret += ", Priority: " + this.priority;
+            }
+            return ret;
         } else {
             return "nothing";
         }
@@ -193,7 +205,7 @@ public class LockStep extends Step implements Serializable {
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
     public void validate() {
-        LockStepResource.validate(resource, label, resourceSelectStrategy, extra);
+        LockStepResource.validate(resource, label, resourceSelectStrategy, extra, priority, inversePrecedence);
     }
 
     // -------------------------------------------------------------------------

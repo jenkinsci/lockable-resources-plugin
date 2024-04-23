@@ -112,6 +112,41 @@ lock(resource: 'staging-server', inversePrecedence: true) {
 }
 ```
 
+> It is not allowed to mixed **inversePrecedence** and **priority**.
+
+start time | job | resource | inversePrecedence
+------ |--- |--- |---
+00:01 | j1 | resource1 | false
+00:02 | j2 | resource1 | false
+00:03 | j3 | resource1 | true
+00:04 | j4 | resource1 | false
+00:05 | j5 | resource1 | true
+00:06 | j6 | resource1 | false
+
+Resulting lock order: j1 -> j5 -> j3 -> j2 -> j4 -> j6
+
+#### lock (queue) priority
+
+```groovy
+lock(resource: 'staging-server', priority: 10) {
+    node {
+        servers.deploy 'staging'
+    }
+    input message: "Does ${jettyUrl}staging/ look good?"
+}
+```
+
+  start time | job | resource  | priority
+  ------     |---  |---        |---
+  00:01      | j1  | resource1 | 0
+  00:02      | j2  | resource1 | <default == 0>
+  00:03      | j3  | resource1 | -1
+  00:04      | j4  | resource1 | 10
+  00:05      | j5  | resource1 | -2
+  00:06      | j6  | resource1 | 100
+
+  Resulting lock order: j1 -> j6 -> j4 -> j2 -> j3 -> j5
+
 #### Resolve a variable configured with the resource name and properties 
 
 ```groovy
