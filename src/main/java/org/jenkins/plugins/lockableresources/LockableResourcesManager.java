@@ -636,7 +636,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             uncacheIfFreeing(resource, true, false);
 
             if (resource.isEphemeral()) {
-                LOGGER.info("Remove ephemeral resource: " + resource);
+                LOGGER.fine("Remove ephemeral resource: " + resource);
                 toBeRemoved.add(resource);
             }
         }
@@ -1354,7 +1354,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             printLogs(
                     requiredResources + " added into queue at position " + queueIndex,
                     newQueueItem.getLogger(),
-                    Level.INFO);
+                    Level.FINE);
 
             save();
         }
