@@ -137,7 +137,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         if (resource != null) {
             final String logMessage = resource.getLockCauseDetail();
             if (logMessage != null && !logMessage.isEmpty())
-                LockableResourcesManager.printLogs(logMessage, Level.INFO, LOGGER, logger);
+                LockableResourcesManager.printLogs(logMessage, Level.FINE, LOGGER, logger);
         } else {
             // looks like ordered by label
             lrm.getAvailableResources(resourceHolderList, logger, null);
