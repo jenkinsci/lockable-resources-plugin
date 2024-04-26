@@ -70,8 +70,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private transient String labels = null;
 
     private List<String> labelsAsList = new ArrayList<>();
-    private String reservedBy = null;
-    private Date reservedTimestamp = null;
+    private transient String reservedBy = null;
+    private transient Date reservedTimestamp = null;
     private String note = "";
 
     /**
