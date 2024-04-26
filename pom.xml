@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.80</version>
+    <version>4.81</version>
     <relativePath />
   </parent>
 
@@ -86,7 +86,7 @@
     <dependency>
       <groupId>io.jenkins.plugins</groupId>
       <artifactId>data-tables-api</artifactId>
-      <version>2.0.3-1</version>
+      <version>2.0.5-1</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
