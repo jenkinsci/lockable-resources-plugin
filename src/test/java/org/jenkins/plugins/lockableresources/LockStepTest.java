@@ -430,18 +430,14 @@ public class LockStepTest extends LockStepTestBase {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore('wait-inside') }", true));
 
-        JenkinsRule.WebClient wc = j.createWebClient();
-
         WorkflowRun prevBuild = null;
+        TestHelpers testHelpers = new TestHelpers();
         for (int i = 0; i < 3; i++) {
             WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
             if (prevBuild != null) {
                 j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
                 isPaused(rNext, 1, 1);
-                // List<LockableResource> resources = new ArrayList<>();
-                // resources.add(LockableResourcesManager.get().fromName("resource1"));
-                // LockableResourcesManager.get().unlock(resources, null);
-                TestHelpers.clickButton(wc, "unlock");
+                testHelpers.clickButton("unlock", "resource1");
             }
 
             j.waitForMessage("Lock acquired on [resource1]", rNext);

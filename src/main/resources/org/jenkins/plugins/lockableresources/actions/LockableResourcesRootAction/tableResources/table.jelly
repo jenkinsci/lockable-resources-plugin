@@ -35,7 +35,7 @@ THE SOFTWARE.
 
   <div class="table-responsive">
     <table
-      class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+      class="jenkins-!-margin-bottom-4 table table-striped display data-table"
       id="lockable-resources"
       data-remember-search-text="true"
       isLoaded="true"
@@ -59,28 +59,12 @@ THE SOFTWARE.
         ]
        }'
     >
-      <colgroup>
-        <!-- index -->
-        <col class="text-end" />
-        <!-- resouce -->
-        <col class="width-100 text-end" />
-        <!-- status -->
-        <col class="width-100 text-end" />
-        <!-- timestamp -->
-        <col class="width-100 text-end" />
-        <!-- labels -->
-        <col class="width-100 text-end" />
-        <!-- properties -->
-        <col class="width-100 text-end" />
-        <!-- actions -->
-        <col action="width-100 text-end" />
-      </colgroup>
       <thead>
         <th data-class-name="index">${%resources.table.column.index}</th>
-        <th data-class-name="resource">${%resources.table.column.resource}</th>
+        <th data-class-name="resource" class="width-100">${%resources.table.column.resource}</th>
         <th data-class-name="status">${%resources.table.column.status}</th>
         <th data-class-name="timestamp">${%resources.table.column.timestamp}</th>
-        <th data-class-name="labels">${%resources.table.column.labels}</th>
+        <th data-class-name="labels" class="width-100">${%resources.table.column.labels}</th>
         <th data-class-name="properties">${%resources.table.column.properties}</th>
         <th data-class-name="action">${%resources.table.column.action}</th>
       </thead>
