@@ -66,7 +66,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-2.440.x</artifactId>
-        <version>2977.vdf61ecb_fb_e2d</version>
+        <version>2982.vdce2153031a_0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -81,7 +81,6 @@
     <dependency>
       <groupId>io.jenkins.plugins</groupId>
       <artifactId>data-tables-api</artifactId>
-      <version>2.0.5-1</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
