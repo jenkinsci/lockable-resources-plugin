@@ -8,19 +8,21 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.when;
 
 import hudson.model.FreeStyleProject;
 import hudson.model.Queue;
 import java.io.IOException;
-import java.util.List;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import org.htmlunit.html.HtmlElement;
-import org.htmlunit.html.HtmlElementUtil;
-import org.htmlunit.html.HtmlPage;
+import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 public final class TestHelpers {
 
@@ -29,8 +31,18 @@ public final class TestHelpers {
     private static final int SLEEP_TIME = 100;
     private static final int MAX_WAIT = 5000;
 
+    @Mock
+    private StaplerRequest req;
+
+    @Mock
+    private StaplerResponse rsp;
+
+    private AutoCloseable mocks;
+
     // Utility class
-    private TestHelpers() {}
+    public TestHelpers() {
+        this.mocks = MockitoAnnotations.openMocks(this);
+    }
 
     public static void waitForQueue(Jenkins jenkins, FreeStyleProject job) throws InterruptedException {
         waitForQueue(jenkins, job, Queue.Item.class);
@@ -71,20 +83,31 @@ public final class TestHelpers {
         return rule.getJSON("plugin/lockable-resources/api/json").getJSONObject();
     }
 
-    // Currently assumes one resource or only clicks the button for the first resource
-    public static void clickButton(JenkinsRule.WebClient wc, String action) throws Exception {
-        // disable exceptions, otherwise it will not parse jQuery scripts (used ba DataTable plugin)
-        wc.getOptions().setThrowExceptionOnScriptError(false);
-        HtmlPage htmlPage = wc.goTo("lockable-resources");
-        List<HtmlElement> allButtons = htmlPage.getDocumentElement().getElementsByTagName("button");
+    /** SImulate the click on the button in the LRM page
+     *  note: Currently does not click on the button. Just simulate the doAction (stapler request)
+     *  on the given resource.
+     *  We shall provide some better solution like selenium tests. But for now it is fine.
+     */
+    public void clickButton(String action, String resourceName) throws Exception {
+        LOGGER.info(action + " on " + resourceName);
+        LockableResourcesRootAction doAction = new LockableResourcesRootAction();
+        when(req.getMethod()).thenReturn("POST");
+        when(req.getParameter("resource")).thenReturn(resourceName);
 
-        HtmlElement reserveButton = null;
-        for (HtmlElement b : allButtons) {
-            String onClick = b.getAttribute("onClick");
-            if (onClick != null && onClick.contains(action)) {
-                reserveButton = b;
+        switch (action) {
+            case "reserve": {
+                doAction.doReserve(req, rsp);
+                break;
+            }
+            case "unreserve": {
+                doAction.doUnreserve(req, rsp);
+                break;
+            }
+            case "unlock": {
+                LOGGER.info("doUnlock");
+                doAction.doUnlock(req, rsp);
+                break;
             }
         }
-        HtmlElementUtil.click(reserveButton);
     }
 }

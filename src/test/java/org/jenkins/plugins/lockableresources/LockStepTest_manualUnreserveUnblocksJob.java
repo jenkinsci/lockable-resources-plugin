@@ -25,9 +25,9 @@ public class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
     @Test
     public void manualUnreserveUnblocksJob() throws Exception {
         LockableResourcesManager.get().createResource("resource1");
-        JenkinsRule.WebClient wc = j.createWebClient();
 
-        TestHelpers.clickButton(wc, "reserve");
+        TestHelpers testHelpers = new TestHelpers();
+        testHelpers.clickButton("reserve", "resource1");
         LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
         assertNotNull(resource1);
         resource1.setReservedBy("someone");
@@ -45,7 +45,7 @@ public class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
         WorkflowRun r = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is not free, waiting for execution ...", r);
         j.assertLogNotContains("I am inside", r);
-        TestHelpers.clickButton(wc, "unreserve");
+        testHelpers.clickButton("unreserve", "resource1");
         j.waitForMessage("I am inside", r);
         j.assertLogContains("I am inside", r);
         j.assertBuildStatusSuccess(j.waitForCompletion(r));
