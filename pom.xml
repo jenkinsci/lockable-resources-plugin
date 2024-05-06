@@ -180,6 +180,7 @@
             <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
           </loggers>
           <compatibleSinceVersion>2.0</compatibleSinceVersion>
+          <injectedTestPackage>org.jenkins.plugins.lockableresources</injectedTestPackage>
         </configuration>
       </plugin>
     </plugins>
