@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.81</version>
+    <version>4.82</version>
     <relativePath />
   </parent>
 
@@ -28,11 +28,6 @@
   </licenses>
 
   <developers>
-    <developer>
-      <id>basil</id>
-      <name>Basil Crow</name>
-      <email>me@basilcrow.com</email>
-    </developer>
     <developer>
       <id>TobiX</id>
       <name>Tobias Gruetzmacher</name>
@@ -70,8 +65,8 @@
     <dependencies>
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.387.x</artifactId>
-        <version>2543.vfb_1a_5fb_9496d</version>
+        <artifactId>bom-2.440.x</artifactId>
+        <version>3023.v02a_987a_b_3ff9</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -185,6 +180,7 @@
             <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
           </loggers>
           <compatibleSinceVersion>2.0</compatibleSinceVersion>
+          <injectedTestPackage>org.jenkins.plugins.lockableresources</injectedTestPackage>
         </configuration>
       </plugin>
     </plugins>
