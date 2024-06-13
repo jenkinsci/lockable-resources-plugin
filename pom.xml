@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.81</version>
+    <version>4.83</version>
     <relativePath />
   </parent>
 
@@ -54,7 +54,7 @@
 
   <properties>
     <changelist>999999-SNAPSHOT</changelist>
-    <jenkins.version>2.440.1</jenkins.version>
+    <jenkins.version>2.440.3</jenkins.version>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
     <spotbugs.effort>Max</spotbugs.effort>
     <spotbugs.threshold>Low</spotbugs.threshold>
@@ -65,8 +65,8 @@
     <dependencies>
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.387.x</artifactId>
-        <version>2543.vfb_1a_5fb_9496d</version>
+        <artifactId>bom-2.440.x</artifactId>
+        <version>3120.v4d898e1e9fc4</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -180,6 +180,7 @@
             <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
           </loggers>
           <compatibleSinceVersion>2.0</compatibleSinceVersion>
+          <injectedTestPackage>org.jenkins.plugins.lockableresources</injectedTestPackage>
         </configuration>
       </plugin>
     </plugins>

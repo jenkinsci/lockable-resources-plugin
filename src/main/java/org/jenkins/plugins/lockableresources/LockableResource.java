@@ -212,7 +212,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     /**
      * Use getLabelsAsList instead todo This function is marked as deprecated but it is still used in
-     * tests ans jelly (config) files.
+     * tests and jelly (config) files.
      */
     @Deprecated
     @Exported
@@ -462,7 +462,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     /**
      * Resolve the lock detailed cause for this resource.
-     * Note: this function is used in lock() step and not in the UI. Therefor
+     * Note: this function is used in lock() step and not in the UI. Therefore
      *       moving text into localization files does not make really sense.
      *
      * @return the lock cause or null if not locked
