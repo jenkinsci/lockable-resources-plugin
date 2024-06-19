@@ -52,26 +52,44 @@ THE SOFTWARE.
 
       <div class="table-responsive">
         <table
-            class="jenkins-table jenkins-!-margin-bottom-4 data-table"
+            class="jenkins-!-margin-bottom-4 table table-striped display data-table"
             id="used-lockable-resources-by-build"
             isLoaded="true"
             data-remember-search-text="true"
-            data-columns-definition="[null, null, null, null]"
-            data-table-configuration="{}"
+            data-columns-definition="[null, null, null, null, null]"
+            data-table-configuration='
+            {
+              "stateSave": true,
+              "lengthMenu": [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "${%table.settings.page.length.all}"]
+              ]
+            }'
           >
             <thead>
               <th>${%table.column.index}</th>
+              <th>${%table.column.timeStamp}</th>
+              <th>${%table.column.action}</th>
+              <th>${%table.column.step}</th>
               <th>${%table.column.name}</th>
-              <th>${%table.column.description}</th>
-              <th>${%table.column.counter}</th>
             </thead>
             <tbody>
               <j:forEach var="resource" items="${it.lockedResources}" varStatus="idx">
                 <tr>
                   <td>${idx.index + 1}</td>
+                  <td>
+                    <j:if test="${resource.timeStamp.getTime() gt 0}">
+                    <i:formatDate
+                      value="${resource.timeStamp}"
+                      type="both"
+                      dateStyle="medium"
+                      timeStyle="long"
+                    />
+                    </j:if>
+                  </td>
+                  <td>${resource.action}</td>
+                  <td>${resource.step}</td>
                   <td>${resource.name}</td>
-                  <td>${resource.description}</td>
-                  <td>${resource.counter}</td>
                 </tr>
               </j:forEach>
             </tbody>

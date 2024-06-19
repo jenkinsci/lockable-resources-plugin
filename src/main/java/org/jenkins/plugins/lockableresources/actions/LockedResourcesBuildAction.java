@@ -12,6 +12,7 @@ import hudson.model.Action;
 import hudson.model.Run;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -30,14 +31,21 @@ public class LockedResourcesBuildAction implements Action {
     // -------------------------------------------------------------------------
     private final List<ResourcePOJO> lockedResources;
 
+    /** Object to synchronized operations over LRM */
+    private static final transient Object syncResources = new Object();
+
     // -------------------------------------------------------------------------
     public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
-        this.lockedResources = lockedResources;
+        synchronized (this.syncResources) {
+          this.lockedResources = lockedResources;
+        }
     }
 
     // -------------------------------------------------------------------------
     public List<ResourcePOJO> getLockedResources() {
-        return lockedResources;
+        synchronized (this.syncResources) {
+          return lockedResources;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -61,28 +69,20 @@ public class LockedResourcesBuildAction implements Action {
     // -------------------------------------------------------------------------
     /** Adds *resourceNames* to *build*.
      * When the action does not exists, will be created as well.
-     * When the resource has been used by this build just now, the counter will
-     * increased to eliminate multiple entries.
      * Used in pipelines - lock() step
      */
     @Restricted(NoExternalUse.class)
-    public static void updateAction(Run<?, ?> build, List<String> resourceNames) {
-        LockedResourcesBuildAction action = build.getAction(LockedResourcesBuildAction.class);
+    public static void updateAction(Run<?, ?> build, List<String> resourceNames, String action, String step) {
+        LockedResourcesBuildAction buildAction = build.getAction(LockedResourcesBuildAction.class);
 
-        if (action == null) {
+        if (buildAction == null) {
             List<ResourcePOJO> resPojos = new ArrayList<>();
-            action = new LockedResourcesBuildAction(resPojos);
-            build.addAction(action);
+            buildAction = new LockedResourcesBuildAction(resPojos);
+            build.addAction(buildAction);
         }
 
         for (String name : resourceNames) {
-            LockableResource r = LockableResourcesManager.get().fromName(name);
-            if (r != null) {
-                action.add(new ResourcePOJO(r));
-            } else {
-                // probably a ephemeral resource has been deleted
-                action.add(new ResourcePOJO(name, ""));
-            }
+            buildAction.add(new ResourcePOJO(name, step, action));
         }
     }
 
@@ -92,13 +92,9 @@ public class LockedResourcesBuildAction implements Action {
     // since the list *this.lockedResources* might be updated from multiple (parallel)
     // stages, this operation need to be synchronized
     private synchronized void add(ResourcePOJO r) {
-        for (ResourcePOJO pojo : this.lockedResources) {
-            if (pojo.getName().equals(r.getName())) {
-                pojo.inc();
-                return;
-            }
+        synchronized (this.syncResources) {
+          this.lockedResources.add(r);
         }
-        this.lockedResources.add(r);
     }
 
     // -------------------------------------------------------------------------
@@ -110,7 +106,7 @@ public class LockedResourcesBuildAction implements Action {
         List<ResourcePOJO> resPojos = new ArrayList<>();
         for (LockableResource r : resources) {
             if (r != null) {
-                resPojos.add(new ResourcePOJO(r));
+                resPojos.add(new ResourcePOJO(r.getName(), "", ""));
             }
         }
         return new LockedResourcesBuildAction(resPojos);
@@ -121,19 +117,16 @@ public class LockedResourcesBuildAction implements Action {
 
         // ---------------------------------------------------------------------
         private String name;
-        private String description;
-        private int count = 1;
+        private String step;
+        private String action;
+        private long timeStamp;
 
         // ---------------------------------------------------------------------
-        public ResourcePOJO(String name, String description) {
+        public ResourcePOJO(String name, String step, String action) {
             this.name = name;
-            this.description = description;
-        }
-
-        // ---------------------------------------------------------------------
-        public ResourcePOJO(LockableResource r) {
-            this.name = r.getName();
-            this.description = r.getDescription();
+            this.step = step;
+            this.action = action;
+            this.timeStamp = new Date().getTime();
         }
 
         // ---------------------------------------------------------------------
@@ -142,23 +135,18 @@ public class LockedResourcesBuildAction implements Action {
         }
 
         // ---------------------------------------------------------------------
-        public String getDescription() {
-            return this.description;
+        public String getStep() {
+            return this.step;
         }
 
         // ---------------------------------------------------------------------
-        /** Return the counter, how many was / is the resource used in the build.
-         * Example: you can use the lock() function in parallel stages for the
-         * same resource.
-         */
-        public int getCounter() {
-            return this.count;
+        public String getAction() {
+            return this.action;
         }
 
         // ---------------------------------------------------------------------
-        /** Increment counter */
-        public void inc() {
-            this.count++;
+        public Date getTimeStamp() {
+            return new Date(this.timeStamp);
         }
     }
 }

@@ -108,7 +108,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Get declared resources, means only defined in config file (xml or JCaC yaml). */
     public List<LockableResource> getDeclaredResources() {
         ArrayList<LockableResource> declaredResources = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
+        for (LockableResource r : this.getResources()) {
             if (!r.isEphemeral() && !r.isNodeResource()) {
                 declaredResources.add(r);
             }
@@ -165,7 +165,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesFromProject(String fullName) {
         List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
+        for (LockableResource r : this.getResources()) {
             String rName = r.getQueueItemProject();
             if (rName != null && rName.equals(fullName)) {
                 matching.add(r);
@@ -179,7 +179,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
         List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
+        for (LockableResource r : this.getResources()) {
             Run<?, ?> rBuild = r.getBuild();
             if (rBuild != null && rBuild == build) {
                 matching.add(r);
@@ -198,10 +198,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return false;
         }
 
-        for (LockableResource r : this.getReadOnlyResources()) {
-            if (r != null && r.isValidLabel(label)) {
-                return true;
-            }
+        synchronized (this.syncResources) {
+          for (LockableResource r : this.getResources()) {
+              if (r != null && r.isValidLabel(label)) {
+                  return true;
+              }
+          }
         }
 
         return false;
@@ -326,8 +328,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (resourceName != null) {
 
-            for (LockableResource r : this.getReadOnlyResources()) {
-                if (resourceName.equals(r.getName())) return r;
+            synchronized (this.syncResources) {
+              for (LockableResource r : this.getResources()) {
+                  if (resourceName.equals(r.getName())) return r;
+              }
             }
         } else {
             LOGGER.warning("Internal failure, fromName is empty or null:" + getStack());
