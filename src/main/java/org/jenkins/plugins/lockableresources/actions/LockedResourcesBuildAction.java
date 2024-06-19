@@ -15,7 +15,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -37,14 +36,14 @@ public class LockedResourcesBuildAction implements Action {
     // -------------------------------------------------------------------------
     public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
         synchronized (this.syncResources) {
-          this.lockedResources = lockedResources;
+            this.lockedResources = lockedResources;
         }
     }
 
     // -------------------------------------------------------------------------
     public List<ResourcePOJO> getLockedResources() {
         synchronized (this.syncResources) {
-          return lockedResources;
+            return lockedResources;
         }
     }
 
@@ -93,7 +92,7 @@ public class LockedResourcesBuildAction implements Action {
     // stages, this operation need to be synchronized
     private synchronized void add(ResourcePOJO r) {
         synchronized (this.syncResources) {
-          this.lockedResources.add(r);
+            this.lockedResources.add(r);
         }
     }
 

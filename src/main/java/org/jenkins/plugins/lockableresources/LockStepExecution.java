@@ -77,7 +77,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     resourceNames.add("N/A");
                 }
                 resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
-                
             }
 
             LockedResourcesBuildAction.updateAction(run, resourceNames, "try", step.toString());
@@ -177,8 +176,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             final String resourceNamesAsString = String.join(",", lockedResources.keySet());
             LockedResourcesBuildAction.updateAction(build, resourceNames, "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
-            BodyInvoker bodyInvoker = context.newBodyInvoker()
-                    .withCallback(new Callback(resourceNames, resourceDescription));
+            BodyInvoker bodyInvoker =
+                    context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
             if (variable != null && !variable.isEmpty()) {
                 // set the variable for the duration of the block
                 bodyInvoker.withContext(

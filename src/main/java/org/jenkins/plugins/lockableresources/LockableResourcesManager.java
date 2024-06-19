@@ -199,11 +199,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         synchronized (this.syncResources) {
-          for (LockableResource r : this.getResources()) {
-              if (r != null && r.isValidLabel(label)) {
-                  return true;
-              }
-          }
+            for (LockableResource r : this.getResources()) {
+                if (r != null && r.isValidLabel(label)) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -329,9 +329,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (resourceName != null) {
 
             synchronized (this.syncResources) {
-              for (LockableResource r : this.getResources()) {
-                  if (resourceName.equals(r.getName())) return r;
-              }
+                for (LockableResource r : this.getResources()) {
+                    if (resourceName.equals(r.getName())) return r;
+                }
             }
         } else {
             LOGGER.warning("Internal failure, fromName is empty or null:" + getStack());
