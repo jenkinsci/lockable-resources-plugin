@@ -610,25 +610,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    private void freeResources(List<LockableResource> unlockResources) {
+    private void freeResources(List<LockableResource> unlockResources, Run<?, ?> build) {
 
         LOGGER.fine("free it: " + unlockResources);
 
         // make sure there is a list of resource names to unlock
-        if (unlockResources == null || unlockResources.isEmpty()) {
+        if (unlockResources == null || unlockResources.isEmpty() || build == null) {
             return;
         }
 
         List<LockableResource> toBeRemoved = new ArrayList<>();
 
-        Run<?, ?> build = null;
-
         for (LockableResource resource : unlockResources) {
             // No more contexts, unlock resource
 
-            if (build == null) {
-                build = resource.getBuild();
-            }
+            // the resource has been currently unlocked (like by LRM page - button unlock, or by API)
+            if (!build.equals(resource.getBuild())) continue;
 
             resource.unqueue();
             resource.setBuild(null);
@@ -659,28 +656,34 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (resourcesInUse.size() == 0) {
             return;
         }
-        unlockNames(resourcesInUse);
+        unlockNames(resourcesInUse, build);
     }
 
     // ---------------------------------------------------------------------------
     @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
-    public void unlockNames(@Nullable List<String> resourceNamesToUnLock) {
+    public void unlockNames(@Nullable List<String> resourceNamesToUnLock, Run<?, ?> build) {
 
         // make sure there is a list of resource names to unlock
         if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
             return;
         }
         synchronized (this.syncResources) {
-            unlockResources(this.fromNames(resourceNamesToUnLock));
+            unlockResources(this.fromNames(resourceNamesToUnLock), build);
         }
     }
 
+    // ---------------------------------------------------------------------------
     public void unlockResources(List<LockableResource> resourcesToUnLock) {
+        unlockResources(resourcesToUnLock, resourcesToUnLock.get(0).getBuild());
+    }
+
+    // ---------------------------------------------------------------------------
+    public void unlockResources(List<LockableResource> resourcesToUnLock, Run<?, ?> build) {
         if (resourcesToUnLock == null || resourcesToUnLock.isEmpty()) {
             return;
         }
         synchronized (this.syncResources) {
-            this.freeResources(resourcesToUnLock);
+            this.freeResources(resourcesToUnLock, build);
 
             while (proceedNextContext()) {
                 // process as many contexts as possible

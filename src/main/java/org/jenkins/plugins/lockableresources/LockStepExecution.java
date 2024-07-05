@@ -41,7 +41,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     public boolean start() throws Exception {
-
         // normally it might raise a exception, but we check it in the function .validate()
         // therefore we can skip the try-catch here.
         ResourceSelectStrategy resourceSelectStrategy =
@@ -51,7 +50,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
         Run<?, ?> run = getContext().get(Run.class);
-        LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
         List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
@@ -60,6 +58,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         LockableResourcesManager lrm = LockableResourcesManager.get();
         synchronized (lrm.syncResources) {
             step.validate();
+
+            LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
             List<String> resourceNames = new ArrayList<>();
             for (LockStepResource resource : step.getResources()) {
                 List<String> resources = new ArrayList<>();
@@ -103,8 +103,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             for (LockableResource resource : available) {
                 lockedResources.put(resource.getName(), resource.getProperties());
             }
+            LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
         }
-        LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
 
         return false;
     }
@@ -230,7 +230,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         protected void finished(StepContext context) throws Exception {
             Run<?, ?> build = context.get(Run.class);
             LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
-            LockableResourcesManager.get().unlockNames(this.resourceNames);
+            LockableResourcesManager.get().unlockNames(this.resourceNames, build);
             LockableResourcesManager.printLogs(
                     "Lock released on resource [" + this.resourceDescription + "]",
                     Level.FINE,
