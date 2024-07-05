@@ -501,6 +501,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public void setBuild(@Nullable Run<?, ?> lockedBy) {
+        LOGGER.info(getName() + " cause " + this.getLockCauseDetail());
+        LOGGER.info(getName() + " current " + this.build);
+        LOGGER.info(getName() + " next " + lockedBy);
         this.build = lockedBy;
         if (lockedBy != null) {
             this.buildExternalizableId = lockedBy.getExternalizableId();

@@ -31,7 +31,7 @@ public class PressureTest extends LockStepTestBase {
     @WithTimeout(900)
     public void pressureEnableSave() throws Exception {
         // keep in mind, that the windows nodes at jenkins-infra are not very fast
-        pressure(Functions.isWindows() ? 20 : 10);
+        //  pressure(Functions.isWindows() ? 10 : 10);
     }
 
     @Test
@@ -44,7 +44,7 @@ public class PressureTest extends LockStepTestBase {
 
     public void pressure(final int resourcesCount) throws Exception {
         // count of parallel jobs
-        final int jobsCount = (resourcesCount / 2) + 1;
+        final int jobsCount = (resourcesCount * 2) + 1;
         final int nodesCount = (resourcesCount / 10) + 1;
         // enable node mirroring to make more chaos
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");

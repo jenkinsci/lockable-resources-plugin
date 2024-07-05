@@ -74,22 +74,21 @@ THE SOFTWARE.
               <th>${%table.column.name}</th>
             </thead>
             <tbody>
-              <j:forEach var="resource" items="${it.lockedResources}" varStatus="idx">
+              <j:forEach var="loEntry" items="${it.getReadOnlyLogs()}" varStatus="idx">
+
                 <tr>
                   <td>${idx.index + 1}</td>
                   <td>
-                    <j:if test="${resource.timeStamp.getTime() gt 0}">
                     <i:formatDate
-                      value="${resource.timeStamp}"
+                      value="${loEntry.timeStamp}"
                       type="both"
                       dateStyle="medium"
                       timeStyle="long"
                     />
-                    </j:if>
                   </td>
-                  <td>${resource.action}</td>
-                  <td>${resource.step}</td>
-                  <td>${resource.name}</td>
+                  <td>${loEntry.action}</td>
+                  <td>${loEntry.step}</td>
+                  <td>${loEntry.name}</td>
                 </tr>
               </j:forEach>
             </tbody>

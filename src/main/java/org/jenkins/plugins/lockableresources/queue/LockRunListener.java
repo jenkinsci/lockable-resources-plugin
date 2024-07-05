@@ -105,23 +105,8 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         // Skip unlocking for multiple configuration projects,
         // only the child jobs will actually unlock resources.
         if (build instanceof MatrixBuild) return;
-
-        LockableResourcesManager lrm = LockableResourcesManager.get();
-        LOGGER.info(build.getFullDisplayName() + " sync LRM ");
-        synchronized (lrm.syncResources) {
-            LOGGER.info(build.getFullDisplayName() + " synced LRM ");
-            // obviously project name cannot be obtained here
-            List<LockableResource> required = lrm.getResourcesFromBuild(build);
-
-            if (!required.isEmpty()) {
-                lrm.unlock(required, build);
-                listener.getLogger().printf("%s released lock on %s%n", LOG_PREFIX, required);
-                LOGGER.info(build.getFullDisplayName()
-                        + " released lock on "
-                        + required
-                        + ", because the build has been finished.");
-            }
-        }
+        LOGGER.info(build.getFullDisplayName());
+        LockableResourcesManager.get().unlockBuild(build);
     }
 
     @Override
@@ -129,19 +114,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         // Skip unlocking for multiple configuration projects,
         // only the child jobs will actually unlock resources.
         if (build instanceof MatrixBuild) return;
-        LockableResourcesManager lrm = LockableResourcesManager.get();
-        LOGGER.info(build.getFullDisplayName() + " sync LRM ");
-        synchronized (lrm.syncResources) {
-            LOGGER.info(build.getFullDisplayName() + " synced LRM ");
-            List<LockableResource> required = lrm.getResourcesFromBuild(build);
-
-            if (!required.isEmpty()) {
-                lrm.unlock(required, build);
-                LOGGER.warning(build.getFullDisplayName()
-                        + " released lock on "
-                        + required
-                        + ", because the build has been deleted.");
-            }
-        }
+        LOGGER.info(build.getFullDisplayName());
+        LockableResourcesManager.get().unlockBuild(build);
     }
 }

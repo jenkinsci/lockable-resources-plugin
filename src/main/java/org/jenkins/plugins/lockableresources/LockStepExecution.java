@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
@@ -78,7 +79,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                 resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
             }
 
-            // LockedResourcesBuildAction.updateAction(run, resourceNames, "try", step.toString());
+            LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
 
             // determine if there are enough resources available to proceed
             available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
@@ -156,11 +157,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             StepContext context,
             String resourceDescription,
             final String variable) {
-        // Run<?, ?> build;
+        Run<?, ?> build;
         FlowNode node = null;
         PrintStream logger = null;
         try {
-            // build = context.get(Run.class);
+            build = context.get(Run.class);
             node = context.get(FlowNode.class);
             logger = context.get(TaskListener.class).getLogger();
             LockableResourcesManager.printLogs(
@@ -173,7 +174,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         try {
             List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
             final String resourceNamesAsString = String.join(",", lockedResources.keySet());
-            // LockedResourcesBuildAction.updateAction(build, resourceNames, "acquired", resourceDescription);
+            LockedResourcesBuildAction.addLog(build, resourceNames, "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
             BodyInvoker bodyInvoker =
                     context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
@@ -228,8 +229,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         @Override
         protected void finished(StepContext context) throws Exception {
             Run<?, ?> build = context.get(Run.class);
-            LockableResourcesManager.get().unlockNames(this.resourceNames, build);
-            // LockedResourcesBuildAction.updateAction(build, this.resourceNames, "released", this.resourceDescription);
+            LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
+            LockableResourcesManager.get().unlockNames(this.resourceNames);
             LockableResourcesManager.printLogs(
                     "Lock released on resource [" + this.resourceDescription + "]",
                     Level.FINE,
