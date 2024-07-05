@@ -46,7 +46,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         ResourceSelectStrategy resourceSelectStrategy =
                 ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
 
-        getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
         PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
         Run<?, ?> run = getContext().get(Run.class);
@@ -60,6 +59,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             step.validate();
 
             LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
+
+            getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
+
             List<String> resourceNames = new ArrayList<>();
             for (LockStepResource resource : step.getResources()) {
                 List<String> resources = new ArrayList<>();
