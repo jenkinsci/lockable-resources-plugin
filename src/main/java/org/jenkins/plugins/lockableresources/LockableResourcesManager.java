@@ -637,8 +637,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
 
-        if (build != null)
-            LockedResourcesBuildAction.findAndInitAction(build).removeUsedResources(getResourcesNames(unlockResources));
+        LockedResourcesBuildAction.findAndInitAction(build).removeUsedResources(getResourcesNames(unlockResources));
 
         // remove all ephemeral resources
         removeResources(toBeRemoved);
