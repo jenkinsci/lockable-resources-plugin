@@ -494,17 +494,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return build;
     }
 
+    // ---------------------------------------------------------------------------
     @Exported
     public String getBuildName() {
         if (getBuild() != null) return getBuild().getFullDisplayName();
         else return null;
     }
 
+    // ---------------------------------------------------------------------------
     public void setBuild(@Nullable Run<?, ?> lockedBy) {
-        LOGGER.info(getName() + " cause " + this.getLockCauseDetail());
-        LOGGER.info(getName() + " current " + this.build);
-        LOGGER.info(getName() + " next " + lockedBy);
+
         this.build = lockedBy;
+
         if (lockedBy != null) {
             this.buildExternalizableId = lockedBy.getExternalizableId();
             setReservedTimestamp(new Date());

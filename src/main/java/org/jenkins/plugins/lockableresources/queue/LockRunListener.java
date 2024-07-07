@@ -38,21 +38,13 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         // only the child jobs will actually lock resources.
         if (build instanceof MatrixBuild) return;
 
-        LOGGER.info(build.getFullDisplayName() + " AbstractBuild "
-                + build.getClass().getName());
         if (build instanceof AbstractBuild) {
-            LOGGER.info(build.getFullDisplayName() + " get LRM ");
             LockableResourcesManager lrm = LockableResourcesManager.get();
-            LOGGER.info(build.getFullDisplayName() + " sync LRM ");
             synchronized (lrm.syncResources) {
-                LOGGER.info(build.getFullDisplayName() + " synced LRM ");
                 Job<?, ?> proj = Utils.getProject(build);
                 List<LockableResource> required = new ArrayList<>();
 
-                LOGGER.info(build.getFullDisplayName() + " requiredResources ");
                 LockableResourcesStruct resources = Utils.requiredResources(proj);
-
-                LOGGER.info(build.getFullDisplayName() + " " + ((resources == null) ? "nothing" : "something"));
 
                 if (resources != null) {
                     if (resources.requiredNumber != null
