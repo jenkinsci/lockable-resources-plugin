@@ -521,7 +521,7 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
-        LockableResourcesManager.get().unlock(resources, null);
+        LockableResourcesManager.get().unlockResources(resources);
 
         rsp.forwardToPreviousPage(req);
     }

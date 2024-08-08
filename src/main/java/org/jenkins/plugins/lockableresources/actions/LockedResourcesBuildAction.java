@@ -1,20 +1,11 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.Action;
 import hudson.model.Run;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
-import org.jenkins.plugins.lockableresources.LockableResource;
-import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -27,18 +18,13 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
-    // -------------------------------------------------------------------------
-    private final List<ResourcePOJO> lockedResources;
+    private static final long serialVersionUID = 1L;
 
-    // -------------------------------------------------------------------------
-    public LockedResourcesBuildAction(List<ResourcePOJO> lockedResources) {
-        this.lockedResources = lockedResources;
-    }
+    private List<LogEntry> logs = new ArrayList<>();
+    private final transient Object syncLogs = new Object();
+    private List<String> resourcesInUse = new ArrayList<>();
 
-    // -------------------------------------------------------------------------
-    public List<ResourcePOJO> getLockedResources() {
-        return lockedResources;
-    }
+    public LockedResourcesBuildAction() {}
 
     // -------------------------------------------------------------------------
     @Override
@@ -58,107 +44,105 @@ public class LockedResourcesBuildAction implements Action {
         return "locked-resources";
     }
 
-    // -------------------------------------------------------------------------
-    /** Adds *resourceNames* to *build*.
-     * When the action does not exists, will be created as well.
-     * When the resource has been used by this build just now, the counter will
-     * increased to eliminate multiple entries.
-     * Used in pipelines - lock() step
-     */
-    @Restricted(NoExternalUse.class)
-    public static void updateAction(Run<?, ?> build, List<String> resourceNames) {
-        LockedResourcesBuildAction action = build.getAction(LockedResourcesBuildAction.class);
+    public List<String> getCurrentUsedResourceNames() {
+        return resourcesInUse;
+    }
 
-        if (action == null) {
-            List<ResourcePOJO> resPojos = new ArrayList<>();
-            action = new LockedResourcesBuildAction(resPojos);
-            build.addAction(action);
+    public void addUsedResources(List<String> resourceNames) {
+        synchronized (resourcesInUse) {
+            resourcesInUse.addAll(resourceNames);
         }
+    }
 
-        for (String name : resourceNames) {
-            LockableResource r = LockableResourcesManager.get().fromName(name);
-            if (r != null) {
-                action.add(new ResourcePOJO(r));
+    public void removeUsedResources(List<String> resourceNames) {
+        synchronized (resourcesInUse) {
+            resourcesInUse.removeAll(resourceNames);
+        }
+    }
+
+    public static LockedResourcesBuildAction findAndInitAction(final Run<?, ?> build) {
+        if (build == null) {
+            return null;
+        }
+        LockedResourcesBuildAction action;
+        synchronized (build) {
+            List<LockedResourcesBuildAction> actions = build.getActions(LockedResourcesBuildAction.class);
+
+            if (actions.size() <= 0) {
+                action = new LockedResourcesBuildAction();
+                build.addAction(action);
             } else {
-                // probably a ephemeral resource has been deleted
-                action.add(new ResourcePOJO(name, ""));
+                action = actions.get(0);
             }
+        }
+        return action;
+    }
+
+    public static void addLog(
+            final Run<?, ?> build, final List<String> resourceNames, final String step, final String action) {
+
+        for (String resourceName : resourceNames) addLog(build, resourceName, step, action);
+    }
+
+    public static void addLog(
+            final Run<?, ?> build, final String resourceName, final String step, final String action) {
+
+        LockedResourcesBuildAction buildAction = findAndInitAction(build);
+
+        buildAction.addLog(resourceName, step, action);
+    }
+
+    public void addLog(final String resourceName, final String step, final String action) {
+
+        synchronized (this.logs) {
+            this.logs.add(new LogEntry(step, action, resourceName));
         }
     }
 
-    // -------------------------------------------------------------------------
-    /** Add the resource to build action.*/
     @Restricted(NoExternalUse.class)
-    // since the list *this.lockedResources* might be updated from multiple (parallel)
-    // stages, this operation need to be synchronized
-    private synchronized void add(ResourcePOJO r) {
-        for (ResourcePOJO pojo : this.lockedResources) {
-            if (pojo.getName().equals(r.getName())) {
-                pojo.inc();
-                return;
-            }
+    public List<LogEntry> getReadOnlyLogs() {
+        synchronized (this.logs) {
+            return new ArrayList<>(Collections.unmodifiableCollection(this.logs));
         }
-        this.lockedResources.add(r);
     }
 
-    // -------------------------------------------------------------------------
-    /** Create action from resources.
-     * Used in free-style projects.
-     */
-    @Restricted(NoExternalUse.class)
-    public static LockedResourcesBuildAction fromResources(Collection<LockableResource> resources) {
-        List<ResourcePOJO> resPojos = new ArrayList<>();
-        for (LockableResource r : resources) {
-            if (r != null) {
-                resPojos.add(new ResourcePOJO(r));
-            }
-        }
-        return new LockedResourcesBuildAction(resPojos);
-    }
+    public static class LogEntry {
 
-    // -------------------------------------------------------------------------
-    public static class ResourcePOJO {
+        private String step;
+        private String action;
+        private String resourceName;
+        private long timeStamp;
 
-        // ---------------------------------------------------------------------
-        private String name;
-        private String description;
-        private int count = 1;
-
-        // ---------------------------------------------------------------------
-        public ResourcePOJO(String name, String description) {
-            this.name = name;
-            this.description = description;
+        @Restricted(NoExternalUse.class)
+        public LogEntry(final String step, final String action, final String resourceName) {
+            this.step = step;
+            this.action = action;
+            this.resourceName = resourceName;
+            this.timeStamp = new Date().getTime();
         }
 
         // ---------------------------------------------------------------------
-        public ResourcePOJO(LockableResource r) {
-            this.name = r.getName();
-            this.description = r.getDescription();
-        }
-
-        // ---------------------------------------------------------------------
+        @Restricted(NoExternalUse.class)
         public String getName() {
-            return this.name;
+            return this.resourceName;
         }
 
         // ---------------------------------------------------------------------
-        public String getDescription() {
-            return this.description;
+        @Restricted(NoExternalUse.class)
+        public String getStep() {
+            return this.step;
         }
 
         // ---------------------------------------------------------------------
-        /** Return the counter, how many was / is the resource used in the build.
-         * Example: you can use the lock() function in parallel stages for the
-         * same resource.
-         */
-        public int getCounter() {
-            return this.count;
+        @Restricted(NoExternalUse.class)
+        public String getAction() {
+            return this.action;
         }
 
         // ---------------------------------------------------------------------
-        /** Increment counter */
-        public void inc() {
-            this.count++;
+        @Restricted(NoExternalUse.class)
+        public Date getTimeStamp() {
+            return new Date(this.timeStamp);
         }
     }
 }
