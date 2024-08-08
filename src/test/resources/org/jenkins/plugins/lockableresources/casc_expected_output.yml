@@ -3,4 +3,3 @@ declaredResources:
   labels: "Label_A"
   name: "Resource_A"
   note: "Note A"
-  reservedBy: "Reserved_A"
