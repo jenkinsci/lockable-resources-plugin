@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
-import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 
 @Extension
@@ -44,6 +43,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             synchronized (lrm.syncResources) {
                 Job<?, ?> proj = Utils.getProject(build);
                 List<LockableResource> required = new ArrayList<>();
+
                 LockableResourcesStruct resources = Utils.requiredResources(proj);
 
                 if (resources != null) {
@@ -56,7 +56,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
                     }
 
                     if (lrm.lock(required, build)) {
-                        build.addAction(LockedResourcesBuildAction.fromResources(required));
+                        // build.addAction(LockedResourcesBuildAction.fromResources(required));
                         listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, required);
                         LOGGER.info(build.getFullDisplayName() + " acquired lock on " + required);
                         if (resources.requiredVar != null) {
@@ -97,20 +97,8 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         // Skip unlocking for multiple configuration projects,
         // only the child jobs will actually unlock resources.
         if (build instanceof MatrixBuild) return;
-
-        LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (lrm.syncResources) {
-            // obviously project name cannot be obtained here
-            List<LockableResource> required = lrm.getResourcesFromBuild(build);
-            if (!required.isEmpty()) {
-                lrm.unlock(required, build);
-                listener.getLogger().printf("%s released lock on %s%n", LOG_PREFIX, required);
-                LOGGER.info(build.getFullDisplayName()
-                        + " released lock on "
-                        + required
-                        + ", because the build has been finished.");
-            }
-        }
+        LOGGER.info(build.getFullDisplayName());
+        LockableResourcesManager.get().unlockBuild(build);
     }
 
     @Override
@@ -118,16 +106,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         // Skip unlocking for multiple configuration projects,
         // only the child jobs will actually unlock resources.
         if (build instanceof MatrixBuild) return;
-        LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (lrm.syncResources) {
-            List<LockableResource> required = lrm.getResourcesFromBuild(build);
-            if (!required.isEmpty()) {
-                lrm.unlock(required, build);
-                LOGGER.warning(build.getFullDisplayName()
-                        + " released lock on "
-                        + required
-                        + ", because the build has been deleted.");
-            }
-        }
+        LOGGER.info(build.getFullDisplayName());
+        LockableResourcesManager.get().unlockBuild(build);
     }
 }

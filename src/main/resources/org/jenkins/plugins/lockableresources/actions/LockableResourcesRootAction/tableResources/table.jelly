@@ -194,7 +194,7 @@ THE SOFTWARE.
             -->
             <j:choose>
               <j:when test="${resource.reservedTimestamp != null}">
-                <td data-order="${logEntry.getDate().getTime()}">
+                <td data-order="${resource.reservedTimestamp.time}">
                   <i:formatDate
                     value="${resource.reservedTimestamp}"
                     type="both"
