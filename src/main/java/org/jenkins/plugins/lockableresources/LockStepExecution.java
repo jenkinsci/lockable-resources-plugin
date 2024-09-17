@@ -41,25 +41,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     public boolean start() throws Exception {
-        step.validate();
-
         // normally it might raise a exception, but we check it in the function .validate()
         // therefore we can skip the try-catch here.
         ResourceSelectStrategy resourceSelectStrategy =
                 ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
 
-        getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
         PrintStream logger = getContext().get(TaskListener.class).getLogger();
 
         Run<?, ?> run = getContext().get(Run.class);
-        LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
         List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
-        LockableResourcesManager lrm = LockableResourcesManager.get();
         List<LockableResource> available = null;
-        LinkedHashMap<String, List<LockableResourceProperty>> resourceNames = new LinkedHashMap<>();
+        LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
+        LockableResourcesManager lrm = LockableResourcesManager.get();
         synchronized (lrm.syncResources) {
+            step.validate();
+
+            LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
+
+            getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
+
+            List<String> resourceNames = new ArrayList<>();
             for (LockStepResource resource : step.getResources()) {
                 List<String> resources = new ArrayList<>();
                 if (resource.resource != null) {
@@ -71,9 +74,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                                 logger);
                     }
                     resources.add(resource.resource);
+                    resourceNames.addAll(resources);
+                } else {
+                    resourceNames.add("N/A");
                 }
                 resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
             }
+
+            LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
 
             // determine if there are enough resources available to proceed
             available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
@@ -95,10 +103,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             // since LockableResource contains transient variables, they cannot be correctly serialized
             // hence we use their unique resource names and properties
             for (LockableResource resource : available) {
-                resourceNames.put(resource.getName(), resource.getProperties());
+                lockedResources.put(resource.getName(), resource.getProperties());
             }
+            LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
         }
-        LockStepExecution.proceed(resourceNames, getContext(), step.toString(), step.variable);
 
         return false;
     }
@@ -166,11 +174,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         }
 
         try {
-
-            LockedResourcesBuildAction.updateAction(build, new ArrayList<>(lockedResources.keySet()));
+            List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
+            final String resourceNamesAsString = String.join(",", lockedResources.keySet());
+            LockedResourcesBuildAction.addLog(build, resourceNames, "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
-            BodyInvoker bodyInvoker = context.newBodyInvoker()
-                    .withCallback(new Callback(new ArrayList<>(lockedResources.keySet()), resourceDescription));
+            BodyInvoker bodyInvoker =
+                    context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
             if (variable != null && !variable.isEmpty()) {
                 // set the variable for the duration of the block
                 bodyInvoker.withContext(
@@ -180,8 +189,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                             @Override
                             public void expand(@NonNull EnvVars env) {
                                 final LinkedHashMap<String, String> variables = new LinkedHashMap<>();
-                                final String resourceNames = String.join(",", lockedResources.keySet());
-                                variables.put(variable, resourceNames);
+                                variables.put(variable, resourceNamesAsString);
                                 int index = 0;
                                 for (Entry<String, List<LockableResourceProperty>> lockResourceEntry :
                                         lockedResources.entrySet()) {
@@ -222,9 +230,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
         @Override
         protected void finished(StepContext context) throws Exception {
-            LockableResourcesManager.get().unlockNames(this.resourceNames, context.get(Run.class));
+            Run<?, ?> build = context.get(Run.class);
+            LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
+            LockableResourcesManager.get().unlockNames(this.resourceNames, build);
             LockableResourcesManager.printLogs(
-                    "Lock released on resource [" + resourceDescription + "]",
+                    "Lock released on resource [" + this.resourceDescription + "]",
                     Level.FINE,
                     LOGGER,
                     context.get(TaskListener.class).getLogger());

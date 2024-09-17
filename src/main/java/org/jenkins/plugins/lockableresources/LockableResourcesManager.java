@@ -41,6 +41,7 @@ import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -106,9 +107,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     /** Get declared resources, means only defined in config file (xml or JCaC yaml). */
+    @Restricted(NoExternalUse.class)
     public List<LockableResource> getDeclaredResources() {
         ArrayList<LockableResource> declaredResources = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
+        for (LockableResource r : this.getResources()) {
             if (!r.isEphemeral() && !r.isNodeResource()) {
                 declaredResources.add(r);
             }
@@ -165,23 +167,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesFromProject(String fullName) {
         List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
+        for (LockableResource r : this.getResources()) {
             String rName = r.getQueueItemProject();
             if (rName != null && rName.equals(fullName)) {
-                matching.add(r);
-            }
-        }
-        return matching;
-    }
-
-    // ---------------------------------------------------------------------------
-    /** Get all resources used by build. */
-    @Restricted(NoExternalUse.class)
-    public List<LockableResource> getResourcesFromBuild(Run<?, ?> build) {
-        List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : this.getReadOnlyResources()) {
-            Run<?, ?> rBuild = r.getBuild();
-            if (rBuild != null && rBuild == build) {
                 matching.add(r);
             }
         }
@@ -198,9 +186,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return false;
         }
 
-        for (LockableResource r : this.getReadOnlyResources()) {
-            if (r != null && r.isValidLabel(label)) {
-                return true;
+        synchronized (this.syncResources) {
+            for (LockableResource r : this.getResources()) {
+                if (r != null && r.isValidLabel(label)) {
+                    return true;
+                }
             }
         }
 
@@ -326,8 +316,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (resourceName != null) {
 
-            for (LockableResource r : this.getReadOnlyResources()) {
-                if (resourceName.equals(r.getName())) return r;
+            synchronized (this.syncResources) {
+                for (LockableResource r : this.getResources()) {
+                    if (resourceName.equals(r.getName())) return r;
+                }
             }
         } else {
             LOGGER.warning("Internal failure, fromName is empty or null:" + getStack());
@@ -590,25 +582,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     /** Try to lock the resource and return true if locked. */
-    public boolean lock(List<LockableResource> resources, Run<?, ?> build) {
+    public boolean lock(List<LockableResource> resourcesToLock, Run<?, ?> build) {
 
-        LOGGER.fine("lock it: " + resources + " for build " + build);
+        LOGGER.fine("lock it: " + resourcesToLock + " for build " + build);
 
         if (build == null) {
-            LOGGER.warning("lock() will fails, because the build does not exits. " + resources);
+            LOGGER.warning("lock() will fails, because the build does not exits. " + resourcesToLock);
             return false; // not locked
         }
 
-        String cause = getCauses(resources);
+        String cause = getCauses(resourcesToLock);
         if (!cause.isEmpty()) {
             LOGGER.warning("lock() for build " + build + " will fails, because " + cause);
             return false; // not locked
         }
 
-        for (LockableResource r : resources) {
+        for (LockableResource r : resourcesToLock) {
             r.unqueue();
             r.setBuild(build);
         }
+
+        LockedResourcesBuildAction.findAndInitAction(build).addUsedResources(getResourcesNames(resourcesToLock));
 
         save();
 
@@ -616,21 +610,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    private void freeResources(List<LockableResource> unlockResources, @Nullable Run<?, ?> build) {
+    private void freeResources(List<LockableResource> unlockResources, Run<?, ?> build) {
 
         LOGGER.fine("free it: " + unlockResources);
 
         // make sure there is a list of resource names to unlock
-        if (unlockResources == null || unlockResources.isEmpty()) {
+        if (unlockResources == null || unlockResources.isEmpty() || build == null) {
             return;
         }
 
         List<LockableResource> toBeRemoved = new ArrayList<>();
+
         for (LockableResource resource : unlockResources) {
             // No more contexts, unlock resource
-            if (build != null && build != resource.getBuild()) {
-                continue; // this happens, when you push the unlock button in LRM page
-            }
+
+            // the resource has been currently unlocked (like by LRM page - button unlock, or by API)
+            if (!build.equals(resource.getBuild())) continue;
+
             resource.unqueue();
             resource.setBuild(null);
             uncacheIfFreeing(resource, true, false);
@@ -640,43 +636,53 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 toBeRemoved.add(resource);
             }
         }
+
+        LockedResourcesBuildAction.findAndInitAction(build).removeUsedResources(getResourcesNames(unlockResources));
+
         // remove all ephemeral resources
         removeResources(toBeRemoved);
     }
 
-    // ---------------------------------------------------------------------------
-    @Deprecated
-    @ExcludeFromJacocoGeneratedReport
-    public void unlock(List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build) {
-        List<String> resourceNamesToUnLock = LockableResourcesManager.getResourcesNames(resourcesToUnLock);
-        this.unlockNames(resourceNamesToUnLock, build);
+    public void unlockBuild(@Nullable Run<?, ?> build) {
+
+        if (build == null) {
+            return;
+        }
+
+        List<String> resourcesInUse =
+                LockedResourcesBuildAction.findAndInitAction(build).getCurrentUsedResourceNames();
+
+        if (resourcesInUse.size() == 0) {
+            return;
+        }
+        unlockNames(resourcesInUse, build);
     }
 
-    // ---------------------------------------------------------------------------
-    @Deprecated
-    @ExcludeFromJacocoGeneratedReport
-    public void unlock(
-            @Nullable List<LockableResource> resourcesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
-        unlock(resourcesToUnLock, build);
-    }
-
-    @Deprecated
-    @ExcludeFromJacocoGeneratedReport
-    public void unlockNames(
-            @Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build, boolean inversePrecedence) {
-        this.unlockNames(resourceNamesToUnLock, build);
-    }
     // ---------------------------------------------------------------------------
     @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
-    public void unlockNames(@Nullable List<String> resourceNamesToUnLock, @Nullable Run<?, ?> build) {
+    public void unlockNames(@Nullable List<String> resourceNamesToUnLock, Run<?, ?> build) {
 
         // make sure there is a list of resource names to unlock
         if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
             return;
         }
-
         synchronized (this.syncResources) {
-            this.freeResources(this.fromNames(resourceNamesToUnLock), build);
+            unlockResources(this.fromNames(resourceNamesToUnLock), build);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    public void unlockResources(List<LockableResource> resourcesToUnLock) {
+        unlockResources(resourcesToUnLock, resourcesToUnLock.get(0).getBuild());
+    }
+
+    // ---------------------------------------------------------------------------
+    public void unlockResources(List<LockableResource> resourcesToUnLock, Run<?, ?> build) {
+        if (resourcesToUnLock == null || resourcesToUnLock.isEmpty()) {
+            return;
+        }
+        synchronized (this.syncResources) {
+            this.freeResources(resourcesToUnLock, build);
 
             while (proceedNextContext()) {
                 // process as many contexts as possible
@@ -913,8 +919,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 r.setReservedBy(userName);
                 r.setStolen();
             }
-            unlock(resources, null, false);
-            // unlock() nulls resource.reservedTimestamp via resource.setBuild(null), so set it afterwards
+            unlockResources(resources);
             Date date = new Date();
             for (LockableResource r : resources) {
                 r.setReservedTimestamp(date);
@@ -999,7 +1004,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         synchronized (this.syncResources) {
             // Not calling reset() because that also un-queues the resource
             // and we want to proclaim it is usable (if anyone is waiting)
-            this.unlock(resources, null);
+            this.unlockResources(resources);
             this.unreserve(resources);
         }
     }
