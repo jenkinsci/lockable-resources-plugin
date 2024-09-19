@@ -42,7 +42,8 @@ public class ConfigurationAsCodeTest {
         assertEquals("Resource_A", declaredResource.getName());
         assertEquals("Description_A", declaredResource.getDescription());
         assertEquals("Label_A", declaredResource.getLabels());
-        assertEquals("Reserved_A", declaredResource.getReservedBy());
+        // not supported in JCaC
+        // assertEquals("Reserved_A", declaredResource.getReservedBy());
         assertEquals("Note A", declaredResource.getNote());
 
         assertEquals(
@@ -54,7 +55,8 @@ public class ConfigurationAsCodeTest {
         assertEquals("Resource_A", resource.getName());
         assertEquals("Description_A", resource.getDescription());
         assertEquals("Label_A", resource.getLabels());
-        assertEquals("Reserved_A", resource.getReservedBy());
+        // not supported in JCaC
+        // assertEquals("Reserved_A", resource.getReservedBy());
         assertEquals("Note A", resource.getNote());
     }
 
