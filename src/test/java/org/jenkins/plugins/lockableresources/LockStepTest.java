@@ -696,7 +696,7 @@ public class LockStepTest extends LockStepTestBase {
      */
     @Issue("JENKINS-36479")
     @Test
-    public void deleteRunningBuildNewBuildClearsLock() throws Exception {
+    public void killThenDeleteRunningBuildNewBuildClearsLock() throws Exception {
         assumeFalse(Functions.isWindows());
 
         LockableResourcesManager.get().createResource("resource1");
@@ -722,6 +722,7 @@ public class LockStepTest extends LockStepTestBase {
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
 
+        b1.doKill(); // Kills the build immediately and does not interrupt running steps.
         b1.delete();
 
         // Verify that b2 gets the lock.
