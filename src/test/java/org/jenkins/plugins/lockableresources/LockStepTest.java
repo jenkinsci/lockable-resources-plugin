@@ -4,10 +4,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assume.assumeFalse;
 
 import com.google.common.collect.ImmutableMap;
-import hudson.Functions;
 import hudson.model.Result;
 import java.util.ArrayList;
 import java.util.Collections;
