@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.86</version>
+    <version>4.88</version>
     <relativePath />
   </parent>
 
@@ -66,7 +66,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-2.440.x</artifactId>
-        <version>3276.vcd71db_867fb_2</version>
+        <version>3435.v238d66a_043fb_</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

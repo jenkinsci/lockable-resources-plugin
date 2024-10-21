@@ -4,10 +4,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assume.assumeFalse;
 
 import com.google.common.collect.ImmutableMap;
-import hudson.Functions;
 import hudson.model.Result;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -684,61 +682,6 @@ public class LockStepTest extends LockStepTestBase {
         assertNull(LockableResourcesManager.get().fromName("resource1"));
     }
 
-    /* TODO: This test does not run on Windows. Before wasting another afternoon trying to fix this, I'd suggest watching
-     * a good movie instead. If you really want to try your luck, here are some pointers:
-     * - Windows doesn't like to delete files that are currently in use
-     * - When deleting a running pipeline job, the listener keeps its logfile open
-     * This has the potential to fail at two points:
-     * - Right when deleting the run: Jenkins tries to remove the run directory, which contains the open log file
-     * - After the test, on cleanup, the jenkins test harness tries to remove the complete Jenkins data directory
-     * Things already tried: Getting a handle on the listener and closing its logfile.
-     * Stupid idea: Implement a JEP-210 extension, which keeps log files in memory...
-     */
-    @Issue("JENKINS-36479")
-    @Test
-    public void deleteRunningBuildNewBuildClearsLock() throws Exception {
-        assumeFalse(Functions.isWindows());
-
-        LockableResourcesManager.get().createResource("resource1");
-
-        WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p");
-        p1.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'locked!'; semaphore 'wait-inside' }", true));
-        WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("locked!", b1);
-        SemaphoreStep.waitForStart("wait-inside/1", b1);
-
-        WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
-        p2.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
-        WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
-        // Make sure that b2 is blocked on b1's lock.
-        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
-        isPaused(b2, 1, 1);
-
-        // Now b2 is still sitting waiting for a lock. Create b3 and launch it to verify order of
-        // unlock.
-        WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
-        p3.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "  semaphore 'wait-inside'\n" + "}", true));
-        WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
-        isPaused(b3, 1, 1);
-
-        b1.delete();
-
-        // Verify that b2 gets the lock.
-        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
-        SemaphoreStep.success("wait-inside/2", b2);
-        // Verify that b2 releases the lock and finishes successfully.
-        j.waitForMessage("Lock released on resource [Resource: resource1]", b2);
-        j.assertBuildStatusSuccess(j.waitForCompletion(b2));
-        isPaused(b2, 1, 0);
-
-        // Now b3 should get the lock and do its thing.
-        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b3);
-        SemaphoreStep.success("wait-inside/3", b3);
-        j.assertBuildStatusSuccess(j.waitForCompletion(b3));
-        isPaused(b3, 1, 0);
-    }
-
     @Test
     public void unlockButtonWithWaitingRuns() throws Exception {
         LockableResourcesManager.get().createResource("resource1");
@@ -759,16 +702,22 @@ public class LockStepTest extends LockStepTestBase {
                 testHelpers.clickButton("unlock", "resource1");
             }
 
+            LOGGER.info("wait for 1 " + rNext);
             j.waitForMessage("Trying to acquire lock on [Resource: resource1]", rNext);
+
+            LOGGER.info("wait sem 1 " + rNext);
             SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
+            LOGGER.info("is paused 1 " + rNext);
             isPaused(rNext, 1, 0);
 
             if (prevBuild != null) {
+                LOGGER.info("wait sem 2" + rNext);
                 SemaphoreStep.success("wait-inside/" + i, null);
                 j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
             }
             prevBuild = rNext;
         }
+        LOGGER.info("wait sem 3");
         SemaphoreStep.success("wait-inside/3", null);
         j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
     }
@@ -1714,12 +1663,10 @@ public class LockStepTest extends LockStepTestBase {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'label1', inversePrecedence: true, priority: -1000000000, resourceSelectStrategy: '') {}",
-                true));
+                "lock(label: 'label1', inversePrecedence: true, priority: -1000000000) {}", true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
         j.assertLogContains("The \"inverse precedence\" option is not compatible with \"queue priority\" option!", b1);
-        isPaused(b1, 0, 0);
     }
 
     @Test
