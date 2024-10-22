@@ -29,7 +29,7 @@ THE SOFTWARE.
   xmlns:st="jelly:stapler">
   <st:adjunct includes="io.jenkins.plugins.data-tables"/>
 
-  <!-- translations for javascript--> 
+  <!-- translations for javascript-->
   <template id="i18n"
             data-queue-title="${%queue.change.title}"
             data-queue-message="${%queue.change.message}"
@@ -49,7 +49,11 @@ THE SOFTWARE.
       </j:when>
       <j:otherwise>
         <j:if test="${oldestQueue.takeTooLong()}">
-          <script type="text/javascript">notificationBar.show('${%queue.warning.count(queue.getAll().size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}', notificationBar.WARNING)</script>
+          <span class="lockable-resources-queue-too-long-message"
+                data-warning-message="${%queue.warning.count(queue.getAll().size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}"
+                style="display:none"/>
+          <st:adjunct
+            includes="org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.tableQueue.queue-too-long"/>
           <p class="jenkins-!-warning-color">${%queue.warning.count(queue.getAll().size(), h.getTimeSpanString(oldestQueue.getQueuedTimestamp()))}</p>
           <pre>${%queue.warning.count.detail}</pre>
        </j:if>
@@ -94,8 +98,8 @@ THE SOFTWARE.
             <td>
               <l:hasPermission permission="${it.QUEUE}">
                 <button
-                  onClick="changeQueueOrder(this, '${queuedItem.id}');"
-                  class="jenkins-button jenkins-!-success-color"
+                  data-queue-item-id="${queuedItem.id}"
+                  class="jenkins-button jenkins-!-success-color lockable-res-change-queue-order"
                   tooltip="${%btn.changeOrder.detail} ${queuedItem.id}"
                 >
                   ${%btn.changeOrder}
