@@ -29,7 +29,7 @@ THE SOFTWARE.
   xmlns:st="jelly:stapler">
   <st:adjunct includes="io.jenkins.plugins.data-tables"/>
 
-  <!-- translations for javascript-->
+  <!-- translations for javascript--> 
   <template id="i18n"
             data-queue-title="${%queue.change.title}"
             data-queue-message="${%queue.change.message}"
