@@ -80,8 +80,8 @@ public class LockableResourceRootActionSEC1361Test {
 
         HtmlElement reserveButton = null;
         for (HtmlElement b : allButtons) {
-            String onClick = b.getAttribute("onClick");
-            if (onClick != null && onClick.contains("reserve")) {
+            String action = b.getAttribute("data-action");
+            if (action != null && action.contains("reserve")) {
                 reserveButton = b;
             }
         }

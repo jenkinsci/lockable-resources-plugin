@@ -91,7 +91,8 @@ THE SOFTWARE.
                 </div>
                 <div class="col-auto jenkins-!-margin-right-2">
                   <l:hasPermission permission="${it.RESERVE}">
-                    <a class="jenkins-table__link" id="note-link" href="editNote" onclick="return replaceNote(this, '${resource.name}');">
+                    <a class="jenkins-table__link lockable-resources-replace-note" data-resource-name="${resource.name}"
+                       id="note-link" href="editNote">
                       <l:icon class="symbol-edit-note icon-sm" />
                       ${%btn.editNote}
                     </a>
@@ -251,8 +252,8 @@ THE SOFTWARE.
                 <j:when test="${resource.locked}">
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button
-                      onClick="resource_action(this, 'unlock');"
-                      class="jenkins-button j.jenkins-!-warning-color"
+                      data-action="unlock"
+                      class="jenkins-button j.jenkins-!-warning-color lockable-resources-action-button"
                       tooltip="${%btn.unlock.detail}"
                     >
                       ${%btn.unlock}
@@ -260,8 +261,8 @@ THE SOFTWARE.
                   </l:hasPermission>
                   <l:hasPermission permission="${it.STEAL}">
                     <button
-                      onClick="resource_action(this, 'steal');"
-                      class="jenkins-button jenkins-!-destructive-color"
+                      data-action="steal"
+                      class="jenkins-button jenkins-!-destructive-color lockable-resources-action-button"
                       tooltip="${%btn.steal.detail}"
                     >
                       ${%btn.steal}
@@ -272,8 +273,8 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.RESERVE}">
                     <j:if test="${resource.isReservedByCurrentUser() or h.hasPermission(app.ADMINISTER)}">
                       <button
-                        onClick="resource_action(this, 'unreserve');"
-                        class="jenkins-button jenkins-!-success-color"
+                        data-action="unreserve"
+                        class="jenkins-button jenkins-!-success-color lockable-resources-action-button"
                         tooltip="${%btn.unReserve.detail}"
                       >
                         ${%btn.unReserve}
@@ -283,8 +284,8 @@ THE SOFTWARE.
                   <l:hasPermission permission="${it.STEAL}">
                     <j:if test="${!resource.isReservedByCurrentUser()}">
                       <button
-                        onClick="resource_action(this, 'reassign');"
-                        class="jenkins-button jenkins-button--primary"
+                        data-action="reassign"
+                        class="jenkins-button jenkins-button--primary lockable-resources-action-button"
                         tooltip="${%btn.reassign.detail}"
                       >
                         ${%btn.reassign}
@@ -295,8 +296,8 @@ THE SOFTWARE.
                 <j:when test="${resource.queued}">
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button
-                      onClick="resource_action(this, 'reset');"
-                      class="jenkins-button jenkins-!-destructive-color"
+                      data-action="reset"
+                      class="jenkins-button jenkins-!-destructive-color lockable-resources-action-button"
                       tooltip="${%btn.reset.detail}"
                     >
                       ${%btn.reset}
@@ -306,8 +307,8 @@ THE SOFTWARE.
                 <j:otherwise>
                   <l:hasPermission permission="${it.RESERVE}">
                     <button
-                      onClick="resource_action(this, 'reserve');"
-                      class="jenkins-button jenkins-button--primary"
+                      data-action="reserve"
+                      class="jenkins-button jenkins-button--primary lockable-resources-action-button"
                       tooltip="${%btn.reserve.detail}"
                     >
                       ${%btn.reserve}
