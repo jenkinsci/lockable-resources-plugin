@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2020, Tobias Gruetzmacher
 
-function changeQueueOrder(button, queueId) {
+function changeQueueOrder(queueId) {
 
   dialog
     .prompt(i18n("queue-title", queueId), {
@@ -153,6 +153,11 @@ jQuery(document).ready(function () {
       resource_action(target, action);
     });
   });
+
+  document.querySelectorAll(".lockable-resources-change-queue-order").forEach(function (button) {
+    button.addEventListener("click", function (event) {
+      changeQueueOrder(event.target.dataset.queueItemId);
+    });
 
   document.querySelectorAll(".lockable-resources-replace-note").forEach(function (anchor) {
     anchor.addEventListener("click", function (event) {
