@@ -99,7 +99,7 @@ THE SOFTWARE.
               <l:hasPermission permission="${it.QUEUE}">
                 <button
                   data-queue-item-id="${queuedItem.id}"
-                  class="jenkins-button jenkins-!-success-color lockable-res-change-queue-order"
+                  class="jenkins-button jenkins-!-success-color lockable-resources-change-queue-order"
                   tooltip="${%btn.changeOrder.detail} ${queuedItem.id}"
                 >
                   ${%btn.changeOrder}

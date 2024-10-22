@@ -147,7 +147,7 @@ jQuery(document).ready(function () {
     }
   });
 
-  document.querySelectorAll(".lockable-res-change-queue-order").forEach(function (button) {
+  document.querySelectorAll(".lockable-resources-change-queue-order").forEach(function (button) {
     button.addEventListener("click", function (event) {
       changeQueueOrder(event.target.dataset.queueItemId);
     });
