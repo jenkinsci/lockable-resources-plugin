@@ -146,16 +146,16 @@ jQuery(document).ready(function () {
     }
   });
 
-  document.querySelectorAll(".lockable-resources-action-button").forEach(function(button) {
-    button.addEventListener("click", function(event) {
+  document.querySelectorAll(".lockable-resources-action-button").forEach(function (button) {
+    button.addEventListener("click", function (event) {
       const target = event.target;
       const action = target.dataset.action;
       resource_action(target, action);
     });
   });
 
-  document.querySelectorAll(".lockable-resources-replace-note").forEach(function(anchor) {
-    anchor.addEventListener("click", function(event) {
+  document.querySelectorAll(".lockable-resources-replace-note").forEach(function (anchor) {
+    anchor.addEventListener("click", function (event) {
       event.preventDefault();
       replaceNote(event.target.dataset.resourceName);
     });
