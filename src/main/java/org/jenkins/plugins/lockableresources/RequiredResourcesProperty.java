@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.queue.Utils;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.AncestorInPath;
@@ -48,25 +49,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             @CheckForNull SecureGroovyScript resourceMatchScript) {
         super();
 
-        if (resourceNames == null || resourceNames.trim().isEmpty()) {
-            this.resourceNames = null;
-        } else {
-            this.resourceNames = resourceNames.trim();
-        }
-        if (resourceNamesVar == null || resourceNamesVar.trim().isEmpty()) {
-            this.resourceNamesVar = null;
-        } else {
-            this.resourceNamesVar = resourceNamesVar.trim();
-        }
-        if (resourceNumber == null || resourceNumber.trim().isEmpty()) {
-            this.resourceNumber = null;
-        } else {
-            this.resourceNumber = resourceNumber.trim();
-        }
-        String labelNamePreparation = (labelName == null || labelName.trim().isEmpty()) ? null : labelName.trim();
+        this.resourceNames = Util.fixEmptyAndTrim(resourceNames);
+        this.resourceNamesVar = Util.fixEmptyAndTrim(resourceNamesVar);
+        this.resourceNumber = Util.fixEmptyAndTrim(resourceNumber);
         if (resourceMatchScript != null) {
             this.resourceMatchScript = resourceMatchScript.configuringWithKeyItem();
-            this.labelName = labelNamePreparation;
+            this.labelName = Util.fixEmptyAndTrim(labelName);
         } else if (labelName != null && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
             this.resourceMatchScript = new SecureGroovyScript(
                             labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
@@ -74,7 +62,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             this.labelName = null;
         } else {
             this.resourceMatchScript = null;
-            this.labelName = labelNamePreparation;
+            this.labelName = Util.fixEmptyAndTrim(labelName);
         }
     }
 
@@ -171,9 +159,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String value,
                 @QueryParameter String labelName,
                 @QueryParameter boolean script,
-                @AncestorInPath Item item) {
+                @AncestorInPath AbstractProject<?, ?> project) {
             // check permission, security first
-            checkPermission(item);
+            checkPermission(project);
 
             String labelVal = Util.fixEmptyAndTrim(labelName);
             String names = Util.fixEmptyAndTrim(value);
@@ -184,14 +172,30 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 return FormValidation.error(Messages.error_labelAndNameOrGroovySpecified());
             } else {
                 List<String> wrongNames = new ArrayList<>();
+                List<String> varNames = new ArrayList<>();
+                List<String> unknownParams = new ArrayList<>();
                 for (String name : names.split("\\s+")) {
                     boolean found = LockableResourcesManager.get().resourceExist(name);
-                    if (!found) wrongNames.add(name);
+                    if (!found) {
+                        if (Utils.containsParameter(name)) {
+                            List<String> badParams = Utils.checkParameters(name, project);
+                            if (!badParams.isEmpty()) {
+                                unknownParams.addAll(badParams);
+                            }
+                            varNames.add(name);
+                        } else {
+                            wrongNames.add(name);
+                        }
+                    }
                 }
-                if (wrongNames.isEmpty()) {
+                if (wrongNames.isEmpty() && varNames.isEmpty() && unknownParams.isEmpty()) {
                     return FormValidation.ok();
-                } else {
+                } else if (!wrongNames.isEmpty()) {
                     return FormValidation.error(Messages.error_resourceDoesNotExist(wrongNames));
+                } else if (!unknownParams.isEmpty()) {
+                    return FormValidation.error(Messages.error_parameterDoesNotExist(unknownParams));
+                } else {
+                    return FormValidation.warning(Messages.warn_resourceNotValidated(varNames));
                 }
             }
         }
@@ -201,9 +205,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String value,
                 @QueryParameter String resourceNames,
                 @QueryParameter boolean script,
-                @AncestorInPath Item item) {
+                @AncestorInPath AbstractProject<?, ?> project) {
             // check permission, security first
-            checkPermission(item);
+            checkPermission(project);
 
             String label = Util.fixEmptyAndTrim(value);
             String names = Util.fixEmptyAndTrim(resourceNames);
@@ -215,6 +219,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             } else {
                 if (LockableResourcesManager.get().isValidLabel(label)) {
                     return FormValidation.ok();
+                } else if (Utils.containsParameter(label)) {
+                    List<String> badParams = Utils.checkParameters(label, project);
+                    if (!badParams.isEmpty()) {
+                        return FormValidation.error(Messages.error_parameterDoesNotExist(badParams));
+                    }
+                    return FormValidation.warning(Messages.warn_labelNotValidated(label));
                 } else {
                     return FormValidation.error(Messages.error_labelDoesNotExist(label));
                 }
@@ -227,35 +237,47 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 @QueryParameter String resourceNames,
                 @QueryParameter String labelName,
                 @QueryParameter String resourceMatchScript,
-                @AncestorInPath Item item) {
+                @AncestorInPath AbstractProject<?, ?> project) {
             // check permission, security first
-            checkPermission(item);
+            checkPermission(project);
 
             String number = Util.fixEmptyAndTrim(value);
             String names = Util.fixEmptyAndTrim(resourceNames);
             String label = Util.fixEmptyAndTrim(labelName);
             String script = Util.fixEmptyAndTrim(resourceMatchScript);
 
-            if (number == null || number.isEmpty() || number.trim().equals("0")) {
+            if (number == null || number.equals("0")) {
                 return FormValidation.ok();
             }
 
-            int numAsInt;
+            int numAsInt = 0;
             try {
                 numAsInt = Integer.parseInt(number);
             } catch (NumberFormatException e) {
-                return FormValidation.error(Messages.error_couldNotParseToint());
+                if (Utils.isParameter(number)) {
+                    List<String> badParams = Utils.checkParameters(number, project);
+                    if (!badParams.isEmpty()) {
+                        return FormValidation.error(Messages.error_parameterDoesNotExist(badParams));
+                    }
+                    return FormValidation.warning(Messages.warn_valueNotValidated(number));
+                }
+                return FormValidation.error(Messages.error_couldNotParseToInt());
             }
+
             int numResources = 0;
             if (names != null) {
                 numResources = names.split("\\s+").length;
-            } else if (label != null || script != null) {
+            } else if (label != null) {
+                numResources = LockableResourcesManager.get()
+                        .getResourcesWithLabel(label, null)
+                        .size();
+            } else if (script != null) {
                 numResources = Integer.MAX_VALUE;
             }
 
-            if (numResources < numAsInt) {
+            if (numAsInt > numResources) {
                 return FormValidation.error(String.format(
-                        Messages.error_givenAmountIsGreaterThatResourcesAmount(), numAsInt, numResources));
+                        Messages.error_givenAmountIsGreaterThanResourcesAmount(), numAsInt, numResources));
             }
             return FormValidation.ok();
         }

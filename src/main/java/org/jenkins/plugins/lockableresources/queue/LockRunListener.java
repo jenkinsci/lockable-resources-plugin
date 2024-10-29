@@ -9,6 +9,7 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
@@ -43,8 +44,8 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
             synchronized (lrm.syncResources) {
                 Job<?, ?> proj = Utils.getProject(build);
                 List<LockableResource> required = new ArrayList<>();
-
-                LockableResourcesStruct resources = Utils.requiredResources(proj);
+                EnvVars env = new EnvVars(((AbstractBuild<?, ?>) build).getBuildVariables());
+                LockableResourcesStruct resources = Utils.requiredResources(proj, env);
 
                 if (resources != null) {
                     if (resources.requiredNumber != null
