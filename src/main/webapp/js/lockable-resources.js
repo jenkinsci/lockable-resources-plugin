@@ -158,6 +158,7 @@ jQuery(document).ready(function () {
     button.addEventListener("click", function (event) {
       changeQueueOrder(event.target.dataset.queueItemId);
     });
+  });
 
   document.querySelectorAll(".lockable-resources-replace-note").forEach(function (anchor) {
     anchor.addEventListener("click", function (event) {
