@@ -30,7 +30,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
-import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -55,7 +54,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         if (resources == null
                 || (resources.required.isEmpty()
                         && resources.label.isEmpty()
-                        && resources.getResourceMatchScript() == null)) {
+                        && resources.getResourceMatchScriptText() == null)) {
             return null;
         }
 
@@ -68,7 +67,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
         LOGGER.finest(project.getName() + " trying to get resources with these details: " + resources);
 
-        if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScript() != null) {
+        if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScriptText() != null) {
             Map<String, Object> params = new HashMap<>();
 
             // Inject Build Parameters, if possible and applicable to the "item" type
@@ -153,11 +152,11 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
                 if (!this.rscStruct.required.isEmpty()) {
                     return "Waiting for resource instances " + rscStruct.required;
                 } else {
-                    final SecureGroovyScript systemGroovyScript = this.rscStruct.getResourceMatchScript();
+                    final String systemGroovyScript = this.rscStruct.getResourceMatchScriptText();
                     if (systemGroovyScript != null) {
                         // Empty or not... just keep the logic in sync
                         // with tryQueue() in LockableResourcesManager
-                        if (systemGroovyScript.getScript().isEmpty()) {
+                        if (systemGroovyScript.isEmpty()) {
                             return "Waiting for resources identified by custom script (which is empty)";
                         } else {
                             return "Waiting for resources identified by custom script";

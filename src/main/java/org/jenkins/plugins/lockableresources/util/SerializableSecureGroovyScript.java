@@ -26,6 +26,7 @@ package org.jenkins.plugins.lockableresources.util;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 import java.io.Serializable;
 import java.net.MalformedURLException;
@@ -77,7 +78,12 @@ public class SerializableSecureGroovyScript implements Serializable {
     }
 
     @CheckForNull
-    public SecureGroovyScript rehydrate() {
+    public String getScript() {
+        return script;
+    }
+
+    @CheckForNull
+    public SecureGroovyScript rehydrate() throws Descriptor.FormException {
         if (script == null) {
             return null;
         }
