@@ -4,9 +4,15 @@ import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.junit.Rule;
 import org.junit.Test;
+import org.jvnet.hudson.test.JenkinsRule;
 
 public class SerializableSecureGroovyScriptTest {
+
+    @Rule
+    public JenkinsRule r = new JenkinsRule();
+
     @Test
     public void testRehydrate() {
         SerializableSecureGroovyScript nullCheck = new SerializableSecureGroovyScript(null);
