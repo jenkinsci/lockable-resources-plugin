@@ -12,6 +12,7 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
+import hudson.model.Descriptor;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -126,12 +127,17 @@ public class LockableResourcesStruct implements Serializable {
      * @since 2.1
      */
     @CheckForNull
-    public SecureGroovyScript getResourceMatchScript() {
+    public SecureGroovyScript getResourceMatchScript() throws Descriptor.FormException {
         if (resourceMatchScript == null && serializableResourceMatchScript != null) {
             // this is probably high defensive code, because
             resourceMatchScript = serializableResourceMatchScript.rehydrate();
         }
         return resourceMatchScript;
+    }
+
+    @CheckForNull
+    public String getResourceMatchScriptText() {
+        return serializableResourceMatchScript != null ? serializableResourceMatchScript.getScript() : null;
     }
 
     @Override

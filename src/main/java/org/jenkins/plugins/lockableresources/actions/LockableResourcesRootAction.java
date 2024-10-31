@@ -12,6 +12,7 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.Api;
+import hudson.model.Descriptor;
 import hudson.model.RootAction;
 import hudson.model.Run;
 import hudson.security.AccessDeniedException3;
@@ -297,7 +298,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @Restricted(NoExternalUse.class) // used by jelly
-    public Queue getQueue() {
+    public Queue getQueue() throws Descriptor.FormException {
         List<QueuedContextStruct> currentQueueContext =
                 List.copyOf(LockableResourcesManager.get().getCurrentQueuedContext());
         Queue queue = new Queue();
@@ -325,7 +326,8 @@ public class LockableResourcesRootAction implements RootAction {
 
         // -------------------------------------------------------------------------
         @Restricted(NoExternalUse.class) // used by jelly
-        public void add(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context) {
+        public void add(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context)
+                throws Descriptor.FormException {
             QueueStruct queueStruct = new QueueStruct(resourceStruct, context);
             queue.add(queueStruct);
             if (resourceStruct.queuedAt == 0) {
@@ -362,7 +364,8 @@ public class LockableResourcesRootAction implements RootAction {
             String id = null;
             Run<?, ?> build;
 
-            public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context) {
+            public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context)
+                    throws Descriptor.FormException {
                 this.requiredResources = resourceStruct.required;
                 this.requiredLabel = resourceStruct.label;
                 this.requiredNumber = resourceStruct.requiredNumber;

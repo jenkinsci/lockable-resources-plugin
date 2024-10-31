@@ -14,6 +14,7 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.Job;
 import hudson.model.JobProperty;
@@ -45,7 +46,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             String resourceNamesVar,
             String resourceNumber,
             String labelName,
-            @CheckForNull SecureGroovyScript resourceMatchScript) {
+            @CheckForNull SecureGroovyScript resourceMatchScript)
+            throws Descriptor.FormException {
         super();
 
         if (resourceNames == null || resourceNames.trim().isEmpty()) {
@@ -84,11 +86,12 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     @Deprecated
     @ExcludeFromJacocoGeneratedReport
     public RequiredResourcesProperty(
-            String resourceNames, String resourceNamesVar, String resourceNumber, String labelName) {
+            String resourceNames, String resourceNamesVar, String resourceNumber, String labelName)
+            throws Descriptor.FormException {
         this(resourceNames, resourceNamesVar, resourceNumber, labelName, null);
     }
 
-    private Object readResolve() {
+    private Object readResolve() throws Descriptor.FormException {
         // SECURITY-368 migration logic
         if (resourceMatchScript == null
                 && labelName != null

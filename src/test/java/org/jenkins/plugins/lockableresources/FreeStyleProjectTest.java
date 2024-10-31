@@ -24,7 +24,6 @@ import hudson.util.OneShotEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
@@ -216,7 +215,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void autoCreateResource() throws IOException, InterruptedException, ExecutionException {
+    public void autoCreateResource() throws Exception {
         FreeStyleProject f = j.createFreeStyleProject("f");
         assertNull(LockableResourcesManager.get().fromName("resource1"));
         f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
@@ -230,7 +229,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void competingLabelLocks() throws IOException, InterruptedException, ExecutionException {
+    public void competingLabelLocks() throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "group1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "group2");
         LockableResourcesManager.get().createResource("shared");

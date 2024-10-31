@@ -18,6 +18,7 @@ import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
 import hudson.console.ModelHyperlinkNote;
+import hudson.model.Descriptor;
 import hudson.model.Run;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -482,7 +483,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 return null;
             }
 
-            final SecureGroovyScript systemGroovyScript = requiredResources.getResourceMatchScript();
+            final SecureGroovyScript systemGroovyScript;
+            try {
+                systemGroovyScript = requiredResources.getResourceMatchScript();
+            } catch (Descriptor.FormException x) {
+                throw new ExecutionException(x);
+            }
             boolean candidatesByScript = (systemGroovyScript != null);
             List<LockableResource> candidates = requiredResources.required; // default candidates
 

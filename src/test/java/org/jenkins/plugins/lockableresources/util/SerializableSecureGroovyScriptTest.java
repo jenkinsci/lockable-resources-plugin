@@ -14,7 +14,7 @@ public class SerializableSecureGroovyScriptTest {
     public JenkinsRule r = new JenkinsRule();
 
     @Test
-    public void testRehydrate() {
+    public void testRehydrate() throws Exception {
         SerializableSecureGroovyScript nullCheck = new SerializableSecureGroovyScript(null);
         assertNull("SerializableSecureGroovyScript null check", nullCheck.rehydrate());
 
