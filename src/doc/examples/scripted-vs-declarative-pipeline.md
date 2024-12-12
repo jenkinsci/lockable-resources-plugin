@@ -32,3 +32,8 @@ node() {
     }
 }
 ```
+
+## Pitfalls
+
+Setting `quantity` to `null`, `0` or a smaller number, all available resources of that label are locked at once.
+See [#198 - Lock All resources by setting quantity to 0 is not documented](https://github.com/jenkinsci/lockable-resources-plugin/issues/198).
