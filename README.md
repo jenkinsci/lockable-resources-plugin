@@ -101,6 +101,8 @@ pipeline {
 }
 ```
 
+Setting `quantity` to `null`, `0` or a smaller number, all available resources of that label are locked at once.
+
 #### Take first position in queue
 
 ```groovy
