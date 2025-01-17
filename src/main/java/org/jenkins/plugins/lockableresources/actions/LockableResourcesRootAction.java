@@ -19,6 +19,7 @@ import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
+import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,7 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
-import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -37,8 +37,8 @@ import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
@@ -516,7 +516,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doUnlock(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+    public void doUnlock(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(UNLOCK);
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -531,7 +531,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doReserve(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+    public void doReserve(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(RESERVE);
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -553,7 +553,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doSteal(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+    public void doSteal(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(STEAL);
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -571,7 +571,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doReassign(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+    public void doReassign(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(STEAL);
 
         String userName = getUserName();
@@ -603,7 +603,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doUnreserve(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+    public void doUnreserve(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(RESERVE);
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
@@ -626,7 +626,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doReset(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+    public void doReset(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(UNLOCK);
         // Should this also be permitted by "STEAL"?..
 
@@ -642,7 +642,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
-    public void doSaveNote(final StaplerRequest req, final StaplerResponse rsp) throws IOException, ServletException {
+    public void doSaveNote(final StaplerRequest2 req, final StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(RESERVE);
 
         String resourceName = req.getParameter("resource");
@@ -669,7 +669,7 @@ public class LockableResourcesRootAction implements RootAction {
     /** Change queue order (item position) */
     @Restricted(NoExternalUse.class) // used by jelly
     @RequirePOST
-    public void doChangeQueueOrder(final StaplerRequest req, final StaplerResponse rsp)
+    public void doChangeQueueOrder(final StaplerRequest2 req, final StaplerResponse2 rsp)
             throws IOException, ServletException {
         Jenkins.get().checkPermission(QUEUE);
 
@@ -697,7 +697,7 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     // ---------------------------------------------------------------------------
-    private List<LockableResource> getResourcesFromRequest(final StaplerRequest req, final StaplerResponse rsp)
+    private List<LockableResource> getResourcesFromRequest(final StaplerRequest2 req, final StaplerResponse2 rsp)
             throws IOException, ServletException {
         // todo, when you try to improve the API to use multiple resources (a list instead of single
         // one)

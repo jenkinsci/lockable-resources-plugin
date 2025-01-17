@@ -19,8 +19,8 @@ import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -32,10 +32,10 @@ public final class TestHelpers {
     private static final int MAX_WAIT = 5000;
 
     @Mock
-    private StaplerRequest req;
+    private StaplerRequest2 req;
 
     @Mock
-    private StaplerResponse rsp;
+    private StaplerResponse2 rsp;
 
     private AutoCloseable mocks;
 
