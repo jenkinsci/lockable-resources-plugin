@@ -11,11 +11,11 @@ import static org.mockito.Mockito.when;
 import hudson.model.Item;
 import hudson.model.User;
 import hudson.security.AccessDeniedException3;
+import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -29,8 +29,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.access.AccessDeniedException;
@@ -42,10 +42,10 @@ public class LockableResourcesRootActionTest extends LockStepTestBase {
     public JenkinsRule j = new JenkinsRule();
 
     @Mock
-    private StaplerRequest req;
+    private StaplerRequest2 req;
 
     @Mock
-    private StaplerResponse rsp;
+    private StaplerResponse2 rsp;
 
     private AutoCloseable mocks;
 

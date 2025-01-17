@@ -29,7 +29,7 @@ import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
@@ -161,7 +161,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
         }
 
         @Override
-        public RequiredResourcesProperty newInstance(StaplerRequest req, JSONObject formData) throws FormException {
+        public RequiredResourcesProperty newInstance(StaplerRequest2 req, JSONObject formData) throws FormException {
             if (formData.containsKey("required-lockable-resources")) {
                 return (RequiredResourcesProperty)
                         super.newInstance(req, formData.getJSONObject("required-lockable-resources"));
