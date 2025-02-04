@@ -60,6 +60,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public static final transient Object syncResources = new Object();
 
     private List<LockableResource> resources;
+    private boolean allowEphemeralResources = true;
     private transient Cache<Long, List<LockableResource>> cachedCandidates =
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
@@ -95,6 +96,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /** Get if ephemeral resources is allowed */
+    public boolean isAllowEphemeralResources() {
+        return allowEphemeralResources;
+    }
+
+    // ---------------------------------------------------------------------------
     /**
      * Get all resources - read only The same as getResources() but unmodifiable list. The
      * getResources() is unsafe to use because of possible concurrent modification exception.
@@ -117,6 +124,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
         return declaredResources;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Set ephemeral resources option. */
+    @DataBoundSetter
+    public void setAllowEphemeralResources(boolean allowEphemeralResources) {
+        this.allowEphemeralResources = allowEphemeralResources;
+        save();
     }
 
     // ---------------------------------------------------------------------------
@@ -827,6 +842,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Creates the resource if it does not exist. */
     public boolean createResource(@CheckForNull String name) {
         name = Util.fixEmptyAndTrim(name);
+        if (!allowEphemeralResources) {
+            LOGGER.warning("Ephemeral resource creation is disabled. Resource '" + name + "' will not be created.");
+            return false;
+        }
         LockableResource resource = new LockableResource(name);
         resource.setEphemeral(true);
 

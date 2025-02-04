@@ -49,8 +49,13 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
         Job<?, ?> project = Utils.getProject(item);
         if (project == null) return null;
+        LockableResourcesStruct resources;
+        try {
+            resources = Utils.requiredResources(project);
+        } catch (IllegalStateException e) {
+            return new BecauseResourcesQueueFailed(null, e);
+        }
 
-        LockableResourcesStruct resources = Utils.requiredResources(project);
         if (resources == null
                 || (resources.required.isEmpty()
                         && resources.label.isEmpty()
@@ -176,23 +181,30 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     @Restricted(NoExternalUse.class)
     public static class BecauseResourcesQueueFailed extends CauseOfBlockage {
 
-        @NonNull
         private final LockableResourcesStruct resources;
 
         @NonNull
         private final Throwable cause;
 
-        public BecauseResourcesQueueFailed(@NonNull LockableResourcesStruct resources, @NonNull Throwable cause) {
+        public BecauseResourcesQueueFailed(LockableResourcesStruct resources, @NonNull Throwable cause) {
             this.cause = cause;
             this.resources = resources;
         }
 
         @Override
         public String getShortDescription() {
-            // TODO: Just a copy-paste from BecauseResourcesLocked, seems strange
+            if (resources == null) {
+                return cause.getMessage();
+            }
             String resourceInfo =
                     resources.label.isEmpty() ? resources.required.toString() : "with label " + resources.label;
-            return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
+            String defaultMsg =
+                    "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
+
+            if (cause.getMessage() != null && cause.getMessage().contains("ephemeral resource creation is disabled")) {
+                return "Could not run due to ephemeral resource creation being disabled: " + cause.getMessage();
+            }
+            return defaultMsg;
         }
     }
 }

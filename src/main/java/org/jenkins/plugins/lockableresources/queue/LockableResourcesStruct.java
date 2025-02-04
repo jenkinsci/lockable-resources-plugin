@@ -17,6 +17,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
@@ -59,10 +60,25 @@ public class LockableResourcesStruct implements Serializable {
         }
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        this.required = lrm.fromNames(names, /*create un-existent resources */ true);
+        boolean allExist = names.stream().allMatch(name -> lrm.fromName(name) != null);
+        if (!allExist && !lrm.isAllowEphemeralResources()) {
+            String missingResources =
+                    names.stream().filter(name -> lrm.fromName(name) == null).collect(Collectors.joining(", "));
+            throw new IllegalStateException(
+                    "Following resources do not exist and ephemeral resource creation is disabled: "
+                            + missingResources
+                            + "\nTo fix this: either create the resources in Jenkins or enable ephemeral resources in plugin configuration.");
+        }
+        this.required = lrm.fromNames(names, lrm.isAllowEphemeralResources());
 
         label = env.expand(property.getLabelName());
         if (label == null) label = "";
+        if (!label.isEmpty() && !lrm.isValidLabel(label) && !lrm.isAllowEphemeralResources()) {
+            throw new IllegalStateException("Label '" + label + "' does not match any existing resource, "
+                    + "and ephemeral resource creation is disabled.\n"
+                    + "To fix this: either define a resource with label '" + label + "' in Jenkins, "
+                    + "or enable ephemeral resources in the plugin configuration.");
+        }
 
         resourceMatchScript = property.getResourceMatchScript();
         serializableResourceMatchScript = new SerializableSecureGroovyScript(resourceMatchScript);
