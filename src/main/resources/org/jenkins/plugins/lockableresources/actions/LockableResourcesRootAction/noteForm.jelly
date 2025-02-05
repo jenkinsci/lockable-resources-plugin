@@ -28,7 +28,7 @@ THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:l="/lib/layout">
-  <j:set var="resource" value="${request.getParameter('resource')}"/>
+  <j:set var="resource" value="${request2.getParameter('resource')}"/>
   <j:set var="resourceObject" value="${it.getResource(resource)}"/>
   <j:set var="note" value="${resourceObject.note}"/>
   <l:ajax>
