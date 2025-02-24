@@ -67,6 +67,21 @@ already defined in the Jenkins global configuration, an ephemeral resource is
 used: These resources only exist as long as any running build is referencing
 them.
 
+#### Allow / disable ephemeral resource creation
+By **default**, ephemeral resource creation is **enabled**.
+If you want to disable ephemeral resources:
+
+1. Go to *Manage Jenkins* > *Configure System*
+2. In the **Lockable Resources Manager** section, **uncheck** the option
+    *Allow Ephemeral Resources*.
+
+- **If ephemeral resources are enabled (default)** and you reference a resource
+  name (or label) that does not exist, the plugin creates a temporary resource
+  for the duration of the build.
+- **If ephemeral resources are disabled**, referencing a resource name or label
+  that doesn’t exist will cause the job to fail (or block) immediately, with a
+  clear message saying ephemeral resource creation is off.
+
 Examples:
 
 #### Acquire lock
