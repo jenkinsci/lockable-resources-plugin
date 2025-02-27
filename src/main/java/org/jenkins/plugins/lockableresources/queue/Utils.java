@@ -12,9 +12,11 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
 import hudson.matrix.MatrixConfiguration;
+import hudson.matrix.MatrixProject;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.Run;
+import java.io.IOException;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public final class Utils {
@@ -36,8 +38,13 @@ public final class Utils {
         EnvVars env = new EnvVars();
 
         if (project instanceof MatrixConfiguration) {
-            env.putAll(((MatrixConfiguration) project).getCombination());
-            project = (Job<?, ?>) project.getParent();
+            try {
+                project.onLoad((MatrixProject) project.getParent(), project.getName());
+                env.putAll(((MatrixConfiguration) project).getCombination());
+                project = (Job<?, ?>) project.getParent();
+            } catch (IOException ex) {
+                // coudn't load
+            }
         }
 
         RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);

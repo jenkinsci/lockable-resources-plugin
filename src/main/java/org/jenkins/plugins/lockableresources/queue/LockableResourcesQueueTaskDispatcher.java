@@ -20,6 +20,7 @@ import hudson.model.ParametersAction;
 import hudson.model.Queue;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.model.queue.QueueTaskDispatcher;
+import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -94,8 +95,14 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             }
 
             if (item.task instanceof MatrixConfiguration) {
-                MatrixConfiguration matrix = (MatrixConfiguration) item.task;
-                params.putAll(matrix.getCombination());
+                try {
+                    MatrixConfiguration matrix = (MatrixConfiguration) item.task;
+                    matrix.onLoad(matrix.getParent(), matrix.getName());
+                    params.putAll(matrix.getCombination());
+                } catch (IOException ex) {
+                    // Could not load configuration
+
+                }
             }
 
             final List<LockableResource> selected;
