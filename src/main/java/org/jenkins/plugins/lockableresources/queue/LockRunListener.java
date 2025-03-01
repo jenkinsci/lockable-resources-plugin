@@ -26,7 +26,7 @@ import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 
-@Extension
+@Extension(optional = true)
 public class LockRunListener extends RunListener<Run<?, ?>> {
 
     static final String LOG_PREFIX = "[lockable-resources]";
@@ -36,7 +36,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
     public void onStarted(Run<?, ?> build, TaskListener listener) {
         // Skip locking for multiple configuration projects,
         // only the child jobs will actually lock resources.
-        if (build instanceof MatrixBuild) return;
+        if (build.getClass().getName().equals("hudson.matrix.MatrixBuild")) return;
 
         if (build instanceof AbstractBuild) {
             LockableResourcesManager lrm = LockableResourcesManager.get();

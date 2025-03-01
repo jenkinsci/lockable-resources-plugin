@@ -37,14 +37,9 @@ public final class Utils {
     public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project) {
         EnvVars env = new EnvVars();
 
-        if (project instanceof MatrixConfiguration) {
-            try {
-                project.onLoad((MatrixProject) project.getParent(), project.getName());
-                env.putAll(((MatrixConfiguration) project).getCombination());
-                project = (Job<?, ?>) project.getParent();
-            } catch (IOException ex) {
-                // coudn't load
-            }
+        if (project.getClass().getName().equals("hudson.matrix.MatrixConfiguration")) {
+              env.putAll(((MatrixConfiguration) project).getCombination());
+              project = (Job<?, ?>) project.getParent();
         }
 
         RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);
