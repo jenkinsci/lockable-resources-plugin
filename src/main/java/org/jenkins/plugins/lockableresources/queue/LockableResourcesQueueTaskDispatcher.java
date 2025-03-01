@@ -94,7 +94,7 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
                 }
             }
 
-            if (item.task instanceof MatrixConfiguration) {
+            if (item.task.getClass().getName().equals("hudson.matrix.MatrixConfiguration")) {
                 try {
                     MatrixConfiguration matrix = (MatrixConfiguration) item.task;
                     matrix.onLoad(matrix.getParent(), matrix.getName());
