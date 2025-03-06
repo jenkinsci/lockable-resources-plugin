@@ -38,7 +38,7 @@ public final class Utils {
         EnvVars env = new EnvVars();
 
         if (isMatrixConfiguration(project)) {
-          env.putAll(((MatrixConfiguration) project).getCombination());
+            env.putAll(((MatrixConfiguration) project).getCombination());
             project = (Job<?, ?>) project.getParent();
         }
 
