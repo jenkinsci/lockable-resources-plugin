@@ -11,12 +11,12 @@ package org.jenkins.plugins.lockableresources.queue;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
+import hudson.PluginWrapper;
 import hudson.matrix.MatrixConfiguration;
-import hudson.matrix.MatrixProject;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.Run;
-import java.io.IOException;
+import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 
 public final class Utils {
@@ -37,14 +37,40 @@ public final class Utils {
     public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project) {
         EnvVars env = new EnvVars();
 
-        if (project.getClass().getName().equals("hudson.matrix.MatrixConfiguration")) {
-              env.putAll(((MatrixConfiguration) project).getCombination());
-              project = (Job<?, ?>) project.getParent();
+        if (isMatrixConfiguration(project)) {
+          env.putAll(((MatrixConfiguration) project).getCombination());
+            project = (Job<?, ?>) project.getParent();
         }
 
         RequiredResourcesProperty property = project.getProperty(RequiredResourcesProperty.class);
         if (property != null) return new LockableResourcesStruct(property, env);
 
         return null;
+    }
+
+    // check if matrix plugin is installed
+    public static boolean isMatrixPluginEnabled() {
+        PluginWrapper matrixPlugin = Jenkins.get().getPluginManager().getPlugin("matrix-project");
+        // check installation
+        if (matrixPlugin == null) {
+            return false;
+        }
+
+        return matrixPlugin.isEnabled();
+    }
+
+    public static boolean isMatrixProject(Job<?, ?> project) {
+        if (!isMatrixPluginEnabled() || project == null) return false;
+        return project.getClass().getName().equals("hudson.matrix.MatrixProject");
+    }
+
+    public static boolean isMatrixBuild(Run<?, ?> build) {
+        if (!isMatrixPluginEnabled() || build == null) return false;
+        return build.getParent().getClass().getName().equals("hudson.matrix.MatrixBuild");
+    }
+    // is matrix configuration
+    public static boolean isMatrixConfiguration(Job<?, ?> project) {
+        if (!isMatrixPluginEnabled() || project == null) return false;
+        return project.getClass().getName().equals("hudson.matrix.MatrixConfiguration");
     }
 }
