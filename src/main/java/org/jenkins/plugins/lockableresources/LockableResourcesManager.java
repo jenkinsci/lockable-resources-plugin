@@ -665,7 +665,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public void unlockNames(@Nullable List<String> resourceNamesToUnLock, Run<?, ?> build) {
 
         // make sure there is a list of resource names to unlock
@@ -963,7 +962,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public void unreserve(List<LockableResource> resources) {
         // make sure there is a list of resources to unreserve
         if (resources == null || resources.isEmpty()) {
