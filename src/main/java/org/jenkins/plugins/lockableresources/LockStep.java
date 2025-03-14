@@ -33,7 +33,6 @@ public class LockStep extends Step implements Serializable {
     private static final long serialVersionUID = -953609907239674360L;
 
     @CheckForNull
-    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String resource = null;
 
     @CheckForNull
