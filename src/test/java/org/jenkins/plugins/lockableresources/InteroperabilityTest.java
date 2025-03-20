@@ -11,32 +11,36 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.TestBuilder;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class InteroperabilityTest extends LockStepTestBase {
+@WithJenkins
+class InteroperabilityTest extends LockStepTestBase {
 
     private static final Logger LOGGER = Logger.getLogger(InteroperabilityTest.class.getName());
+
     // ---------------------------------------------------------------------------
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         // to speed up the test
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     }
 
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
-
     @Test
-    public void interoperability() throws Exception {
+    void interoperability(JenkinsRule j) throws Exception {
         final Semaphore semaphore = new Semaphore(1);
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(
-                new CpsFlowDefinition("lock('resource1') {\n" + "	echo 'Locked'\n" + "}\n" + "echo 'Finish'", true));
+        p.setDefinition(new CpsFlowDefinition(
+                """
+                    lock('resource1') {
+                        echo 'Locked'
+                    }
+                    echo 'Finish'""",
+                true));
 
         FreeStyleProject f = j.createFreeStyleProject("f");
         f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));

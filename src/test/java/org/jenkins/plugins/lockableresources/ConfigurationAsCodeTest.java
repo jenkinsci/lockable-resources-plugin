@@ -2,41 +2,39 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.jenkins.plugins.casc.ConfigurationContext;
 import io.jenkins.plugins.casc.ConfiguratorRegistry;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
 import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.misc.Util;
+import io.jenkins.plugins.casc.misc.junit.jupiter.WithJenkinsConfiguredWithCode;
 import io.jenkins.plugins.casc.model.CNode;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.util.Constants;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ConfigurationAsCodeTest {
+@WithJenkinsConfiguredWithCode
+class ConfigurationAsCodeTest {
 
     // ---------------------------------------------------------------------------
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         // to speed up the test
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     }
 
-    @ClassRule
-    @ConfiguredWithCode("configuration-as-code.yml")
-    public static JenkinsConfiguredWithCodeRule r = new JenkinsConfiguredWithCodeRule();
-
     @Test
-    public void should_support_configuration_as_code() {
+    @ConfiguredWithCode("configuration-as-code.yml")
+    void should_support_configuration_as_code(JenkinsConfiguredWithCodeRule r) {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
-                "The number of declared resources is wrong. Check your configuration-as-code.yml",
                 1,
-                declaredResources.size());
+                declaredResources.size(),
+                "The number of declared resources is wrong. Check your configuration-as-code.yml");
 
         LockableResource declaredResource = declaredResources.get(0);
         assertEquals("Resource_A", declaredResource.getName());
@@ -46,9 +44,7 @@ public class ConfigurationAsCodeTest {
         assertEquals("Note A", declaredResource.getNote());
 
         assertEquals(
-                "The number of resources is wrong. Check your configuration-as-code.yml",
-                1,
-                LRM.getResources().size());
+                1, LRM.getResources().size(), "The number of resources is wrong. Check your configuration-as-code.yml");
 
         LockableResource resource = LRM.getFirst();
         assertEquals("Resource_A", resource.getName());
@@ -59,7 +55,8 @@ public class ConfigurationAsCodeTest {
     }
 
     @Test
-    public void should_support_configuration_export() throws Exception {
+    @ConfiguredWithCode("configuration-as-code.yml")
+    void should_support_configuration_export(JenkinsConfiguredWithCodeRule r) throws Exception {
         ConfiguratorRegistry registry = ConfiguratorRegistry.get();
         ConfigurationContext context = new ConfigurationContext(registry);
         CNode yourAttribute = Util.getUnclassifiedRoot(context).get("lockableResourcesManager");

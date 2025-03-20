@@ -1,21 +1,21 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.Date;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class LockableResourceTest {
+class LockableResourceTest {
 
-    LockableResource instance = new LockableResource("r1");
+    private final LockableResource instance = new LockableResource("r1");
 
     // Not sure how useful this is...
     @Test
-    public void testGetters() {
+    void testGetters() {
         assertEquals("r1", instance.getName());
         assertEquals("", instance.getDescription());
         assertEquals("", instance.getLabels());
@@ -33,7 +33,7 @@ public class LockableResourceTest {
     }
 
     @Test
-    public void testNote() {
+    void testNote() {
         final LockableResource resource = new LockableResource("Name 1");
 
         assertEquals("", resource.getNote());
@@ -49,22 +49,22 @@ public class LockableResourceTest {
     }
 
     @Test
-    public void testUnqueue() {
+    void testUnqueue() {
         instance.unqueue();
     }
 
     @Test
-    public void testSetBuild() {
+    void testSetBuild() {
         instance.setBuild(null);
     }
 
     @Test
-    public void testSetReservedBy() {
+    void testSetReservedBy() {
         instance.setReservedBy("");
     }
 
     @Test
-    public void testReservedTimestamp() {
+    void testReservedTimestamp() {
         instance.setReservedTimestamp(null);
         assertNull(instance.getReservedTimestamp());
 
@@ -74,31 +74,31 @@ public class LockableResourceTest {
     }
 
     @Test
-    public void testReserve() {
+    void testReserve() {
         instance.reserve("testUser1");
         assertEquals("testUser1", instance.getReservedBy());
         assertNotNull(instance.getReservedTimestamp());
     }
 
     @Test
-    public void testUnReserve() {
+    void testUnReserve() {
         instance.unReserve();
         assertNull(instance.getReservedBy());
         assertNull(instance.getReservedTimestamp());
     }
 
     @Test
-    public void testReset() {
+    void testReset() {
         instance.reset();
     }
 
     @Test
-    public void testToString() {
+    void testToString() {
         assertEquals("r1", instance.toString());
     }
 
     @Test
-    public void testEquals() {
+    void testEquals() {
         assertNotEquals(null, instance);
     }
 }
