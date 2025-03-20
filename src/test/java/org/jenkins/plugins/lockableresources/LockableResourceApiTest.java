@@ -5,31 +5,29 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import org.htmlunit.FailingHttpStatusCodeException;
 import org.jenkins.plugins.lockableresources.util.Constants;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class LockableResourceApiTest {
+@WithJenkins
+class LockableResourceApiTest {
 
     // ---------------------------------------------------------------------------
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         // to speed up the test
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     }
 
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
-
     @Test
-    public void reserveUnreserveApi() throws Exception {
+    void reserveUnreserveApi(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("a1");
 
         j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
@@ -46,7 +44,7 @@ public class LockableResourceApiTest {
 
     @Test
     @Issue("SECURITY-1958")
-    public void apiUsageHttpGet() {
+    void apiUsageHttpGet(JenkinsRule j) {
         JenkinsRule.WebClient wc = j.createWebClient();
         FailingHttpStatusCodeException e = assertThrows(
                 FailingHttpStatusCodeException.class, () -> wc.goTo("lockable-resources/reserve?resource=resource1"));

@@ -4,20 +4,18 @@ import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class LockStepTest_setReservedByInsideLockHonoured extends LockStepTestBase {
+@WithJenkins
+class LockStepTest_setReservedByInsideLockHonoured extends LockStepTestBase {
 
     private static final Logger LOGGER = Logger.getLogger(LockStepTest_setReservedByInsideLockHonoured.class.getName());
 
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
-
-    @Test
     // @Issue("JENKINS-XXXXX")
-    public void setReservedByInsideLockHonoured() throws Exception {
+    @Test
+    void setReservedByInsideLockHonoured(JenkinsRule j) throws Exception {
         // Use-case is a job keeping the resource reserved so it can use
         // it in other stages and free it later, not all in one closure
         // Variant: directly using the LockableResource object

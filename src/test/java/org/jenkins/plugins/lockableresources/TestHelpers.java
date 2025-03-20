@@ -37,7 +37,7 @@ public final class TestHelpers {
     @Mock
     private StaplerResponse2 rsp;
 
-    private AutoCloseable mocks;
+    private final AutoCloseable mocks;
 
     // Utility class
     public TestHelpers() {
@@ -83,7 +83,7 @@ public final class TestHelpers {
         return rule.getJSON("plugin/lockable-resources/api/json").getJSONObject();
     }
 
-    /** SImulate the click on the button in the LRM page
+    /** Simulate the click on the button in the LRM page
      *  note: Currently does not click on the button. Just simulate the doAction (stapler request)
      *  on the given resource.
      *  We shall provide some better solution like selenium tests. But for now it is fine.

@@ -1,6 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import hudson.model.Executor;
 import hudson.model.Result;
@@ -8,19 +8,17 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class LockStepHardKillTest extends LockStepTestBase {
-
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+@WithJenkins
+class LockStepHardKillTest extends LockStepTestBase {
 
     @Issue("JENKINS-36479")
     @Test
-    public void hardKillNewBuildClearsLock() throws Exception {
+    void hardKillNewBuildClearsLock(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label");
 
         WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
@@ -65,7 +63,12 @@ public class LockStepHardKillTest extends LockStepTestBase {
         // lock.
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
         p3.setDefinition(new CpsFlowDefinition(
-                "lock('resource1') {\n" + "  echo 'JOB 3 inside'\n" + "}\n" + "echo 'JOB 3 unblocked'", true));
+                """
+                lock('resource1') {
+                  echo 'JOB 3 inside'
+                }
+                echo 'JOB 3 unblocked'""",
+                true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
         // Make sure that b3 is also blocked still on b1's lock.
@@ -101,7 +104,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
 
     @Issue("JENKINS-40368")
     @Test
-    public void hardKillWithWaitingRuns() throws Exception {
+    void hardKillWithWaitingRuns(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore('wait-inside') }", true));
@@ -112,7 +115,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
             if (prevBuild != null) {
                 j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
                 isPaused(rNext, 1, 1);
-                interruptTermKill(prevBuild);
+                interruptTermKill(j, prevBuild);
             }
 
             j.waitForMessage("Trying to acquire lock on [Resource: resource1]", rNext);
@@ -127,7 +130,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
 
     @Issue("JENKINS-40368")
     @Test
-    public void hardKillWithWaitingRunsOnLabel() throws Exception {
+    void hardKillWithWaitingRunsOnLabel(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -148,9 +151,9 @@ public class LockStepHardKillTest extends LockStepTestBase {
                 isPaused(secondNext, 1, 1);
             }
 
-            interruptTermKill(firstPrev);
+            interruptTermKill(j, firstPrev);
             j.waitForMessage("Lock acquired on ", firstNext);
-            interruptTermKill(secondPrev);
+            interruptTermKill(j, secondPrev);
             j.waitForMessage("Lock acquired on ", secondNext);
 
             SemaphoreStep.waitForStart("wait-inside/" + ((i * 2) + 1), firstNext);
@@ -166,7 +169,7 @@ public class LockStepHardKillTest extends LockStepTestBase {
         j.assertBuildStatus(Result.SUCCESS, j.waitForCompletion(secondPrev));
     }
 
-    private void interruptTermKill(WorkflowRun b) throws Exception {
+    private static void interruptTermKill(JenkinsRule j, WorkflowRun b) throws Exception {
         if (b != null) {
             Executor ex = b.getExecutor();
             assertNotNull(ex);

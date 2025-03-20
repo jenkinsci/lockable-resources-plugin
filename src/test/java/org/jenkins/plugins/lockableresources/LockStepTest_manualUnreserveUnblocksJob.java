@@ -2,28 +2,26 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
-
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+@WithJenkins
+class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
 
     @Issue("JENKINS-34433")
     @Test
-    public void manualUnreserveUnblocksJob() throws Exception {
+    void manualUnreserveUnblocksJob(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
 
         TestHelpers testHelpers = new TestHelpers();
@@ -40,7 +38,13 @@ public class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
         assertThat(apiRes, hasEntry("reservedBy", "someone"));
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition("lock('resource1') {\n" + "    echo('I am inside')\n" + "}\n", true));
+        p.setDefinition(new CpsFlowDefinition(
+                """
+            lock('resource1') {
+                echo('I am inside')
+            }
+            """,
+                true));
 
         WorkflowRun r = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is not free, waiting for execution ...", r);

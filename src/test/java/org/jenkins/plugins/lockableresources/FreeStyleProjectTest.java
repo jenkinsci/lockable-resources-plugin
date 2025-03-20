@@ -3,11 +3,11 @@ package org.jenkins.plugins.lockableresources;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
@@ -33,29 +33,27 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.TestBuilder;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class FreeStyleProjectTest {
-
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+@WithJenkins
+class FreeStyleProjectTest {
 
     // ---------------------------------------------------------------------------
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         // to speed up the test
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     }
 
     @Test
     @Issue("JENKINS-34853")
-    public void security170fix() throws Exception {
+    void security170fix(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
         FreeStyleProject p = j.createFreeStyleProject("p");
         p.addProperty(new RequiredResourcesProperty("resource1", "resourceNameVar", null, null, null));
@@ -67,7 +65,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void migrateToScript() throws Exception {
+    void migrateToScript(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
 
         FreeStyleProject p = j.createFreeStyleProject("p");
@@ -103,16 +101,16 @@ public class FreeStyleProjectTest {
 
         long buildAEndTime = buildA.getStartTimeInMillis() + buildA.getDuration();
         assertTrue(
+                buildB.getStartTimeInMillis() >= buildAEndTime,
                 "Project A build should be finished before the build of project B starts. "
                         + "A finished at "
                         + buildAEndTime
                         + ", B started at "
-                        + buildB.getStartTimeInMillis(),
-                buildB.getStartTimeInMillis() >= buildAEndTime);
+                        + buildB.getStartTimeInMillis());
     }
 
     @Test
-    public void configRoundTripPlain() throws Exception {
+    void configRoundTripPlain(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
 
         FreeStyleProject withResource = j.createFreeStyleProject("withResource");
@@ -129,7 +127,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void configRoundTripWithLabel() throws Exception {
+    void configRoundTripWithLabel(JenkinsRule j) throws Exception {
         FreeStyleProject withLabel = j.createFreeStyleProject("withLabel");
         withLabel.addProperty(new RequiredResourcesProperty(null, null, null, "some-label", null));
         FreeStyleProject withLabelRoundTrip = j.configRoundtrip(withLabel);
@@ -144,7 +142,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void configRoundTripWithScript() throws Exception {
+    void configRoundTripWithScript(JenkinsRule j) throws Exception {
         FreeStyleProject withScript = j.createFreeStyleProject("withScript");
         SecureGroovyScript origScript = new SecureGroovyScript("return true", false, null);
         withScript.addProperty(new RequiredResourcesProperty(null, null, null, null, origScript));
@@ -162,7 +160,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void approvalRequired() throws Exception {
+    void approvalRequired(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource(LockableResourcesRootAction.ICON);
 
         j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
@@ -215,7 +213,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void autoCreateResource() throws Exception {
+    void autoCreateResource(JenkinsRule j) throws Exception {
         FreeStyleProject f = j.createFreeStyleProject("f");
         assertNull(LockableResourcesManager.get().fromName("resource1"));
         f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));
@@ -229,7 +227,7 @@ public class FreeStyleProjectTest {
     }
 
     @Test
-    public void competingLabelLocks() throws Exception {
+    void competingLabelLocks(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "group1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "group2");
         LockableResourcesManager.get().createResource("shared");

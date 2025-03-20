@@ -35,28 +35,26 @@ import org.htmlunit.FailingHttpStatusCodeException;
 import org.htmlunit.html.HtmlElement;
 import org.htmlunit.html.HtmlElementUtil;
 import org.htmlunit.html.HtmlPage;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class LockableResourceRootActionSEC1361Test {
-
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+@WithJenkins
+class LockableResourceRootActionSEC1361Test {
 
     @Test
-    public void regularCase() throws Exception {
-        checkXssWithResourceName("resource1");
+    void regularCase(JenkinsRule j) throws Exception {
+        checkXssWithResourceName(j, "resource1");
     }
 
     @Test
     @Issue("SECURITY-1361")
-    public void noXssOnClick() throws Exception {
-        checkXssWithResourceName("\"); alert(123);//");
+    void noXssOnClick(JenkinsRule j) throws Exception {
+        checkXssWithResourceName(j, "\"); alert(123);//");
     }
 
-    private void checkXssWithResourceName(String resourceName) throws Exception {
+    private static void checkXssWithResourceName(JenkinsRule j, String resourceName) throws Exception {
         LockableResourcesManager.get().createResource(resourceName);
 
         j.jenkins.setSecurityRealm(j.createDummySecurityRealm());

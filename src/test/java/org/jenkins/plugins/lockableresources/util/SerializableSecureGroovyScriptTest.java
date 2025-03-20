@@ -1,22 +1,20 @@
 package org.jenkins.plugins.lockableresources.util;
 
-import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class SerializableSecureGroovyScriptTest {
-
-    @Rule
-    public JenkinsRule r = new JenkinsRule();
+@WithJenkins
+class SerializableSecureGroovyScriptTest {
 
     @Test
-    public void testRehydrate() throws Exception {
+    void testRehydrate(JenkinsRule r) throws Exception {
         SerializableSecureGroovyScript nullCheck = new SerializableSecureGroovyScript(null);
-        assertNull("SerializableSecureGroovyScript null check", nullCheck.rehydrate());
+        assertNull(nullCheck.rehydrate(), "SerializableSecureGroovyScript null check");
 
         // SecureGroovyScript(@NonNull String script, boolean sandbox, @CheckForNull
         // List<ClasspathEntry> classpath)
