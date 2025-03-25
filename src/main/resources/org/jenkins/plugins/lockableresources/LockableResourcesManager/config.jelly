@@ -9,9 +9,13 @@
  * See the "LICENSE.txt" file for more information.                    *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  -->
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
-  xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
   <f:section title="${%section.title}">
+    <f:entry title="${%allowEphemeralResources.title}" field="allowEphemeralResources">
+      <f:checkbox default="true"/>
+    </f:entry>
     <f:entry title="${%entry.title}">
       <f:repeatable field="declaredResources" header="${%field.header}" minimum="0" add="${%field.add}">
         <table width="100%">
