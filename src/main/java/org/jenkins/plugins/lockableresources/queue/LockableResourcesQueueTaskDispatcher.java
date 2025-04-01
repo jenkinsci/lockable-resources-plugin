@@ -11,9 +11,7 @@ package org.jenkins.plugins.lockableresources.queue;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
-import hudson.matrix.MatrixProject;
 import hudson.model.Job;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
@@ -30,10 +28,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkinsci.plugins.variant.OptionalExtension;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
-@Extension
+@OptionalExtension(requirePlugins = "matrix-project")
 public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     private transient Cache<Long, Date> lastLogged =
@@ -45,10 +44,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     public CauseOfBlockage canRun(Queue.Item item) {
         // Skip locking for multiple configuration projects,
         // only the child jobs will actually lock resources.
-        if (item.task instanceof MatrixProject) return null;
-
         Job<?, ?> project = Utils.getProject(item);
-        if (project == null) return null;
+        if (Utils.isMatrixProject(project) || project == null) return null;
 
         LockableResourcesStruct resources = Utils.requiredResources(project);
         if (resources == null
@@ -93,9 +90,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
                 }
             }
 
-            if (item.task instanceof MatrixConfiguration) {
-                MatrixConfiguration matrix = (MatrixConfiguration) item.task;
-                params.putAll(matrix.getCombination());
+            if (Utils.isMatrixConfiguration(project)) {
+                params.putAll(((MatrixConfiguration) project).getCombination());
             }
 
             final List<LockableResource> selected;
