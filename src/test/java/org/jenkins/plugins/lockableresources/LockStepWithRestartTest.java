@@ -1,6 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
@@ -12,7 +12,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.JenkinsSessionRule;
 
@@ -24,7 +24,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     public JenkinsSessionRule sessions = new JenkinsSessionRule();
 
     @Test
-    public void lockOrderRestart() throws Throwable {
+    void lockOrderRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -73,7 +73,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void interoperabilityOnRestart() throws Throwable {
+    void interoperabilityOnRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -120,7 +120,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void testReserveOverRestart() throws Throwable {
+    void testReserveOverRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager manager = LockableResourcesManager.get();
             manager.createResource("resource1");
@@ -163,7 +163,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void checkQueueAfterRestart() throws Throwable {
+    void checkQueueAfterRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager lrm = LockableResourcesManager.get();
 
@@ -206,7 +206,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void chaosOnRestart() throws Throwable {
+    void chaosOnRestart() throws Throwable {
         final int resourceCount = 50;
         sessions.then(j -> {
             for (int i = 1; i <= resourceCount; i++) {
