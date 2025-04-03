@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -82,9 +81,9 @@ public class LockStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setResourceSelectStrategy(String resourceSelectStrategy) {
-      if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
+        if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
             this.resourceSelectStrategy = resourceSelectStrategy;
-      }
+        }
     }
 
     @DataBoundSetter
