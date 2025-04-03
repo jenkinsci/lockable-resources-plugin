@@ -9,6 +9,7 @@ import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +19,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -146,6 +146,7 @@ public class LockStep extends Step implements Serializable {
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
         }
 
+        @RequirePOST
         public ListBoxModel doFillResourceSelectStrategyItems() {
             ListBoxModel items = new ListBoxModel();
             for (ResourceSelectStrategy resSelStrategy : ResourceSelectStrategy.values()) {
