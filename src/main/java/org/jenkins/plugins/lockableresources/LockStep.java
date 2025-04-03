@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -80,7 +82,9 @@ public class LockStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setResourceSelectStrategy(String resourceSelectStrategy) {
-        this.resourceSelectStrategy = resourceSelectStrategy;
+      if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
+            this.resourceSelectStrategy = resourceSelectStrategy;
+      }
     }
 
     @DataBoundSetter
@@ -140,6 +144,14 @@ public class LockStep extends Step implements Serializable {
         public AutoCompletionCandidates doAutoCompleteResource(
                 @QueryParameter String value, @AncestorInPath Item item) {
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
+        }
+
+        public ListBoxModel doFillResourceSelectStrategyItems() {
+            ListBoxModel items = new ListBoxModel();
+            for (ResourceSelectStrategy resSelStrategy : ResourceSelectStrategy.values()) {
+                items.add(resSelStrategy.name());
+            }
+            return items;
         }
 
         @RequirePOST
