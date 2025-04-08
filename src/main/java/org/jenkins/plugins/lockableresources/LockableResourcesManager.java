@@ -159,7 +159,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 mergedResources.add(r);
             }
 
+            // Copy reservations and unconfigurable properties from old instances
+            for (LockableResource newResource : mergedResources) {
+                final LockableResource oldDeclaredResource = fromName(newResource.getName());
+                if (oldDeclaredResource != null) {
+                    // When configuring through UI, the configuration shown in UI is based on current configuration. So
+                    // it does not matter if unchanged fields are coming from old or new resource.
+                    // But for CasC configuration, these fields are generally not specified, so when empty, use the
+                    // value from the old resource.
+                    if (newResource.getReservedBy() == null) {
+                        newResource.setReservedBy(oldDeclaredResource.getReservedBy());
+                    }
+                    if (newResource.getNote() == null || newResource.getNote().isEmpty()) {
+                        newResource.setNote(oldDeclaredResource.getNote());
+                    }
+                    if (newResource.getReservedTimestamp() == null) {
+                        newResource.setReservedTimestamp(oldDeclaredResource.getReservedTimestamp());
+                    }
+                }
+            }
+
             this.resources = mergedResources;
+            save();
         }
     }
 
@@ -1046,8 +1067,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Override
     public boolean configure(StaplerRequest2 req, JSONObject json) {
         synchronized (this.syncResources) {
-            final List<LockableResource> oldDeclaredResources = new ArrayList<>(getDeclaredResources());
-
             try (BulkChange bc = new BulkChange(this)) {
                 // reset resources to default which are not currently locked
                 this.resources.removeIf(resource -> !resource.isLocked());
@@ -1056,19 +1075,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
             } catch (IOException exception) {
                 LOGGER.log(Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
                 return false;
-            }
-
-            // Copy unconfigurable properties from old instances
-            boolean updated = false;
-            for (LockableResource oldDeclaredResource : oldDeclaredResources) {
-                final LockableResource updatedResource = fromName(oldDeclaredResource.getName());
-                if (updatedResource != null) {
-                    updatedResource.copyUnconfigurableProperties(oldDeclaredResource);
-                    updated = true;
-                }
-            }
-            if (updated) {
-                save();
             }
         }
         return true;
