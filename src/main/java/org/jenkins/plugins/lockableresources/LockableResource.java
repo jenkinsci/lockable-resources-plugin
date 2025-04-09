@@ -592,6 +592,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if (sourceResource != null) {
             setReservedTimestamp(sourceResource.getReservedTimestamp());
             setNote(sourceResource.getNote());
+            setReservedBy(sourceResource.getReservedBy());
         }
     }
 

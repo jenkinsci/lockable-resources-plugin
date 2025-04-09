@@ -2,8 +2,6 @@ declaredResources:
 - description: "Description_A"
   labels: "Label_A"
   name: "Resource_A"
-  note: "Note A"
-  reservedBy: "Reserved_A"
 - description: "Description_B"
   labels: "Label_B"
   name: "Resource_B"

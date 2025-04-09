@@ -43,8 +43,9 @@ class ConfigurationAsCodeTest {
         assertEquals("Resource_A", declaredResource.getName());
         assertEquals("Description_A", declaredResource.getDescription());
         assertEquals("Label_A", declaredResource.getLabels());
-        assertEquals("Reserved_A", declaredResource.getReservedBy());
-        assertEquals("Note A", declaredResource.getNote());
+        // not supported in JCaC
+        // assertEquals("Reserved_A", declaredResource.getReservedBy());
+        // assertEquals("Note A", declaredResource.getNote());
 
         assertEquals(
                 2, LRM.getResources().size(), "The number of resources is wrong. Check your configuration-as-code.yml");
@@ -53,8 +54,9 @@ class ConfigurationAsCodeTest {
         assertEquals("Resource_A", resource.getName());
         assertEquals("Description_A", resource.getDescription());
         assertEquals("Label_A", resource.getLabels());
-        assertEquals("Reserved_A", resource.getReservedBy());
-        assertEquals("Note A", resource.getNote());
+        // not supported in JCaC
+        // assertEquals("Reserved_A", resource.getReservedBy());
+        // assertEquals("Note A", resource.getNote());
     }
 
     @Test
@@ -75,7 +77,6 @@ class ConfigurationAsCodeTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
 
         LRM.reserve(Collections.singletonList(LRM.fromName("Resource_B")), "testUser");
-        assertEquals("Reserved_A", LRM.fromName("Resource_A").getReservedBy());
         assertEquals("testUser", LRM.fromName("Resource_B").getReservedBy());
         Date timestampBeforeReload = LRM.fromName("Resource_B").getReservedTimestamp();
         String noteBeforeReload = LRM.fromName("Resource_B").getNote();
@@ -84,7 +85,6 @@ class ConfigurationAsCodeTest {
         List<String> srcs = ConfigurationAsCode.get().getSources();
         ConfigurationAsCode.get().configure(srcs);
 
-        assertEquals("Reserved_A", LRM.fromName("Resource_A").getReservedBy());
         assertEquals("testUser", LRM.fromName("Resource_B").getReservedBy());
         assertEquals(timestampBeforeReload, LRM.fromName("Resource_B").getReservedTimestamp());
         assertEquals(noteBeforeReload, LRM.fromName("Resource_B").getNote());

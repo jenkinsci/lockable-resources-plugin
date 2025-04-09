@@ -307,7 +307,6 @@ unclassified:
       - name: "S7_1200_1"
         description: "S7 PLC model 1200"
         labels: "plc:S7 model:1200"
-        reservedBy: "Reserved due maintenance window"
       - name: "S7_1200_2"
         labels: "plc:S7 model:1200"
       - name: "Resource-with-properties"
@@ -316,7 +315,9 @@ unclassified:
             value: "Value"
 ```
 
-Properties *description*, *labels* and *reservedBy* are optional.
+Properties *description*, *labels* and *properties* are optional.
+
+Fields like *reservedBy*, *reservedTimestamp* or *note* are not supported, they will be ignored.
 
 ----
 
