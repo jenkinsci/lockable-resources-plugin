@@ -1056,8 +1056,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public boolean configure(StaplerRequest2 req, JSONObject json) {
         synchronized (this.syncResources) {
             try (BulkChange bc = new BulkChange(this)) {
-                // reset resources to default which are not currently locked
-                this.resources.removeIf(resource -> !resource.isLocked());
                 req.bindJSON(this, json);
                 bc.commit();
             } catch (IOException exception) {
