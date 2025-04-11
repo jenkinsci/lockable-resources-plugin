@@ -588,6 +588,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      *
      * @param sourceResource resource with properties to copy from
      */
+    @Deprecated
+    @Restricted(NoExternalUse.class)
     public void copyUnconfigurableProperties(final LockableResource sourceResource) {
         if (sourceResource != null) {
             setReservedTimestamp(sourceResource.getReservedTimestamp());
