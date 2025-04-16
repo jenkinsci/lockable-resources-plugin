@@ -159,7 +159,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 mergedResources.add(r);
             }
 
+            // Copy reservations and unconfigurable properties from old instances
+            for (LockableResource newResource : mergedResources) {
+                final LockableResource oldDeclaredResource = fromName(newResource.getName());
+                if (oldDeclaredResource != null) {
+                    newResource.copyUnconfigurableProperties(oldDeclaredResource);
+                }
+            }
+
             this.resources = mergedResources;
+            save();
         }
     }
 
@@ -1046,29 +1055,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Override
     public boolean configure(StaplerRequest2 req, JSONObject json) {
         synchronized (this.syncResources) {
-            final List<LockableResource> oldDeclaredResources = new ArrayList<>(getDeclaredResources());
-
             try (BulkChange bc = new BulkChange(this)) {
-                // reset resources to default which are not currently locked
-                this.resources.removeIf(resource -> !resource.isLocked());
                 req.bindJSON(this, json);
                 bc.commit();
             } catch (IOException exception) {
                 LOGGER.log(Level.WARNING, "Exception occurred while committing bulkchange operation.", exception);
                 return false;
-            }
-
-            // Copy unconfigurable properties from old instances
-            boolean updated = false;
-            for (LockableResource oldDeclaredResource : oldDeclaredResources) {
-                final LockableResource updatedResource = fromName(oldDeclaredResource.getName());
-                if (updatedResource != null) {
-                    updatedResource.copyUnconfigurableProperties(oldDeclaredResource);
-                    updated = true;
-                }
-            }
-            if (updated) {
-                save();
             }
         }
         return true;
