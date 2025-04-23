@@ -597,6 +597,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     /**
+     * Reset unconfigurable properties. Normally, called after "lockable resource" configuration
+     * change, to make sure that these fields are ignored if defined in CasC configuration file.
+     */
+    public void resetUnconfigurableProperties() {
+        setReservedBy(null);
+        setReservedTimestamp(null);
+        setNote("");
+    }
+
+    /**
      * Tell LRM to recycle this resource, including notifications for whoever may be waiting in the
      * queue so they can proceed immediately. WARNING: Do not use this from inside the lock step
      * closure which originally locked this resource, to avoid nasty surprises! Just stick with

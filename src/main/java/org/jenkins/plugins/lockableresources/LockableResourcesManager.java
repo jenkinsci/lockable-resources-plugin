@@ -159,11 +159,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 mergedResources.add(r);
             }
 
-            // Copy reservations and unconfigurable properties from old instances
+            // Copy reservations and unconfigurable properties from old instances. Clear unconfigurable
+            // properties for new resources: they should be empty anyway for new resources from UI
+            // configuration. For CasC configuration, we ignore those fields, so set them to empty.
             for (LockableResource newResource : mergedResources) {
                 final LockableResource oldDeclaredResource = fromName(newResource.getName());
                 if (oldDeclaredResource != null) {
                     newResource.copyUnconfigurableProperties(oldDeclaredResource);
+                } else {
+                    newResource.resetUnconfigurableProperties();
                 }
             }
 

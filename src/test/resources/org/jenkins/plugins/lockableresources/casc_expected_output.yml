@@ -8,5 +8,3 @@ declaredResources:
 - description: "Description_C"
   labels: "Label_C"
   name: "Resource_C"
-  note: "Note_C"
-  reservedBy: "User_C"
