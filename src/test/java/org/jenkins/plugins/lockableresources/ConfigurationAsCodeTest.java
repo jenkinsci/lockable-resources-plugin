@@ -35,7 +35,7 @@ class ConfigurationAsCodeTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
-                2,
+                3,
                 declaredResources.size(),
                 "The number of declared resources is wrong. Check your configuration-as-code.yml");
 
@@ -44,19 +44,19 @@ class ConfigurationAsCodeTest {
         assertEquals("Description_A", declaredResource.getDescription());
         assertEquals("Label_A", declaredResource.getLabels());
         // not supported in JCaC
-        // assertEquals("Reserved_A", declaredResource.getReservedBy());
-        // assertEquals("Note A", declaredResource.getNote());
+        assertEquals(null, declaredResource.getReservedBy());
+        assertEquals("", declaredResource.getNote());
 
         assertEquals(
-                2, LRM.getResources().size(), "The number of resources is wrong. Check your configuration-as-code.yml");
+                3, LRM.getResources().size(), "The number of resources is wrong. Check your configuration-as-code.yml");
 
         LockableResource resource = LRM.getFirst();
         assertEquals("Resource_A", resource.getName());
         assertEquals("Description_A", resource.getDescription());
         assertEquals("Label_A", resource.getLabels());
         // not supported in JCaC
-        // assertEquals("Reserved_A", resource.getReservedBy());
-        // assertEquals("Note A", resource.getNote());
+        assertEquals(null, declaredResource.getReservedBy());
+        assertEquals("", declaredResource.getNote());
     }
 
     @Test

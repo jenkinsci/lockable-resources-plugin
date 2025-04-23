@@ -13,3 +13,8 @@ unclassified:
       - description: "Description_B"
         labels: "Label_B"
         name: "Resource_B"
+      - description: "Description_C"
+        labels: "Label_C"
+        name: "Resource_C"
+        reservedBy: "User_C"
+        note: "Note_C"
