@@ -9,6 +9,7 @@ import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,7 +81,9 @@ public class LockStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setResourceSelectStrategy(String resourceSelectStrategy) {
-        this.resourceSelectStrategy = resourceSelectStrategy;
+        if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
+            this.resourceSelectStrategy = resourceSelectStrategy;
+        }
     }
 
     @DataBoundSetter
@@ -140,6 +143,15 @@ public class LockStep extends Step implements Serializable {
         public AutoCompletionCandidates doAutoCompleteResource(
                 @QueryParameter String value, @AncestorInPath Item item) {
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
+        }
+
+        @RequirePOST
+        public ListBoxModel doFillResourceSelectStrategyItems() {
+            ListBoxModel items = new ListBoxModel();
+            for (ResourceSelectStrategy resSelStrategy : ResourceSelectStrategy.values()) {
+                items.add(resSelStrategy.name());
+            }
+            return items;
         }
 
         @RequirePOST
