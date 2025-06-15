@@ -9,22 +9,21 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 @WithJenkins
-class LockStepTest_reserveInsideLockHonoured extends LockStepTestBase {
+class LockStepSetReservedByInsideLockHonouredTest extends LockStepTestBase {
 
-    private static final Logger LOGGER = Logger.getLogger(LockStepTest_reserveInsideLockHonoured.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(LockStepSetReservedByInsideLockHonouredTest.class.getName());
 
     @Test
-    void reserveInsideLockHonoured(JenkinsRule j) throws Exception {
+    void setReservedByInsideLockHonoured(JenkinsRule j) throws Exception {
         // Use-case is a job keeping the resource reserved so it can use
         // it in other stages and free it later, not all in one closure
-        // Variant: using the LockableResourcesManager to manipulate
-        // the LockableResource object(s) (with its synchronized code)
+        // Variant: directly using the LockableResource object
         LockableResourcesManager lm = LockableResourcesManager.get();
         lm.createResourceWithLabel("resource1", "label1");
 
         // Can't store in CPS script variable because not serializable:
         String lmget = "org.jenkins.plugins.lockableresources.LockableResourcesManager.get()";
-        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "reserveInsideLockHonoured");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "setReservedByInsideLockHonoured");
         p.setDefinition(new CpsFlowDefinition(
                 "timeout(2) {\n"
                         + "parallel p1: {\n"
@@ -36,18 +35,10 @@ class LockStepTest_reserveInsideLockHonoured extends LockStepTestBase {
                         + ".fromName(env.LOCK_NAME)\n"
                         + "    echo \"Locked resource cause 1-1: ${lr.getLockCause()}\"\n"
                         + "    echo \"Locked resource reservedBy 1-1: ${lr.getReservedBy()}\"\n"
-                        + "    def res = "
-                        + lmget
-                        + ".reserve([lr], 'test2a')\n"
+                        + "    lr.setReservedBy('test')\n"
                         // + "    semaphore 'wait-inside'\n"
-                        + "    echo \"Locked resource cause 1-2a: ${lr.getLockCause()}\"\n"
-                        + "    echo \"Locked resource reservedBy 1-2a: ${lr.getReservedBy()}\"\n"
-                        + "    if (!res) {\n"
-                        + "        echo \"LockableResourcesManager did not reserve an already locked resource; hack it!\"\n"
-                        + "        lr.setReservedBy('test2b')\n"
-                        + "        echo \"Locked resource cause 1-2b: ${lr.getLockCause()}\"\n"
-                        + "        echo \"Locked resource reservedBy 1-2b: ${lr.getReservedBy()}\"\n"
-                        + "    }\n"
+                        + "    echo \"Locked resource cause 1-2: ${lr.getLockCause()}\"\n"
+                        + "    echo \"Locked resource reservedBy 1-2: ${lr.getReservedBy()}\"\n"
                         + "    echo \"Unlocking parallel closure 1\"\n"
                         + "  }\n"
                         + "  echo \"Locked resource cause 1-3 (after unlock): ${lr.getLockCause()}\"\n"
@@ -56,35 +47,20 @@ class LockStepTest_reserveInsideLockHonoured extends LockStepTestBase {
                         + "  sleep (5)\n"
                         + "  echo \"Locked resource cause 1-4: ${lr.getLockCause()}\"\n"
                         + "  echo \"Locked resource reservedBy 1-4: ${lr.getReservedBy()}\"\n"
-                        + "  echo \"Resetting Locked resource via LRM and sleeping ...\"\n"
-                        + "  "
-                        + lmget
-                        + ".reset([lr])\n"
+                        // Note: lr.reset() only nullifies the fields in LR instance
+                        // but does not help a queue get moving
+                        // + "  echo \"Un-reserving Locked resource directly as `lr.reset()` and
+                        // sleeping...\"\n"
+                        // + "  lr.reset()\n"
+                        + "  echo \"Un-reserving Locked resource directly as `lr.recycle()` and sleeping...\"\n"
+                        + "  lr.recycle()\n"
                         + "  sleep (5)\n"
-                        + "  echo \"Un-reserving Locked resource via LRM and sleeping...\"\n"
-                        + "  "
-                        + lmget
-                        + ".unreserve([lr])\n"
-                        + "  sleep (5)\n"
-                        // Note: the unlock attempt here might steal this resource
-                        // from another parallel stage, so we don't do it:
-                        // + "  echo \"Un-locking Locked resource via LRM and sleeping...\"\n"
-                        // + "  " + lmget + ".unlock([lr], null)\n"
-                        // + "  sleep (5)\n"
                         + "  echo \"Locked resource cause 1-5: ${lr.getLockCause()}\"\n"
                         + "  echo \"Locked resource reservedBy 1-5: ${lr.getReservedBy()}\"\n"
                         + "  sleep (5)\n"
                         + "  if (lr.getLockCause() == null) {\n"
-                        + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by LRM methods\"\n"
-                        // + "    lock(label: 'label1') { echo \"Secondary lock trick\" }\n"
-                        + "    if ("
-                        + lmget
-                        + ".reserve([lr], 'unstucker')) {\n"
-                        + "        echo \"Secondary lock trick\"\n"
-                        + "        "
-                        + lmget
-                        + ".unreserve([lr])\n"
-                        + "    } else { echo \"Could not reserve by LRM methods as 'unstucker'\" }\n"
+                        + "    echo \"LRM seems stuck; trying to reserve/unreserve this resource by lock step\"\n"
+                        + "    lock(label: 'label1', skipIfLocked: true) { echo \"Secondary lock trick\" }\n"
                         + "  }\n"
                         + "  sleep (5)\n"
                         + "  echo \"Locked resource cause 1-6: ${lr.getLockCause()}\"\n"
@@ -102,49 +78,15 @@ class LockStepTest_reserveInsideLockHonoured extends LockStepTestBase {
                         + "    sleep (1)\n"
                         + "    echo \"Locked resource cause 2-2: ${lr.getLockCause()}\"\n"
                         + "    echo \"Locked resource reservedBy 2-2: ${lr.getReservedBy()}\"\n"
-                        + "    echo \"Setting (directly) and dropping (via LRM) a reservation on locked resource\"\n"
-                        + "    lr.reserve('test2-1')\n"
-                        + "    sleep (3)\n"
-                        + "    "
-                        + lmget
-                        + ".unreserve([lr])\n"
                         + "    echo \"Just sleeping...\"\n"
                         + "    sleep (20)\n"
-                        + "    echo \"Setting (directly) a reservation on locked resource\"\n"
-                        + "    lr.reserve('test2-2')\n"
                         + "    echo \"Unlocking parallel closure 2\"\n"
                         + "  }\n"
                         + "  echo \"Locked resource cause 2-3: ${lr.getLockCause()}\"\n"
                         + "  echo \"Locked resource reservedBy 2-3: ${lr.getReservedBy()}\"\n"
-                        + "  sleep (5)\n"
-                        + "  echo \"Recycling (via LRM) the reserved not-locked resource\"\n"
-                        + "  "
-                        + lmget
-                        + ".recycle([lr])\n"
-                        + "  sleep (5)\n"
-                        + "  echo \"Locked resource cause 2-4: ${lr.getLockCause()}\"\n"
-                        + "  echo \"Locked resource reservedBy 2-4: ${lr.getReservedBy()}\"\n"
-                        + "},\n"
-                        // Test that reserve/unreserve in p2 did not "allow" p3 to kidnap the lock:
-                        + "p3: {\n"
-                        + "  org.jenkins.plugins.lockableresources.LockableResource lr = null\n"
-                        + "  echo \"Locked resource cause 3-1: not locked yet\"\n"
-                        + "  sleep 1\n"
-                        + "  lock(label: 'label1', variable: 'someVar3') {\n"
-                        + "    echo \"VAR3 IS $env.someVar3\"\n"
-                        + "    lr = "
-                        + lmget
-                        + ".fromName(env.someVar3)\n"
-                        + "    echo \"Locked resource cause 3-2: ${lr.getLockCause()}\"\n"
-                        + "    echo \"Locked resource reservedBy 3-2: ${lr.getReservedBy()}\"\n"
-                        + "    echo \"Just sleeping...\"\n"
-                        + "    sleep (10)\n"
-                        + "    echo \"Unlocking parallel closure 3\"\n"
-                        + "  }\n"
-                        + "  echo \"Locked resource cause 3-3: ${lr.getLockCause()}\"\n"
-                        + "  echo \"Locked resource reservedBy 3-3: ${lr.getReservedBy()}\"\n"
                         + "},\n"
                         // Add some pressure to try for race conditions:
+                        + "p3: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
                         + "p4: { sleep 2; lock(label: 'label1') { sleep 1 } },\n"
                         + "p5: { sleep 2; lock(label: 'label1') { sleep 3 } },\n"
                         + "p6: { sleep 2; lock(label: 'label1') { sleep 2 } },\n"
@@ -235,19 +177,21 @@ class LockStepTest_reserveInsideLockHonoured extends LockStepTestBase {
             LOGGER.info("GOOD: Did not encounter Bug #2b " + "(LRM required un-stucking)!");
         }
 
+        /*
+            j.assertLogContains("Locked resource cause 1-5: null", b1);
+            j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
+            try {
+                j.assertLogNotContains("LRM seems stuck; trying to reserve/unreserve", b1);
+                j.assertLogNotContains("Secondary lock trick", b1);
+            } catch (java.lang.AssertionError t2) {
+                LOGGER.info("Bug #2b (LRM required un-stucking) currently tolerated");
+                //LOGGER.info(t2.toString());
+                // throw t2;
+            }
+        */
+
         j.waitForMessage("Locked resource cause 2-2", b1);
         j.assertLogContains("Locked resource cause 1-5", b1);
-        LOGGER.info("GOOD: lock#2 was taken after we un-reserved lock#1");
-
-        j.waitForMessage("Unlocking parallel closure 2", b1);
-        j.assertLogNotContains("Locked resource cause 3-2", b1);
-        LOGGER.info("GOOD: lock#3 was NOT taken just after we un-locked closure 2 (keeping lock#2 reserved)");
-
-        // After 2-3 we lrm.recycle() the lock so it should
-        // go to the next bidder
-        j.waitForMessage("Locked resource cause 2-4", b1);
-        j.assertLogContains("Locked resource cause 3-2", b1);
-        LOGGER.info("GOOD: lock#3 was taken just after we recycled lock#2");
 
         j.assertLogContains(", waiting for execution ...", b1);
 
