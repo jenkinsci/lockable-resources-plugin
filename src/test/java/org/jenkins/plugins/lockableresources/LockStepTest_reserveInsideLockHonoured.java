@@ -13,7 +13,6 @@ class LockStepTest_reserveInsideLockHonoured extends LockStepTestBase {
 
     private static final Logger LOGGER = Logger.getLogger(LockStepTest_reserveInsideLockHonoured.class.getName());
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void reserveInsideLockHonoured(JenkinsRule j) throws Exception {
         // Use-case is a job keeping the resource reserved so it can use
