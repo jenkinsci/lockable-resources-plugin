@@ -1041,7 +1041,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
                         Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
             }
 
-            QueuedContextStruct queueItem = null;
             int oldIndex = -1;
             for (int i = 0; i < this.queuedContexts.size(); i++) {
                 QueuedContextStruct entry = this.queuedContexts.get(i);
@@ -1078,11 +1077,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     public List<LockableResource> getAvailableResources(final List<LockableResourcesStruct> requiredResourcesList) {
         return this.getAvailableResources(requiredResourcesList, null, null);
-    }
-
-    // ---------------------------------------------------------------------------
-    public List<LockableResource> getAvailableResources(final QueuedContextStruct entry) {
-        return this.getAvailableResources(entry.getResources(), entry.getLogger(), null);
     }
 
     // ---------------------------------------------------------------------------
