@@ -62,52 +62,66 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
             getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
 
-            List<String> resourceNames = new ArrayList<>();
-            for (LockStepResource resource : step.getResources()) {
-                List<String> resources = new ArrayList<>();
-                if (resource.resource != null) {
-                    if (lrm.createResource(resource.resource)) {
-                        LockableResourcesManager.printLogs(
-                                "Resource [" + resource.resource + "] did not exist. Created.",
-                                Level.FINE,
-                                LOGGER,
-                                logger);
+            if (lockRequested()) {
+                List<String> resourceNames = new ArrayList<>();
+                for (LockStepResource resource : step.getResources()) {
+                    List<String> resources = new ArrayList<>();
+                    if (resource.resource != null) {
+                        if (lrm.createResource(resource.resource)) {
+                            LockableResourcesManager.printLogs(
+                                    "Resource [" + resource.resource + "] did not exist. Created.",
+                                    Level.FINE,
+                                    LOGGER,
+                                    logger);
+                        }
+                        resources.add(resource.resource);
+                        resourceNames.addAll(resources);
+                    } else {
+                        resourceNames.add("N/A");
                     }
-                    resources.add(resource.resource);
-                    resourceNames.addAll(resources);
-                } else {
-                    resourceNames.add("N/A");
+                    resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
                 }
-                resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
+                LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
+                // determine if there are enough resources available to proceed
+                available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
+                if (available == null || available.isEmpty()) {
+                    LOGGER.fine("No available resources: " + available);
+                    onLockFailed(logger, resourceHolderList);
+                    return false;
+                }
+
+                final boolean lockFailed = (lrm.lock(available, run) == false);
+
+                if (lockFailed) {
+                    // this here is very defensive code, and you will probably never hit it. (hopefully)
+                    LOGGER.warning("Internal program error: Can not lock resources: " + available);
+                    onLockFailed(logger, resourceHolderList);
+                    return true;
+                }
+
+                // since LockableResource contains transient variables, they cannot be correctly serialized
+                // hence we use their unique resource names and properties
+                for (LockableResource resource : available) {
+                    lockedResources.put(resource.getName(), resource.getProperties());
+                }
             }
 
-            LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
-
-            // determine if there are enough resources available to proceed
-            available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
-            if (available == null || available.isEmpty()) {
-                LOGGER.fine("No available resources: " + available);
-                onLockFailed(logger, resourceHolderList);
-                return false;
-            }
-
-            final boolean lockFailed = (lrm.lock(available, run) == false);
-
-            if (lockFailed) {
-                // this here is very defensive code, and you will probably never hit it. (hopefully)
-                LOGGER.warning("Internal program error: Can not lock resources: " + available);
-                onLockFailed(logger, resourceHolderList);
-                return true;
-            }
-
-            // since LockableResource contains transient variables, they cannot be correctly serialized
-            // hence we use their unique resource names and properties
-            for (LockableResource resource : available) {
-                lockedResources.put(resource.getName(), resource.getProperties());
-            }
             LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
         }
 
+        return false;
+    }
+
+    private boolean lockRequested() {
+        if (step.label != null && !step.label.isEmpty()) {
+            return true;
+        }
+        if (step.resource != null && !step.resource.isEmpty()) {
+            return true;
+        }
+        if (step.extra != null && !step.extra.isEmpty()) {
+            return true;
+        }
         return false;
     }
 
