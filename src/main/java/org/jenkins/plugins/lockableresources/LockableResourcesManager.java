@@ -57,7 +57,7 @@ import org.kohsuke.stapler.StaplerRequest2;
 public class LockableResourcesManager extends GlobalConfiguration {
 
     /** Object to synchronized operations over LRM */
-    public static final transient Object syncResources = new Object();
+    public static final Object syncResources = new Object();
 
     private List<LockableResource> resources;
     private transient Cache<Long, List<LockableResource>> cachedCandidates =
