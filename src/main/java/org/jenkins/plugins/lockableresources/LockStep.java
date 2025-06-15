@@ -69,7 +69,7 @@ public class LockStep extends Step implements Serializable {
     @DataBoundConstructor
     public LockStep(@Nullable String resource) {
         if (resource != null && !resource.isEmpty()) {
-            this.resource = resource;
+            this.resource = resource.trim();
         }
     }
 
@@ -91,7 +91,7 @@ public class LockStep extends Step implements Serializable {
     @DataBoundSetter
     public void setLabel(String label) {
         if (label != null && !label.isEmpty()) {
-            this.label = label;
+            this.label = label.trim();
         }
     }
 
