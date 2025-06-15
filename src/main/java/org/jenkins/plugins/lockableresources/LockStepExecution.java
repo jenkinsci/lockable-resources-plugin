@@ -41,7 +41,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     public boolean start() throws Exception {
-        // normally it might raise a exception, but we check it in the function .validate()
+        // normally it might raise an exception, but we check it in the function .validate()
         // therefore we can skip the try-catch here.
         ResourceSelectStrategy resourceSelectStrategy =
                 ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
