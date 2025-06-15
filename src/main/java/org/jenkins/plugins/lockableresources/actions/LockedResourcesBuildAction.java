@@ -68,7 +68,7 @@ public class LockedResourcesBuildAction implements Action {
         synchronized (build) {
             List<LockedResourcesBuildAction> actions = build.getActions(LockedResourcesBuildAction.class);
 
-            if (actions.size() <= 0) {
+            if (actions.isEmpty()) {
                 action = new LockedResourcesBuildAction();
                 build.addAction(action);
             } else {
