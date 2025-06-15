@@ -25,8 +25,8 @@ class ConcurrentModificationExceptionTest {
         final int resourcesCount = 100;
         final int extraResourcesCount = 100;
 
-        // disable save. Everything is saved into filesystem and it takes a while
-        // normally it is no problem, but we need to starts many tasks parallel
+        // disable save. Everything is saved into filesystem, and it takes a while
+        // normally it is no problem, but we need to start many tasks parallel
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
 
         // Do not mirror nodes now. We will allow it later in parallel tasks
