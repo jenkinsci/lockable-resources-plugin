@@ -36,22 +36,26 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     public int quantity = 0;
 
     LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
-        this.resource = resource;
-        this.label = label;
+        if (resource != null && !resource.isEmpty()) {
+            this.resource = resource.trim();
+        }
+        if (label != null && !label.isEmpty()) {
+            this.label = label.trim();
+        }
         this.quantity = quantity;
     }
 
     @DataBoundConstructor
     public LockStepResource(@Nullable String resource) {
         if (resource != null && !resource.isEmpty()) {
-            this.resource = resource;
+            this.resource = resource.trim();
         }
     }
 
     @DataBoundSetter
     public void setLabel(String label) {
         if (label != null && !label.isEmpty()) {
-            this.label = label;
+            this.label = label.trim();
         }
     }
 
