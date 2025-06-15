@@ -4,7 +4,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.sf.json.JSONObject;
@@ -31,23 +30,24 @@ class LockStepManualUnreserveUnblocksJobTest extends LockStepTestBase {
         resource1.setReservedBy("someone");
         assertEquals("someone", resource1.getReservedBy());
         assertTrue(resource1.isReserved());
-        assertNull(resource1.getReservedTimestamp());
+        assertNotNull(resource1.getReservedTimestamp());
 
         JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
         assertThat(apiRes, hasEntry("reserved", true));
         assertThat(apiRes, hasEntry("reservedBy", "someone"));
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
-            lock('resource1') {
-                echo('I am inside')
+        p.setDefinition(new CpsFlowDefinition("""
+            timeout(time: 10000, unit: 'SECONDS'){
+                lock('resource1') {
+                    echo('I am inside')
+                }
             }
-            """,
-                true));
+            """,true));
 
         WorkflowRun r = p.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("[resource1] is not free, waiting for execution ...", r);
+        j.waitForMessage("The resource [resource1] is reserved by someone.", r);
+        j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r);
         j.assertLogNotContains("I am inside", r);
         testHelpers.clickButton("unreserve", "resource1");
         j.waitForMessage("I am inside", r);
