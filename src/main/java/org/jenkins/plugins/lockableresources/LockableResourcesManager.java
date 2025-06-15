@@ -1342,11 +1342,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 queueIndex = 0;
             } else {
                 queueIndex = this.queuedContexts.size() - 1;
-                // LOGGER.info("newQueueItem " + newQueueItem.toString());
                 for (; queueIndex >= 0; queueIndex--) {
                     QueuedContextStruct entry = this.queuedContexts.get(queueIndex);
                     final int rc = entry.compare(newQueueItem);
-                    // LOGGER.info("compare " + rc + " " + entry.toString());
                     if (rc > 0) {
                         continue;
                     }
