@@ -63,7 +63,10 @@ public class LockedResourcesBuildAction implements Action {
             return null;
         }
         LockedResourcesBuildAction action;
-        synchronized (build) {
+        final Object lock = build.getId();
+        // It is very difficult to guarantee correct operation when synchronizing on a parameter.
+        // There is no control over the identity, visibility, or lifecycle of that object.
+        synchronized (lock) {
             List<LockedResourcesBuildAction> actions = build.getActions(LockedResourcesBuildAction.class);
 
             if (actions.isEmpty()) {
