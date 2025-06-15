@@ -17,7 +17,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 @WithJenkins
-class LockStepTest_manualUnreserveUnblocksJob extends LockStepTestBase {
+class LockStepManualUnreserveUnblocksJobTest extends LockStepTestBase {
 
     @Issue("JENKINS-34433")
     @Test
