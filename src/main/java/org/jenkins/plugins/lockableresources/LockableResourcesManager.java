@@ -753,6 +753,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         this.unqueueContext(nextContext.getContext());
 
         // continue with next context
+        LOGGER.fine("Continue with next context: " + nextContext);
         LockStepExecution.proceed(
                 resourcesToLock,
                 nextContext.getContext(),
