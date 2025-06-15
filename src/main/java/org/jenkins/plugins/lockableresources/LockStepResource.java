@@ -115,9 +115,6 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             boolean hasExtra,
             int priority,
             boolean inversePrecedence) {
-        if (!hasExtra && label == null && resource == null) {
-            throw new IllegalArgumentException(Messages.error_labelOrNameMustBeSpecified());
-        }
 
         if (priority != 0 && inversePrecedence) {
             throw new IllegalArgumentException(Messages.error_inversePrecedenceAndPriorityAreSet());

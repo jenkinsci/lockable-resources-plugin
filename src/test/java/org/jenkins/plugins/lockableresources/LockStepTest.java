@@ -47,21 +47,6 @@ class LockStepTest extends LockStepTestBase {
     }
 
     @Test
-    void lockNothing(JenkinsRule j) throws Exception {
-        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
-                    lock() {
-                      echo 'Nothing locked.'
-                    }
-                    echo 'Finish'""",
-                true));
-        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
-        j.assertLogContains("Either resource label or resource name must be specified", b1);
-    }
-
-    @Test
     void lockWithLabel(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
