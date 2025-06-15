@@ -456,7 +456,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (Map.Entry<Long, List<LockableResource>> entry : cachedCandidatesMap.entrySet()) {
             Long queueItemId = entry.getKey();
             List<LockableResource> candidates = entry.getValue();
-            if (candidates != null && (candidates.size() == 0 || candidates.contains(candidate))) {
+            if (candidates != null && (candidates.isEmpty() || candidates.contains(candidate))) {
                 cachedCandidates.invalidate(queueItemId);
             }
         }
@@ -671,7 +671,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         List<String> resourcesInUse =
                 LockedResourcesBuildAction.findAndInitAction(build).getCurrentUsedResourceNames();
 
-        if (resourcesInUse.size() == 0) {
+        if (resourcesInUse.isEmpty()) {
             return;
         }
         unlockNames(resourcesInUse, build);
@@ -1338,9 +1338,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             QueuedContextStruct newQueueItem =
                     new QueuedContextStruct(context, requiredResources, resourceDescription, variableName, priority);
 
-            if (inversePrecedence && priority == 0) {
-                queueIndex = 0;
-            } else {
+            if (!inversePrecedence || priority != 0) {
                 queueIndex = this.queuedContexts.size() - 1;
                 for (; queueIndex >= 0; queueIndex--) {
                     QueuedContextStruct entry = this.queuedContexts.get(queueIndex);
