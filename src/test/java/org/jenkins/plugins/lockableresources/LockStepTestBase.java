@@ -1,7 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import org.jenkinsci.plugins.workflow.flow.FlowExecution;
 import org.jenkinsci.plugins.workflow.graph.FlowGraphWalker;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -11,7 +13,9 @@ public class LockStepTestBase {
 
     protected static void isPaused(WorkflowRun run, int count, int effectivePauses) {
         int pauseActions = 0, pausedActions = 0;
-        for (FlowNode node : new FlowGraphWalker(run.getExecution())) {
+        FlowExecution execution = run.getExecution();
+        assertNotNull(execution);
+        for (FlowNode node : new FlowGraphWalker(execution)) {
             for (PauseAction pauseAction : PauseAction.getPauseActions(node)) {
                 ++pauseActions;
                 if (pauseAction.isPaused()) {
