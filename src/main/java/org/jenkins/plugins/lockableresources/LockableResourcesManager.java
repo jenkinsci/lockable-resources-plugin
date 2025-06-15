@@ -1204,7 +1204,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (candidates.size() < amount) {
             printLogs(
                     "Found "
-                            + found.size()
+                            + candidates.size()
                             + " possible resource(s). Waiting for correct amount: "
                             + amount
                             + "."
