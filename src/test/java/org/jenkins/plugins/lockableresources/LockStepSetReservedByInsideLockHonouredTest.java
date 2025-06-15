@@ -9,11 +9,10 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 @WithJenkins
-class LockStepTest_setReservedByInsideLockHonoured extends LockStepTestBase {
+class LockStepSetReservedByInsideLockHonouredTest extends LockStepTestBase {
 
-    private static final Logger LOGGER = Logger.getLogger(LockStepTest_setReservedByInsideLockHonoured.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(LockStepSetReservedByInsideLockHonouredTest.class.getName());
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void setReservedByInsideLockHonoured(JenkinsRule j) throws Exception {
         // Use-case is a job keeping the resource reserved so it can use

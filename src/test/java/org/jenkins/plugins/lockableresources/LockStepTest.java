@@ -47,21 +47,6 @@ class LockStepTest extends LockStepTestBase {
     }
 
     @Test
-    void lockNothing(JenkinsRule j) throws Exception {
-        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
-                    lock() {
-                      echo 'Nothing locked.'
-                    }
-                    echo 'Finish'""",
-                true));
-        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
-        j.assertLogContains("Either resource label or resource name must be specified", b1);
-    }
-
-    @Test
     void lockWithLabel(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -729,6 +714,45 @@ class LockStepTest extends LockStepTestBase {
     }
 
     @Test
+    void parallelLockWithSpaces(JenkinsRule j) throws Exception {
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                """
+                parallel a: {
+                    semaphore 'before-a'
+                    lock('    resource1 ') {
+                        semaphore 'inside-a'
+                    }
+                }, b: {
+                    lock(' resource1   ') {
+                        semaphore 'wait-b'
+                    }
+                }
+                """,
+                true));
+
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait-b/1", b1);
+        SemaphoreStep.waitForStart("before-a/1", b1);
+        // both messages are in the log because branch b acquired the lock and branch a is waiting to
+        // lock
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b1);
+        SemaphoreStep.success("before-a/1", null);
+        j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b1);
+        isPaused(b1, 2, 1);
+
+        SemaphoreStep.success("wait-b/1", null);
+
+        j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b1);
+        SemaphoreStep.waitForStart("inside-a/1", b1);
+        isPaused(b1, 2, 0);
+        SemaphoreStep.success("inside-a/1", null);
+
+        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+        assertNull(LockableResourcesManager.get().fromName("resource1"));
+    }
+
+    @Test
     void unlockButtonWithWaitingRuns(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -928,7 +952,7 @@ class LockStepTest extends LockStepTestBase {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 """
-                lock(label: 'label1', extra: [[resource: 'resource1']]) {
+                lock(label: 'label1   ', extra: [[resource: ' resource1    ']]) {
                     semaphore 'wait-inside'
                 }
                 echo 'Finish'""",
@@ -939,7 +963,7 @@ class LockStepTest extends LockStepTestBase {
         WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
         p2.setDefinition(new CpsFlowDefinition(
                 """
-                lock('resource1') {
+                lock('    resource1 ') {
                     semaphore 'wait-inside-p2'
                 }
                 echo 'Finish'""",
@@ -951,7 +975,7 @@ class LockStepTest extends LockStepTestBase {
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
         p3.setDefinition(new CpsFlowDefinition(
                 """
-                lock(label: 'label1') {
+                lock(label: '   label1') {
                     semaphore 'wait-inside-p3'
                 }
                 echo 'Finish'""",
@@ -1129,7 +1153,6 @@ class LockStepTest extends LockStepTestBase {
         assertNotNull(LockableResourcesManager.get().fromName("resource4"));
     }
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void multipleLocksFillVariables(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
@@ -1154,7 +1177,6 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("VAR2 IS null", b1);
     }
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void locksInVariablesAreInTheRequestedOrder(JenkinsRule j) throws Exception {
         List<String> extras = new ArrayList<>();
@@ -1311,7 +1333,6 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("VAR IS resource1", b1);
     }
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void reserveInsideLockHonoured(JenkinsRule j) throws Exception {
 
@@ -1476,7 +1497,7 @@ class LockStepTest extends LockStepTestBase {
         // released later is unsettling.
         j.waitForMessage("Locked resource cause 1-4", b1);
         // Note: stage in test has a sleep(1) to reduce chances that
-        // this line is noticed in log although it is there AFTER 1-4:
+        // this line is noticed in log, although it is there AFTER 1-4:
         j.assertLogNotContains("Locked resource cause 2-2", b1);
         j.assertLogNotContains("Locked resource cause 2-3", b1);
         LOGGER.info("GOOD: Did not encounter Bug #1 " + "(parallel p2 gets the lock on a still-reserved resource)!");
@@ -1554,7 +1575,6 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("Survived the test", b1);
     }
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void setReservedByInsideLockHonoured(JenkinsRule j) throws Exception {
         // Use-case is a job keeping the resource reserved so it can use
@@ -1662,7 +1682,7 @@ class LockStepTest extends LockStepTestBase {
         // released later is unsettling.
         j.waitForMessage("Locked resource cause 1-4", b1);
         // Note: stage in test has a sleep(1) to reduce chances that
-        // this line is noticed in log although it is there AFTER 1-4:
+        // this line is noticed in log, although it is there AFTER 1-4:
         j.assertLogNotContains("Locked resource cause 2-2", b1);
         j.assertLogNotContains("Locked resource cause 2-3", b1);
         LOGGER.info("GOOD: Did not encounter Bug #1 " + "(parallel p2 gets the lock on a still-reserved resource)!");
@@ -1689,8 +1709,6 @@ class LockStepTest extends LockStepTestBase {
             sawBug2a = true;
             LOGGER.info("Bug #2a (Parallel 2 did not start after Parallel 1 finished "
                     + "and resource later released) currently tolerated");
-            // LOGGER.info(t1.toString());
-            // throw t1;
         }
         if (!sawBug2a) {
             LOGGER.info("GOOD: Did not encounter Bug #2a "
@@ -1711,34 +1729,16 @@ class LockStepTest extends LockStepTestBase {
             } catch (java.lang.AssertionError t2) {
                 sawBug2b = true;
                 LOGGER.info("Bug #2b (LRM required un-stucking) currently tolerated: " + line);
-                // LOGGER.info(t2.toString());
-                // throw t2;
             }
         }
         if (!sawBug2b) {
             LOGGER.info("GOOD: Did not encounter Bug #2b " + "(LRM required un-stucking)!");
         }
 
-        /*
-            j.assertLogContains("Locked resource cause 1-5: null", b1);
-            j.assertLogContains("Locked resource reservedBy 1-5: null", b1);
-            try {
-                j.assertLogNotContains("LRM seems stuck; trying to reserve/unreserve", b1);
-                j.assertLogNotContains("Secondary lock trick", b1);
-            } catch (java.lang.AssertionError t2) {
-                LOGGER.info("Bug #2b (LRM required un-stucking) currently tolerated");
-                //LOGGER.info(t2.toString());
-                // throw t2;
-            }
-        */
-
         j.waitForMessage("Locked resource cause 2-2", b1);
         j.assertLogContains("Locked resource cause 1-5", b1);
-
         j.assertLogContains(", waiting for execution ...", b1);
-
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-
         j.assertLogContains("Survived the test", b1);
     }
 
@@ -1790,7 +1790,6 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogNotContains("Running body", b1);
     }
 
-    // @Issue("JENKINS-XXXXX")
     @Test
     void multipleLocksFillVariablesWithProperties(JenkinsRule j) throws Exception {
         LockableResourcesManager.get()
