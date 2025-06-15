@@ -20,9 +20,9 @@ public class LockedResourcesBuildAction implements Action {
 
     private static final long serialVersionUID = 1L;
 
-    private List<LogEntry> logs = new ArrayList<>();
+    private final List<LogEntry> logs = new ArrayList<>();
     private final transient Object syncLogs = new Object();
-    private List<String> resourcesInUse = new ArrayList<>();
+    private final List<String> resourcesInUse = new ArrayList<>();
 
     public LockedResourcesBuildAction() {}
 
@@ -108,10 +108,10 @@ public class LockedResourcesBuildAction implements Action {
 
     public static class LogEntry {
 
-        private String step;
-        private String action;
-        private String resourceName;
-        private long timeStamp;
+        private final String step;
+        private final String action;
+        private final String resourceName;
+        private final long timeStamp;
 
         @Restricted(NoExternalUse.class)
         public LogEntry(final String step, final String action, final String resourceName) {
