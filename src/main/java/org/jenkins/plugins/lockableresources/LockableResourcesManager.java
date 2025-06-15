@@ -234,7 +234,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Get amount of free resources contained given *label*
      *   This method is deprecated (no where used) and is not tested.
      */
-    @NonNull
     @Restricted(NoExternalUse.class)
     @Deprecated
     @ExcludeFromJacocoGeneratedReport
@@ -377,7 +376,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Checks if given resource exist. */
     @NonNull
     @Restricted(NoExternalUse.class)
-    public boolean resourceExist(@CheckForNull String resourceName) {
+    public Boolean resourceExist(@CheckForNull String resourceName) {
         return this.fromName(resourceName) != null;
     }
 
