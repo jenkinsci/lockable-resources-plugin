@@ -1461,7 +1461,7 @@ class LockStepTest extends LockStepTestBase {
         // released later is unsettling.
         j.waitForMessage("Locked resource cause 1-4", b1);
         // Note: stage in test has a sleep(1) to reduce chances that
-        // this line is noticed in log although it is there AFTER 1-4:
+        // this line is noticed in log, although it is there AFTER 1-4:
         j.assertLogNotContains("Locked resource cause 2-2", b1);
         j.assertLogNotContains("Locked resource cause 2-3", b1);
         LOGGER.info("GOOD: Did not encounter Bug #1 " + "(parallel p2 gets the lock on a still-reserved resource)!");
@@ -1647,7 +1647,7 @@ class LockStepTest extends LockStepTestBase {
         // released later is unsettling.
         j.waitForMessage("Locked resource cause 1-4", b1);
         // Note: stage in test has a sleep(1) to reduce chances that
-        // this line is noticed in log although it is there AFTER 1-4:
+        // this line is noticed in log, although it is there AFTER 1-4:
         j.assertLogNotContains("Locked resource cause 2-2", b1);
         j.assertLogNotContains("Locked resource cause 2-3", b1);
         LOGGER.info("GOOD: Did not encounter Bug #1 " + "(parallel p2 gets the lock on a still-reserved resource)!");

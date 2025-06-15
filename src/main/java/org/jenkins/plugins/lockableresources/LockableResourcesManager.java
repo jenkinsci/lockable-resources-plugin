@@ -120,7 +120,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    /** Set all declared resources (do not includes ephemeral and node resources). */
+    /** Set all declared resources (do not include ephemeral and node resources). */
     @DataBoundSetter
     public void setDeclaredResources(List<LockableResource> declaredResources) {
         synchronized (this.syncResources) {
@@ -322,7 +322,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    /** Returns resource matched by name. Returns null in case, the resource does not exists. */
+    /** Returns resource matched by name. Returns null in case, the resource does not exist. */
     @CheckForNull
     @Restricted(NoExternalUse.class)
     public LockableResource fromName(@CheckForNull String resourceName) {
@@ -436,7 +436,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * <p>NOTE for people using LR or LRM methods directly to add some abilities in their pipelines
      * that are not provided by plugin: the `cachedCandidates` is an LRM concept, so if you tell a
      * resource (LR instance) directly to unlock/unreserve, it has no idea to clean itself from this
-     * cache, and may be considered busy in queuing for some time afterwards.
+     * cache, and may be considered busy in queuing for some time afterward.
      */
     public boolean uncacheIfFreeing(LockableResource candidate, boolean unlocking, boolean unreserving) {
         if (candidate.isLocked() && !unlocking) return false;
@@ -726,7 +726,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         Run<?, ?> build = nextContext.getBuild();
         if (build == null) {
-            // this shall never happens
+            // this shall never happen
             // skip this context, as the build cannot be retrieved (maybe it was deleted while
             // running?)
             LOGGER.warning("Skip this context, as the build cannot be retrieved");
@@ -734,7 +734,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         boolean locked = this.lock(requiredResourceForNextContext, build);
         if (!locked) {
-            // defensive line, shall never happens
+            // defensive line, shall never happen
             LOGGER.warning("Can not lock resources: " + requiredResourceForNextContext);
             // to eliminate possible endless loop
             return false;
