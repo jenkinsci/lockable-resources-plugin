@@ -1109,8 +1109,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 if (requiredResources.requiredNumber != null) {
                     try {
                         requiredAmount = Integer.parseInt(requiredResources.requiredNumber);
-                    } catch (NumberFormatException e) {
-                        requiredAmount = 0;
+                    } catch (NumberFormatException ignored) {
                     }
                 }
 
