@@ -60,7 +60,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public static final Object syncResources = new Object();
 
     private List<LockableResource> resources;
-    private transient Cache<Long, List<LockableResource>> cachedCandidates =
+    private final transient Cache<Long, List<LockableResource>> cachedCandidates =
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
@@ -68,7 +68,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
      * (freestyle builds) regular Jenkins queue is used.
      */
-    private List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+    private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
     // cache to enable / disable saving lockable-resources state
     private int enableSave = -1;
