@@ -18,8 +18,6 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
-    private static final long serialVersionUID = 1L;
-
     private final List<LogEntry> logs = new ArrayList<>();
     private final transient Object syncLogs = new Object();
     private final List<String> resourcesInUse = new ArrayList<>();
