@@ -37,13 +37,15 @@ class LockStepManualUnreserveUnblocksJobTest extends LockStepTestBase {
         assertThat(apiRes, hasEntry("reservedBy", "someone"));
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition("""
+        p.setDefinition(new CpsFlowDefinition(
+                """
             timeout(time: 10000, unit: 'SECONDS'){
                 lock('resource1') {
                     echo('I am inside')
                 }
             }
-            """,true));
+            """,
+                true));
 
         WorkflowRun r = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("The resource [resource1] is reserved by someone.", r);
