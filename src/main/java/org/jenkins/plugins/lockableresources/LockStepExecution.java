@@ -55,7 +55,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         List<LockableResource> available = null;
         LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (lrm.syncResources) {
+        synchronized (LockableResourcesManager.syncResources) {
             step.validate();
 
             LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
