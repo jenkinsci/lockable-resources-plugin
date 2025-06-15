@@ -524,17 +524,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             // if did not get wanted amount or did not get all
-            final int required_amount;
-            if (candidatesByScript && candidates.isEmpty()) {
-                /*
-                 * If the groovy script does not return any candidates, it means nothing is needed, even if a
-                 * higher amount is specified. A valid use case is a Matrix job, when not all configurations
-                 * need resources.
-                 */
-                required_amount = 0;
-            } else {
-                required_amount = number == 0 ? candidates.size() : number;
-            }
+            final int required_amount = getRequiredAmount(number, candidatesByScript, candidates);
 
             if (selected.size() != required_amount) {
                 log.log(
@@ -554,6 +544,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
         return selected;
+    }
+
+    private static int getRequiredAmount(int number, boolean candidatesByScript, List<LockableResource> candidates) {
+        final int required_amount;
+        if (candidatesByScript && candidates.isEmpty()) {
+            /*
+             * If the groovy script does not return any candidates, it means nothing is needed, even if a
+             * higher amount is specified. A valid use case is a Matrix job, when not all configurations
+             * need resources.
+             */
+            required_amount = 0;
+        } else {
+            required_amount = number == 0 ? candidates.size() : number;
+        }
+        return required_amount;
     }
 
     // ---------------------------------------------------------------------------
