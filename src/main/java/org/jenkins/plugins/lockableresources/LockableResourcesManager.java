@@ -101,7 +101,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getReadOnlyResources() {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.resources));
         }
     }
@@ -123,7 +123,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Set all declared resources (do not include ephemeral and node resources). */
     @DataBoundSetter
     public void setDeclaredResources(List<LockableResource> declaredResources) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             Map<String, LockableResource> lockedResources = new HashMap<>();
             for (LockableResource r : this.resources) {
                 if (!r.isLocked()) continue;
@@ -200,7 +200,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return false;
         }
 
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (LockableResource r : this.getResources()) {
                 if (r != null && r.isValidLabel(label)) {
                     return true;
@@ -275,7 +275,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @NonNull
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesWithLabel(final String label) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             return _getResourcesWithLabel(label, this.getResources());
         }
     }
@@ -312,7 +312,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public List<LockableResource> getResourcesMatchingScript(
             @NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params) throws ExecutionException {
         List<LockableResource> found = new ArrayList<>();
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (LockableResource r : this.resources) {
                 if (r.scriptMatches(script, params)) found.add(r);
             }
@@ -329,7 +329,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (resourceName != null) {
 
-            synchronized (this.syncResources) {
+            synchronized (syncResources) {
                 for (LockableResource r : this.getResources()) {
                     if (resourceName.equals(r.getName())) return r;
                 }
@@ -485,7 +485,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Logger log)
             throws ExecutionException {
         List<LockableResource> selected = new ArrayList<>();
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
                 // The project has another buildable item waiting -> bail out
                 log.log(
@@ -688,7 +688,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (resourceNamesToUnLock == null || resourceNamesToUnLock.isEmpty()) {
             return;
         }
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             unlockResources(this.fromNames(resourceNamesToUnLock), build);
         }
     }
@@ -703,7 +703,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (resourcesToUnLock == null || resourcesToUnLock.isEmpty()) {
             return;
         }
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             this.freeResources(resourcesToUnLock, build);
 
             while (proceedNextContext()) {
@@ -779,7 +779,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Returns names (IDs) off all existing resources (inclusive ephemeral) */
     @Restricted(NoExternalUse.class)
     public List<String> getAllResourcesNames() {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             return getResourcesNames(this.resources);
         }
     }
@@ -835,7 +835,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Returns current queue */
     @Restricted(NoExternalUse.class) // used by jelly
     public List<QueuedContextStruct> getCurrentQueuedContext() {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             return Collections.unmodifiableList(this.queuedContexts);
         }
     }
@@ -896,7 +896,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             LOGGER.warning("Internal failure: We will add wrong resource: '" + resource + "' " + getStack());
             return false;
         }
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             if (this.resourceExist(resource.getName())) {
                 LOGGER.finest("We will add existing resource: " + resource + getStack());
                 return false;
@@ -916,7 +916,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * explicit scripted action, decides to release the resource).
      */
     public boolean reserve(List<LockableResource> resources, String userName) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
                     return false;
@@ -937,7 +937,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * scripted action, later decides to release the resource).
      */
     public boolean steal(List<LockableResource> resources, String userName) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (LockableResource r : resources) {
                 r.setReservedBy(userName);
                 r.setStolen();
@@ -959,7 +959,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * release the resource).
      */
     public void reassign(List<LockableResource> resources, String userName) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
                     r.unReserve();
@@ -986,7 +986,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return;
         }
 
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             LOGGER.fine("unreserve " + resources);
             unreserveResources(resources);
 
@@ -1005,7 +1005,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public void reset(List<LockableResource> resources) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (LockableResource r : resources) {
                 uncacheIfFreeing(r, true, true);
                 r.reset();
@@ -1023,7 +1023,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * hijack it from the second one.
      */
     public void recycle(List<LockableResource> resources) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             // Not calling reset() because that also un-queues the resource
             // and we want to proclaim it is usable (if anyone is waiting)
             this.unlockResources(resources);
@@ -1035,7 +1035,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Change the order (position) of the given item in the queue*/
     @Restricted(NoExternalUse.class) // used by jelly
     public void changeQueueOrder(final String queueId, final int newPosition) throws IOException {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             if (newPosition < 0 || newPosition >= this.queuedContexts.size()) {
                 throw new IOException(
                         Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
@@ -1062,7 +1062,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     @Override
     public boolean configure(StaplerRequest2 req, JSONObject json) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             try (BulkChange bc = new BulkChange(this)) {
                 req.bindJSON(this, json);
                 bc.commit();
@@ -1082,7 +1082,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /** Function removes all given resources */
     public void removeResources(List<LockableResource> toBeRemoved) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             this.resources.removeAll(toBeRemoved);
         }
     }
@@ -1325,7 +1325,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String variableName,
             boolean inversePrecedence,
             int priority) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (QueuedContextStruct entry : this.queuedContexts) {
                 if (entry.getContext() == context) {
                     LOGGER.warning("queueContext, duplicated, " + requiredResources);
@@ -1362,7 +1362,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public boolean unqueueContext(StepContext context) {
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
                 if (iter.next().getContext() == context) {
                     iter.remove();
@@ -1389,7 +1389,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (enableSave == 0) return; // saving is disabled
 
-        synchronized (this.syncResources) {
+        synchronized (syncResources) {
             if (BulkChange.contains(this)) return;
 
             try {
