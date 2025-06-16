@@ -10,6 +10,7 @@ import hudson.model.Result;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CyclicBarrier;
 import java.util.logging.Logger;
 import net.sf.json.JSONObject;
@@ -44,6 +45,65 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
 
         assertNull(LockableResourcesManager.get().fromName("resource1"));
+    }
+
+    @Test
+    void lockWithMixedParameters(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.setAllowEmptyOrNullValues(true);
+
+        WorkflowJob p = j.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                """
+            timeout(time: 60, unit: 'SECONDS'){
+
+              echo ""
+              echo "----> Empty label"
+              echo ""
+              lock(label: '     ') {
+                echo 'Nothing is locked because label is empty.'
+              }
+
+              echo ""
+              echo "----> Empty label but resource"
+              echo ""
+              lock(label: '     ', resource: 'my-res') {
+                echo 'Label is empty but resource is set to "my-res" -> "my-res" has been created'
+              }
+
+              echo ""
+              echo "----> Unassigned/Undefined Label"
+              echo ""
+              catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                lock(label: 'disko') {
+                  echo 'This should not be possible since no resource with label "disko" has been defined.'
+                }
+              }
+
+              echo ""
+              echo "----> Request resource and extra resource"
+              echo ""
+              lock(resource: 'my-res', extra: [[resource: 'other-res']]) {
+                echo 'Resources "my-res" and "other-res" are requested but need to be created first.'
+              }
+
+              echo ""
+              echo "----> Request resource and extra resouce"
+              echo ""
+              lock(resource: '   ', label: null, extra: [[resource: 'extra-res']]) {
+                echo 'Resource "extra-res" is requested but need to be created first.'
+              }
+            }
+            echo 'Finish'""",
+                true));
+        WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
+        j.assertBuildStatus(Result.SUCCESS, j.waitForCompletion(b1));
+        j.assertLogContains("Nothing is locked because label is empty.", b1);
+        j.assertLogContains("Label is empty but resource is set to \"my-res\" -> \"my-res\" has been created", b1);
+        j.assertLogNotContains(
+                "This should not be possible since no resource with label \"disko\" has been defined.", b1);
+        j.assertLogContains("Resources \"my-res\" and \"other-res\" are requested but need to be created first.", b1);
+        j.assertLogContains("Resource \"extra-res\" is requested but need to be created first.", b1);
     }
 
     @Test
