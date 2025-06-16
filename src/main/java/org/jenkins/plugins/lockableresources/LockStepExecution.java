@@ -52,7 +52,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
         List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
-        List<LockableResource> available = null;
+        List<LockableResource> available;
         LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
         synchronized (LockableResourcesManager.syncResources) {
@@ -177,8 +177,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             String resourceDescription,
             final String variable) {
         Run<?, ?> build;
-        FlowNode node = null;
-        PrintStream logger = null;
+        FlowNode node;
+        PrintStream logger;
         try {
             build = context.get(Run.class);
             node = context.get(FlowNode.class);
