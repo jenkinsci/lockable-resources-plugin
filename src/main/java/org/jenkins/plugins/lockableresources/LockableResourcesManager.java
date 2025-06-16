@@ -64,6 +64,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
+    private boolean allowEmptyOrNullValues;
+
     /**
      * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
      * (freestyle builds) regular Jenkins queue is used.
@@ -77,6 +79,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
             SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, 2);
     private static final int enabledCausesCount =
             SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, 2);
+
+    @DataBoundSetter
+    public void setAllowEmptyOrNullValues(boolean allowEmptyOrNullValues) {
+        this.allowEmptyOrNullValues = allowEmptyOrNullValues;
+    }
+
+    public boolean isAllowEmptyOrNullValues() {
+        return allowEmptyOrNullValues;
+    }
 
     // ---------------------------------------------------------------------------
     /** C-tor */

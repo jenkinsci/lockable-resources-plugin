@@ -18,6 +18,29 @@ class LockStepNothingTest extends LockStepTestBase {
     @BeforeEach
     void setUp(JenkinsRule jenkinsRule) {
         this.jenkinsRule = jenkinsRule;
+
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.setAllowEmptyOrNullValues(true);
+    }
+
+    @Test
+    void lockNothingNotAllowed() throws Exception {
+        WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                """
+                    timeout(time: 10, unit: 'SECONDS'){
+                      lock() {
+                        echo 'Nothing locked.'
+                      }
+                    }
+                    echo 'Finish'""",
+                true));
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.setAllowEmptyOrNullValues(false);
+
+        WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
+        jenkinsRule.assertBuildStatus(Result.FAILURE, jenkinsRule.waitForCompletion(b1));
+        jenkinsRule.assertLogContains("Either resource label or resource name must be specified.", b1);
     }
 
     @Test
@@ -29,6 +52,14 @@ class LockStepNothingTest extends LockStepTestBase {
                       lock() {
                         echo 'Nothing locked.'
                       }
+                      String tmp1 = null
+                      lock(tmp1) {
+                        echo 'Nothing locked. tmp1 variable is null.'
+                      }
+                      String tmp2 = ''
+                      lock(tmp2) {
+                        echo 'Nothing locked. tmp2 variable is empty.'
+                      }
                     }
                     echo 'Finish'""",
                 true));
@@ -37,6 +68,8 @@ class LockStepNothingTest extends LockStepTestBase {
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
         jenkinsRule.assertLogContains("Lock acquired on [nothing]", b1);
         jenkinsRule.assertLogContains("Nothing locked.", b1);
+        jenkinsRule.assertLogContains("Nothing locked. tmp1 variable is null", b1);
+        jenkinsRule.assertLogContains("Nothing locked. tmp2 variable is empty.", b1);
         jenkinsRule.assertLogContains("Lock released on resource [nothing]", b1);
     }
 

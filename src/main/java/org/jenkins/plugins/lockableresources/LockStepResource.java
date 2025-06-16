@@ -86,8 +86,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
-    public void validate() {
-        validate(resource, label, null, false, 0, false);
+    public void validate(boolean allowEmptyOrNullValues) {
+        validate(resource, label, null, false, 0, false, allowEmptyOrNullValues);
     }
 
     // -------------------------------------------------------------------------
@@ -98,11 +98,19 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             String resourceSelectStrategy,
             List<LockStepResource> extra,
             int priority,
-            boolean inversePrecedence) {
-        validate(resource, label, resourceSelectStrategy, extra != null, priority, inversePrecedence);
+            boolean inversePrecedence,
+            boolean allowEmptyOrNullValues) {
+        validate(
+                resource,
+                label,
+                resourceSelectStrategy,
+                extra != null && !extra.isEmpty(),
+                priority,
+                inversePrecedence,
+                allowEmptyOrNullValues);
         if (extra != null) {
             for (LockStepResource e : extra) {
-                e.validate();
+                e.validate(allowEmptyOrNullValues);
             }
         }
     }
@@ -118,7 +126,12 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             String resourceSelectStrategy,
             boolean hasExtra,
             int priority,
-            boolean inversePrecedence) {
+            boolean inversePrecedence,
+            boolean allowEmptyOrNullValues) {
+
+        if (!allowEmptyOrNullValues && !hasExtra && label == null && resource == null) {
+            throw new IllegalArgumentException(Messages.error_labelOrNameMustBeSpecified());
+        }
 
         if (priority != 0 && inversePrecedence) {
             throw new IllegalArgumentException(Messages.error_inversePrecedenceAndPriorityAreSet());
