@@ -36,10 +36,10 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     public int quantity = 0;
 
     LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
-        if (resource != null && !resource.isEmpty()) {
+        if (resource != null && !resource.trim().isEmpty()) {
             this.resource = resource.trim();
         }
-        if (label != null && !label.isEmpty()) {
+        if (label != null && !label.trim().isEmpty()) {
             this.label = label.trim();
         }
         this.quantity = quantity;
@@ -47,14 +47,14 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     @DataBoundConstructor
     public LockStepResource(@Nullable String resource) {
-        if (resource != null && !resource.isEmpty()) {
+        if (resource != null && !resource.trim().isEmpty()) {
             this.resource = resource.trim();
         }
     }
 
     @DataBoundSetter
     public void setLabel(String label) {
-        if (label != null && !label.isEmpty()) {
+        if (label != null && !label.trim().isEmpty()) {
             this.label = label.trim();
         }
     }
@@ -137,7 +137,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             throw new IllegalArgumentException(Messages.error_inversePrecedenceAndPriorityAreSet());
         }
 
-        if (label != null && !label.isEmpty() && resource != null && !resource.isEmpty()) {
+        if (label != null && resource != null) {
             throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
         }
         if (label != null && !LockableResourcesManager.get().isValidLabel(label)) {
