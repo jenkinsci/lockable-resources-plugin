@@ -13,6 +13,7 @@ import io.jenkins.plugins.casc.misc.junit.jupiter.WithJenkinsConfiguredWithCode;
 import io.jenkins.plugins.casc.model.CNode;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.util.Constants;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +31,8 @@ class ConfigurationAsCodeTest {
     @ConfiguredWithCode("configuration-as-code.yml")
     void should_support_configuration_as_code(JenkinsConfiguredWithCodeRule r) {
         LockableResourcesManager LRM = LockableResourcesManager.get();
+        Assertions.assertTrue(LRM.isAllowEmptyOrNullValues());
+
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
                 1,
