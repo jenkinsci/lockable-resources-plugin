@@ -56,13 +56,13 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
         synchronized (LockableResourcesManager.syncResources) {
-            step.validate();
+            step.validate(lrm.isAllowEmptyOrNullValues());
 
             LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
             getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
 
-            if (lockRequested()) {
+            if (!lrm.isAllowEmptyOrNullValues() || acquireLock()) {
                 List<String> resourceNames = new ArrayList<>();
                 for (LockStepResource resource : step.getResources()) {
                     List<String> resources = new ArrayList<>();
@@ -110,16 +110,21 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         return false;
     }
 
-    private boolean lockRequested() {
-        if (step.label != null && !step.label.isEmpty()) {
+    private boolean acquireLock() {
+        if (step.label != null) {
             return true;
         }
-        if (step.resource != null && !step.resource.isEmpty()) {
+        if (step.resource != null) {
             return true;
         }
         if (step.extra != null && !step.extra.isEmpty()) {
             return true;
         }
+        LOGGER.warning("No lock will be acquired. Either the label, resource or extra is null or empty.");
+        LOGGER.warning("Step: " + step);
+        LOGGER.warning("Label: " + step.label);
+        LOGGER.warning("Resource: " + step.resource);
+        LOGGER.warning("Extra: " + step.extra);
         return false;
     }
 
