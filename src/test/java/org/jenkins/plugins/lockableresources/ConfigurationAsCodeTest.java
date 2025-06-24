@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.jenkins.plugins.casc.ConfigurationAsCode;
 import io.jenkins.plugins.casc.ConfigurationContext;
 import io.jenkins.plugins.casc.ConfiguratorRegistry;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
@@ -11,6 +12,8 @@ import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.misc.Util;
 import io.jenkins.plugins.casc.misc.junit.jupiter.WithJenkinsConfiguredWithCode;
 import io.jenkins.plugins.casc.model.CNode;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +35,7 @@ class ConfigurationAsCodeTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
-                1,
+                2,
                 declaredResources.size(),
                 "The number of declared resources is wrong. Check your configuration-as-code.yml");
 
@@ -44,7 +47,7 @@ class ConfigurationAsCodeTest {
         assertEquals("Note A", declaredResource.getNote());
 
         assertEquals(
-                1, LRM.getResources().size(), "The number of resources is wrong. Check your configuration-as-code.yml");
+                2, LRM.getResources().size(), "The number of resources is wrong. Check your configuration-as-code.yml");
 
         LockableResource resource = LRM.getFirst();
         assertEquals("Resource_A", resource.getName());
@@ -64,5 +67,26 @@ class ConfigurationAsCodeTest {
         String expected = Util.toStringFromYamlFile(this, "casc_expected_output.yml");
 
         assertThat(exported, is(expected));
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code.yml")
+    void should_keep_reservations_after_reload(JenkinsConfiguredWithCodeRule r) {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+
+        LRM.reserve(Collections.singletonList(LRM.fromName("Resource_B")), "testUser");
+        assertEquals("Reserved_A", LRM.fromName("Resource_A").getReservedBy());
+        assertEquals("testUser", LRM.fromName("Resource_B").getReservedBy());
+        Date timestampBeforeReload = LRM.fromName("Resource_B").getReservedTimestamp();
+        String noteBeforeReload = LRM.fromName("Resource_B").getNote();
+
+        // Get current sources and reconfigure with those sources
+        List<String> srcs = ConfigurationAsCode.get().getSources();
+        ConfigurationAsCode.get().configure(srcs);
+
+        assertEquals("Reserved_A", LRM.fromName("Resource_A").getReservedBy());
+        assertEquals("testUser", LRM.fromName("Resource_B").getReservedBy());
+        assertEquals(timestampBeforeReload, LRM.fromName("Resource_B").getReservedTimestamp());
+        assertEquals(noteBeforeReload, LRM.fromName("Resource_B").getNote());
     }
 }
