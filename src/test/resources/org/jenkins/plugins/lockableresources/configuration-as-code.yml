@@ -12,3 +12,6 @@ unclassified:
         name: "Resource_A"
         reservedBy: "Reserved_A"
         note: "Note A"
+      - description: "Description_B"
+        labels: "Label_B"
+        name: "Resource_B"
