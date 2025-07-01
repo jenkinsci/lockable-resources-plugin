@@ -68,8 +68,8 @@ public class LockStep extends Step implements Serializable {
     // is not required)
     @DataBoundConstructor
     public LockStep(@Nullable String resource) {
-        if (resource != null && !resource.isEmpty()) {
-            this.resource = resource;
+        if (resource != null && !resource.trim().isEmpty()) {
+            this.resource = resource.trim();
         }
     }
 
@@ -90,15 +90,15 @@ public class LockStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setLabel(String label) {
-        if (label != null && !label.isEmpty()) {
-            this.label = label;
+        if (label != null && !label.trim().isEmpty()) {
+            this.label = label.trim();
         }
     }
 
     @DataBoundSetter
     public void setVariable(String variable) {
-        if (variable != null && !variable.isEmpty()) {
-            this.variable = variable;
+        if (variable != null && !variable.trim().isEmpty()) {
+            this.variable = variable.trim();
         }
     }
 
@@ -203,8 +203,9 @@ public class LockStep extends Step implements Serializable {
 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
-    public void validate() {
-        LockStepResource.validate(resource, label, resourceSelectStrategy, extra, priority, inversePrecedence);
+    public void validate(boolean allowEmptyOrNullValues) {
+        LockStepResource.validate(
+                resource, label, resourceSelectStrategy, extra, priority, inversePrecedence, allowEmptyOrNullValues);
     }
 
     // -------------------------------------------------------------------------
