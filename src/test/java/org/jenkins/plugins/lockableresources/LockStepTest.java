@@ -108,22 +108,36 @@ class LockStepTest extends LockStepTestBase {
 
     @Test
     void lockWithLabel(JenkinsRule j) throws Exception {
-        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.setAllowEmptyOrNullValues(true);
+
+        lrm.createResourceWithLabel("resource1", "label1");
+        lrm.createResourceWithLabel("resource2", "label-with-spaces");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 """
-                lock(label: 'label1', variable: 'var') {
-                    echo "Resource locked: ${env.var}"
+                timeout(time: 60, unit: 'SECONDS'){
+                  lock(label: 'label1', variable: 'var') {
+                      echo "--> Resource locked: ${env.var}"
+                  }
+                  lock(label: ' label-with-spaces  ', variable: '    var_with_spaces ') {
+                      echo "--> Resource locked (with spaces): ${env.var_with_spaces}"
+                  }
                 }
                 echo 'Finish'""",
                 true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
-        j.assertLogContains("Lock released on resource [Label: label1]", b1);
-        j.assertLogContains("Resource locked: resource1", b1);
-        isPaused(b1, 1, 0);
 
-        assertNotNull(LockableResourcesManager.get().fromName("resource1"));
+        j.assertLogContains("--> Resource locked: resource1", b1);
+        j.assertLogContains("Lock released on resource [Label: label1]", b1);
+        assertNotNull(lrm.fromName("resource1"));
+
+        j.assertLogContains("--> Resource locked (with spaces): resource2", b1);
+        j.assertLogContains("Lock released on resource [Label: label-with-spaces]", b1);
+        isPaused(b1, 2, 0);
+
+        assertNotNull(lrm.fromName("resource2"));
     }
 
     @Test
