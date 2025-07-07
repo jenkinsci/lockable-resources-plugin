@@ -589,7 +589,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if (sourceResource != null) {
             setReservedTimestamp(sourceResource.getReservedTimestamp());
             setNote(sourceResource.getNote());
+            setReservedBy(sourceResource.getReservedBy());
         }
+    }
+
+    /**
+     * Reset unconfigurable properties. Normally, called after "lockable resource" configuration
+     * change, to make sure that these fields are ignored if defined in CasC configuration file.
+     */
+    public void resetUnconfigurableProperties() {
+        setReservedBy(null);
+        setReservedTimestamp(null);
+        setNote("");
     }
 
     /**
