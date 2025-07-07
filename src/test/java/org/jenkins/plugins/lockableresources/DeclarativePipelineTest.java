@@ -1,6 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.google.common.base.Joiner;
 import hudson.model.Result;
@@ -8,25 +8,23 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class DeclarativePipelineTest {
+@WithJenkins
+class DeclarativePipelineTest {
 
     // ---------------------------------------------------------------------------
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         // to speed up the test
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
     }
 
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
-
     @Test
-    public void lockByIdInOptionsSection() throws Exception {
+    void lockByIdInOptionsSection(JenkinsRule j) throws Exception {
         WorkflowJob p = j.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 m(
@@ -52,7 +50,7 @@ public class DeclarativePipelineTest {
     }
 
     @Test
-    public void lockByLabelInOptionsSection() throws Exception {
+    void lockByLabelInOptionsSection(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
@@ -78,7 +76,7 @@ public class DeclarativePipelineTest {
     }
 
     @Test
-    public void stepScriptLockByLabel() throws Exception {
+    void stepScriptLockByLabel(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
@@ -105,7 +103,7 @@ public class DeclarativePipelineTest {
     }
 
     @Test
-    public void stepLockByLabel() throws Exception {
+    void stepLockByLabel(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
@@ -130,7 +128,7 @@ public class DeclarativePipelineTest {
     }
 
     @Test
-    public void missingLabel() throws Exception {
+    void missingLabel(JenkinsRule j) throws Exception {
         WorkflowJob p = j.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 m(
@@ -153,7 +151,7 @@ public class DeclarativePipelineTest {
         j.assertLogContains("Missing required parameter: \"resource\"", b1);
     }
 
-    private String m(String... lines) {
+    private static String m(String... lines) {
         return Joiner.on('\n').join(lines);
     }
 }

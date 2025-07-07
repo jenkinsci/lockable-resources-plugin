@@ -1,8 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -10,19 +10,18 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class NodesMirrorTest {
+@WithJenkins
+class NodesMirrorTest {
 
-    private static final Logger LOGGER = Logger.getLogger(NodesMirror.class.getName());
-
-    @Rule
-    public final JenkinsRule j = new JenkinsRule();
+    private static final Logger LOGGER =
+            Logger.getLogger(org.jenkins.plugins.lockableresources.NodesMirror.class.getName());
 
     @Test
-    public void mirror_few_nodes() throws Exception {
+    void mirror_few_nodes(JenkinsRule j) throws Exception {
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
 
         LOGGER.info("add agent: FirstAgent");
@@ -62,7 +61,7 @@ public class NodesMirrorTest {
     }
 
     @Test
-    public void mirror_locked_nodes() throws Exception {
+    void mirror_locked_nodes(JenkinsRule j) throws Exception {
         System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
 
         j.createSlave("FirstAgent", "label label2", null);
@@ -74,11 +73,12 @@ public class NodesMirrorTest {
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'label && label2', variable : 'lockedNode') {\n"
-                        + " echo 'wait for node: ' + env.lockedNode\n"
-                        + "	semaphore 'wait-inside'\n"
-                        + "}\n"
-                        + "echo 'Finish'",
+                """
+                lock(label: 'label && label2', variable : 'lockedNode') {
+                 echo 'wait for node: ' + env.lockedNode
+                    semaphore 'wait-inside'
+                }
+                echo 'Finish'""",
                 true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("wait for node: FirstAgent", b1);

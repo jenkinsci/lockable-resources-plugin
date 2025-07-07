@@ -9,17 +9,15 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.recipes.WithTimeout;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class PressureTest extends LockStepTestBase {
+@WithJenkins
+class PressureTest extends LockStepTestBase {
 
     private static final Logger LOGGER = Logger.getLogger(PressureTest.class.getName());
-
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
 
     /**
      * Pressure test to lock resources via labels, resource name, ephemeral ... It simulates big
@@ -28,21 +26,21 @@ public class PressureTest extends LockStepTestBase {
      */
     @Test
     // it depends on which node you are running
-    @WithTimeout(900)
-    public void pressureEnableSave() throws Exception {
+    @Timeout(900)
+    void pressureEnableSave(JenkinsRule j) throws Exception {
         // keep in mind, that the windows nodes at jenkins-infra are not very fast
-        pressure(Functions.isWindows() ? 10 : 10);
+        pressure(j, Functions.isWindows() ? 10 : 10);
     }
 
     @Test
-    @WithTimeout(900)
-    public void pressureDisableSave() throws Exception {
+    @Timeout(900)
+    void pressureDisableSave(JenkinsRule j) throws Exception {
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
         // keep in mind, that the windows nodes at jenkins-infra are not very fast
-        pressure(Functions.isWindows() ? 10 : 10);
+        pressure(j, Functions.isWindows() ? 10 : 10);
     }
 
-    public void pressure(final int resourcesCount) throws Exception {
+    private static void pressure(JenkinsRule j, final int resourcesCount) throws Exception {
         // count of parallel jobs
         final int jobsCount = (resourcesCount * 2) + 1;
         final int nodesCount = (resourcesCount / 10) + 1;

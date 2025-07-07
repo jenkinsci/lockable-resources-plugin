@@ -1,26 +1,24 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import hudson.Functions;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class ConcurrentModificationExceptionTest {
+@WithJenkins
+class ConcurrentModificationExceptionTest {
 
     private static final Logger LOGGER = Logger.getLogger(ConcurrentModificationExceptionTest.class.getName());
 
-    @Rule
-    public final JenkinsRule j = new JenkinsRule();
-
     @Test
-    public void parallelTasksTest() throws Exception {
+    void parallelTasksTest(JenkinsRule j) throws Exception {
 
         final int agentsCount = Functions.isWindows() ? 5 : 10;
         final int extraAgentsCount = Functions.isWindows() ? 5 : 20;
@@ -61,7 +59,7 @@ public class ConcurrentModificationExceptionTest {
             public void run() {
                 System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
                 LOGGER.info("run NodesMirror");
-                NodesMirror.createNodeResources();
+                org.jenkins.plugins.lockableresources.NodesMirror.createNodeResources();
                 LOGGER.info("NodesMirror done");
             }
         };
@@ -135,11 +133,11 @@ public class ConcurrentModificationExceptionTest {
                     + LRM.getResourcesWithLabel("extra-agent").size() + " == 0 "
                     + " agent: " + LRM.getResourcesWithLabel("agent").size());
             if (LRM.resourceExist("ExtraResource_" + extraResourcesCount)
-                    && LRM.getResourcesWithLabel("extra-agent").size() == 0
+                    && LRM.getResourcesWithLabel("extra-agent").isEmpty()
                     && LRM.getResourcesWithLabel("agent").size() == agentsCount) break;
         }
 
-        // normally is is bad idea to make so much assertions, but we need verify if all works fine
+        // normally it is bad idea to make so much assertions, but we need verify if all works fine
         for (int i = 1; i <= resourcesCount; i++) {
             assertNotNull(LockableResourcesManager.get().fromName("resource_" + i));
         }

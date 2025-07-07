@@ -19,7 +19,7 @@ which is already locked, it will wait for the resource to be free.
 “Open source” does not mean “includes free support”
 
 You can support the contributor and buy him a coffee.
-[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/mpokornyetm) 
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/mpokornyetm)
 Every second invested in an open-source project is a second you can't invest in your own family / friends / hobby.
 That`s the reason, why supporting the contributors is so important.
 
@@ -164,7 +164,7 @@ lock(resource: 'staging-server', priority: 10) {
 
   Resulting lock order: j1 -> j6 -> j4 -> j2 -> j3 -> j5
 
-#### Resolve a variable configured with the resource name and properties 
+#### Resolve a variable configured with the resource name and properties
 
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
@@ -322,7 +322,6 @@ unclassified:
       - name: "S7_1200_1"
         description: "S7 PLC model 1200"
         labels: "plc:S7 model:1200"
-        reservedBy: "Reserved due maintenance window"
       - name: "S7_1200_2"
         labels: "plc:S7 model:1200"
       - name: "Resource-with-properties"
@@ -331,7 +330,9 @@ unclassified:
             value: "Value"
 ```
 
-Properties *description*, *labels* and *reservedBy* are optional.
+Properties *description*, *labels* and *properties* are optional.
+
+Fields like *reservedBy*, *reservedTimestamp* or *note* are not supported, they will be ignored.
 
 ----
 
