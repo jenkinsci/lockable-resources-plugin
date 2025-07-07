@@ -110,6 +110,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
         return false;
     }
 
+    // ---------------------------------------------------------------------------
+    /**
+     * Checks if a lock can be acquired based on the step's properties: label, resource, and extra.
+     * To acquire a lock, at least one of these properties must be non-null and non-empty.
+     */
     private boolean acquireLock() {
         if (step.label != null) {
             return true;

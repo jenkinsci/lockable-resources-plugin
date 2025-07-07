@@ -539,7 +539,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             if (selected.size() != required_amount) {
                 log.log(
                         Level.FINEST,
-                        "{0} found {1} resource(s) to queue." + "Waiting for correct amount: {2}.",
+                        "{0} found {1} resource(s) to queue. Waiting for correct amount: {2}.",
                         new Object[] {queueItemProject, selected.size(), required_amount});
                 // just to be sure, clean up
                 for (LockableResource x : this.resources) {
@@ -556,14 +556,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return selected;
     }
 
+    // ---------------------------------------------------------------------------
+    /**
+     * Returns the amount of resources required by the task.
+     * If the groovy script does not return any candidates, it means nothing is needed, even if a
+     * higher amount is specified. A valid use case is a Matrix job, when not all configurations need resources.
+     */
     private static int getRequiredAmount(int number, boolean candidatesByScript, List<LockableResource> candidates) {
         final int required_amount;
         if (candidatesByScript && candidates.isEmpty()) {
-            /*
-             * If the groovy script does not return any candidates, it means nothing is needed, even if a
-             * higher amount is specified. A valid use case is a Matrix job, when not all configurations
-             * need resources.
-             */
             required_amount = 0;
         } else {
             required_amount = number == 0 ? candidates.size() : number;
