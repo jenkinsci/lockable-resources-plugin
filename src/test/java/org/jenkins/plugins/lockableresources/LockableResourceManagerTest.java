@@ -1,8 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
@@ -13,19 +13,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.TreeSet;
 import jenkins.model.Jenkins;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-public class LockableResourceManagerTest {
-
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+@WithJenkins
+class LockableResourceManagerTest {
 
     @Test
-    public void validationFailure() throws Exception {
+    void validationFailure(JenkinsRule j) throws Exception {
         RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
         LockableResourcesManager.get().createResource("resource1");
         LockableResource r = LockableResourcesManager.get().getFirst();
@@ -87,7 +85,7 @@ public class LockableResourceManagerTest {
     }
 
     @Test
-    public void doAutoCompleteLabelName() throws Exception {
+    void doAutoCompleteLabelName(JenkinsRule j) throws Exception {
         RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label-1-A label-2-B");
         LockableResourcesManager.get().createResource("resource2");
@@ -125,7 +123,7 @@ public class LockableResourceManagerTest {
     }
 
     @Test
-    public void doAutoCompleteResourceNames() throws Exception {
+    void doAutoCompleteResourceNames(JenkinsRule j) throws Exception {
         RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
         LockableResourcesManager.get().createResource("resource1");
         LockableResourcesManager.get().createResource("Resource1");
@@ -147,18 +145,23 @@ public class LockableResourceManagerTest {
         User user = User.get("user", true, Collections.emptyMap());
         SecurityContextHolder.getContext().setAuthentication(user.impersonate2());
         // the 'user' has no permission
-        assertThrows(AccessDeniedException3.class, () -> d.doAutoCompleteResourceNames("resource1", item));
+        assertThrows(
+                AccessDeniedException3.class,
+                () -> RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames("resource1", item));
 
         User manager = User.get("manager", true, Collections.emptyMap());
         SecurityContextHolder.getContext().setAuthentication(manager.impersonate2());
 
-        assertContains(d.doAutoCompleteResourceNames("Res", item), "Resource1");
-        assertContains(d.doAutoCompleteResourceNames("res", item), "resource1", "resource2");
-        d.doAutoCompleteResourceNames(null, item);
-        d.doAutoCompleteResourceNames("", item);
+        assertContains(RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames("Res", item), "Resource1");
+        assertContains(
+                RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames("res", item),
+                "resource1",
+                "resource2");
+        RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(null, item);
+        RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames("", item);
     }
 
-    private void assertContains(AutoCompletionCandidates c, String... values) {
+    private static void assertContains(AutoCompletionCandidates c, String... values) {
         assertEquals(new TreeSet<>(Arrays.asList(values)), new TreeSet<>(c.getValues()));
     }
 }

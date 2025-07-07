@@ -53,7 +53,7 @@ Please note, that changes in non-default localizations files without Crowdin tra
 ### Submitter checklist
 
 - [ ] The Jira / Github issue, if it exists, is well-described.
-- [ ] The changelog entries and upgrade guidelines are appropriate for the audience affected by the change (users or developers, depending on the change) and are in the imperative mood (see [examples](https://github.com/jenkins-infra/jenkins.io/blob/master/content/_data/changelogs/weekly.yml)).
+- [ ] The changelog entries and upgrade guidelines are appropriate for the audience affected by the change (users or developers, depending on the change) and are in the imperative mood (see [examples](https://github.com/jenkins-infra/jenkins.io/blob/main/content/_data/changelogs/weekly.yml)).
   - The changelog generator for plugins uses the **pull request title as the changelog entry**.
   - Fill in the **Proposed upgrade guidelines** section only if there are breaking changes or changes that may require extra steps from users during the upgrade.
 - [ ] There is automated testing or an explanation that explains why this change has no tests.
