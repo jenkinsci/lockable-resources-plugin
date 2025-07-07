@@ -11,7 +11,6 @@ package org.jenkins.plugins.lockableresources;
 import static java.text.DateFormat.MEDIUM;
 import static java.text.DateFormat.SHORT;
 
-import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -19,7 +18,6 @@ import groovy.lang.Binding;
 import hudson.Extension;
 import hudson.Util;
 import hudson.console.ModelHyperlinkNote;
-import hudson.model.AbstractBuild;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Label;
@@ -486,7 +484,6 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return null;
     }
 
-    @WithBridgeMethods(value = AbstractBuild.class, adapterMethod = "getAbstractBuild")
     public Run<?, ?> getBuild() {
         if (build == null && buildExternalizableId != null) {
             build = Run.fromExternalizableId(buildExternalizableId);
@@ -592,7 +589,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if (sourceResource != null) {
             setReservedTimestamp(sourceResource.getReservedTimestamp());
             setNote(sourceResource.getNote());
+            setReservedBy(sourceResource.getReservedBy());
         }
+    }
+
+    /**
+     * Reset unconfigurable properties. Normally, called after "lockable resource" configuration
+     * change, to make sure that these fields are ignored if defined in CasC configuration file.
+     */
+    public void resetUnconfigurableProperties() {
+        setReservedBy(null);
+        setReservedTimestamp(null);
+        setNote("");
     }
 
     /**
