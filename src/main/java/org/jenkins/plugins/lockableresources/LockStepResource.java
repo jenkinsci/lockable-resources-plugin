@@ -36,23 +36,19 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     public int quantity = 0;
 
     LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
-        this.resource = resource;
-        this.label = label;
+        this.resource = Util.fixEmptyAndTrim(resource);
+        this.label = Util.fixEmptyAndTrim(label);
         this.quantity = quantity;
     }
 
     @DataBoundConstructor
     public LockStepResource(@Nullable String resource) {
-        if (resource != null && !resource.isEmpty()) {
-            this.resource = resource;
-        }
+        this.resource = Util.fixEmptyAndTrim(resource);
     }
 
     @DataBoundSetter
     public void setLabel(String label) {
-        if (label != null && !label.isEmpty()) {
-            this.label = label;
-        }
+        this.label = Util.fixEmptyAndTrim(label);
     }
 
     @DataBoundSetter
@@ -82,8 +78,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
-    public void validate() {
-        validate(resource, label, null, false, 0, false);
+    public void validate(boolean allowEmptyOrNullValues) {
+        validate(resource, label, null, false, 0, false, allowEmptyOrNullValues);
     }
 
     // -------------------------------------------------------------------------
@@ -94,11 +90,19 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             String resourceSelectStrategy,
             List<LockStepResource> extra,
             int priority,
-            boolean inversePrecedence) {
-        validate(resource, label, resourceSelectStrategy, extra != null, priority, inversePrecedence);
+            boolean inversePrecedence,
+            boolean allowEmptyOrNullValues) {
+        validate(
+                resource,
+                label,
+                resourceSelectStrategy,
+                extra != null && !extra.isEmpty(),
+                priority,
+                inversePrecedence,
+                allowEmptyOrNullValues);
         if (extra != null) {
             for (LockStepResource e : extra) {
-                e.validate();
+                e.validate(allowEmptyOrNullValues);
             }
         }
     }
@@ -114,8 +118,10 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             String resourceSelectStrategy,
             boolean hasExtra,
             int priority,
-            boolean inversePrecedence) {
-        if (!hasExtra && label == null && resource == null) {
+            boolean inversePrecedence,
+            boolean allowEmptyOrNullValues) {
+
+        if (!allowEmptyOrNullValues && !hasExtra && label == null && resource == null) {
             throw new IllegalArgumentException(Messages.error_labelOrNameMustBeSpecified());
         }
 
@@ -123,7 +129,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             throw new IllegalArgumentException(Messages.error_inversePrecedenceAndPriorityAreSet());
         }
 
-        if (label != null && !label.isEmpty() && resource != null && !resource.isEmpty()) {
+        if (label != null && resource != null) {
             throw new IllegalArgumentException(Messages.error_labelAndNameSpecified());
         }
         if (label != null && !LockableResourcesManager.get().isValidLabel(label)) {

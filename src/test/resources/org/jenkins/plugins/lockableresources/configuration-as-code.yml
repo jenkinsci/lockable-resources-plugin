@@ -6,6 +6,7 @@ jenkins:
   systemMessage: "Welcome to the Lockable Resource Jenkins Server"
 unclassified:
   lockableResourcesManager:
+    allowEmptyOrNullValues: true
     declaredResources:
       - description: "Description_A"
         labels: "Label_A"

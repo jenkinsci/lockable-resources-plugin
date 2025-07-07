@@ -41,7 +41,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
     @Override
     public boolean start() throws Exception {
-        // normally it might raise a exception, but we check it in the function .validate()
+        // normally it might raise an exception, but we check it in the function .validate()
         // therefore we can skip the try-catch here.
         ResourceSelectStrategy resourceSelectStrategy =
                 ResourceSelectStrategy.valueOf(step.resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
@@ -52,62 +52,84 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
 
         List<LockableResourcesStruct> resourceHolderList = new ArrayList<>();
 
-        List<LockableResource> available = null;
+        List<LockableResource> available;
         LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (lrm.syncResources) {
-            step.validate();
+        synchronized (LockableResourcesManager.syncResources) {
+            step.validate(lrm.isAllowEmptyOrNullValues());
 
             LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
             getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
 
-            List<String> resourceNames = new ArrayList<>();
-            for (LockStepResource resource : step.getResources()) {
-                List<String> resources = new ArrayList<>();
-                if (resource.resource != null) {
-                    if (lrm.createResource(resource.resource)) {
-                        LockableResourcesManager.printLogs(
-                                "Resource [" + resource.resource + "] did not exist. Created.",
-                                Level.FINE,
-                                LOGGER,
-                                logger);
+            if (!lrm.isAllowEmptyOrNullValues() || acquireLock()) {
+                List<String> resourceNames = new ArrayList<>();
+                for (LockStepResource resource : step.getResources()) {
+                    List<String> resources = new ArrayList<>();
+                    if (resource.resource != null) {
+                        if (lrm.createResource(resource.resource)) {
+                            LockableResourcesManager.printLogs(
+                                    "Resource [" + resource.resource + "] did not exist. Created.",
+                                    Level.FINE,
+                                    LOGGER,
+                                    logger);
+                        }
+                        resources.add(resource.resource);
+                        resourceNames.addAll(resources);
+                    } else {
+                        resourceNames.add("N/A");
                     }
-                    resources.add(resource.resource);
-                    resourceNames.addAll(resources);
-                } else {
-                    resourceNames.add("N/A");
+                    resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
                 }
-                resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
+                LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
+                // determine if there are enough resources available to proceed
+                available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
+                if (available == null || available.isEmpty()) {
+                    LOGGER.fine("No available resources: " + available);
+                    onLockFailed(logger, resourceHolderList);
+                    return false;
+                }
+
+                if (!lrm.lock(available, run)) {
+                    // this here is very defensive code, and you will probably never hit it. (hopefully)
+                    LOGGER.warning("Internal program error: Can not lock resources: " + available);
+                    onLockFailed(logger, resourceHolderList);
+                    return true;
+                }
+
+                // since LockableResource contains transient variables, they cannot be correctly serialized
+                // hence we use their unique resource names and properties
+                for (LockableResource resource : available) {
+                    lockedResources.put(resource.getName(), resource.getProperties());
+                }
             }
 
-            LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
-
-            // determine if there are enough resources available to proceed
-            available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
-            if (available == null || available.isEmpty()) {
-                LOGGER.fine("No available resources: " + available);
-                onLockFailed(logger, resourceHolderList);
-                return false;
-            }
-
-            final boolean lockFailed = (lrm.lock(available, run) == false);
-
-            if (lockFailed) {
-                // this here is very defensive code, and you will probably never hit it. (hopefully)
-                LOGGER.warning("Internal program error: Can not lock resources: " + available);
-                onLockFailed(logger, resourceHolderList);
-                return true;
-            }
-
-            // since LockableResource contains transient variables, they cannot be correctly serialized
-            // hence we use their unique resource names and properties
-            for (LockableResource resource : available) {
-                lockedResources.put(resource.getName(), resource.getProperties());
-            }
             LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
         }
 
+        return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Checks if a lock can be acquired based on the step's properties: label, resource, and extra.
+     * To acquire a lock, at least one of these properties must be non-null and non-empty.
+     */
+    private boolean acquireLock() {
+        if (step.label != null) {
+            return true;
+        }
+        if (step.resource != null) {
+            return true;
+        }
+        if (step.extra != null && !step.extra.isEmpty()) {
+            return true;
+        }
+        LOGGER.warning("No lock will be acquired. Either the label, resource or extra is null or empty.");
+        LOGGER.warning("Step: " + step);
+        LOGGER.warning("Label: " + step.label);
+        LOGGER.warning("Resource: " + step.resource);
+        LOGGER.warning("Extra: " + step.extra);
         return false;
     }
 
@@ -160,8 +182,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             String resourceDescription,
             final String variable) {
         Run<?, ?> build;
-        FlowNode node = null;
-        PrintStream logger = null;
+        FlowNode node;
+        PrintStream logger;
         try {
             build = context.get(Run.class);
             node = context.get(FlowNode.class);

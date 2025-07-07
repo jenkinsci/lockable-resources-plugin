@@ -18,11 +18,9 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
-    private static final long serialVersionUID = 1L;
-
-    private List<LogEntry> logs = new ArrayList<>();
+    private final List<LogEntry> logs = new ArrayList<>();
     private final transient Object syncLogs = new Object();
-    private List<String> resourcesInUse = new ArrayList<>();
+    private final List<String> resourcesInUse = new ArrayList<>();
 
     public LockedResourcesBuildAction() {}
 
@@ -65,10 +63,13 @@ public class LockedResourcesBuildAction implements Action {
             return null;
         }
         LockedResourcesBuildAction action;
-        synchronized (build) {
+        final Object lock = build.getId();
+        // It is very difficult to guarantee correct operation when synchronizing on a parameter.
+        // There is no control over the identity, visibility, or lifecycle of that object.
+        synchronized (lock) {
             List<LockedResourcesBuildAction> actions = build.getActions(LockedResourcesBuildAction.class);
 
-            if (actions.size() <= 0) {
+            if (actions.isEmpty()) {
                 action = new LockedResourcesBuildAction();
                 build.addAction(action);
             } else {
@@ -108,10 +109,10 @@ public class LockedResourcesBuildAction implements Action {
 
     public static class LogEntry {
 
-        private String step;
-        private String action;
-        private String resourceName;
-        private long timeStamp;
+        private final String step;
+        private final String action;
+        private final String resourceName;
+        private final long timeStamp;
 
         @Restricted(NoExternalUse.class)
         public LogEntry(final String step, final String action, final String resourceName) {
