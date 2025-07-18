@@ -1,7 +1,7 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import hudson.model.Result;
 import java.util.Collections;
@@ -31,50 +31,51 @@ class LockStepWithTimeout extends LockStepTestBase {
 
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
-                """
-                def stages = [:];
-                        stages['stage1'] = {
-                            echo 'Start stage 1';
-                            lock('Resource1') {
-                                echo 'Resource1 locked in stage 1.'
-                                lock('Resource2') {
-                                    echo 'Resource2 locked in stage 1.'
-                                }
-                                echo 'Exiting timeout block in stage 1.'
-                            }
-                            echo 'Nothing locked in stage 1.'
-                        }
-                        stages['stage2'] = {
-                            echo 'Start stage 2';
-                            sleep 500; // Simulate some work
-                            lock('Resource1') {
-                                echo 'Resource1 locked in stage 2.'
-                                lock('Resource2') {
-                                    echo 'Resource2 locked in stage 2.'
-                                }
-                                echo 'Exiting timeout block in stage 2.'
-                            }
-                            echo 'Nothing locked in stage 2.'
-                        }
-                        stages['stage3'] = {
-                            echo 'Start stage 3';
-                            sleep 1000; // Simulate some work
-                            lock('Resource1') {
-                                echo 'Resource1 locked in stage 3.'
-                                lock('Resource2') {
-                                    echo 'Resource2 locked in stage 3.'
-                                }
-                                echo 'Exiting timeout block in stage 3.'
-                            }
-                            echo 'Nothing locked in stage 3.'
-                        }
-
-                    timeout(time: 5, unit: 'SECONDS') {
-                        echo 'Start timeout block.'
-                        parallel stages;
-                        echo 'Exiting timeout block.'
-                    }
-                    echo 'Finish'""",
+                "\n" +
+                "def stages = [:];\n" +
+                "        stages['stage1'] = {\n" +
+                "            echo 'Start stage 1';\n" +
+                "            lock('Resource1') {\n" +
+                "                echo 'Resource1 locked in stage 1.'\n" +
+                "                lock('Resource2') {\n" +
+                "                    echo 'Resource2 locked in stage 1.'\n" +
+                "                }\n" +
+                "                echo 'Exiting timeout block in stage 1.'\n" +
+                "            }\n" +
+                "            echo 'Nothing locked in stage 1.'\n" +
+                "        }\n" +
+                "        stages['stage2'] = {\n" +
+                "            echo 'Start stage 2';\n" +
+                "            sleep 500; // Simulate some work\n" +
+                "            lock('Resource1') {\n" +
+                "                echo 'Resource1 locked in stage 2.'\n" +
+                "                lock('Resource2') {\n" +
+                "                    echo 'Resource2 locked in stage 2.'\n" +
+                "                }\n" +
+                "                echo 'Exiting timeout block in stage 2.'\n" +
+                "            }\n" +
+                "            echo 'Nothing locked in stage 2.'\n" +
+                "        }\n" +
+                "        stages['stage3'] = {\n" +
+                "            echo 'Start stage 3';\n" +
+                "            sleep 1000; // Simulate some work\n" +
+                "            lock('Resource1') {\n" +
+                "                echo 'Resource1 locked in stage 3.';\n" +
+                "                lock('Resource2') {\n" +
+                "                    echo 'Resource2 locked in stage 3.';\n" +
+                "                }\n" +
+                "                echo 'Exiting timeout block in stage 3.';\n" +
+                "            }\n" +
+                "            echo 'Nothing locked in stage 3.';\n" +
+                "        }\n" +
+                "    }\n" +
+                "    timeout(time: 5, unit: 'SECONDS') {\n" +
+                "        echo 'Start timeout block.';\n" +
+                "        parallel stages;\n" +
+                "        echo 'Exiting timeout block.';\n" +
+                "    }\n" +
+                "    echo 'Finish';\n" +
+                "}",
                 true));
 
         // at first I will just start the build and wait for it to complete. No resources are locked or reserved before.
