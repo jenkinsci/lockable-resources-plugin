@@ -1,7 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import hudson.model.Result;
-import java.util.Objects;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -9,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @WithJenkins
 class LockStepWithTimeout extends LockStepTestBase {
@@ -97,8 +98,9 @@ class LockStepWithTimeout extends LockStepTestBase {
         assertTrue(lrm.fromName("Resource2").isFree());
 
         // now I will start the build again, but this time I will reserve the resources before.
-        lrm.fromName("Resource1").reserve();
-        // the build should now wait for the resource to be released, but the timeout should be triggered and the build should fail.
+        lrm.fromName("Resource1").reserve("by user 1");
+        // the build should now wait for the resource to be released, but the timeout should be triggered and the build
+        // should fail.
         WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b2));
         j.assertLogContains("Start timeout block.", b2);
@@ -125,7 +127,7 @@ class LockStepWithTimeout extends LockStepTestBase {
         // the Resource1 must be free and the Resource2 must be reserved.
         // The scope of queued stages can shall not be executed (because of abort signal by timeout).
         lrm.unreserve(Collections.singletonList(lrm.fromName("Resource1")));
-        lrm.fromName("Resource2").reserve();
+        lrm.fromName("Resource2").reserve("by user 2");
         WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b3));
         j.assertLogContains("Start timeout block.", b3);
