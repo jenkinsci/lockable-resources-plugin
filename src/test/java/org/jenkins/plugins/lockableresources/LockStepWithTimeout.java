@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @WithJenkins
 class LockStepWithTimeout extends LockStepTestBase {
@@ -21,7 +22,7 @@ class LockStepWithTimeout extends LockStepTestBase {
     }
 
     @Test
-    void lockWithTimeoutInside() throws Exception {
+    void lockWithTimeoutInside(JenkinsRule j) throws Exception {
         LockableResourcesManager lrm = LockableResourcesManager.get();
         lrm.createResourceWithLabel("Resource1", "label1");
         lrm.createResourceWithLabel("Resource2", "label2");
