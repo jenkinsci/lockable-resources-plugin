@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
@@ -29,6 +30,7 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class LockStep extends Step implements Serializable {
+    private static final Logger LOG = Logger.getLogger(LockStep.class.getName());
 
     private static final long serialVersionUID = -953609907239674360L;
 
@@ -68,8 +70,11 @@ public class LockStep extends Step implements Serializable {
     // is not required)
     @DataBoundConstructor
     public LockStep(@Nullable String resource) {
-        if (resource != null && !resource.isEmpty()) {
-            this.resource = resource;
+        if (resource != null && !resource.trim().isEmpty()) {
+            if (!resource.equals(resource.trim())) {
+                LOG.warning("The provided 'resource' should not start or end with spaces.");
+            }
+            this.resource = resource.trim();
         }
     }
 
@@ -90,15 +95,21 @@ public class LockStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setLabel(String label) {
-        if (label != null && !label.isEmpty()) {
-            this.label = label;
+        if (label != null && !label.trim().isEmpty()) {
+            if (!label.equals(label.trim())) {
+                LOG.warning("The provided 'label' should not start or end with spaces.");
+            }
+            this.label = label.trim();
         }
     }
 
     @DataBoundSetter
     public void setVariable(String variable) {
-        if (variable != null && !variable.isEmpty()) {
-            this.variable = variable;
+        if (variable != null && !variable.trim().isEmpty()) {
+            if (!variable.equals(variable.trim())) {
+                LOG.warning("The provided 'variable' should not start or end with spaces.");
+            }
+            this.variable = variable.trim();
         }
     }
 
@@ -203,8 +214,9 @@ public class LockStep extends Step implements Serializable {
 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
-    public void validate() {
-        LockStepResource.validate(resource, label, resourceSelectStrategy, extra, priority, inversePrecedence);
+    public void validate(boolean allowEmptyOrNullValues) {
+        LockStepResource.validate(
+                resource, label, resourceSelectStrategy, extra, priority, inversePrecedence, allowEmptyOrNullValues);
     }
 
     // -------------------------------------------------------------------------
