@@ -20,7 +20,7 @@
     <f:checkbox title="${%entry.skipIfLocked.title}"/>
   </f:entry>
   <f:entry title="${%entry.resourceSelectStrategy.title}" field="resourceSelectStrategy">
-    <f:textbox/>
+    <f:select/>
   </f:entry>
   <f:entry title="${%entry.priority.title}" field="priority">
     <f:number/>
