@@ -971,11 +971,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     public void reassign(List<LockableResource> resources, String userName) {
         synchronized (syncResources) {
+            Date date = new Date();
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
                     r.unReserve();
                 }
                 r.setReservedBy(userName);
+                r.setReservedTimestamp(date);
             }
             save();
         }
