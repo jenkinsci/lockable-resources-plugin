@@ -41,7 +41,6 @@ import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
-import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
@@ -972,11 +971,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     public void reassign(List<LockableResource> resources, String userName) {
         synchronized (syncResources) {
+            Date date = new Date();
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
                     r.unReserve();
                 }
                 r.setReservedBy(userName);
+                r.setReservedTimestamp(date);
             }
             save();
         }
@@ -1115,7 +1116,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResourcesStruct requiredResources : requiredResourcesList) {
             List<LockableResource> available = new ArrayList<>();
             // filter by labels
-            if (!StringUtils.isBlank(requiredResources.label)) {
+            if (requiredResources.label != null && !requiredResources.label.isBlank()) {
                 // get required amount first
                 int requiredAmount = 0;
                 if (requiredResources.requiredNumber != null) {

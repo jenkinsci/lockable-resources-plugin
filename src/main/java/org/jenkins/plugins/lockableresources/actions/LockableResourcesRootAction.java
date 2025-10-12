@@ -53,31 +53,31 @@ public class LockableResourcesRootAction implements RootAction {
             LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
     public static final Permission UNLOCK = new Permission(
             PERMISSIONS_GROUP,
-            Messages.LockableResourcesRootAction_UnlockPermission(),
+            "Unlock",
             Messages._LockableResourcesRootAction_UnlockPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     public static final Permission RESERVE = new Permission(
             PERMISSIONS_GROUP,
-            Messages.LockableResourcesRootAction_ReservePermission(),
+            "Reserve",
             Messages._LockableResourcesRootAction_ReservePermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     public static final Permission STEAL = new Permission(
             PERMISSIONS_GROUP,
-            Messages.LockableResourcesRootAction_StealPermission(),
+            "Steal",
             Messages._LockableResourcesRootAction_StealPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     public static final Permission VIEW = new Permission(
             PERMISSIONS_GROUP,
-            Messages.LockableResourcesRootAction_ViewPermission(),
+            "View",
             Messages._LockableResourcesRootAction_ViewPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
     public static final Permission QUEUE = new Permission(
             PERMISSIONS_GROUP,
-            Messages.LockableResourcesRootAction_QueueChangeOrderPermission(),
+            "Queue",
             Messages._LockableResourcesRootAction_QueueChangeOrderPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
