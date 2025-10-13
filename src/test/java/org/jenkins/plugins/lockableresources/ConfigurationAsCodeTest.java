@@ -3,6 +3,8 @@ package org.jenkins.plugins.lockableresources;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.jenkins.plugins.casc.ConfigurationAsCode;
 import io.jenkins.plugins.casc.ConfigurationContext;
@@ -16,7 +18,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.util.Constants;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,7 @@ class ConfigurationAsCodeTest {
     @ConfiguredWithCode("configuration-as-code.yml")
     void should_support_configuration_as_code(JenkinsConfiguredWithCodeRule r) {
         LockableResourcesManager LRM = LockableResourcesManager.get();
-        Assertions.assertTrue(LRM.isAllowEmptyOrNullValues());
+        assertTrue(LRM.isAllowEmptyOrNullValues());
 
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
@@ -47,7 +48,7 @@ class ConfigurationAsCodeTest {
         assertEquals("Description_A", declaredResource.getDescription());
         assertEquals("Label_A", declaredResource.getLabels());
         // not supported in JCaC
-        assertEquals(null, declaredResource.getReservedBy());
+        assertNull(declaredResource.getReservedBy());
         assertEquals("", declaredResource.getNote());
 
         assertEquals(
@@ -58,7 +59,7 @@ class ConfigurationAsCodeTest {
         assertEquals("Description_A", resource.getDescription());
         assertEquals("Label_A", resource.getLabels());
         // not supported in JCaC
-        assertEquals(null, declaredResource.getReservedBy());
+        assertNull(declaredResource.getReservedBy());
         assertEquals("", declaredResource.getNote());
     }
 
