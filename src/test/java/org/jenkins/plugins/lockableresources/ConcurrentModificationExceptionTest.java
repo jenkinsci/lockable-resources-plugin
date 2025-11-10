@@ -4,10 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import hudson.Functions;
+
+import java.util.ConcurrentModificationException;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
@@ -150,5 +154,46 @@ class ConcurrentModificationExceptionTest {
         for (int i = 1; i <= agentsCount; i++) {
             assertNotNull(LockableResourcesManager.get().fromName("Agent_" + i));
         }
+    }
+
+    /**
+     * Various events in Jenkins can cause saving of Workflow state,
+     * even if particular jobs are configured for "performance" mode
+     * to avoid causing this themselves in transitions between steps.
+     * This causes an XStream export of Java objects, which may crash
+     * with a {@link ConcurrentModificationException} if certain
+     * complex properties of Jenkins Actions are being modified at
+     * the same time (e.g. LR log list is updated here):
+     * <pre>
+     * java.util.ConcurrentModificationException
+     * ...
+     * Caused: java.lang.RuntimeException: Failed to serialize
+     *      org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction#logs
+     *      for class org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction
+     * ...
+     * Also:   org.jenkinsci.plugins.workflow.actions.ErrorAction$ErrorId: {UUID}
+     * Caused: java.lang.RuntimeException: Failed to serialize hudson.model.Actionable#actions
+     *      for class org.jenkinsci.plugins.workflow.job.WorkflowRun
+     * ...
+     * </pre>
+     *
+     * This test aims to reproduce the issue, and eventually confirm
+     * a fix and non-regression.
+     *
+     * @throws Exception  If test failed
+     */
+    @Test
+    void noCmeWhileSavingXStreamVsLockedResourcesBuildAction(JenkinsRule j) throws Exception {
+        WorkflowJob p = j.createProject(WorkflowJob.class);
+        p.setDefinition(new CpsFlowDefinition(
+            "lock ('temp-lock') {\n" +
+                "def act = currentBuild.rawBuild.getAction(org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction)\n" +
+                "parallel a: { act.append('A'); sleep 1 }, b: { act.append('B'); sleep 1 }\n" +
+                // force a save while mutations are happening
+                "org.jenkinsci.plugins.workflow.job.WorkflowRun r = currentBuild.rawBuild\n" +
+                "r.save()\n" +
+            "}\n",
+          false));
+        j.buildAndAssertSuccess(p);
     }
 }
