@@ -1,0 +1,251 @@
+Example failure on console log of the Jenkins JVM when the `noCmeWhileSavingXStreamVsLockedResourcesBuildAction()` test does trigger the problem:
+
+```
+   0.750 [id=1]	INFO	o.jvnet.hudson.test.JenkinsRule#createWebServer2: Running on http://localhost:56962/jenkins/
+   0.776 [id=224]	INFO	jenkins.InitReactorRunner$1#onAttained: Started initialization
+   0.778 [id=243]	INFO	jenkins.InitReactorRunner$1#onAttained: Listed all plugins
+   0.781 [id=251]	INFO	j.b.api.BouncyCastlePlugin#start: C:\Users\jim\Documents\FOSS\jenkins\lockable-resources-plugin\target\tmp\j h17056187056296413418\plugins\bouncycastle-api\WEB-INF\optional-lib not found; for non RealJenkinsRule this is fine and can be ignored.
+   2.239 [id=253]	INFO	jenkins.InitReactorRunner$1#onAttained: Prepared all plugins
+   2.242 [id=241]	INFO	jenkins.InitReactorRunner$1#onAttained: Started all plugins
+   2.242 [id=248]	INFO	jenkins.InitReactorRunner$1#onAttained: Augmented all extensions
+   2.671 [id=223]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.671 [id=223]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.672 [id=226]	INFO	jenkins.InitReactorRunner$1#onAttained: System config loaded
+   2.686 [id=251]	INFO	jenkins.InitReactorRunner$1#onAttained: System config adapted
+   2.687 [id=247]	INFO	jenkins.InitReactorRunner$1#onAttained: Loaded all jobs
+   2.687 [id=247]	INFO	o.j.p.l.NodesMirror#createNodeResources: lockable-resources-plugin: configure node resources
+   2.687 [id=247]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.687 [id=247]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.687 [id=239]	INFO	jenkins.InitReactorRunner$1#onAttained: Configuration for all jobs updated
+   2.732 [id=229]	INFO	jenkins.InitReactorRunner$1#onAttained: Completed initialization
+   2.741 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.741 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.767 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: create extra slaves
+   2.771 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.771 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.780 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.780 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.789 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.790 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.799 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.800 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.809 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.810 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.822 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.822 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.838 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.838 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.855 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.857 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.873 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.873 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.891 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.893 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.913 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.914 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.934 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.935 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.960 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.961 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   2.983 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   2.984 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   3.010 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   3.010 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   3.030 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: start nodes mirroring
+   3.031 [id=1]	INFO	o.j.p.l.NodesMirror#mirrorNodes: lockable-resources-plugin: nodes mirroring finished
+   3.048 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: create extra slaves done
+   3.050 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: define test workflows
+   3.280 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: Execute test workflows
+   5.786 [id=114]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_2
+   5.790 [id=174]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_3
+   5.831 [id=170]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_4
+   5.855 [id=103]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_5
+   5.981 [id=119]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_6
+   6.314 [id=182]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_16
+   6.316 [id=172]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_14
+   6.332 [id=139]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_7
+   6.384 [id=144]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_12
+   6.386 [id=109]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_1
+   6.417 [id=134]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_8
+   6.430 [id=129]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_10
+   6.439 [id=161]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_13
+   6.439 [id=99]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_9
+   6.467 [id=157]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_11
+   6.524 [id=176]	INFO	o.j.h.test.SimpleCommandLauncher#launch: agent launched for ExtraAgent_15
+   9.918 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: Trigger Jenkins state save
+   9.918 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: Wait for builds to complete
+  60.832 [id=390]	WARNING	o.j.p.w.cps.CpsFlowExecution#notifyListeners
+java.util.ConcurrentModificationException
+	at java.base/java.util.ArrayList$Itr.checkForComodification(ArrayList.java:1013)
+	at java.base/java.util.ArrayList$Itr.next(ArrayList.java:967)
+	at com.thoughtworks.xstream.converters.collections.CollectionConverter.marshal(CollectionConverter.java:74)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller$1.convertAnother(AbstractReferenceMarshaller.java:83)
+	at hudson.util.RobustReflectionConverter.marshallField(RobustReflectionConverter.java:283)
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:270)
+Caused: java.lang.RuntimeException: Failed to serialize org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction#logs for class org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:274)
+	at hudson.util.RobustReflectionConverter$2.visit(RobustReflectionConverter.java:241)
+	at com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider.visitSerializableFields(PureJavaReflectionProvider.java:174)
+	at hudson.util.RobustReflectionConverter.doMarshal(RobustReflectionConverter.java:226)
+	at hudson.util.RobustReflectionConverter.marshal(RobustReflectionConverter.java:163)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:44)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller$1.convertAnother(AbstractReferenceMarshaller.java:87)
+	at com.thoughtworks.xstream.converters.collections.AbstractCollectionConverter.writeBareItem(AbstractCollectionConverter.java:94)
+	at com.thoughtworks.xstream.converters.collections.AbstractCollectionConverter.writeItem(AbstractCollectionConverter.java:66)
+	at com.thoughtworks.xstream.converters.collections.AbstractCollectionConverter.writeCompleteItem(AbstractCollectionConverter.java:81)
+	at com.thoughtworks.xstream.converters.collections.CollectionConverter.marshal(CollectionConverter.java:75)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller$1.convertAnother(AbstractReferenceMarshaller.java:83)
+	at hudson.util.RobustReflectionConverter.marshallField(RobustReflectionConverter.java:283)
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:270)
+Caused: java.lang.RuntimeException: Failed to serialize hudson.model.Actionable#actions for class org.jenkinsci.plugins.workflow.job.WorkflowRun
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:274)
+	at hudson.util.RobustReflectionConverter$2.visit(RobustReflectionConverter.java:241)
+	at com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider.visitSerializableFields(PureJavaReflectionProvider.java:174)
+	at hudson.util.RobustReflectionConverter.doMarshal(RobustReflectionConverter.java:226)
+	at hudson.util.RobustReflectionConverter.marshal(RobustReflectionConverter.java:163)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:44)
+	at com.thoughtworks.xstream.core.TreeMarshaller.start(TreeMarshaller.java:83)
+	at com.thoughtworks.xstream.core.AbstractTreeMarshallingStrategy.marshal(AbstractTreeMarshallingStrategy.java:37)
+	at com.thoughtworks.xstream.XStream.marshal(XStream.java:1307)
+	at com.thoughtworks.xstream.XStream.marshal(XStream.java:1296)
+	at com.thoughtworks.xstream.XStream.toXML(XStream.java:1269)
+	at hudson.XmlFile.write(XmlFile.java:216)
+Caused: java.io.IOException
+	at hudson.XmlFile.write(XmlFile.java:223)
+	at org.jenkinsci.plugins.workflow.support.PipelineIOUtils.writeByXStream(PipelineIOUtils.java:30)
+	at org.jenkinsci.plugins.workflow.job.WorkflowRun.save(WorkflowRun.java:1279)
+	at hudson.BulkChange.commit(BulkChange.java:98)
+	at org.jenkinsci.plugins.workflow.cps.CpsFlowExecution.notifyListeners(CpsFlowExecution.java:1571)
+	at org.jenkinsci.plugins.workflow.cps.CpsThreadGroup$3.run(CpsThreadGroup.java:536)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService.lambda$wrap$2(CpsVmExecutorService.java:85)
+	at hudson.remoting.SingleLaneExecutorService$1.run(SingleLaneExecutorService.java:139)
+	at jenkins.util.ContextResettingExecutorService$1.run(ContextResettingExecutorService.java:28)
+	at jenkins.security.ImpersonatingExecutorService$1.run(ImpersonatingExecutorService.java:68)
+	at jenkins.util.ErrorLoggingExecutorService.lambda$wrap$0(ErrorLoggingExecutorService.java:51)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run$$$capture(FutureTask.java:264)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService$1.call(CpsVmExecutorService.java:53)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService$1.call(CpsVmExecutorService.java:50)
+	at org.codehaus.groovy.runtime.GroovyCategorySupport$ThreadCategoryInfo.use(GroovyCategorySupport.java:136)
+	at org.codehaus.groovy.runtime.GroovyCategorySupport.use(GroovyCategorySupport.java:275)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService.lambda$categoryThreadFactory$0(CpsVmExecutorService.java:50)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+  65.515 [id=391]	WARNING	o.j.p.w.cps.CpsFlowExecution#notifyListeners
+java.util.ConcurrentModificationException
+	at java.base/java.util.ArrayList$Itr.checkForComodification(ArrayList.java:1013)
+	at java.base/java.util.ArrayList$Itr.next(ArrayList.java:967)
+	at com.thoughtworks.xstream.converters.collections.CollectionConverter.marshal(CollectionConverter.java:74)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller$1.convertAnother(AbstractReferenceMarshaller.java:83)
+	at hudson.util.RobustReflectionConverter.marshallField(RobustReflectionConverter.java:283)
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:270)
+Caused: java.lang.RuntimeException: Failed to serialize org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction#logs for class org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:274)
+	at hudson.util.RobustReflectionConverter$2.visit(RobustReflectionConverter.java:241)
+	at com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider.visitSerializableFields(PureJavaReflectionProvider.java:174)
+	at hudson.util.RobustReflectionConverter.doMarshal(RobustReflectionConverter.java:226)
+	at hudson.util.RobustReflectionConverter.marshal(RobustReflectionConverter.java:163)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:44)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller$1.convertAnother(AbstractReferenceMarshaller.java:87)
+	at com.thoughtworks.xstream.converters.collections.AbstractCollectionConverter.writeBareItem(AbstractCollectionConverter.java:94)
+	at com.thoughtworks.xstream.converters.collections.AbstractCollectionConverter.writeItem(AbstractCollectionConverter.java:66)
+	at com.thoughtworks.xstream.converters.collections.AbstractCollectionConverter.writeCompleteItem(AbstractCollectionConverter.java:81)
+	at com.thoughtworks.xstream.converters.collections.CollectionConverter.marshal(CollectionConverter.java:75)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller$1.convertAnother(AbstractReferenceMarshaller.java:83)
+	at hudson.util.RobustReflectionConverter.marshallField(RobustReflectionConverter.java:283)
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:270)
+Caused: java.lang.RuntimeException: Failed to serialize hudson.model.Actionable#actions for class org.jenkinsci.plugins.workflow.job.WorkflowRun
+	at hudson.util.RobustReflectionConverter$2.writeField(RobustReflectionConverter.java:274)
+	at hudson.util.RobustReflectionConverter$2.visit(RobustReflectionConverter.java:241)
+	at com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider.visitSerializableFields(PureJavaReflectionProvider.java:174)
+	at hudson.util.RobustReflectionConverter.doMarshal(RobustReflectionConverter.java:226)
+	at hudson.util.RobustReflectionConverter.marshal(RobustReflectionConverter.java:163)
+	at com.thoughtworks.xstream.core.AbstractReferenceMarshaller.convert(AbstractReferenceMarshaller.java:68)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:59)
+	at com.thoughtworks.xstream.core.TreeMarshaller.convertAnother(TreeMarshaller.java:44)
+	at com.thoughtworks.xstream.core.TreeMarshaller.start(TreeMarshaller.java:83)
+	at com.thoughtworks.xstream.core.AbstractTreeMarshallingStrategy.marshal(AbstractTreeMarshallingStrategy.java:37)
+	at com.thoughtworks.xstream.XStream.marshal(XStream.java:1307)
+	at com.thoughtworks.xstream.XStream.marshal(XStream.java:1296)
+	at com.thoughtworks.xstream.XStream.toXML(XStream.java:1269)
+	at hudson.XmlFile.write(XmlFile.java:216)
+Caused: java.io.IOException
+	at hudson.XmlFile.write(XmlFile.java:223)
+	at org.jenkinsci.plugins.workflow.support.PipelineIOUtils.writeByXStream(PipelineIOUtils.java:30)
+	at org.jenkinsci.plugins.workflow.job.WorkflowRun.save(WorkflowRun.java:1279)
+	at hudson.BulkChange.commit(BulkChange.java:98)
+	at org.jenkinsci.plugins.workflow.cps.CpsFlowExecution.notifyListeners(CpsFlowExecution.java:1571)
+	at org.jenkinsci.plugins.workflow.cps.CpsThreadGroup$3.run(CpsThreadGroup.java:536)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService.lambda$wrap$2(CpsVmExecutorService.java:85)
+	at hudson.remoting.SingleLaneExecutorService$1.run(SingleLaneExecutorService.java:139)
+	at jenkins.util.ContextResettingExecutorService$1.run(ContextResettingExecutorService.java:28)
+	at jenkins.security.ImpersonatingExecutorService$1.run(ImpersonatingExecutorService.java:68)
+	at jenkins.util.ErrorLoggingExecutorService.lambda$wrap$0(ErrorLoggingExecutorService.java:51)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run$$$capture(FutureTask.java:264)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService$1.call(CpsVmExecutorService.java:53)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService$1.call(CpsVmExecutorService.java:50)
+	at org.codehaus.groovy.runtime.GroovyCategorySupport$ThreadCategoryInfo.use(GroovyCategorySupport.java:136)
+	at org.codehaus.groovy.runtime.GroovyCategorySupport.use(GroovyCategorySupport.java:275)
+	at org.jenkinsci.plugins.workflow.cps.CpsVmExecutorService.lambda$categoryThreadFactory$0(CpsVmExecutorService.java:50)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+  89.531 [id=388]	INFO	o.j.p.l.queue.LockRunListener#onCompleted: test1 #1
+ 141.781 [id=391]	INFO	o.j.p.l.queue.LockRunListener#onCompleted: test2 #1
+ 189.916 [id=414]	INFO	o.j.p.l.queue.LockRunListener#onCompleted: test0 #1
+ 189.952 [id=1]	INFO	o.j.p.l.ConcurrentModificationExceptionTest#noCmeWhileSavingXStreamVsLockedResourcesBuildAction: builds are done
+ 189.975 [id=1]	INFO	hudson.lifecycle.Lifecycle#onStatusUpdate: Stopping Jenkins
+ 190.314 [id=354]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=4916, exitValue=0] with {HUDSON_COOKIE=e7162b17-21cc-4a1b-872e-e50a321514da} for ExtraAgent_13
+ 190.315 [id=417]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_13
+ 190.318 [id=346]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=8112, exitValue=0] with {HUDSON_COOKIE=cc5c4799-6769-4b69-9693-9c625822160c} for ExtraAgent_6
+ 190.319 [id=462]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_6
+ 190.322 [id=349]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=14592, exitValue=0] with {HUDSON_COOKIE=bef3284d-4cf8-409e-bc4c-26ed79e64707} for ExtraAgent_12
+ 190.323 [id=459]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_12
+ 190.336 [id=350]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=10884, exitValue=0] with {HUDSON_COOKIE=0e819afe-0445-45a2-a15f-18cbdd98602d} for ExtraAgent_14
+ 190.336 [id=424]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_14
+ 190.345 [id=357]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=17376, exitValue=0] with {HUDSON_COOKIE=c4d0e2dd-7aa7-4e2a-ab3a-5ee135068c2a} for ExtraAgent_15
+ 190.346 [id=445]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_15
+ 190.354 [id=352]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=17096, exitValue=0] with {HUDSON_COOKIE=10cd2cba-b1da-49bd-81fd-e92a47b35344} for ExtraAgent_9
+ 190.355 [id=448]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_9
+ 190.399 [id=356]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=23164, exitValue=0] with {HUDSON_COOKIE=ae56c17e-4fbc-44f1-ad4b-df09822709fe} for ExtraAgent_11
+ 190.400 [id=465]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_11
+ 190.404 [id=351]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=4772, exitValue=0] with {HUDSON_COOKIE=35ea5d38-0c5b-45c7-bf11-7ec016364d54} for ExtraAgent_8
+ 190.404 [id=454]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_8
+ 190.407 [id=348]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=37352, exitValue=0] with {HUDSON_COOKIE=3a2a9b40-133a-4e53-933c-e4c97a908e72} for ExtraAgent_1
+ 190.408 [id=427]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_1
+ 190.416 [id=341]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=3984, exitValue=0] with {HUDSON_COOKIE=25fc364e-2e6b-40b4-9f4d-98eeadb2f886} for ExtraAgent_3
+ 190.416 [id=437]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_3
+ 190.435 [id=347]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=36132, exitValue=0] with {HUDSON_COOKIE=ad27da30-7d21-42bf-bdf5-a49e7d196400} for ExtraAgent_7
+ 190.435 [id=355]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=36932, exitValue=0] with {HUDSON_COOKIE=d5f0e9c5-beec-4815-b0f2-430d39766a3a} for ExtraAgent_10
+ 190.435 [id=457]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_7
+ 190.435 [id=451]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_10
+ 190.490 [id=343]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=36276, exitValue=0] with {HUDSON_COOKIE=c8545269-6fce-48ec-a0b3-8ecf36c9952f} for ExtraAgent_4
+ 190.491 [id=421]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_4
+ 190.493 [id=353]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=8420, exitValue=0] with {HUDSON_COOKIE=4b52916a-81c7-42e0-beb6-1a689383199d} for ExtraAgent_16
+ 190.494 [id=342]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=4784, exitValue=0] with {HUDSON_COOKIE=78adaef6-f252-41c7-b3b9-ce08f92a047a} for ExtraAgent_5
+ 190.494 [id=440]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_16
+ 190.494 [id=425]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_5
+ 190.500 [id=340]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: killed Process[pid=37456, exitValue=0] with {HUDSON_COOKIE=885d7ef5-312b-45c9-a2bd-24ea813b4ddc} for ExtraAgent_2
+ 190.500 [id=443]	INFO	o.j.h.test.SimpleCommandLauncher#afterDisconnect: no process for ExtraAgent_2
+ 190.501 [id=1]	INFO	hudson.lifecycle.Lifecycle#onStatusUpdate: Jenkins stopped
+ 190.547 [id=1]	INFO	o.j.h.t.TemporaryDirectoryAllocator#dispose: deleting C:\Users\jim\Documents\FOSS\jenkins\lockable-resources-plugin\target\tmp\j h17056187056296413418
+```
+

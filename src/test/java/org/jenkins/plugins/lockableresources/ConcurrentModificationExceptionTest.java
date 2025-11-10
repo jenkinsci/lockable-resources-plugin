@@ -5,14 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import hudson.Functions;
 
+import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
@@ -183,17 +187,121 @@ class ConcurrentModificationExceptionTest {
      * @throws Exception  If test failed
      */
     @Test
+    @Timeout(900)
     void noCmeWhileSavingXStreamVsLockedResourcesBuildAction(JenkinsRule j) throws Exception {
-        WorkflowJob p = j.createProject(WorkflowJob.class);
-        p.setDefinition(new CpsFlowDefinition(
-            "lock ('temp-lock') {\n" +
-                "def act = currentBuild.rawBuild.getAction(org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction)\n" +
-                "parallel a: { act.append('A'); sleep 1 }, b: { act.append('B'); sleep 1 }\n" +
+        // How many parallel stages would we use before saving WorkflowRun
+        // state inside the pipeline run, and overall?
+        int preflood = 25, maxflood = 75;
+
+        // More workers to increase the chaos in competition for resources
+        int extraAgents = 16;
+
+        // How many jobs run in parallel?
+        // Note that along with the amount of agents and maxflood
+        // this dictates how long the test runs.
+        int maxRuns = 3;
+        List<WorkflowJob> wfJobs = new ArrayList<>();
+        List<WorkflowRun> wfRuns = new ArrayList<>();
+
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+
+        // Involve also the lag and race of remote executions
+        LOGGER.info("create extra build agents");
+        for (int i = 1; i <= extraAgents; i++) {
+            try {
+                j.createSlave("ExtraAgent_" + i, "label label2 extra-agent", null);
+            } catch (Exception error) {
+                LOGGER.warning(error.toString());
+            }
+        }
+        LOGGER.info("create extra build agents done");
+
+        LOGGER.info("define " + maxRuns + " test workflows");
+        String pipeCode =
+                "lock('first') { sleep 1 }\n" +
+                "def parstages = [:]\n" +
+                // flood with lock actions, including logging about them
+                "def preflood = " + preflood + "\n" +
+                "def maxflood = " + maxflood + "\n" +
+                "for (int i = 1; i < preflood; i++) {\n" +
+                // Note that we must use toString() and explicit vars to
+                // avoid seeing same values at time of GString evaluation
+                "  String iStr = String.valueOf(i)\n" +
+                "  parstages[\"stage-${iStr}\".toString()] = {\n" +
+                "    node() {\n" +
+                "      lock(\"lock-${iStr}\".toString()) {\n" +
+                "        sleep 1\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}\n" +
                 // force a save while mutations are happening
-                "org.jenkinsci.plugins.workflow.job.WorkflowRun r = currentBuild.rawBuild\n" +
-                "r.save()\n" +
-            "}\n",
-          false));
-        j.buildAndAssertSuccess(p);
+                "parstages['saver'] = {\n" +
+                "  org.jenkinsci.plugins.workflow.job.WorkflowRun r = currentBuild.rawBuild\n" +
+                "  r.save()\n" +
+                "}\n" +
+                // sandwiching makes it more likely to get the race condition
+                // as someone works with locks while XStream kicks in
+                // Also make it actually wait for some (ephemeral) locks
+                "for (int i = preflood; i < maxflood; i++) {\n" +
+                "  String iStr = String.valueOf(i)\n" +
+                "  String iStrLock = String.valueOf((i % preflood) + 1)\n" +
+                "  String iStrName = \"In parstage ${iStr} for lock ${iStrLock}\".toString()\n" +
+                "  parstages[\"stage-${iStr}\".toString()] = {\n" +
+                "    node() {\n" +
+                "      lock(\"lock-${iStrLock}\".toString()) {\n" +
+                // Changes of currentBuild should cause some saves too
+                // (also badges, SCM steps, etc. - but these would need
+                // more plugins as dependencies just for the tests):
+                "        echo \"Set currentBuild.displayName = '${iStrName}'\"\n" +
+                "        currentBuild.displayName = iStrName\n" +
+                "        sleep 1\n" +
+                "      }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}\n" +
+                "parallel parstages\n";
+
+        for (int i = 0; i < maxRuns; i++) {
+            WorkflowJob p = j.createProject(WorkflowJob.class);
+            p.setDefinition(new CpsFlowDefinition(pipeCode, false));
+            wfJobs.add(p);
+        }
+
+        LOGGER.info("Execute test workflows");
+        for (int i = 0; i < maxRuns; i++) {
+            WorkflowRun r = wfJobs.get(i).scheduleBuild2(0).waitForStart();
+            wfRuns.add(r);
+        }
+
+        for (int i = 0; i < maxRuns; i++) {
+            j.waitForMessage("[Pipeline] parallel", wfRuns.get(i));
+        }
+
+        // Trigger Jenkins-wide save activities.
+        // Note: job runs also save workflow for good measure
+        // FIXME: Save state of whole Jenkins config somehow?
+        //  Is there more to XStream-able state to save?
+        for (int i = 0; i < 10; i++) {
+            LOGGER.info("Trigger Jenkins/LR state save");
+            lrm.save();
+            // Let the timing be out of sync of ~1s sleeps of the pipelines
+            Thread.sleep(2379);
+        }
+
+        LOGGER.info("Wait for builds to complete");
+        for (int i = 0; i < maxRuns; i++) {
+            j.assertBuildStatusSuccess(j.waitForCompletion(wfRuns.get(i)));
+        }
+
+        LOGGER.info("Check build logs that CME related messages are absent");
+        for (int i = 0; i < maxRuns; i++) {
+            WorkflowRun r = wfRuns.get(i);
+            j.assertLogNotContains("Failed to serialize", r);
+            j.assertLogNotContains("java.util.ConcurrentModificationException", r);
+        }
+
+        // Not printed if assertion above fails:
+        LOGGER.info("All " + maxRuns + " builds are done successfully");
     }
 }
