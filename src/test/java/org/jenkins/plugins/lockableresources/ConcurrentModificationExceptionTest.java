@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import hudson.Functions;
 
+import java.lang.Math;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
@@ -225,7 +227,12 @@ class ConcurrentModificationExceptionTest {
 
         LOGGER.info("define " + maxRuns + " test workflows");
         String pipeCode =
-                "lock('first') { sleep 1 }\n" +
+                "import java.lang.Math;\n" +
+                "import java.util.Random;\n" +
+                // Do not occupy all readers at first, so all our
+                // jobs can get defined and started simultaneously
+                // (avoid them "waiting for available executors")
+                "lock('first') { sleep 3 }\n" +
                 "def parstages = [:]\n" +
                 // flood with lock actions, including logging about them
                 "def preflood = " + preflood + "\n" +
@@ -262,7 +269,9 @@ class ConcurrentModificationExceptionTest {
                 // more plugins as dependencies just for the tests):
                 "        echo \"Set currentBuild.displayName = '${iStrName}'\"\n" +
                 "        currentBuild.displayName = iStrName\n" +
-                "        sleep 1\n" +
+                // Randomize which job/lock combo waits for which,
+                // so we do not have all builds sequentially completing:
+                "        sleep (time: 500 + Math.abs(new Random().nextInt(1000)), unit: 'MILLISECONDS')\n" +
                 "      }\n" +
                 "    }\n" +
                 "  }\n" +
@@ -290,10 +299,17 @@ class ConcurrentModificationExceptionTest {
         // FIXME: Save state of whole Jenkins config somehow?
         //  Is there more to XStream-able state to save?
         for (int i = 0; i < 10; i++) {
-            LOGGER.info("Trigger Jenkins/LR state save");
+            LOGGER.info("Trigger Jenkins/LR state save (regular interval ~2.1s)");
             lrm.save();
             // Let the timing be out of sync of ~1s sleeps of the pipelines
-            Thread.sleep(2379);
+            Thread.sleep(2139);
+        }
+
+        for (int i = 0; i < 10; i++) {
+            LOGGER.info("Trigger Jenkins/LR state save (random interval ~1.3-4.3s)");
+            lrm.save();
+            // Let the timing be out of sync of ~1s sleeps of the pipelines
+            Thread.sleep(1370 + Math.abs(new Random().nextInt(3000)));
         }
 
         LOGGER.info("Wait for builds to complete");
