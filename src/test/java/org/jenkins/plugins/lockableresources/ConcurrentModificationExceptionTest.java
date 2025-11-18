@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -221,6 +223,23 @@ class ConcurrentModificationExceptionTest {
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
+        // Prepare to capture CME clues in JVM or Jenkins instance logs
+        // (sometimes the problem is reported there, but does not cause
+        // a crash for any of the runs).
+        Logger capturingLogger = Logger.getLogger(""); // root, or specific package/logger
+        StringBuilder capturedLogs = new StringBuilder();
+        Handler capturingLogHandler = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+              capturedLogs.append(record.getLevel())
+                .append(": ")
+                .append(record.getMessage())
+                .append('\n');
+            }
+            @Override public void flush() {}
+            @Override public void close() throws SecurityException {}
+        };
+
         // Involve also the lag and race of remote executions
         LOGGER.info("create extra build agents");
         for (int i = 1; i <= extraAgents; i++) {
@@ -290,43 +309,50 @@ class ConcurrentModificationExceptionTest {
                 "}\n" +
                 "parallel parstages\n";
 
-        for (int i = 0; i < maxRuns; i++) {
-            WorkflowJob p = j.createProject(WorkflowJob.class);
-            p.setDefinition(new CpsFlowDefinition(pipeCode, false));
-            wfJobs.add(p);
-        }
+        capturingLogger.addHandler(capturingLogHandler);
+        try {
+            for (int i = 0; i < maxRuns; i++) {
+                WorkflowJob p = j.createProject(WorkflowJob.class);
+                p.setDefinition(new CpsFlowDefinition(pipeCode, false));
+                wfJobs.add(p);
+            }
 
-        LOGGER.info("Execute test workflows");
-        for (int i = 0; i < maxRuns; i++) {
-            WorkflowRun r = wfJobs.get(i).scheduleBuild2(0).waitForStart();
-            wfRuns.add(r);
-        }
+            LOGGER.info("Execute test workflows");
+            for (int i = 0; i < maxRuns; i++) {
+                WorkflowRun r = wfJobs.get(i).scheduleBuild2(0).waitForStart();
+                wfRuns.add(r);
+            }
 
-        for (int i = 0; i < maxRuns; i++) {
-            j.waitForMessage("[Pipeline] parallel", wfRuns.get(i));
-        }
+            for (int i = 0; i < maxRuns; i++) {
+                j.waitForMessage("[Pipeline] parallel", wfRuns.get(i));
+            }
 
-        // Trigger Jenkins-wide save activities.
-        // Note: job runs also save workflow for good measure
-        // FIXME: Save state of whole Jenkins config somehow?
-        //  Is there more to XStream-able state to save?
-        for (int i = 0; i < 10; i++) {
-            LOGGER.info("Trigger Jenkins/LR state save (random interval ~3s +- 50ms)");
-            lrm.save();
-            // Let the timing be out of sync of ~1s sleeps of the pipelines
-            Thread.sleep(2950 + Math.abs(new Random().nextInt(100)));
-        }
+            // Trigger Jenkins-wide save activities.
+            // Note: job runs also save workflow for good measure
+            // FIXME: Save state of whole Jenkins config somehow?
+            //  Is there more to XStream-able state to save?
+            for (int i = 0; i < 10; i++) {
+                LOGGER.info("Trigger Jenkins/LR state save (random interval ~3s +- 50ms)");
+                lrm.save();
+                // Let the timing be out of sync of ~1s sleeps of the pipelines
+                Thread.sleep(2950 + Math.abs(new Random().nextInt(100)));
+            }
 
-        for (int i = 0; i < 10; i++) {
-            LOGGER.info("Trigger Jenkins/LR state save (regular interval ~2.1s)");
-            lrm.save();
-            // Let the timing be out of sync of ~1s sleeps of the pipelines
-            Thread.sleep(2139);
-        }
+            for (int i = 0; i < 10; i++) {
+                LOGGER.info("Trigger Jenkins/LR state save (regular interval ~2.1s)");
+                lrm.save();
+                // Let the timing be out of sync of ~1s sleeps of the pipelines
+                Thread.sleep(2139);
+            }
 
-        LOGGER.info("Wait for builds to complete");
-        for (int i = 0; i < maxRuns; i++) {
-            j.assertBuildStatusSuccess(j.waitForCompletion(wfRuns.get(i)));
+            LOGGER.info("Wait for builds to complete");
+            for (int i = 0; i < maxRuns; i++) {
+                j.assertBuildStatusSuccess(j.waitForCompletion(wfRuns.get(i)));
+            }
+        } finally {
+            // Complete this bit of ritual even if test run
+            // (e.g. build status assertion) throws above
+            capturingLogger.removeHandler(capturingLogHandler);
         }
 
         LOGGER.info("Check build logs that CME related messages are absent");
@@ -348,6 +374,12 @@ class ConcurrentModificationExceptionTest {
         String stderr = systemErrRule.getLog();
         for (String s: indicatorsCME) {
             assertFalse(stderr.contains(s));
+        }
+
+        LOGGER.info("Check custom Jenkins logger that CME related messages are absent");
+        String capturedLog = capturedLogs.toString();
+        for (String s: indicatorsCME) {
+            assertFalse(capturedLog.contains(s));
         }
 
         LOGGER.info("SUCCESS: Test completed without catching any indicators of ConcurrentModificationException");
