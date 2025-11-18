@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -17,6 +18,8 @@ import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.junit.Rule;
+import org.junit.contrib.java.lang.system.SystemErrRule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -26,6 +29,12 @@ import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 class ConcurrentModificationExceptionTest {
 
     private static final Logger LOGGER = Logger.getLogger(ConcurrentModificationExceptionTest.class.getName());
+
+    // Prepare to capture CME clues in JVM or Jenkins instance logs
+    // (sometimes the problem is reported there, but does not cause
+    // a crash for any of the runs).
+    @Rule
+    public final SystemErrRule systemErrRule = new SystemErrRule().enableLog();
 
     @Test
     void parallelTasksTest(JenkinsRule j) throws Exception {
@@ -184,7 +193,10 @@ class ConcurrentModificationExceptionTest {
      * </pre>
      *
      * This test aims to reproduce the issue, and eventually confirm
-     * a fix and non-regression.
+     * a fix and non-regression.<br/>
+     *
+     * Alas, "reliably catching a non-deterministic race condition"
+     * is maybe an oxymoron in itself, so we try to do our best here.
      *
      * @throws Exception  If test failed
      */
@@ -318,13 +330,26 @@ class ConcurrentModificationExceptionTest {
         }
 
         LOGGER.info("Check build logs that CME related messages are absent");
+        List<String> indicatorsCME = new ArrayList<>();
+        indicatorsCME.add("Failed to serialize");
+        indicatorsCME.add("java.util.ConcurrentModificationException");
+
         for (int i = 0; i < maxRuns; i++) {
             WorkflowRun r = wfRuns.get(i);
-            j.assertLogNotContains("Failed to serialize", r);
-            j.assertLogNotContains("java.util.ConcurrentModificationException", r);
+            for (String s: indicatorsCME) {
+                j.assertLogNotContains(s, r);
+            }
         }
 
         // Not printed if assertion above fails:
-        LOGGER.info("All " + maxRuns + " builds are done successfully");
+        LOGGER.info("All " + maxRuns + " builds are done successfully and did not report CME");
+
+        LOGGER.info("Check JVM stderr that CME related messages are absent");
+        String stderr = systemErrRule.getLog();
+        for (String s: indicatorsCME) {
+            assertFalse(stderr.contains(s));
+        }
+
+        LOGGER.info("SUCCESS: Test completed without catching any indicators of ConcurrentModificationException");
     }
 }
