@@ -311,17 +311,17 @@ class ConcurrentModificationExceptionTest {
         // FIXME: Save state of whole Jenkins config somehow?
         //  Is there more to XStream-able state to save?
         for (int i = 0; i < 10; i++) {
+            LOGGER.info("Trigger Jenkins/LR state save (random interval ~3s +- 50ms)");
+            lrm.save();
+            // Let the timing be out of sync of ~1s sleeps of the pipelines
+            Thread.sleep(2950 + Math.abs(new Random().nextInt(100)));
+        }
+
+        for (int i = 0; i < 10; i++) {
             LOGGER.info("Trigger Jenkins/LR state save (regular interval ~2.1s)");
             lrm.save();
             // Let the timing be out of sync of ~1s sleeps of the pipelines
             Thread.sleep(2139);
-        }
-
-        for (int i = 0; i < 10; i++) {
-            LOGGER.info("Trigger Jenkins/LR state save (random interval ~1.3-4.3s)");
-            lrm.save();
-            // Let the timing be out of sync of ~1s sleeps of the pipelines
-            Thread.sleep(1370 + Math.abs(new Random().nextInt(3000)));
         }
 
         LOGGER.info("Wait for builds to complete");
