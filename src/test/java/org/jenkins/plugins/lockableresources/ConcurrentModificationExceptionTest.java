@@ -191,6 +191,8 @@ class ConcurrentModificationExceptionTest {
     void noCmeWhileSavingXStreamVsLockedResourcesBuildAction(JenkinsRule j) throws Exception {
         // How many parallel stages would we use before saving WorkflowRun
         // state inside the pipeline run, and overall?
+        // The preflood also defines how many lockable resources we use
+        // (half persistent, half ephemeral).
         int preflood = 25, maxflood = 75;
 
         // More workers to increase the chaos in competition for resources
@@ -215,6 +217,11 @@ class ConcurrentModificationExceptionTest {
             }
         }
         LOGGER.info("create extra build agents done");
+
+        LOGGER.info("define " + (preflood / 2) + " persistent lockable resources");
+        for (int i = 1; i <= preflood / 2; i++) {
+            lrm.createResource("lock-" + i);
+        }
 
         LOGGER.info("define " + maxRuns + " test workflows");
         String pipeCode =
