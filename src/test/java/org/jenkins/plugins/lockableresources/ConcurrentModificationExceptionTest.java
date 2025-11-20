@@ -211,7 +211,9 @@ class ConcurrentModificationExceptionTest {
         // (half persistent, half ephemeral).
         int preflood = 25, maxflood = 75;
 
-        // More workers to increase the chaos in competition for resources
+        // More workers to increase the chaos in competition for resources;
+        // this number should exceed maxRuns (agents are dedicated to a job
+        // so they can all run simultaneously and not wait for executors).
         int extraAgents = 16;
 
         // How many jobs run in parallel?
@@ -244,7 +246,8 @@ class ConcurrentModificationExceptionTest {
         LOGGER.info("create extra build agents");
         for (int i = 1; i <= extraAgents; i++) {
             try {
-                j.createSlave("ExtraAgent_" + i, "label label2 extra-agent", null);
+                // Match JOB_NAME like "test1"
+                j.createSlave("ExtraAgent_" + i, "worker-test" + (i % maxRuns), null);
             } catch (Exception error) {
                 LOGGER.warning(error.toString());
             }
@@ -273,7 +276,7 @@ class ConcurrentModificationExceptionTest {
                 // avoid seeing same values at time of GString evaluation
                 "  String iStr = String.valueOf(i)\n" +
                 "  parstages[\"stage-${iStr}\".toString()] = {\n" +
-                "    node() {\n" +
+                "    node(label: 'worker-' + env.JOB_NAME) {\n" +
                 "      lock(\"lock-${iStr}\".toString()) {\n" +
                 "        sleep 1\n" +
                 "      }\n" +
@@ -291,9 +294,9 @@ class ConcurrentModificationExceptionTest {
                 "for (int i = preflood; i < maxflood; i++) {\n" +
                 "  String iStr = String.valueOf(i)\n" +
                 "  String iStrLock = String.valueOf((i % preflood) + 1)\n" +
-                "  String iStrName = \"In parstage ${iStr} for lock ${iStrLock}\".toString()\n" +
+                "  String iStrName = \"Build ${JOB_NAME} #${BUILD_ID} in parstage ${iStr} for lock ${iStrLock}\".toString()\n" +
                 "  parstages[\"stage-${iStr}\".toString()] = {\n" +
-                "    node() {\n" +
+                "    node(label: 'worker-' + env.JOB_NAME) {\n" +
                 "      lock(\"lock-${iStrLock}\".toString()) {\n" +
                 // Changes of currentBuild should cause some saves too
                 // (also badges, SCM steps, etc. - but these would need
