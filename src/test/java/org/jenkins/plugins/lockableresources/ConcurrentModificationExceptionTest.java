@@ -17,6 +17,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
+import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -348,6 +349,8 @@ class ConcurrentModificationExceptionTest {
                 j.waitForMessage("[Pipeline] parallel", wfRuns.get(i));
             }
 
+            Jenkins jenkins = Jenkins.get();
+
             // Trigger Jenkins-wide save activities.
             // Note: job runs also save workflow for good measure
             // FIXME: Save state of whole Jenkins config somehow?
@@ -360,10 +363,13 @@ class ConcurrentModificationExceptionTest {
             }
 
             for (int i = 0; i < 10; i++) {
-                LOGGER.info("Trigger Jenkins/LR state save (regular interval ~2.1s)");
+                LOGGER.info("Trigger LR state save (regular interval ~2.1s)");
                 lrm.save();
                 // Let the timing be out of sync of ~1s sleeps of the pipelines
                 Thread.sleep(2139);
+                LOGGER.info("Trigger Jenkins state save (regular interval ~3s later)");
+                jenkins.save();
+                Thread.sleep(2922);
             }
 
             LOGGER.info("Wait for builds to complete");
