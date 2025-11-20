@@ -350,12 +350,19 @@ class ConcurrentModificationExceptionTest {
 
             LOGGER.info("Wait for builds to complete");
             for (int i = 0; i < maxRuns; i++) {
-                j.assertBuildStatusSuccess(j.waitForCompletion(wfRuns.get(i)));
+                j.waitForCompletion(wfRuns.get(i));
             }
+
+            LOGGER.info("All builds completed; will analyze their status and logs below");
         } finally {
             // Complete this bit of ritual even if test run
             // (e.g. build status assertion) throws above
             capturingLogger.removeHandler(capturingLogHandler);
+        }
+
+        LOGGER.info("Check statuses of completed builds");
+        for (int i = 0; i < maxRuns; i++) {
+            j.assertBuildStatusSuccess(wfRuns.get(i));
         }
 
         LOGGER.info("Check build logs that CME related messages are absent");
