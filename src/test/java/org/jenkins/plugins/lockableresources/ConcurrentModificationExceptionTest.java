@@ -16,27 +16,39 @@ import java.util.TimerTask;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Rule;
-import org.junit.contrib.java.lang.system.SystemErrRule;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
+import uk.org.webcompere.systemstubs.stream.SystemErr;
+import uk.org.webcompere.systemstubs.stream.output.MultiplexOutput;
+import uk.org.webcompere.systemstubs.stream.output.Output;
+import uk.org.webcompere.systemstubs.stream.output.TapStream;
 
+@ExtendWith(SystemStubsExtension.class)
 @WithJenkins
 class ConcurrentModificationExceptionTest {
 
     private static final Logger LOGGER = Logger.getLogger(ConcurrentModificationExceptionTest.class.getName());
 
-    // Prepare to capture CME clues in JVM or Jenkins instance logs
-    // (sometimes the problem is reported there, but does not cause
-    // a crash for any of the runs).
-    @Rule
-    public final SystemErrRule systemErrRule = new SystemErrRule().enableLog();
+    // Prepare to capture CME clues in JVM or Jenkins instance
+    // logs (stderr -- sometimes the problem is reported there,
+    // but does not cause a crash for any of the runs). This
+    // apparently must be a class-wide rule (so it can tap into
+    // the stream before Jenkins starts). For more details,
+    // please see:
+    // * https://github.com/webcompere/system-stubs
+    // * https://www.baeldung.com/java-system-stubs
+    @SystemStub
+    private SystemErr systemErrTap = new SystemErr(new MultiplexOutput(new TapStream(), Output.fromStream(System.err)));
 
     @Test
     void parallelTasksTest(JenkinsRule j) throws Exception {
@@ -318,6 +330,7 @@ class ConcurrentModificationExceptionTest {
                 "parallel parstages\n";
 
         capturingLogger.addHandler(capturingLogHandler);
+
         try {
             for (int i = 0; i < maxRuns; i++) {
                 WorkflowJob p = j.createProject(WorkflowJob.class);
@@ -381,10 +394,14 @@ class ConcurrentModificationExceptionTest {
         // Not printed if assertion above fails:
         LOGGER.info("All " + maxRuns + " builds are done successfully and did not report CME");
 
-        LOGGER.info("Check JVM stderr that CME related messages are absent");
-        String stderr = systemErrRule.getLog();
-        for (String s: indicatorsCME) {
-            assertFalse(stderr.contains(s));
+        String stderrLog = systemErrTap.getText();
+        if (stderrLog != null && !(stderrLog.isBlank())) {
+            LOGGER.info("Check JVM stderr that CME related messages are absent");
+            for (String s : indicatorsCME) {
+                assertFalse(stderrLog.contains(s));
+            }
+        } else {
+            LOGGER.info("We tapped into JVM stderr but this collected nothing");
         }
 
         LOGGER.info("Check custom Jenkins logger that CME related messages are absent");
