@@ -225,6 +225,11 @@ class ConcurrentModificationExceptionTest {
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
+        // Substrings we would seek in logs to say the problem happened:
+        List<String> indicatorsCME = new ArrayList<>();
+        indicatorsCME.add("Failed to serialize");
+        indicatorsCME.add("java.util.ConcurrentModificationException");
+
         // Prepare to capture CME clues in JVM or Jenkins instance logs
         // (sometimes the problem is reported there, but does not cause
         // a crash for any of the runs).
@@ -366,10 +371,6 @@ class ConcurrentModificationExceptionTest {
         }
 
         LOGGER.info("Check build logs that CME related messages are absent");
-        List<String> indicatorsCME = new ArrayList<>();
-        indicatorsCME.add("Failed to serialize");
-        indicatorsCME.add("java.util.ConcurrentModificationException");
-
         for (int i = 0; i < maxRuns; i++) {
             WorkflowRun r = wfRuns.get(i);
             for (String s: indicatorsCME) {
