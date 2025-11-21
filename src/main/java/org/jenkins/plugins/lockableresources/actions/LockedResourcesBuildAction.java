@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-
 import net.jcip.annotations.GuardedBy;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.accmod.Restricted;

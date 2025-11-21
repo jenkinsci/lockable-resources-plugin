@@ -62,7 +62,8 @@
     <spotbugs.threshold>Low</spotbugs.threshold>
     <spotless.check.skip>false</spotless.check.skip>
     <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
-    <system-stubs.version>2.1.8</system-stubs.version>  <!-- FIXME: Get this into parent BOM? -->
+    <system-stubs.version>2.1.8</system-stubs.version>
+    <!-- FIXME: Get this into parent BOM? -->
   </properties>
 
   <dependencyManagement>
@@ -139,13 +140,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <!-- https://www.baeldung.com/java-system-stubs -->
-      <groupId>uk.org.webcompere</groupId>
-      <artifactId>system-stubs-jupiter</artifactId>
-      <version>${system-stubs.version}</version>  <!-- FIXME: Get this into parent BOM? -->
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-support</artifactId>
       <classifier>tests</classifier>
@@ -159,6 +153,14 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- https://www.baeldung.com/java-system-stubs -->
+      <groupId>uk.org.webcompere</groupId>
+      <artifactId>system-stubs-jupiter</artifactId>
+      <version>${system-stubs.version}</version>
+      <!-- FIXME: Get this into parent BOM? -->
       <scope>test</scope>
     </dependency>
   </dependencies>

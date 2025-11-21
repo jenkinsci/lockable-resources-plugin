@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import hudson.Functions;
-
-import java.lang.Math;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.List;
@@ -16,15 +14,14 @@ import java.util.TimerTask;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
@@ -251,13 +248,18 @@ class ConcurrentModificationExceptionTest {
         Handler capturingLogHandler = new Handler() {
             @Override
             public void publish(LogRecord record) {
-              capturedLogs.append(record.getLevel())
-                .append(": ")
-                .append(record.getMessage())
-                .append('\n');
+                capturedLogs
+                        .append(record.getLevel())
+                        .append(": ")
+                        .append(record.getMessage())
+                        .append('\n');
             }
-            @Override public void flush() {}
-            @Override public void close() throws SecurityException {}
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() throws SecurityException {}
         };
 
         // Involve also the lag and race of remote executions
@@ -278,57 +280,62 @@ class ConcurrentModificationExceptionTest {
         }
 
         LOGGER.info("define " + maxRuns + " test workflows");
-        String pipeCode =
-                "import java.lang.Math;\n" +
-                "import java.util.Random;\n" +
+        String pipeCode = "import java.lang.Math;\n" + "import java.util.Random;\n"
+                +
                 // Do not occupy all readers at first, so all our
                 // jobs can get defined and started simultaneously
                 // (avoid them "waiting for available executors")
-                "lock('first') { sleep 3 }\n" +
-                "def parstages = [:]\n" +
+                "lock('first') { sleep 3 }\n"
+                + "def parstages = [:]\n"
+                +
                 // flood with lock actions, including logging about them
-                "def preflood = " + preflood + "\n" +
-                "def maxflood = " + maxflood + "\n" +
-                "for (int i = 1; i < preflood; i++) {\n" +
+                "def preflood = "
+                + preflood + "\n" + "def maxflood = "
+                + maxflood + "\n" + "for (int i = 1; i < preflood; i++) {\n"
+                +
                 // Note that we must use toString() and explicit vars to
                 // avoid seeing same values at time of GString evaluation
-                "  String iStr = String.valueOf(i)\n" +
-                "  parstages[\"stage-${iStr}\".toString()] = {\n" +
-                "    node(label: 'worker-' + env.JOB_NAME) {\n" +
-                "      lock(\"lock-${iStr}\".toString()) {\n" +
-                "        sleep 1\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}\n" +
+                "  String iStr = String.valueOf(i)\n"
+                + "  parstages[\"stage-${iStr}\".toString()] = {\n"
+                + "    node(label: 'worker-' + env.JOB_NAME) {\n"
+                + "      lock(\"lock-${iStr}\".toString()) {\n"
+                + "        sleep 1\n"
+                + "      }\n"
+                + "    }\n"
+                + "  }\n"
+                + "}\n"
+                +
                 // force a save while mutations are happening
-                "parstages['saver'] = {\n" +
-                "  org.jenkinsci.plugins.workflow.job.WorkflowRun r = currentBuild.rawBuild\n" +
-                "  r.save()\n" +
-                "}\n" +
+                "parstages['saver'] = {\n"
+                + "  org.jenkinsci.plugins.workflow.job.WorkflowRun r = currentBuild.rawBuild\n"
+                + "  r.save()\n"
+                + "}\n"
+                +
                 // sandwiching makes it more likely to get the race condition
                 // as someone works with locks while XStream kicks in
                 // Also make it actually wait for some (ephemeral) locks
-                "for (int i = preflood; i < maxflood; i++) {\n" +
-                "  String iStr = String.valueOf(i)\n" +
-                "  String iStrLock = String.valueOf((i % preflood) + 1)\n" +
-                "  String iStrName = \"Build ${JOB_NAME} #${BUILD_ID} in parstage ${iStr} for lock ${iStrLock}\".toString()\n" +
-                "  parstages[\"stage-${iStr}\".toString()] = {\n" +
-                "    node(label: 'worker-' + env.JOB_NAME) {\n" +
-                "      lock(\"lock-${iStrLock}\".toString()) {\n" +
+                "for (int i = preflood; i < maxflood; i++) {\n"
+                + "  String iStr = String.valueOf(i)\n"
+                + "  String iStrLock = String.valueOf((i % preflood) + 1)\n"
+                + "  String iStrName = \"Build ${JOB_NAME} #${BUILD_ID} in parstage ${iStr} for lock ${iStrLock}\".toString()\n"
+                + "  parstages[\"stage-${iStr}\".toString()] = {\n"
+                + "    node(label: 'worker-' + env.JOB_NAME) {\n"
+                + "      lock(\"lock-${iStrLock}\".toString()) {\n"
+                +
                 // Changes of currentBuild should cause some saves too
                 // (also badges, SCM steps, etc. - but these would need
                 // more plugins as dependencies just for the tests):
-                "        echo \"Set currentBuild.displayName = '${iStrName}'\"\n" +
-                "        currentBuild.displayName = iStrName\n" +
+                "        echo \"Set currentBuild.displayName = '${iStrName}'\"\n"
+                + "        currentBuild.displayName = iStrName\n"
+                +
                 // Randomize which job/lock combo waits for which,
                 // so we do not have all builds sequentially completing:
-                "        sleep (time: 500 + Math.abs(new Random().nextInt(1000)), unit: 'MILLISECONDS')\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                "}\n" +
-                "parallel parstages\n";
+                "        sleep (time: 500 + Math.abs(new Random().nextInt(1000)), unit: 'MILLISECONDS')\n"
+                + "      }\n"
+                + "    }\n"
+                + "  }\n"
+                + "}\n"
+                + "parallel parstages\n";
 
         capturingLogger.addHandler(capturingLogHandler);
 
@@ -392,7 +399,7 @@ class ConcurrentModificationExceptionTest {
         LOGGER.info("Check build logs that CME related messages are absent");
         for (int i = 0; i < maxRuns; i++) {
             WorkflowRun r = wfRuns.get(i);
-            for (String s: indicatorsCME) {
+            for (String s : indicatorsCME) {
                 j.assertLogNotContains(s, r);
             }
         }
@@ -412,7 +419,7 @@ class ConcurrentModificationExceptionTest {
 
         LOGGER.info("Check custom Jenkins logger that CME related messages are absent");
         String capturedLog = capturedLogs.toString();
-        for (String s: indicatorsCME) {
+        for (String s : indicatorsCME) {
             assertFalse(capturedLog.contains(s));
         }
 
