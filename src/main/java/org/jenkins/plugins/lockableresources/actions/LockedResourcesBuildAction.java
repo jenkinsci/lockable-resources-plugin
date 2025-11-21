@@ -20,13 +20,11 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
-    @GuardedBy("syncLogs")
+    @GuardedBy("logs")
     private final List<LogEntry> logs = new ArrayList<>();
-    private final transient Object syncLogs = new Object();
 
-    @GuardedBy("syncResourcesInUse")
+    @GuardedBy("resourcesInUse")
     private final List<String> resourcesInUse = new ArrayList<>();
-    private final transient Object syncResourcesInUse = new Object();
 
     public LockedResourcesBuildAction() {}
 
@@ -53,13 +51,13 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addUsedResources(List<String> resourceNames) {
-        synchronized (syncResourcesInUse) {
+        synchronized (this.resourcesInUse) {
             resourcesInUse.addAll(resourceNames);
         }
     }
 
     public void removeUsedResources(List<String> resourceNames) {
-        synchronized (syncResourcesInUse) {
+        synchronized (this.resourcesInUse) {
             resourcesInUse.removeAll(resourceNames);
         }
     }
@@ -100,21 +98,21 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addLog(final String resourceName, final String step, final String action) {
-        synchronized (this.syncLogs) {
+        synchronized (this.logs) {
             this.logs.add(new LogEntry(step, action, resourceName));
         }
     }
 
     @Restricted(NoExternalUse.class)
     public List<LogEntry> getReadOnlyLogs() {
-        synchronized (this.syncLogs) {
+        synchronized (this.logs) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.logs));
         }
     }
 
     @Restricted(NoExternalUse.class)
     public List<String> getReadOnlyResourcesInUse() {
-        synchronized (syncResourcesInUse) {
+        synchronized (this.resourcesInUse) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.resourcesInUse));
         }
     }
