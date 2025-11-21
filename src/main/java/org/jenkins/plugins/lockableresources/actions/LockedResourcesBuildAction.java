@@ -94,15 +94,14 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addLog(final String resourceName, final String step, final String action) {
-
-        synchronized (this.logs) {
+        synchronized (this.syncLogs) {
             this.logs.add(new LogEntry(step, action, resourceName));
         }
     }
 
     @Restricted(NoExternalUse.class)
     public List<LogEntry> getReadOnlyLogs() {
-        synchronized (this.logs) {
+        synchronized (this.syncLogs) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.logs));
         }
     }
