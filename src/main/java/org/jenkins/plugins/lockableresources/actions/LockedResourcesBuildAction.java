@@ -21,6 +21,7 @@ public class LockedResourcesBuildAction implements Action {
     private final List<LogEntry> logs = new ArrayList<>();
     private final transient Object syncLogs = new Object();
     private final List<String> resourcesInUse = new ArrayList<>();
+    private final transient Object syncResourcesInUse = new Object();
 
     public LockedResourcesBuildAction() {}
 
@@ -47,13 +48,13 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addUsedResources(List<String> resourceNames) {
-        synchronized (resourcesInUse) {
+        synchronized (syncResourcesInUse) {
             resourcesInUse.addAll(resourceNames);
         }
     }
 
     public void removeUsedResources(List<String> resourceNames) {
-        synchronized (resourcesInUse) {
+        synchronized (syncResourcesInUse) {
             resourcesInUse.removeAll(resourceNames);
         }
     }
