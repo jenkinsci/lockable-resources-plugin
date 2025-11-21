@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+
+import net.jcip.annotations.GuardedBy;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -18,8 +20,11 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
+    @GuardedBy("syncLogs")
     private final List<LogEntry> logs = new ArrayList<>();
     private final transient Object syncLogs = new Object();
+
+    @GuardedBy("syncResourcesInUse")
     private final List<String> resourcesInUse = new ArrayList<>();
     private final transient Object syncResourcesInUse = new Object();
 
@@ -104,6 +109,32 @@ public class LockedResourcesBuildAction implements Action {
     public List<LogEntry> getReadOnlyLogs() {
         synchronized (this.syncLogs) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.logs));
+        }
+    }
+
+    @Restricted(NoExternalUse.class)
+    public List<String> getReadOnlyResourcesInUse() {
+        synchronized (syncResourcesInUse) {
+            return new ArrayList<>(Collections.unmodifiableCollection(this.resourcesInUse));
+        }
+    }
+
+    /**
+     * Ensure iteration during XStream marshalling is also synchronized.<br/>
+     *
+     * The recommended approach is to copy-on-write the properties so a
+     * snapshot can always be scraped consistently. But this can be costly
+     * at run-time, so we use the next-best option: produce a consistent
+     * replica of the current object for actual saving only on demand.<br/>
+     *
+     * This method is found by XStream via reflection.
+     */
+    protected synchronized Object writeReplace() {
+        synchronized (this) {
+            LockedResourcesBuildAction toSave = new LockedResourcesBuildAction();
+            toSave.logs.addAll(this.getReadOnlyLogs());
+            toSave.resourcesInUse.addAll(this.getReadOnlyResourcesInUse());
+            return toSave;
         }
     }
 
