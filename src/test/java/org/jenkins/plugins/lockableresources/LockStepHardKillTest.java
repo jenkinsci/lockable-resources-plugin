@@ -62,13 +62,11 @@ class LockStepHardKillTest extends LockStepTestBase {
         // Now b2 is still sitting waiting for a lock. Create b3 and launch it to clear the
         // lock.
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
-        p3.setDefinition(new CpsFlowDefinition(
-                """
+        p3.setDefinition(new CpsFlowDefinition("""
                 lock('resource1') {
                   echo 'JOB 3 inside'
                 }
-                echo 'JOB 3 unblocked'""",
-                true));
+                echo 'JOB 3 unblocked'""", true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
 
         // Make sure that b3 is also blocked still on b1's lock.

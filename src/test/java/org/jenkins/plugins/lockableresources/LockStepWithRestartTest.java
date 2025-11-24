@@ -28,13 +28,11 @@ class LockStepWithRestartTest extends LockStepTestBase {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
+            p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                       semaphore 'wait-inside-lockOrderRestart'
                     }
-                    echo 'Finish'""",
-                    true));
+                    echo 'Finish'""", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("wait-inside-lockOrderRestart/1", b1);
             WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -77,13 +75,11 @@ class LockStepWithRestartTest extends LockStepTestBase {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
+            p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                       semaphore 'wait-inside-interoperabilityOnRestart'
                     }
-                    echo 'Finish'""",
-                    true));
+                    echo 'Finish'""", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("wait-inside-interoperabilityOnRestart/1", b1);
             isPaused(b1, 1, 0);
@@ -127,13 +123,11 @@ class LockStepWithRestartTest extends LockStepTestBase {
             manager.reserve(Collections.singletonList(manager.fromName("resource1")), "user");
 
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
+            p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                       echo 'inside'
                     }
-                    echo 'Finish'""",
-                    true));
+                    echo 'Finish'""", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
             j.waitForMessage("The resource [resource1] is reserved by user", b1);
             isPaused(b1, 1, 1);
