@@ -34,13 +34,11 @@ class InteroperabilityTest extends LockStepTestBase {
         final Semaphore semaphore = new Semaphore(1);
         LockableResourcesManager.get().createResource("resource1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                         echo 'Locked'
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
 
         FreeStyleProject f = j.createFreeStyleProject("f");
         f.addProperty(new RequiredResourcesProperty("resource1", null, null, null, null));

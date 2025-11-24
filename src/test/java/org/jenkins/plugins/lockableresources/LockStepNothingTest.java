@@ -26,15 +26,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingNotAllowed() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock() {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         LockableResourcesManager lrm = LockableResourcesManager.get();
         lrm.setAllowEmptyOrNullValues(false);
 
@@ -46,8 +44,7 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothing() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock() {
                         echo 'Nothing locked.'
@@ -61,8 +58,7 @@ class LockStepNothingTest extends LockStepTestBase {
                         echo 'Nothing locked. tmp2 variable is empty.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
@@ -76,15 +72,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingOnEmptyLabel() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock(label:'') {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
@@ -96,15 +90,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingNullLabel() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock(label:null) {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
@@ -116,15 +108,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingOnEmptyResource() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock(resource: '') {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
@@ -136,15 +126,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingOnNullResource() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock(resource: null) {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
@@ -156,15 +144,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingOnEmptyExtra() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock(extra: []) {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
@@ -176,15 +162,13 @@ class LockStepNothingTest extends LockStepTestBase {
     @Test
     void lockNothingOnNullExtra() throws Exception {
         WorkflowJob p = jenkinsRule.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                     timeout(time: 10, unit: 'SECONDS'){
                       lock(extra: null) {
                         echo 'Nothing locked.'
                       }
                     }
-                    echo 'Finish'""",
-                true));
+                    echo 'Finish'""", true));
         WorkflowRun b1 = Objects.requireNonNull(p.scheduleBuild2(0)).waitForStart();
         jenkinsRule.assertBuildStatus(Result.SUCCESS, jenkinsRule.waitForCompletion(b1));
         jenkinsRule.assertLogContains("Trying to acquire lock on [nothing]", b1);
