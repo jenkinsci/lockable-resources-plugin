@@ -22,6 +22,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
@@ -214,6 +215,7 @@ class ConcurrentModificationExceptionTest {
      */
     @Test
     @Timeout(900)
+    @Issue("JENKINS-76294")
     void noCmeWhileSavingXStreamVsLockedResourcesBuildAction(JenkinsRule j) throws Exception {
         // How many parallel stages would we use before saving WorkflowRun
         // state inside the pipeline run, and overall?
@@ -360,8 +362,6 @@ class ConcurrentModificationExceptionTest {
 
             // Trigger Jenkins-wide save activities.
             // Note: job runs also save workflow for good measure
-            // FIXME: Save state of whole Jenkins config somehow?
-            //  Is there more to XStream-able state to save?
             for (int i = 0; i < 10; i++) {
                 LOGGER.info("Trigger Jenkins/LR state save (random interval ~3s +- 50ms)");
                 lrm.save();
@@ -369,6 +369,8 @@ class ConcurrentModificationExceptionTest {
                 Thread.sleep(2950 + Math.abs(new Random().nextInt(100)));
             }
 
+            // Also save state of whole Jenkins config somehow.
+            // TOTHINK: Is there more to XStream-able state to save?
             for (int i = 0; i < 10; i++) {
                 LOGGER.info("Trigger LR state save (regular interval ~2.1s)");
                 lrm.save();
