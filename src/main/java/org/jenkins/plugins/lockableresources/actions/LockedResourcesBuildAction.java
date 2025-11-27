@@ -116,6 +116,15 @@ public class LockedResourcesBuildAction implements Action {
         }
     }
 
+    /** Copy constructor, primarily for {@link #writeReplace} */
+    private LockedResourcesBuildAction(LockedResourcesBuildAction other) {
+        synchronized (other.logs) {
+            synchronized (other.resourcesInUse) {
+                this.logs.addAll(other.getReadOnlyLogs());
+                this.resourcesInUse.addAll(other.getReadOnlyResourcesInUse());
+            }
+        }
+    }
     /**
      * Ensure iteration during XStream marshalling is also synchronized,
      * otherwise we tend to get {@link java.util.ConcurrentModificationException}.<br/>
@@ -128,12 +137,7 @@ public class LockedResourcesBuildAction implements Action {
      * This method is found by XStream via reflection.<br/>
      */
     protected synchronized Object writeReplace() {
-        synchronized (this) {
-            LockedResourcesBuildAction toSave = new LockedResourcesBuildAction();
-            toSave.logs.addAll(this.getReadOnlyLogs());
-            toSave.resourcesInUse.addAll(this.getReadOnlyResourcesInUse());
-            return toSave;
-        }
+        return new LockedResourcesBuildAction(this);
     }
 
     public static class LogEntry {
