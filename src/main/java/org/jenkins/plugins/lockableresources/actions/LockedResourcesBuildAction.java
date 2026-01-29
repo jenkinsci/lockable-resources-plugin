@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import net.jcip.annotations.GuardedBy;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -18,8 +19,10 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
+    @GuardedBy("logs")
     private final List<LogEntry> logs = new ArrayList<>();
-    private final transient Object syncLogs = new Object();
+
+    @GuardedBy("resourcesInUse")
     private final List<String> resourcesInUse = new ArrayList<>();
 
     public LockedResourcesBuildAction() {}
@@ -47,13 +50,13 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addUsedResources(List<String> resourceNames) {
-        synchronized (resourcesInUse) {
+        synchronized (this.resourcesInUse) {
             resourcesInUse.addAll(resourceNames);
         }
     }
 
     public void removeUsedResources(List<String> resourceNames) {
-        synchronized (resourcesInUse) {
+        synchronized (this.resourcesInUse) {
             resourcesInUse.removeAll(resourceNames);
         }
     }
@@ -94,7 +97,6 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addLog(final String resourceName, final String step, final String action) {
-
         synchronized (this.logs) {
             this.logs.add(new LogEntry(step, action, resourceName));
         }
@@ -105,6 +107,37 @@ public class LockedResourcesBuildAction implements Action {
         synchronized (this.logs) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.logs));
         }
+    }
+
+    @Restricted(NoExternalUse.class)
+    public List<String> getReadOnlyResourcesInUse() {
+        synchronized (this.resourcesInUse) {
+            return new ArrayList<>(Collections.unmodifiableCollection(this.resourcesInUse));
+        }
+    }
+
+    /** Copy constructor, primarily for {@link #writeReplace} */
+    private LockedResourcesBuildAction(LockedResourcesBuildAction other) {
+        synchronized (other.logs) {
+            synchronized (other.resourcesInUse) {
+                this.logs.addAll(other.getReadOnlyLogs());
+                this.resourcesInUse.addAll(other.getReadOnlyResourcesInUse());
+            }
+        }
+    }
+    /**
+     * Ensure iteration during XStream marshalling is also synchronized,
+     * otherwise we tend to get {@link java.util.ConcurrentModificationException}.<br/>
+     *
+     * The recommended approach is to copy-on-write the properties so a
+     * snapshot can always be scraped consistently. But this can be costly
+     * at run-time, so we use the next-best option: produce a consistent
+     * replica of the current object for actual saving only on demand.<br/>
+     *
+     * This method is found by XStream via reflection.<br/>
+     */
+    protected synchronized Object writeReplace() {
+        return new LockedResourcesBuildAction(this);
     }
 
     public static class LogEntry {
