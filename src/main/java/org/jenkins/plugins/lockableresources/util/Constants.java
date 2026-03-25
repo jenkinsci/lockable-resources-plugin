@@ -16,8 +16,7 @@ public class Constants {
     public static final String SYSTEM_PROPERTY_PRINT_QUEUE_INFO =
             "org.jenkins.plugins.lockableresources.PRINT_QUEUE_INFO";
     /// Enable asynchronous save to reduce syncResources lock hold time.
-    public static final String SYSTEM_PROPERTY_ASYNC_SAVE =
-            "org.jenkins.plugins.lockableresources.ASYNC_SAVE";
+    public static final String SYSTEM_PROPERTY_ASYNC_SAVE = "org.jenkins.plugins.lockableresources.ASYNC_SAVE";
     /// Coalesce window (ms) for async saves — rapid state changes within this window are batched.
     public static final String SYSTEM_PROPERTY_SAVE_COALESCE_MS =
             "org.jenkins.plugins.lockableresources.SAVE_COALESCE_MS";
