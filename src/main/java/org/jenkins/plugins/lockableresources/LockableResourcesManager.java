@@ -33,7 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -78,6 +81,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
             SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, 2);
     private static final int enabledCausesCount =
             SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_QUEUE_INFO, 2);
+
+    private static final boolean asyncSaveEnabled =
+            SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_ASYNC_SAVE, true);
+    private static final long saveCoalesceMs =
+            SystemProperties.getLong(Constants.SYSTEM_PROPERTY_SAVE_COALESCE_MS, 1000L);
+
+    private transient volatile AtomicBoolean savePending;
+    private transient volatile ScheduledExecutorService saveExecutor;
 
     @DataBoundSetter
     public void setAllowEmptyOrNullValues(boolean allowEmptyOrNullValues) {
@@ -494,6 +505,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Map<String, Object> params,
             Logger log)
             throws ExecutionException {
+
+        final SecureGroovyScript systemGroovyScript;
+        try {
+            systemGroovyScript = requiredResources.getResourceMatchScript();
+        } catch (Descriptor.FormException x) {
+            throw new ExecutionException(x);
+        }
+        boolean candidatesByScript = (systemGroovyScript != null);
+
+        // Resolve candidates outside syncResources when possible — label matching
+        // and Groovy script evaluation are heavyweight and should not extend the
+        // critical section.
+        List<LockableResource> candidates = null;
+        if (candidatesByScript || (requiredResources.label != null && !requiredResources.label.isEmpty())) {
+            candidates = cachedCandidates.getIfPresent(queueItemId);
+            if (candidates == null) {
+                candidates = (systemGroovyScript == null)
+                        ? getResourcesWithLabel(requiredResources.label)
+                        : getResourcesMatchingScript(systemGroovyScript, params);
+                cachedCandidates.put(queueItemId, candidates);
+            }
+        }
+
         List<LockableResource> selected = new ArrayList<>();
         synchronized (syncResources) {
             if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
@@ -505,26 +539,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 return null;
             }
 
-            final SecureGroovyScript systemGroovyScript;
-            try {
-                systemGroovyScript = requiredResources.getResourceMatchScript();
-            } catch (Descriptor.FormException x) {
-                throw new ExecutionException(x);
-            }
-            boolean candidatesByScript = (systemGroovyScript != null);
-            List<LockableResource> candidates = requiredResources.required; // default candidates
-
-            if (candidatesByScript || (requiredResources.label != null && !requiredResources.label.isEmpty())) {
-
-                candidates = cachedCandidates.getIfPresent(queueItemId);
-                if (candidates != null) {
-                    candidates.retainAll(this.resources);
-                } else {
-                    candidates = (systemGroovyScript == null)
-                            ? getResourcesWithLabel(requiredResources.label)
-                            : getResourcesMatchingScript(systemGroovyScript, params);
-                    cachedCandidates.put(queueItemId, candidates);
-                }
+            if (candidates != null) {
+                candidates.retainAll(this.resources);
+            } else {
+                candidates = requiredResources.required;
             }
 
             for (LockableResource rs : candidates) {
@@ -723,6 +741,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             save();
         }
+        scheduleQueueMaintenance();
     }
 
     private boolean proceedNextContext() {
@@ -1007,6 +1026,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             save();
         }
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------
@@ -1025,6 +1045,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             save();
         }
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------
@@ -1392,6 +1413,52 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /**
+     * Trigger an immediate Queue re-evaluation so items waiting for lockable
+     * resources are dispatched as soon as resources become available, instead of
+     * waiting for the next 5-second timer tick.
+     * <p>
+     * Must be called <b>outside</b> {@code synchronized(syncResources)} to avoid
+     * holding the plugin lock while Jenkins acquires the Queue lock.
+     */
+    public static void scheduleQueueMaintenance() {
+        Jenkins j = Jenkins.getInstanceOrNull();
+        if (j != null) {
+            j.getQueue().scheduleMaintenance();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    private AtomicBoolean getSavePending() {
+        AtomicBoolean sp = savePending;
+        if (sp == null) {
+            synchronized (this) {
+                sp = savePending;
+                if (sp == null) {
+                    savePending = sp = new AtomicBoolean(false);
+                }
+            }
+        }
+        return sp;
+    }
+
+    private ScheduledExecutorService getSaveExecutor() {
+        ScheduledExecutorService se = saveExecutor;
+        if (se == null) {
+            synchronized (this) {
+                se = saveExecutor;
+                if (se == null) {
+                    saveExecutor = se = Executors.newSingleThreadScheduledExecutor(r -> {
+                        Thread t = new Thread(r, "lockable-resources-async-save");
+                        t.setDaemon(true);
+                        return t;
+                    });
+                }
+            }
+        }
+        return se;
+    }
+
     @Override
     public void save() {
         if (enableSave == -1) {
@@ -1401,9 +1468,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (enableSave == 0) return; // saving is disabled
 
-        synchronized (syncResources) {
-            if (BulkChange.contains(this)) return;
+        if (BulkChange.contains(this)) return;
 
+        if (asyncSaveEnabled && saveCoalesceMs > 0) {
+            if (getSavePending().compareAndSet(false, true)) {
+                getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
+            }
+        } else {
+            doSave();
+        }
+    }
+
+    private void doSave() {
+        getSavePending().set(false);
+        synchronized (syncResources) {
             try {
                 getConfigFile().write(this);
             } catch (IOException e) {
