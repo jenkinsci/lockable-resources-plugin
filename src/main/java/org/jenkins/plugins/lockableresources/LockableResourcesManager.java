@@ -17,6 +17,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
+import hudson.init.Terminator;
 import hudson.console.ModelHyperlinkNote;
 import hudson.model.Descriptor;
 import hudson.model.Run;
@@ -459,6 +460,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * cache, and may be considered busy in queuing for some time afterward.
      */
     public boolean uncacheIfFreeing(LockableResource candidate, boolean unlocking, boolean unreserving) {
+        if (candidate == null) return false;
         if (candidate.isLocked() && !unlocking) return false;
 
         // "stolen" state helps track that a resource is currently not
@@ -1487,6 +1489,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
             } catch (IOException e) {
                 LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
             }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Flush any pending async save during Jenkins shutdown so that lock state
+     * is never lost on an orderly restart.
+     */
+    @Terminator
+    public static void flushPendingSave() {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        ScheduledExecutorService se = lrm.saveExecutor;
+        if (se != null) {
+            se.shutdownNow();
+        }
+        if (lrm.savePending != null && lrm.savePending.compareAndSet(true, false)) {
+            lrm.doSave();
+            LOGGER.fine("Flushed pending async save during shutdown");
         }
     }
 
