@@ -145,20 +145,24 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
         assertThrows(AccessDeniedException.class, () -> action.doReassign(req, rsp));
         assertEquals(this.reserve_user1.getId(), resource.getReservedBy(), "reserved by user");
+        assertNotNull(resource.getReservedTimestamp());
 
         // switch to admin and try to reassign
         SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
         action.doReassign(req, rsp);
         assertEquals(this.admin.getId(), resource.getReservedBy(), "reserved by admin");
+        assertNotNull(resource.getReservedTimestamp());
 
         // try to steal reservation
         SecurityContextHolder.getContext().setAuthentication(this.steal_user.impersonate2());
         action.doReassign(req, rsp);
         assertEquals(this.steal_user.getId(), resource.getReservedBy(), "reserved by steal user");
+        assertNotNull(resource.getReservedTimestamp());
 
         // do reassign your self, makes no sense, but the application shall not crashed
         action.doReassign(req, rsp);
         assertEquals(this.steal_user.getId(), resource.getReservedBy(), "reserved by steal user");
+        assertNotNull(resource.getReservedTimestamp());
 
         // defensive tests
         when(req.getParameter("resource")).thenReturn("this-one-does-not-exists");
@@ -395,13 +399,11 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         // start few jobs to simulate queue
         action.doReserve(req, rsp);
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
             lock('resource1') {
                 echo('I am inside')
             }
-            """,
-                true));
+            """, true));
 
         WorkflowRun r1 = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r1);

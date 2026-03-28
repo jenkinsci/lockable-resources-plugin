@@ -36,12 +36,12 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
-import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -398,7 +398,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     @Restricted(NoExternalUse.class) // called by jelly
     public boolean isReservedByCurrentUser() {
-        return (this.reservedBy != null && StringUtils.equals(getUserName(), this.reservedBy));
+        return (this.reservedBy != null && Objects.equals(getUserName(), this.reservedBy));
     }
 
     @Exported
