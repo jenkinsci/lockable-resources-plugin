@@ -201,8 +201,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 }
                 if (wrongNames.isEmpty()) {
                     if (VARIABLE_PATTERN.matcher(names).find()) {
-                        return FormValidation.warning(
-                                Messages.warning_resourceNameContainsVariable());
+                        return FormValidation.warning(Messages.warning_resourceNameContainsVariable());
                     }
                     return FormValidation.ok();
                 } else {
