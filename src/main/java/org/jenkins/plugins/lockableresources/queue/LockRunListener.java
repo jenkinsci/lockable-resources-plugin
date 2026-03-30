@@ -17,6 +17,7 @@ import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -52,7 +53,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
                 EnvVars buildEnv;
                 try {
                     buildEnv = abstractBuild.getEnvironment(listener);
-                } catch (Exception e) {
+                } catch (IOException | InterruptedException e) {
                     buildEnv = new EnvVars();
                 }
 

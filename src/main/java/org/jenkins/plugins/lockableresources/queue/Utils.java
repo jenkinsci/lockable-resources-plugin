@@ -87,20 +87,16 @@ public final class Utils {
     @NonNull
     public static EnvVars getParametersAsEnvVars(@NonNull Queue.Item item) {
         EnvVars env = new EnvVars();
-        try {
-            List<ParametersAction> paramActions = item.getActions(ParametersAction.class);
-            for (ParametersAction action : paramActions) {
-                if (action == null) continue;
-                for (ParameterValue p : action.getParameters()) {
-                    if (p == null) continue;
-                    Object value = p.getValue();
-                    if (value != null) {
-                        env.put(p.getName(), value.toString());
-                    }
+        List<ParametersAction> paramActions = item.getActions(ParametersAction.class);
+        for (ParametersAction action : paramActions) {
+            if (action == null) continue;
+            for (ParameterValue p : action.getParameters()) {
+                if (p == null) continue;
+                Object value = p.getValue();
+                if (value != null) {
+                    env.put(p.getName(), value.toString());
                 }
             }
-        } catch (Exception ex) {
-            // Not all queue items carry parameters — ignore silently
         }
         return env;
     }
