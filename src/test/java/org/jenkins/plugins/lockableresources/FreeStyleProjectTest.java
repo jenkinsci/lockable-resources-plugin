@@ -15,8 +15,10 @@ import hudson.model.BuildListener;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Item;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.Result;
+import hudson.model.StringParameterDefinition;
 import hudson.model.User;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.triggers.TimerTrigger;
@@ -265,6 +267,71 @@ class FreeStyleProjectTest {
         j.waitForCompletion(fb1);
         j.waitForMessage("acquired lock on [resource2, shared]", fb2);
         j.waitForCompletion(fb2);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Parameterized resource tests (build parameters as resource / label / number)
+    // ---------------------------------------------------------------------------
+
+    @Test
+    void parameterizedResourceName(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResource("my-resource");
+
+        FreeStyleProject p = j.createFreeStyleProject("paramResourceName");
+        p.addProperty(new RequiredResourcesProperty("${RESOURCE_NAME}", "resourceNameVar", null, null, null));
+        p.addProperty(new ParametersDefinitionProperty(
+                new StringParameterDefinition("RESOURCE_NAME", "my-resource", "Resource to lock")));
+        p.getBuildersList().add(new PrinterBuilder());
+
+        FreeStyleBuild b = p.scheduleBuild2(0).get();
+        j.assertLogContains("acquired lock on [my-resource]", b);
+        j.assertLogContains("resourceNameVar: my-resource", b);
+        j.assertBuildStatus(Result.SUCCESS, b);
+    }
+
+    @Test
+    void parameterizedLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("res1", "team-alpha");
+        LockableResourcesManager.get().createResourceWithLabel("res2", "team-alpha");
+
+        FreeStyleProject p = j.createFreeStyleProject("paramLabel");
+        p.addProperty(new RequiredResourcesProperty(null, "resourceNameVar", "1", "${LABEL}", null));
+        p.addProperty(new ParametersDefinitionProperty(
+                new StringParameterDefinition("LABEL", "team-alpha", "Label to use")));
+
+        FreeStyleBuild b = p.scheduleBuild2(0).get();
+        j.assertLogContains("acquired lock on", b);
+        j.assertBuildStatus(Result.SUCCESS, b);
+    }
+
+    @Test
+    void parameterizedResourceNumber(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("pool1", "pool");
+        LockableResourcesManager.get().createResourceWithLabel("pool2", "pool");
+        LockableResourcesManager.get().createResourceWithLabel("pool3", "pool");
+
+        FreeStyleProject p = j.createFreeStyleProject("paramNumber");
+        p.addProperty(new RequiredResourcesProperty(null, "resourceNameVar", "${COUNT}", "pool", null));
+        p.addProperty(new ParametersDefinitionProperty(
+                new StringParameterDefinition("COUNT", "2", "How many resources")));
+
+        FreeStyleBuild b = p.scheduleBuild2(0).get();
+        j.assertLogContains("acquired lock on", b);
+        j.assertBuildStatus(Result.SUCCESS, b);
+
+        // Verify exactly 2 resources were locked via the variable
+        String log = b.getLog();
+        String varLine = null;
+        for (String line : log.split("\n")) {
+            if (line.contains("acquired lock on")) {
+                varLine = line;
+                break;
+            }
+        }
+        assertNotNull(varLine, "Expected 'acquired lock on' in build log");
+        // Count resource names in the log line (comma-separated inside brackets)
+        long count = varLine.chars().filter(ch -> ch == ',').count() + 1;
+        assertEquals(2, count, "Expected exactly 2 resources to be locked");
     }
 
     public static class PrinterBuilder extends TestBuilder {
