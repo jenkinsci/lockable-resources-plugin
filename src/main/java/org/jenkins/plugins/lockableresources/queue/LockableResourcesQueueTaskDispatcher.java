@@ -11,6 +11,7 @@ package org.jenkins.plugins.lockableresources.queue;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.Job;
@@ -51,7 +52,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         Job<?, ?> project = Utils.getProject(item);
         if (project == null) return null;
 
-        LockableResourcesStruct resources = Utils.requiredResources(project);
+        // Extract build parameters so that ${PARAM} references in resource
+        // names, labels, and numbers are expanded before scheduling.
+        EnvVars paramEnv = Utils.getParametersAsEnvVars(item);
+        LockableResourcesStruct resources = Utils.requiredResources(project, paramEnv);
         if (resources == null
                 || (resources.required.isEmpty()
                         && resources.label.isEmpty()
