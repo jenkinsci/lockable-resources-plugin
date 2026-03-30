@@ -296,8 +296,8 @@ class FreeStyleProjectTest {
 
         FreeStyleProject p = j.createFreeStyleProject("paramLabel");
         p.addProperty(new RequiredResourcesProperty(null, "resourceNameVar", "1", "${LABEL}", null));
-        p.addProperty(new ParametersDefinitionProperty(
-                new StringParameterDefinition("LABEL", "team-alpha", "Label to use")));
+        p.addProperty(
+                new ParametersDefinitionProperty(new StringParameterDefinition("LABEL", "team-alpha", "Label to use")));
 
         FreeStyleBuild b = p.scheduleBuild2(0).get();
         j.assertLogContains("acquired lock on", b);
@@ -312,8 +312,8 @@ class FreeStyleProjectTest {
 
         FreeStyleProject p = j.createFreeStyleProject("paramNumber");
         p.addProperty(new RequiredResourcesProperty(null, "resourceNameVar", "${COUNT}", "pool", null));
-        p.addProperty(new ParametersDefinitionProperty(
-                new StringParameterDefinition("COUNT", "2", "How many resources")));
+        p.addProperty(
+                new ParametersDefinitionProperty(new StringParameterDefinition("COUNT", "2", "How many resources")));
 
         FreeStyleBuild b = p.scheduleBuild2(0).get();
         j.assertLogContains("acquired lock on", b);
