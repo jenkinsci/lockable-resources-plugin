@@ -22,6 +22,7 @@ import hudson.model.JobPropertyDescriptor;
 import hudson.util.FormValidation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
@@ -149,6 +150,9 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     @Extension
     public static class DescriptorImpl extends JobPropertyDescriptor {
 
+        /** Detects {@code ${...}} variable references that are resolved at build time. */
+        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{[^}]+}");
+
         @NonNull
         @Override
         public String getDisplayName() {
@@ -188,10 +192,17 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             } else {
                 List<String> wrongNames = new ArrayList<>();
                 for (String name : names.split("\\s+")) {
+                    // Skip validation for names containing build-parameter references
+                    if (VARIABLE_PATTERN.matcher(name).find()) {
+                        continue;
+                    }
                     boolean found = LockableResourcesManager.get().resourceExist(name);
                     if (!found) wrongNames.add(name);
                 }
                 if (wrongNames.isEmpty()) {
+                    if (VARIABLE_PATTERN.matcher(names).find()) {
+                        return FormValidation.warning(Messages.warning_resourceNameContainsVariable());
+                    }
                     return FormValidation.ok();
                 } else {
                     return FormValidation.error(Messages.error_resourceDoesNotExist(wrongNames));
@@ -216,6 +227,10 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             } else if (names != null || script) {
                 return FormValidation.error(Messages.error_labelAndNameOrGroovySpecified());
             } else {
+                // Skip label validation when it contains build-parameter references
+                if (VARIABLE_PATTERN.matcher(label).find()) {
+                    return FormValidation.warning(Messages.warning_labelContainsVariable());
+                }
                 if (LockableResourcesManager.get().isValidLabel(label)) {
                     return FormValidation.ok();
                 } else {
@@ -241,6 +256,11 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
             if (number == null || number.isEmpty() || number.trim().equals("0")) {
                 return FormValidation.ok();
+            }
+
+            // Skip numeric validation when number contains build-parameter references
+            if (VARIABLE_PATTERN.matcher(number).find()) {
+                return FormValidation.warning(Messages.warning_resourceNumberContainsVariable());
             }
 
             int numAsInt;
