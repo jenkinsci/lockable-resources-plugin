@@ -1,4 +1,10 @@
 # .github/labeler.yml — actions/labeler v5 schema
+# Labels PRs based on changed files.
+# For release-drafter compatibility, see also: auto-label-pr.yml
+
+# ═══════════════════════════════════════════════════════════════════
+# File-based labels (auto-applied by actions/labeler)
+# ═══════════════════════════════════════════════════════════════════
 
 java:
   - changed-files:
@@ -17,7 +23,7 @@ dependencies:
   - changed-files:
       - any-glob-to-any-file: 'pom.xml'
 
-docs:
+documentation:
   - changed-files:
       - any-glob-to-any-file: '*.md'
       - any-glob-to-any-file: 'src/doc/**'
@@ -30,3 +36,9 @@ frontend:
   - changed-files:
       - any-glob-to-any-file: 'src/main/webapp/**'
       - any-glob-to-any-file: 'src/main/resources/**/*.jelly'
+
+chore:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+      - any-glob-to-any-file: '.gitignore'
+      - any-glob-to-any-file: 'crowdin.yml'
