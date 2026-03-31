@@ -40,8 +40,6 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  *   <li>Add, remove, or set labels on resources</li>
  *   <li>Set notes on resources</li>
  * </ul>
- *
- * @since TODO
  */
 public class UpdateLockStep extends Step implements Serializable {
 

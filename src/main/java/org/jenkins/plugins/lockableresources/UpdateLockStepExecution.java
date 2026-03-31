@@ -23,8 +23,6 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 /**
  * Execution logic for the {@link UpdateLockStep}.
- *
- * @since TODO
  */
 public class UpdateLockStepExecution extends AbstractStepExecutionImpl implements Serializable {
 
