@@ -13,6 +13,7 @@ This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
 which is already locked, it will wait for the resource to be free.
 
+
 ----
 ## Support
 
