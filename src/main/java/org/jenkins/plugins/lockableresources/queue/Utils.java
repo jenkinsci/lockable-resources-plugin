@@ -21,8 +21,11 @@ import hudson.model.Run;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.jenkins.plugins.lockableresources.ExcludeFromJacocoGeneratedReport;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkinsci.plugins.variant.OptionalExtension;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 public final class Utils {
     private Utils() {}
@@ -46,7 +49,10 @@ public final class Utils {
      *
      * @see #requiredResources(Job, EnvVars)
      */
+    @Deprecated
+    @ExcludeFromJacocoGeneratedReport
     @CheckForNull
+    @Restricted(NoExternalUse.class)
     public static LockableResourcesStruct requiredResources(@NonNull Job<?, ?> project) {
         return requiredResources(project, null);
     }
@@ -61,6 +67,7 @@ public final class Utils {
      * @return the struct, or {@code null} if the project has no lockable-resource property
      */
     @CheckForNull
+    @Restricted(NoExternalUse.class)
     public static LockableResourcesStruct requiredResources(
             @NonNull Job<?, ?> project, @CheckForNull EnvVars additionalEnv) {
         EnvVars env = new EnvVars();
@@ -85,6 +92,7 @@ public final class Utils {
      * so that {@code ${PARAM}} references in resource names, labels and numbers are expanded.
      */
     @NonNull
+    @Restricted(NoExternalUse.class)
     public static EnvVars getParametersAsEnvVars(@NonNull Queue.Item item) {
         EnvVars env = new EnvVars();
         List<ParametersAction> paramActions = item.getActions(ParametersAction.class);
@@ -105,6 +113,7 @@ public final class Utils {
      * Returns {@code true} when the given string contains at least one {@code ${...}} variable
      * reference that will be resolved at build time.
      */
+    @Restricted(NoExternalUse.class)
     public static boolean containsVariable(@CheckForNull String value) {
         return value != null && VARIABLE_PATTERN.matcher(value).find();
     }
