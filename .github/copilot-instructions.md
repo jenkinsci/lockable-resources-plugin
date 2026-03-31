@@ -85,7 +85,7 @@ Added based on PR title/branch (for changelog generation):
 
 ### Auto-approve countdown (owner/member PRs)
 
-For PRs by OWNER or MEMBER (non-draft), the label `merge-in-3-days-without-review`
+For PRs by OWNER, MEMBER, or COLLABORATOR (non-draft), the label `merge-in-3-days-without-review`
 is automatically added to start the auto-approve countdown.
 
 ## Dependency updates
