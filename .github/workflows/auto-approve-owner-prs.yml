@@ -1,10 +1,12 @@
 # Auto-approve owner PRs that receive no review within 3 days.
 #
+# Uses the reusable action: https://github.com/mPokornyETM/auto-approve-stale-prs
+#
 # Countdown labels give reviewers clear visibility:
 #   Day 0 → merge-in-3-days-without-review
 #   Day 1 → merge-in-2-days-without-review
 #   Day 2 → merge-in-1-day-without-review
-#   Day 3 → approved + merged-without-review  (auto-merge takes over)
+#   Day 3 → approved + merged-without-review (auto-merge takes over)
 #
 # Only PRs authored by a repo OWNER or MEMBER are processed.
 # PRs that already have at least one approval are skipped.
@@ -23,97 +25,8 @@ jobs:
   countdown:
     runs-on: ubuntu-latest
     steps:
-      # ── 1. Ensure countdown labels exist ──────────────────────────
-      - name: Create countdown labels (idempotent)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          declare -A LABELS=(
-            ["merge-in-3-days-without-review"]="c2e0c6"
-            ["merge-in-2-days-without-review"]="fbca04"
-            ["merge-in-1-day-without-review"]="e99695"
-            ["merged-without-review"]="d93f0b"
-          )
-          for label in "${!LABELS[@]}"; do
-            gh label create "$label" \
-              --color "${LABELS[$label]}" \
-              --description "Auto-approve countdown" \
-              --force 2>/dev/null || true
-          done
-
-      # ── 2. Process open PRs by owner/member ───────────────────────
-      - name: Run countdown on stale owner PRs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          COUNTDOWN_LABELS=(
-            "merge-in-3-days-without-review"
-            "merge-in-2-days-without-review"
-            "merge-in-1-day-without-review"
-            "merged-without-review"
-          )
-
-          remove_countdown_labels() {
-            local pr=$1
-            for lbl in "${COUNTDOWN_LABELS[@]}"; do
-              gh pr edit "$pr" --remove-label "$lbl" 2>/dev/null || true
-            done
-          }
-
-          # Fetch open PRs authored by OWNER or MEMBER
-          prs=$(gh api "repos/${REPO}/pulls?state=open&per_page=100" \
-            --jq '.[] | select(.author_association == "OWNER" or .author_association == "MEMBER" or .draft == false) | select(.draft == false) | {number: .number, created_at: .created_at, user: .user.login, author_association: .author_association}')
-
-          # Filter to only OWNER/MEMBER (the jq above might pass non-owner non-draft)
-          prs=$(echo "$prs" | jq -s '[.[] | select(.author_association == "OWNER" or .author_association == "MEMBER")]' | jq -c '.[]')
-
-          if [ -z "$prs" ]; then
-            echo "No open PRs by owner/member found."
-            exit 0
-          fi
-
-          echo "$prs" | while IFS= read -r pr; do
-            PR_NUMBER=$(echo "$pr" | jq -r '.number')
-            CREATED_AT=$(echo "$pr" | jq -r '.created_at')
-            AUTHOR=$(echo "$pr" | jq -r '.user')
-            ASSOC=$(echo "$pr" | jq -r '.author_association')
-
-            # Skip if PR already has an approving review
-            APPROVALS=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-              --jq '[.[] | select(.state == "APPROVED")] | length')
-            if [ "$APPROVALS" -gt 0 ]; then
-              echo "PR #${PR_NUMBER} already approved — skipping"
-              continue
-            fi
-
-            # Calculate age in whole days
-            CREATED_TS=$(date -d "$CREATED_AT" +%s)
-            NOW_TS=$(date +%s)
-            AGE_DAYS=$(( (NOW_TS - CREATED_TS) / 86400 ))
-
-            echo "PR #${PR_NUMBER} by ${AUTHOR} (${ASSOC}) — ${AGE_DAYS} day(s) old"
-
-            remove_countdown_labels "$PR_NUMBER"
-
-            if [ "$AGE_DAYS" -ge 3 ]; then
-              echo "  → Auto-approving PR #${PR_NUMBER}"
-              gh pr comment "$PR_NUMBER" --body "✅ **Auto-approved**: No review received within 3 days. Merging now."
-              gh pr edit "$PR_NUMBER" --add-label "merged-without-review"
-              gh pr review "$PR_NUMBER" --approve \
-                --body "Auto-approved: no review received within 3 days of opening."
-              gh pr merge --auto --squash "$PR_NUMBER" || true
-            elif [ "$AGE_DAYS" -ge 2 ]; then
-              echo "  → Label: merge-in-1-day-without-review"
-              gh pr edit "$PR_NUMBER" --add-label "merge-in-1-day-without-review"
-              gh pr comment "$PR_NUMBER" --body "⚠️ **Auto-merge countdown**: This PR will be auto-approved in **1 day** if no review is submitted."
-            elif [ "$AGE_DAYS" -ge 1 ]; then
-              echo "  → Label: merge-in-2-days-without-review"
-              gh pr edit "$PR_NUMBER" --add-label "merge-in-2-days-without-review"
-              gh pr comment "$PR_NUMBER" --body "⏳ **Auto-merge countdown**: This PR will be auto-approved in **2 days** if no review is submitted."
-            else
-              echo "  → Label: merge-in-3-days-without-review"
-              gh pr edit "$PR_NUMBER" --add-label "merge-in-3-days-without-review"
-              gh pr comment "$PR_NUMBER" --body "📋 **Auto-merge countdown started**: This PR will be auto-approved in **3 days** if no review is submitted."
-            fi
-          done
+      - uses: mPokornyETM/auto-approve-stale-prs@v1
+        with:
+          days-until-approve: '3'
+          author-associations: 'OWNER,MEMBER'
+          merge-method: 'squash'
