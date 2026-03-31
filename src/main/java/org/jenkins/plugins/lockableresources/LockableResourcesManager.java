@@ -617,8 +617,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /** Try to lock the resource and return true if locked. */
     public boolean lock(List<LockableResource> resourcesToLock, Run<?, ?> build) {
+        return lock(resourcesToLock, build, (String) null);
+    }
 
-        LOGGER.fine("lock it: " + resourcesToLock + " for build " + build);
+    // ---------------------------------------------------------------------------
+    /**
+     * Try to lock the resource and return true if locked.
+     *
+     * @param resourcesToLock The resources to lock.
+     * @param build The build that is locking the resources.
+     * @param reason The reason why the resources are being locked (displayed in UI).
+     * @return true if locked successfully.
+     */
+    public boolean lock(List<LockableResource> resourcesToLock, Run<?, ?> build, @Nullable String reason) {
+
+        LOGGER.fine("lock it: " + resourcesToLock + " for build " + build + " with reason: " + reason);
 
         if (build == null) {
             LOGGER.warning("lock() will fails, because the build does not exits. " + resourcesToLock);
@@ -634,6 +647,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource r : resourcesToLock) {
             r.unqueue();
             r.setBuild(build);
+            if (reason != null && !reason.isEmpty()) {
+                r.setLockReason(reason);
+            }
         }
 
         LockedResourcesBuildAction.findAndInitAction(build).addUsedResources(getResourcesNames(resourcesToLock));
@@ -663,6 +679,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             resource.unqueue();
             resource.setBuild(null);
+            resource.setLockReason(null);
             uncacheIfFreeing(resource, true, false);
 
             if (resource.isEphemeral()) {
@@ -747,7 +764,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             LOGGER.warning("Skip this context, as the build cannot be retrieved");
             return true;
         }
-        boolean locked = this.lock(requiredResourceForNextContext, build);
+        boolean locked = this.lock(requiredResourceForNextContext, build, nextContext.getReason());
         if (!locked) {
             // defensive line, shall never happen
             LOGGER.warning("Can not lock resources: " + requiredResourceForNextContext);
@@ -1337,6 +1354,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String variableName,
             boolean inversePrecedence,
             int priority) {
+        queueContext(context, requiredResources, resourceDescription, variableName, inversePrecedence, priority, null);
+    }
+
+    /*
+     * Adds the given context and the required resources to the queue if
+     * this context is not yet queued.
+     */
+    @Restricted(NoExternalUse.class)
+    public void queueContext(
+            StepContext context,
+            List<LockableResourcesStruct> requiredResources,
+            String resourceDescription,
+            String variableName,
+            boolean inversePrecedence,
+            int priority,
+            String reason) {
         synchronized (syncResources) {
             for (QueuedContextStruct entry : this.queuedContexts) {
                 if (entry.getContext() == context) {
@@ -1346,8 +1379,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             int queueIndex = 0;
-            QueuedContextStruct newQueueItem =
-                    new QueuedContextStruct(context, requiredResources, resourceDescription, variableName, priority);
+            QueuedContextStruct newQueueItem = new QueuedContextStruct(
+                    context, requiredResources, resourceDescription, variableName, priority, reason);
 
             if (!inversePrecedence || priority != 0) {
                 queueIndex = this.queuedContexts.size() - 1;

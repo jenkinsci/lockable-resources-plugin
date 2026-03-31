@@ -73,6 +73,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private String note = "";
 
     /**
+     * The reason why this resource is currently locked. Set via the lock() step's reason parameter.
+     * Cleared when the resource is unlocked.
+     */
+    private String lockReason = "";
+
+    /**
      * Track that a currently reserved resource was originally reserved for someone else, or locked
      * for some other job, and explicitly taken away - e.g. for SUT post-mortem while a test job runs.
      * Currently this does not track "who" it was taken from nor intend to give it back - just for
@@ -196,6 +202,26 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @DataBoundSetter
     public void setNote(@Nullable String note) {
         this.note = Util.fixNull(note);
+    }
+
+    /**
+     * Returns the reason why this resource is currently locked.
+     *
+     * @return The lock reason, or empty string if not set.
+     */
+    @Exported
+    public String getLockReason() {
+        return this.lockReason;
+    }
+
+    /**
+     * Sets the reason why this resource is being locked. This is typically set via the lock() step's
+     * reason parameter and cleared when the resource is unlocked.
+     *
+     * @param lockReason The reason for locking, or null to clear.
+     */
+    public void setLockReason(@Nullable String lockReason) {
+        this.lockReason = Util.fixNull(lockReason);
     }
 
     @DataBoundSetter
@@ -335,6 +361,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         binding.setVariable("resourceDescription", description);
         binding.setVariable("resourceLabels", this.getLabelsAsList());
         binding.setVariable("resourceNote", note);
+        binding.setVariable("resourceLockReason", lockReason);
         try {
             Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
             if (LOGGER.isLoggable(Level.FINE)) {
@@ -577,6 +604,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         this.unReserve();
         this.unqueue();
         this.setBuild(null);
+        this.setLockReason(null);
     }
 
     /**
@@ -590,6 +618,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             setReservedTimestamp(sourceResource.getReservedTimestamp());
             setNote(sourceResource.getNote());
             setReservedBy(sourceResource.getReservedBy());
+            setLockReason(sourceResource.getLockReason());
         }
     }
 
@@ -601,6 +630,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         setReservedBy(null);
         setReservedTimestamp(null);
         setNote("");
+        setLockReason("");
     }
 
     /**

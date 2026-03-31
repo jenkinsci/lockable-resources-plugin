@@ -90,7 +90,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     return false;
                 }
 
-                if (!lrm.lock(available, run)) {
+                if (!lrm.lock(available, run, step.reason)) {
                     // this here is very defensive code, and you will probably never hit it. (hopefully)
                     LOGGER.warning("Internal program error: Can not lock resources: " + available);
                     onLockFailed(logger, resourceHolderList);
@@ -156,7 +156,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     step.toString(),
                     step.variable,
                     step.inversePrecedence,
-                    step.priority);
+                    step.priority,
+                    step.reason);
         }
     }
 

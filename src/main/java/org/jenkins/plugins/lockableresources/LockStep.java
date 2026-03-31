@@ -41,6 +41,11 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String label = null;
 
+    /** The reason why this resource is being locked, displayed in the UI while locked. */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public String reason = null;
+
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public int quantity = 0;
 
@@ -100,6 +105,13 @@ public class LockStep extends Step implements Serializable {
                 LOG.warning("The provided 'label' should not start or end with spaces.");
             }
             this.label = label.trim();
+        }
+    }
+
+    @DataBoundSetter
+    public void setReason(String reason) {
+        if (reason != null && !reason.trim().isEmpty()) {
+            this.reason = reason.trim();
         }
     }
 
@@ -223,7 +235,7 @@ public class LockStep extends Step implements Serializable {
     public List<LockStepResource> getResources() {
         List<LockStepResource> resources = new ArrayList<>();
         if (resource != null || label != null) {
-            resources.add(new LockStepResource(resource, label, quantity));
+            resources.add(new LockStepResource(resource, label, quantity, reason));
         }
 
         if (extra != null) {

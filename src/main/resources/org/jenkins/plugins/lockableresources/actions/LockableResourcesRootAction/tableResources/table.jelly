@@ -168,6 +168,10 @@ THE SOFTWARE.
             -->
               <j:when test="${resource.locked}">
                 ${%resource.status.locked(rootURL + '/' + resource.build.url, resource.build.fullDisplayName)}
+                <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
+                  <br/>
+                  <span class="jenkins-!-font-weight-normal">${%resource.status.reason}: ${resource.lockReason}</span>
+                </j:if>
               </j:when>
             <!-- Queued by matrix-job. This will be unlock automatically (I hope)
                  Therefore use `warning`only

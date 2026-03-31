@@ -84,6 +84,19 @@ echo 'Finish'
 
 ```
 
+#### Lock with a reason
+
+You can specify a reason why the resource is being locked. This is displayed
+in the lockable resources UI while the resource is locked:
+
+```groovy
+lock(resource: 'staging-server', reason: 'Running integration tests') {
+    echo 'Deploying to staging'
+}
+```
+
+The reason helps other users understand why a resource is unavailable.
+
 Example for declarative pipeline:
 
 ```groovy

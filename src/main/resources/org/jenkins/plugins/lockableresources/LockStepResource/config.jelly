@@ -10,4 +10,7 @@
   <f:entry title="${%entry.quantity.title}" field="quantity">
     <f:number/>
   </f:entry>
+  <f:entry title="${%entry.reason.title}" field="reason">
+    <f:textbox/>
+  </f:entry>
 </j:jelly>

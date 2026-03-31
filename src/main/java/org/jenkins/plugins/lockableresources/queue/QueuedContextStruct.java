@@ -49,6 +49,11 @@ public class QueuedContextStruct implements Serializable {
      */
     private String variableName;
 
+    /*
+     * The reason why the resource is being locked.
+     */
+    private String reason;
+
     private int priority = 0;
 
     // cached candidates
@@ -68,11 +73,26 @@ public class QueuedContextStruct implements Serializable {
             String resourceDescription,
             String variableName,
             int priority) {
+        this(context, lockableResourcesStruct, resourceDescription, variableName, priority, null);
+    }
+
+    /*
+     * Constructor for the QueuedContextStruct class with reason.
+     */
+    @Restricted(NoExternalUse.class)
+    public QueuedContextStruct(
+            StepContext context,
+            List<LockableResourcesStruct> lockableResourcesStruct,
+            String resourceDescription,
+            String variableName,
+            int priority,
+            String reason) {
         this.context = context;
         this.lockableResourcesStruct = lockableResourcesStruct;
         this.resourceDescription = resourceDescription;
         this.variableName = variableName;
         this.priority = priority;
+        this.reason = reason;
         this.id = UUID.randomUUID().toString();
     }
 
@@ -156,6 +176,14 @@ public class QueuedContextStruct implements Serializable {
      */
     public String getVariableName() {
         return this.variableName;
+    }
+
+    @Restricted(NoExternalUse.class)
+    /*
+     * Gets the reason for locking.
+     */
+    public String getReason() {
+        return this.reason;
     }
 
     @Restricted(NoExternalUse.class)
