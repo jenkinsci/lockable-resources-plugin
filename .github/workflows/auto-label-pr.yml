@@ -118,9 +118,10 @@ jobs:
             const countdownLabel = 'merge-in-3-days-without-review';
             const hasCountdownLabel = currentLabels.some(l => l.startsWith('merge-in-'));
             
-            // Add countdown label for owner/member PRs (non-draft only)
-            if ((authorAssoc === 'OWNER' || authorAssoc === 'MEMBER') && 
-                !isDraft && !hasCountdownLabel) {
+            // Add countdown label for trusted authors (non-draft only)
+            // OWNER = repo owner, MEMBER = org member, COLLABORATOR = added as collaborator
+            const trustedAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+            if (trustedAssociations.includes(authorAssoc) && !isDraft && !hasCountdownLabel) {
               labelsToAdd.push(countdownLabel);
               console.log(`  → Adding auto-approve countdown for ${authorAssoc}`);
             }
