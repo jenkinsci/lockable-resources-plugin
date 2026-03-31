@@ -28,5 +28,5 @@ jobs:
       - uses: mPokornyETM/auto-approve-stale-prs@v1
         with:
           days-until-approve: '3'
-          author-associations: 'OWNER,MEMBER'
+          author-associations: 'OWNER'
           merge-method: 'squash'
