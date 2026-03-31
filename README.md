@@ -184,6 +184,46 @@ lock(resource: 'some_resource', skipIfLocked: true) {
 }
 ```
 
+#### Update resource properties
+
+The `updateLock` step allows pipelines to dynamically manage lockable resources without using the Jenkins UI.
+
+**Create a new resource:**
+
+```groovy
+updateLock(resource: 'my-resource', createResource: true, setLabels: 'env-test team-a')
+```
+
+**Modify labels on an existing resource:**
+
+```groovy
+// Replace all labels
+updateLock(resource: 'my-resource', setLabels: 'new-label1 new-label2')
+
+// Add labels (keeps existing)
+updateLock(resource: 'my-resource', addLabels: 'additional-label')
+
+// Remove specific labels
+updateLock(resource: 'my-resource', removeLabels: 'old-label')
+
+// Add and remove in one step
+updateLock(resource: 'my-resource', addLabels: 'new', removeLabels: 'old')
+```
+
+**Set a note on a resource:**
+
+```groovy
+updateLock(resource: 'my-resource', setNote: 'Updated by build #${BUILD_NUMBER}')
+```
+
+**Delete a resource:**
+
+```groovy
+updateLock(resource: 'my-resource', deleteResource: true)
+```
+
+> **Note:** Resources cannot be deleted while locked, queued, or reserved.
+
 Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)
 documentation.
