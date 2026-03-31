@@ -98,6 +98,7 @@ jobs:
 
             if [ "$AGE_DAYS" -ge 3 ]; then
               echo "  → Auto-approving PR #${PR_NUMBER}"
+              gh pr comment "$PR_NUMBER" --body "✅ **Auto-approved**: No review received within 3 days. Merging now."
               gh pr edit "$PR_NUMBER" --add-label "merged-without-review"
               gh pr review "$PR_NUMBER" --approve \
                 --body "Auto-approved: no review received within 3 days of opening."
@@ -105,11 +106,14 @@ jobs:
             elif [ "$AGE_DAYS" -ge 2 ]; then
               echo "  → Label: merge-in-1-day-without-review"
               gh pr edit "$PR_NUMBER" --add-label "merge-in-1-day-without-review"
+              gh pr comment "$PR_NUMBER" --body "⚠️ **Auto-merge countdown**: This PR will be auto-approved in **1 day** if no review is submitted."
             elif [ "$AGE_DAYS" -ge 1 ]; then
               echo "  → Label: merge-in-2-days-without-review"
               gh pr edit "$PR_NUMBER" --add-label "merge-in-2-days-without-review"
+              gh pr comment "$PR_NUMBER" --body "⏳ **Auto-merge countdown**: This PR will be auto-approved in **2 days** if no review is submitted."
             else
               echo "  → Label: merge-in-3-days-without-review"
               gh pr edit "$PR_NUMBER" --add-label "merge-in-3-days-without-review"
+              gh pr comment "$PR_NUMBER" --body "📋 **Auto-merge countdown started**: This PR will be auto-approved in **3 days** if no review is submitted."
             fi
           done
