@@ -102,6 +102,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         }
         LOGGER.info(build.getFullDisplayName());
         LockableResourcesManager.get().unlockBuild(build);
+        LockableResourcesManager.scheduleQueueMaintenance();
     }
 
     @Override
@@ -113,5 +114,6 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         }
         LOGGER.info(build.getFullDisplayName());
         LockableResourcesManager.get().unlockBuild(build);
+        LockableResourcesManager.scheduleQueueMaintenance();
     }
 }
