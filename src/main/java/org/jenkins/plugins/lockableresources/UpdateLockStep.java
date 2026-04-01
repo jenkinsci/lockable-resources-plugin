@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
 import java.util.logging.Logger;
+import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -230,7 +231,13 @@ public class UpdateLockStep extends Step implements Serializable {
         /**
          * Validates the resource name.
          */
-        public FormValidation doCheckResource(@QueryParameter String value) {
+        @RequirePOST
+        public FormValidation doCheckResource(@QueryParameter String value, @AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
             value = Util.fixEmptyAndTrim(value);
             if (value == null) {
                 return FormValidation.error(Messages.UpdateLockStep_error_resourceRequired());
@@ -241,14 +248,28 @@ public class UpdateLockStep extends Step implements Serializable {
         /**
          * Validates addLabels option - cannot be used with setLabels.
          */
-        public FormValidation doCheckAddLabels(@QueryParameter String value, @QueryParameter String setLabels) {
+        @RequirePOST
+        public FormValidation doCheckAddLabels(
+                @QueryParameter String value, @QueryParameter String setLabels, @AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
             return doCheckLabelOperation(value, setLabels);
         }
 
         /**
          * Validates removeLabels option - cannot be used with setLabels.
          */
-        public FormValidation doCheckRemoveLabels(@QueryParameter String value, @QueryParameter String setLabels) {
+        @RequirePOST
+        public FormValidation doCheckRemoveLabels(
+                @QueryParameter String value, @QueryParameter String setLabels, @AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
             return doCheckLabelOperation(value, setLabels);
         }
 
@@ -262,13 +283,20 @@ public class UpdateLockStep extends Step implements Serializable {
         /**
          * Validates deleteResource option - cannot be combined with other modify options.
          */
+        @RequirePOST
         public FormValidation doCheckDeleteResource(
                 @QueryParameter boolean value,
                 @QueryParameter String setLabels,
                 @QueryParameter String addLabels,
                 @QueryParameter String removeLabels,
                 @QueryParameter String setNote,
-                @QueryParameter boolean createResource) {
+                @QueryParameter boolean createResource,
+                @AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
             if (!value) {
                 return FormValidation.ok();
             }
