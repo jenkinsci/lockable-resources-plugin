@@ -50,7 +50,9 @@ until it is free.
 
 ## PR labels (automatic)
 
-The repository uses `actions/labeler` (`.github/labeler.yml`) to auto-label PRs:
+PRs are auto-labeled by two workflows:
+
+### File-based labels (`actions/labeler`)
 
 | Label | Paths |
 |-------|-------|
@@ -58,9 +60,33 @@ The repository uses `actions/labeler` (`.github/labeler.yml`) to auto-label PRs:
 | `tests` | `src/test/**` |
 | `ci` | `.github/workflows/**`, `Jenkinsfile` |
 | `dependencies` | `pom.xml` |
-| `docs` | `*.md`, `src/doc/**` |
+| `documentation` | `*.md`, `src/doc/**` |
 | `localization` | `src/main/resources/**/*.properties` |
 | `frontend` | `src/main/webapp/**`, `src/main/resources/**/*.jelly` |
+| `chore` | `.github/**`, `.gitignore`, `crowdin.yml` |
+
+### Release-drafter labels (`auto-label-pr.yml`)
+
+Added based on PR title/branch (for changelog generation):
+
+| Label | Trigger (title/branch) |
+|-------|------------------------|
+| `breaking` | Title contains "breaking" or "!:" |
+| `major-enhancement` | Title contains "major" + "feat/enhancement" |
+| `major-bug` | Title contains "major" + "fix/bug" |
+| `deprecated` | Title contains "deprecat" |
+| `removed` | Title contains "remove" |
+| `enhancement` | Title starts with "feat"/"add" or branch `feature/*` |
+| `bug` | Title starts with "fix" or branch `fix/*` |
+| `documentation` | Title starts with "docs" or branch `docs/*` |
+| `chore` | Title starts with "chore"/"ci:"/"build:" |
+| `refactor` | Title starts with "refactor" |
+| `security` | Title contains "security"/"cve-" |
+
+### Auto-approve countdown (owner/member PRs)
+
+For PRs by OWNER, MEMBER, or COLLABORATOR (non-draft), the label `merge-in-3-days-without-review`
+is automatically added to start the auto-approve countdown.
 
 ## Dependency updates
 
