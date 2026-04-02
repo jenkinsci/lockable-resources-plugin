@@ -965,6 +965,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * explicit scripted action, decides to release the resource).
      */
     public boolean reserve(List<LockableResource> resources, String userName) {
+        return reserve(resources, userName, null);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Reserves an available resource for the userName indefinitely (until that person, or some
+     * explicit scripted action, decides to release the resource).
+     *
+     * @param resources list of resources to reserve
+     * @param userName the user reserving the resources
+     * @param reason the reason for reserving (optional)
+     * @return true if all resources were successfully reserved, false if any was not free
+     */
+    public boolean reserve(List<LockableResource> resources, String userName, String reason) {
         synchronized (syncResources) {
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
@@ -972,7 +986,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
             }
             for (LockableResource r : resources) {
-                r.reserve(userName);
+                r.reserve(userName, reason);
             }
             save();
         }

@@ -31,6 +31,14 @@ THE SOFTWARE.
   >
   <st:adjunct includes="io.jenkins.plugins.data-tables"/>
 
+  <!-- translations for javascript-->
+  <template id="i18n"
+            data-reserve-title="${%reserve.dialog.title}"
+            data-reserve-message="${%reserve.dialog.message}"
+            data-action-on-success="${%action.on.success}"
+            data-action-on-fail="${%action.on.fail}"
+             />
+
   <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
   <div class="table-responsive">
@@ -162,6 +170,10 @@ THE SOFTWARE.
             -->
               <j:when test="${resource.reservedBy != null}">
                 ${%resource.status.reservedBy(resource.reservedBy)}
+                <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
+                  <br/>
+                  <span class="jenkins-!-font-weight-normal">${%resource.status.reason}: ${resource.lockReason}</span>
+                </j:if>
               </j:when>
             <!-- Locked by job. This will be unlock automatically (I hope)
                  Therefore use `warning`only

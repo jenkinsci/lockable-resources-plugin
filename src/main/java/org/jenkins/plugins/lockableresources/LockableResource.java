@@ -680,13 +680,19 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     public void reserve(String userName) {
+        reserve(userName, null);
+    }
+
+    public void reserve(String userName, String reason) {
         setReservedBy(userName);
         setReservedTimestamp(new Date());
+        setLockReason(reason);
     }
 
     public void unReserve() {
         this.setReservedBy(null);
         this.setReservedTimestamp(null);
+        this.setLockReason(null);
         this.stolen = false;
     }
 

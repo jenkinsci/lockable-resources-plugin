@@ -46,6 +46,33 @@ function find_resource_name(element) {
 
 function resource_action(button, action) {
   var resourceName = find_resource_name(button);
+
+  // For reserve action, prompt for a reason
+  if (action === "reserve") {
+    dialog
+      .prompt(i18n("reserve-title", resourceName), {
+        message: i18n("reserve-message", resourceName),
+        minWidth: "450px",
+        maxWidth: "600px"
+      })
+      .then(
+        (reason) => {
+          fetch(action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || ""),
+            {
+              method: "post",
+              headers: crumb.wrap({}),
+            },
+          ).then((rsp) => {
+            showResponse(rsp, i18n("action-on-success", action, resourceName), i18n("action-on-fail", action, resourceName));
+            if (!rsp.ok) {
+              window.location.reload();
+            }
+          });
+        }
+      );
+    return;
+  }
+
   fetch(action + "?resource=" + encodeURIComponent(resourceName),
     {
       method: "post",

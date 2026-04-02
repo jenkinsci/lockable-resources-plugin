@@ -11,6 +11,7 @@ package org.jenkins.plugins.lockableresources.actions;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.Api;
 import hudson.model.Descriptor;
 import hudson.model.RootAction;
@@ -539,9 +540,11 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
+        String reason = Util.fixEmptyAndTrim(req.getParameter("reason"));
+
         String userName = getUserName();
         if (userName != null) {
-            if (!LockableResourcesManager.get().reserve(resources, userName)) {
+            if (!LockableResourcesManager.get().reserve(resources, userName, reason)) {
                 rsp.sendError(
                         423,
                         Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
