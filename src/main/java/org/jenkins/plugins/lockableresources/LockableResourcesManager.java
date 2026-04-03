@@ -70,6 +70,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private boolean allowEmptyOrNullValues;
 
     /**
+     * Controls whether ephemeral resources can be created automatically.
+     * When enabled (default), locking a non-existent resource creates it dynamically.
+     * When disabled, locking a non-existent resource will block until it is manually created.
+     */
+    private boolean allowEphemeralResources = true;
+
+    /**
      * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
      * (freestyle builds) regular Jenkins queue is used.
      */
@@ -98,6 +105,25 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     public boolean isAllowEmptyOrNullValues() {
         return allowEmptyOrNullValues;
+    }
+
+    /**
+     * Sets whether ephemeral resources can be created automatically.
+     *
+     * @param allowEphemeralResources true to allow automatic creation of ephemeral resources
+     */
+    @DataBoundSetter
+    public void setAllowEphemeralResources(boolean allowEphemeralResources) {
+        this.allowEphemeralResources = allowEphemeralResources;
+    }
+
+    /**
+     * Returns whether ephemeral resources are allowed.
+     *
+     * @return true if ephemeral resources can be created automatically
+     */
+    public boolean isAllowEphemeralResources() {
+        return allowEphemeralResources;
     }
 
     // ---------------------------------------------------------------------------
@@ -877,8 +903,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
-    /** Creates the resource if it does not exist. */
+    /**
+     * Creates the resource if it does not exist and ephemeral resources are allowed.
+     *
+     * @param name the resource name
+     * @return true if resource was created, false if it already exists or ephemeral resources are
+     *     disabled
+     */
     public boolean createResource(@CheckForNull String name) {
+        if (!allowEphemeralResources) {
+            LOGGER.fine("Ephemeral resources are disabled, not creating resource: " + name);
+            return false;
+        }
         name = Util.fixEmptyAndTrim(name);
         LockableResource resource = new LockableResource(name);
         resource.setEphemeral(true);
