@@ -46,9 +46,13 @@ function find_resource_name(element) {
 
 function resource_action(button, action) {
   var resourceName = find_resource_name(button);
+  console.log("[LR] resource_action called:", action, resourceName);
 
   // For reserve action, prompt for a reason
   if (action === "reserve") {
+    console.log("[LR] reserve action - showing dialog");
+    console.log("[LR] i18n template:", document.querySelector("#i18n"));
+    console.log("[LR] reserve-title attr:", document.querySelector("#i18n")?.getAttribute("data-reserve-title"));
     dialog
       .prompt(i18n("reserve-title", resourceName), {
         message: i18n("reserve-message", resourceName),
@@ -57,17 +61,26 @@ function resource_action(button, action) {
       })
       .then(
         (reason) => {
-          fetch(action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || ""),
+          console.log("[LR] dialog resolved with reason:", reason);
+          var url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || "");
+          console.log("[LR] fetching:", url);
+          fetch(url,
             {
               method: "post",
               headers: crumb.wrap({}),
             },
           ).then((rsp) => {
+            console.log("[LR] fetch response:", rsp.status, rsp.ok);
             showResponse(rsp, i18n("action-on-success", action, resourceName), i18n("action-on-fail", action, resourceName));
             if (!rsp.ok) {
               window.location.reload();
             }
+          }).catch((err) => {
+            console.error("[LR] fetch error:", err);
           });
+        },
+        (cancelled) => {
+          console.log("[LR] dialog cancelled:", cancelled);
         }
       );
     return;

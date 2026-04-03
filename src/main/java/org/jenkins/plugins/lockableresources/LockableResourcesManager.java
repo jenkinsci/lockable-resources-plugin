@@ -979,9 +979,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @return true if all resources were successfully reserved, false if any was not free
      */
     public boolean reserve(List<LockableResource> resources, String userName, String reason) {
+        LOGGER.info("reserve() called user='" + userName + "' resources=" + getResourcesNames(resources) + " reason='" + reason + "'");
         synchronized (syncResources) {
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
+                    LOGGER.fine("reserve() failed because resource not free: " + r.getName());
                     return false;
                 }
             }
@@ -990,6 +992,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             save();
         }
+        LOGGER.info("reserve() succeeded user='" + userName + "' resources=" + getResourcesNames(resources));
         return true;
     }
 
