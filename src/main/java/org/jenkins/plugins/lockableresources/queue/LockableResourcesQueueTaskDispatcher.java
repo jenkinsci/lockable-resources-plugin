@@ -11,9 +11,9 @@ package org.jenkins.plugins.lockableresources.queue;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.EnvVars;
 import hudson.Extension;
-import hudson.matrix.MatrixConfiguration;
-import hudson.matrix.MatrixProject;
+import hudson.ExtensionList;
 import hudson.model.Job;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
@@ -45,12 +45,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
     public CauseOfBlockage canRun(Queue.Item item) {
         // Skip locking for multiple configuration projects,
         // only the child jobs will actually lock resources.
-        if (item.task instanceof MatrixProject) return null;
+        if (item.task.getClass().getName().equals("hudson.matrix.MatrixProject")) {
+            return null;
+        }
 
         Job<?, ?> project = Utils.getProject(item);
         if (project == null) return null;
 
-        LockableResourcesStruct resources = Utils.requiredResources(project);
+        // Extract build parameters so that ${PARAM} references in resource
+        // names, labels, and numbers are expanded before scheduling.
+        EnvVars paramEnv = Utils.getParametersAsEnvVars(item);
+        LockableResourcesStruct resources = Utils.requiredResources(project, paramEnv);
         if (resources == null
                 || (resources.required.isEmpty()
                         && resources.label.isEmpty()
@@ -93,9 +98,8 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
                 }
             }
 
-            if (item.task instanceof MatrixConfiguration) {
-                MatrixConfiguration matrix = (MatrixConfiguration) item.task;
-                params.putAll(matrix.getCombination());
+            for (var ma : ExtensionList.lookup(Utils.MatrixAssist.class)) {
+                params.putAll(ma.getCombination(project));
             }
 
             final List<LockableResource> selected;

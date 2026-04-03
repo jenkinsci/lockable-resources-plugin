@@ -38,10 +38,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import jenkins.util.SystemProperties;
+import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -100,6 +103,63 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private long queuingStarted = 0;
 
     private static final long serialVersionUID = 1L;
+
+    private static final long SCRIPT_CACHE_TTL_MS =
+            SystemProperties.getLong(Constants.SYSTEM_PROPERTY_SCRIPT_CACHE_TTL_MS, 30_000L);
+    private static final long LABEL_CACHE_TTL_MS =
+            SystemProperties.getLong(Constants.SYSTEM_PROPERTY_LABEL_CACHE_TTL_MS, 30_000L);
+
+    /** Per-resource cache: Groovy script text -> (result, timestamp). */
+    private transient volatile ConcurrentHashMap<String, CachedResult> scriptCache;
+    /** Per-resource cache: label expression -> (result, timestamp). */
+    private transient volatile ConcurrentHashMap<String, CachedResult> labelCache;
+
+    private static final class CachedResult {
+        final boolean value;
+        final long timestamp;
+
+        CachedResult(boolean value) {
+            this.value = value;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isExpired(long ttlMs) {
+            return (System.currentTimeMillis() - timestamp) > ttlMs;
+        }
+    }
+
+    private ConcurrentHashMap<String, CachedResult> getScriptCache() {
+        ConcurrentHashMap<String, CachedResult> c = scriptCache;
+        if (c == null) {
+            synchronized (this) {
+                c = scriptCache;
+                if (c == null) {
+                    scriptCache = c = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        return c;
+    }
+
+    private ConcurrentHashMap<String, CachedResult> getLabelCache() {
+        ConcurrentHashMap<String, CachedResult> c = labelCache;
+        if (c == null) {
+            synchronized (this) {
+                c = labelCache;
+                if (c == null) {
+                    labelCache = c = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        return c;
+    }
+
+    void invalidateCaches() {
+        ConcurrentHashMap<String, CachedResult> sc = scriptCache;
+        if (sc != null) sc.clear();
+        ConcurrentHashMap<String, CachedResult> lc = labelCache;
+        if (lc != null) lc.clear();
+    }
 
     private transient boolean isNode = false;
 
@@ -239,6 +299,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             }
             this.labelsAsList.add(label);
         }
+        invalidateCaches();
     }
 
     /**
@@ -288,12 +349,25 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             return true;
         }
 
+        if (LABEL_CACHE_TTL_MS > 0) {
+            ConcurrentHashMap<String, CachedResult> cache = getLabelCache();
+            CachedResult cached = cache.get(candidate);
+            if (cached != null && !cached.isExpired(LABEL_CACHE_TTL_MS)) {
+                return cached.value;
+            }
+            boolean result = evaluateLabelExpression(candidate);
+            cache.put(candidate, new CachedResult(result));
+            return result;
+        }
+        return evaluateLabelExpression(candidate);
+    }
+
+    private boolean evaluateLabelExpression(@NonNull String candidate) {
         final Label labelExpression = Label.parseExpression(candidate);
         Set<LabelAtom> atomLabels = new HashSet<>();
         for (String label : this.getLabelsAsList()) {
             atomLabels.add(new LabelAtom(label));
         }
-
         return labelExpression.matches(atomLabels);
     }
 
@@ -329,6 +403,22 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     @Restricted(NoExternalUse.class)
     public boolean scriptMatches(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+            throws ExecutionException {
+        if (SCRIPT_CACHE_TTL_MS > 0) {
+            String cacheKey = script.getScript();
+            ConcurrentHashMap<String, CachedResult> cache = getScriptCache();
+            CachedResult cached = cache.get(cacheKey);
+            if (cached != null && !cached.isExpired(SCRIPT_CACHE_TTL_MS)) {
+                return cached.value;
+            }
+            boolean result = evaluateScript(script, params);
+            cache.put(cacheKey, new CachedResult(result));
+            return result;
+        }
+        return evaluateScript(script, params);
+    }
+
+    private boolean evaluateScript(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
             throws ExecutionException {
         Binding binding = new Binding(params);
         binding.setVariable("resourceName", name);
@@ -577,6 +667,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         this.unReserve();
         this.unqueue();
         this.setBuild(null);
+        invalidateCaches();
     }
 
     /**

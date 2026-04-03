@@ -9,14 +9,15 @@
 package org.jenkins.plugins.lockableresources.queue;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.EnvVars;
 import hudson.Extension;
-import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.Job;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -36,15 +37,27 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
     public void onStarted(Run<?, ?> build, TaskListener listener) {
         // Skip locking for multiple configuration projects,
         // only the child jobs will actually lock resources.
-        if (build instanceof MatrixBuild) return;
+        if (build.getClass().getName().equals("hudson.matrix.MatrixBuild")) {
+            return;
+        }
 
         if (build instanceof AbstractBuild) {
+            AbstractBuild<?, ?> abstractBuild = (AbstractBuild<?, ?>) build;
             LockableResourcesManager lrm = LockableResourcesManager.get();
             synchronized (lrm.syncResources) {
                 Job<?, ?> proj = Utils.getProject(build);
                 List<LockableResource> required = new ArrayList<>();
 
-                LockableResourcesStruct resources = Utils.requiredResources(proj);
+                // Resolve build parameters so that ${PARAM} references in
+                // resource names, labels, and numbers are expanded.
+                EnvVars buildEnv;
+                try {
+                    buildEnv = abstractBuild.getEnvironment(listener);
+                } catch (IOException | InterruptedException e) {
+                    buildEnv = new EnvVars();
+                }
+
+                LockableResourcesStruct resources = Utils.requiredResources(proj, buildEnv);
 
                 if (resources != null) {
                     if (resources.requiredNumber != null
@@ -96,17 +109,23 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
     public void onCompleted(Run<?, ?> build, @NonNull TaskListener listener) {
         // Skip unlocking for multiple configuration projects,
         // only the child jobs will actually unlock resources.
-        if (build instanceof MatrixBuild) return;
+        if (build.getClass().getName().equals("hudson.matrix.MatrixBuild")) {
+            return;
+        }
         LOGGER.info(build.getFullDisplayName());
         LockableResourcesManager.get().unlockBuild(build);
+        LockableResourcesManager.scheduleQueueMaintenance();
     }
 
     @Override
     public void onDeleted(Run<?, ?> build) {
         // Skip unlocking for multiple configuration projects,
         // only the child jobs will actually unlock resources.
-        if (build instanceof MatrixBuild) return;
+        if (build.getClass().getName().equals("hudson.matrix.MatrixBuild")) {
+            return;
+        }
         LOGGER.info(build.getFullDisplayName());
         LockableResourcesManager.get().unlockBuild(build);
+        LockableResourcesManager.scheduleQueueMaintenance();
     }
 }

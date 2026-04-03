@@ -399,13 +399,11 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         // start few jobs to simulate queue
         action.doReserve(req, rsp);
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
             lock('resource1') {
                 echo('I am inside')
             }
-            """,
-                true));
+            """, true));
 
         WorkflowRun r1 = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r1);

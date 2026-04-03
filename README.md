@@ -5,13 +5,14 @@
 [![Jenkins Plugin Installs](https://img.shields.io/jenkins/plugin/i/lockable-resources.svg?color=blue)](https://plugins.jenkins.io/lockable-resources)
 [![Build Status](https://ci.jenkins.io/buildStatus/icon?job=Plugins%2Flockable-resources-plugin%2Fmaster)](https://ci.jenkins.io/job/Plugins/job/lockable-resources-plugin/job/master/)
 [![GitHub license](https://img.shields.io/github/license/jenkinsci/lockable-resources-plugin.svg)](https://github.com/jenkinsci/lockable-resources-plugin/blob/master/LICENSE.txt)
-[![Maintenance](https://img.shields.io/maintenance/yes/2025.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
+[![Maintenance](https://img.shields.io/maintenance/yes/2026.svg)](https://github.com/jenkinsci/lockable-resources-plugin)
 [![Crowdin](https://badges.crowdin.net/e/656dcffac5a09ad0fbdedcb430af1904/localized.svg)](https://jenkins.crowdin.com/lockable-resources-plugin)
 [![Join the chat at https://gitter.im/jenkinsci/lockable-resources](https://badges.gitter.im/jenkinsci/lockable-resources.svg)](https://gitter.im/jenkinsci/lockable-resources?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 This plugin allows defining lockable resources (such as printers, phones,
 computers, etc.) that can be used by builds. If a build requires a resource
 which is already locked, it will wait for the resource to be free.
+
 
 ----
 ## Support
@@ -182,6 +183,46 @@ lock(resource: 'some_resource', skipIfLocked: true) {
   echo 'Do something now or never!'
 }
 ```
+
+#### Update resource properties
+
+The `updateLock` step allows pipelines to dynamically manage lockable resources without using the Jenkins UI.
+
+**Create a new resource:**
+
+```groovy
+updateLock(resource: 'my-resource', createResource: true, setLabels: 'env-test team-a')
+```
+
+**Modify labels on an existing resource:**
+
+```groovy
+// Replace all labels
+updateLock(resource: 'my-resource', setLabels: 'new-label1 new-label2')
+
+// Add labels (keeps existing)
+updateLock(resource: 'my-resource', addLabels: 'additional-label')
+
+// Remove specific labels
+updateLock(resource: 'my-resource', removeLabels: 'old-label')
+
+// Add and remove in one step
+updateLock(resource: 'my-resource', addLabels: 'new', removeLabels: 'old')
+```
+
+**Set a note on a resource:**
+
+```groovy
+updateLock(resource: 'my-resource', setNote: 'Updated by build #${BUILD_NUMBER}')
+```
+
+**Delete a resource:**
+
+```groovy
+updateLock(resource: 'my-resource', deleteResource: true)
+```
+
+> **Note:** Resources cannot be deleted while locked, queued, or reserved.
 
 Detailed documentation can be found as part of the
 [Pipeline Steps](https://jenkins.io/doc/pipeline/steps/lockable-resources/)

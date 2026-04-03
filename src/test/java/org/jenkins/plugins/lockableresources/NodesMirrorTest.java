@@ -72,14 +72,12 @@ class NodesMirrorTest {
         assertNotNull(LockableResourcesManager.get().fromName("FirstAgent"));
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                 lock(label: 'label && label2', variable : 'lockedNode') {
                  echo 'wait for node: ' + env.lockedNode
                     semaphore 'wait-inside'
                 }
-                echo 'Finish'""",
-                true));
+                echo 'Finish'""", true));
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.waitForMessage("wait for node: FirstAgent", b1);
         SemaphoreStep.waitForStart("wait-inside/1", b1);

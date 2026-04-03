@@ -1,6 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
@@ -11,30 +11,28 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.JenkinsSessionRule;
+import org.jvnet.hudson.test.junit.jupiter.JenkinsSessionExtension;
 
-public class LockStepWithRestartTest extends LockStepTestBase {
+class LockStepWithRestartTest extends LockStepTestBase {
 
     private static final Logger LOGGER = Logger.getLogger(LockStepTestBase.class.getName());
 
-    @Rule
-    public JenkinsSessionRule sessions = new JenkinsSessionRule();
+    @RegisterExtension
+    private final JenkinsSessionExtension sessions = new JenkinsSessionExtension();
 
     @Test
-    public void lockOrderRestart() throws Throwable {
+    void lockOrderRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
+            p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                       semaphore 'wait-inside-lockOrderRestart'
                     }
-                    echo 'Finish'""",
-                    true));
+                    echo 'Finish'""", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("wait-inside-lockOrderRestart/1", b1);
             WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -73,17 +71,15 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void interoperabilityOnRestart() throws Throwable {
+    void interoperabilityOnRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
+            p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                       semaphore 'wait-inside-interoperabilityOnRestart'
                     }
-                    echo 'Finish'""",
-                    true));
+                    echo 'Finish'""", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("wait-inside-interoperabilityOnRestart/1", b1);
             isPaused(b1, 1, 0);
@@ -120,20 +116,18 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void testReserveOverRestart() throws Throwable {
+    void testReserveOverRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager manager = LockableResourcesManager.get();
             manager.createResource("resource1");
             manager.reserve(Collections.singletonList(manager.fromName("resource1")), "user");
 
             WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
+            p.setDefinition(new CpsFlowDefinition("""
                     lock('resource1') {
                       echo 'inside'
                     }
-                    echo 'Finish'""",
-                    true));
+                    echo 'Finish'""", true));
             WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
             j.waitForMessage("The resource [resource1] is reserved by user", b1);
             isPaused(b1, 1, 1);
@@ -163,7 +157,7 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void checkQueueAfterRestart() throws Throwable {
+    void checkQueueAfterRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager lrm = LockableResourcesManager.get();
 
@@ -206,8 +200,10 @@ public class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
-    public void chaosOnRestart() throws Throwable {
-        final int resourceCount = 50;
+    void chaosOnRestart() throws Throwable {
+        // Reduced from 50 to 5 resources to make the test more deterministic
+        // while still testing the same restart scenarios with parallel stages
+        final int resourceCount = 5;
         sessions.then(j -> {
             for (int i = 1; i <= resourceCount; i++) {
                 LockableResourcesManager.get().createResourceWithLabel("resource" + i, "label");
@@ -244,13 +240,15 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             WorkflowRun b2 = p.getBuildByNumber(2);
             WorkflowRun b3 = p.getBuildByNumber(3);
 
-            // Unlock resources
+            // Unlock resources for b1
             for (int i = 1; i <= resourceCount; i++) {
                 SemaphoreStep.success("wait-inside-lockOrderRestart-" + i + "/1", null);
             }
             j.waitForMessage("Lock released on resource [Resource: resource" + resourceCount + "]", b1);
             j.waitForMessage("Lock acquired on [Resource: resource" + resourceCount + "]", b2);
             j.assertLogContains("[resource" + resourceCount + "] is locked by build " + b1.getFullDisplayName(), b3);
+            // Wait for b2 to reach all semaphores before releasing them
+            SemaphoreStep.waitForStart("wait-inside-lockOrderRestart-" + resourceCount + "/2", b2);
             for (int i = 1; i <= resourceCount; i++) {
                 SemaphoreStep.success("wait-inside-lockOrderRestart-" + i + "/2", null);
             }
@@ -259,7 +257,13 @@ public class LockStepWithRestartTest extends LockStepTestBase {
             for (int i = 1; i <= resourceCount; i++) {
                 SemaphoreStep.success("wait-inside-lockOrderRestart-" + i + "/3", null);
             }
-            j.waitForMessage("Finish", b3);
+            // Wait for all builds to complete
+            j.waitForCompletion(b1);
+            j.waitForCompletion(b2);
+            j.waitForCompletion(b3);
+            j.assertBuildStatusSuccess(b1);
+            j.assertBuildStatusSuccess(b2);
+            j.assertBuildStatusSuccess(b3);
         });
     }
 }

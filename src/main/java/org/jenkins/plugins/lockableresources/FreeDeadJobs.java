@@ -30,6 +30,7 @@ public final class FreeDeadJobs {
     public static void freePostMortemResources() {
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
+        boolean freedAny = false;
         synchronized (lrm.syncResources) {
             List<LockableResource> orphan = new ArrayList<>();
             LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
@@ -47,7 +48,11 @@ public final class FreeDeadJobs {
                                 + " due post mortem job: "
                                 + resource.getBuildName());
                 resource.recycle();
+                freedAny = true;
             }
+        }
+        if (freedAny) {
+            LockableResourcesManager.scheduleQueueMaintenance();
         }
     }
 }
