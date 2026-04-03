@@ -52,13 +52,11 @@ class EphemeralResourcesOptionTest extends LockStepTestBase {
         lrm.setAllowEphemeralResources(true);
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                 lock('ephemeral-resource-1') {
                     echo 'Resource locked'
                 }
-                echo 'Finish'""",
-                true));
+                echo 'Finish'""", true));
 
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
@@ -143,13 +141,11 @@ class EphemeralResourcesOptionTest extends LockStepTestBase {
         lrm.createResourceWithLabel("labeled-resource", "my-label");
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                 lock(label: 'my-label') {
                     echo 'Label-based lock acquired'
                 }
-                echo 'Finish'""",
-                true));
+                echo 'Finish'""", true));
 
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
@@ -172,13 +168,11 @@ class EphemeralResourcesOptionTest extends LockStepTestBase {
         lrm.setAllowEphemeralResources(false);
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                 lock('persistent-resource') {
                     echo 'Locked existing resource'
                 }
-                echo 'Finish'""",
-                true));
+                echo 'Finish'""", true));
 
         // Locking an existing resource should work fine
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
