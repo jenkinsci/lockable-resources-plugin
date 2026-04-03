@@ -9,6 +9,7 @@ import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,7 +86,20 @@ public class LockStep extends Step implements Serializable {
 
     @DataBoundSetter
     public void setResourceSelectStrategy(String resourceSelectStrategy) {
-        this.resourceSelectStrategy = resourceSelectStrategy;
+        if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
+            // Validate the strategy is valid
+            try {
+                ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(Messages.error_invalidResourceSelectionStrategy(
+                        resourceSelectStrategy,
+                        Arrays.stream(ResourceSelectStrategy.values())
+                                .map(Enum::toString)
+                                .map(s -> s.toLowerCase(Locale.ENGLISH))
+                                .collect(Collectors.joining(", "))));
+            }
+            this.resourceSelectStrategy = resourceSelectStrategy;
+        }
     }
 
     @DataBoundSetter
@@ -151,6 +165,20 @@ public class LockStep extends Step implements Serializable {
         public AutoCompletionCandidates doAutoCompleteResource(
                 @QueryParameter String value, @AncestorInPath Item item) {
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
+        }
+
+        @RequirePOST
+        public ListBoxModel doFillResourceSelectStrategyItems(@AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
+            ListBoxModel items = new ListBoxModel();
+            for (ResourceSelectStrategy resSelStrategy : ResourceSelectStrategy.values()) {
+                items.add(resSelStrategy.name());
+            }
+            return items;
         }
 
         @RequirePOST
