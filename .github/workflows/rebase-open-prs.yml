@@ -15,17 +15,6 @@ jobs:
   rebase-open-prs:
     runs-on: ubuntu-latest
     steps:
-      - name: Rebase all open PRs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh pr list --state open --json number,author,isDraft --jq '.[] | select(.isDraft == false) | "\(.number) \(.author.login)"' | while read pr author; do
-            if [ "$author" = "dependabot[bot]" ]; then
-              echo "Requesting rebase for Dependabot PR #$pr"
-              gh pr comment "$pr" --body "@dependabot rebase"
-            else
-              echo "Updating branch for PR #$pr"
-              gh pr update-branch --rebase "$pr" || true
-            fi
-          done
+      - uses: mPokornyETM/rebase-open-prs-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
