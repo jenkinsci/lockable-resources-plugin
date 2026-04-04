@@ -470,14 +470,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (cachedCandidates.size() == 0) return true;
 
-        // Per https://guava.dev/releases/19.0/api/docs/com/google/common/cache/Cache.html
-        // "Modifications made to the map directly affect the cache."
-        // so it is both a way for us to iterate the cache and to edit
-        // the lists it stores per queue.
-        Map<Long, List<LockableResource>> cachedCandidatesMap = cachedCandidates.asMap();
-        for (Map.Entry<Long, List<LockableResource>> entry : cachedCandidatesMap.entrySet()) {
-            Long queueItemId = entry.getKey();
-            List<LockableResource> candidates = entry.getValue();
+        // Take a snapshot of keys to avoid ConcurrentModificationException.
+        // Only invalidate entries that actually contain the freed resource,
+        // preserving cache for other queue items (important at scale with 1000+ items).
+        Set<Long> keys = new HashSet<>(cachedCandidates.asMap().keySet());
+        for (Long queueItemId : keys) {
+            List<LockableResource> candidates = cachedCandidates.getIfPresent(queueItemId);
             if (candidates != null && (candidates.isEmpty() || candidates.contains(candidate))) {
                 cachedCandidates.invalidate(queueItemId);
             }
@@ -519,6 +517,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // Resolve candidates outside syncResources when possible — label matching
         // and Groovy script evaluation are heavyweight and should not extend the
         // critical section.
+        // NOTE: We store unmodifiable lists in the cache for thread-safety. Multiple
+        // threads may read from the cache concurrently, so cached lists must not be
+        // modified. Create a mutable copy below when modifications are needed.
         List<LockableResource> candidates = null;
         if (candidatesByScript || (requiredResources.label != null && !requiredResources.label.isEmpty())) {
             candidates = cachedCandidates.getIfPresent(queueItemId);
@@ -526,7 +527,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 candidates = (systemGroovyScript == null)
                         ? getResourcesWithLabel(requiredResources.label)
                         : getResourcesMatchingScript(systemGroovyScript, params);
-                cachedCandidates.put(queueItemId, candidates);
+                // Store as unmodifiable to prevent accidental modification of cached data
+                cachedCandidates.put(queueItemId, Collections.unmodifiableList(candidates));
             }
         }
 
@@ -542,6 +544,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             if (candidates != null) {
+                // Mutable copy required - cached list is unmodifiable for thread-safety
+                candidates = new ArrayList<>(candidates);
                 candidates.retainAll(this.resources);
             } else {
                 candidates = requiredResources.required;
