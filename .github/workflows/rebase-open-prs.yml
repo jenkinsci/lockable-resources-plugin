@@ -5,8 +5,14 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   rebase-prs:
-    uses: mPokornyETM/rebase-open-prs-action/.github/workflows/rebase-open-prs.yml@v1
-    secrets:
-      GH_PAT: ${{ secrets.GH_TOKEN_PAT }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mPokornyETM/rebase-open-prs-action@v1
+        with:
+          github-token: ${{ secrets.GH_TOKEN_PAT }}
