@@ -14,5 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: mPokornyETM/rebase-open-prs-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
-          github-token: ${{ secrets.GH_TOKEN_PAT }}
+          github-token: ${{ github.token }}
