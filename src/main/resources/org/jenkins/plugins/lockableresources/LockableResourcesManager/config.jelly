@@ -17,6 +17,9 @@
       <f:entry field="allowEmptyOrNullValues">
         <f:checkbox title="${%configuration.allowEmptyOrNullValues.title}"/>
       </f:entry>
+      <f:entry field="allowEphemeralResources">
+        <f:checkbox title="${%configuration.allowEphemeralResources.title}"/>
+      </f:entry>
     </f:entry>
 
     <f:entry title="${%entry.title}">

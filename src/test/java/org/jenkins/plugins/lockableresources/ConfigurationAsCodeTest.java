@@ -36,6 +36,7 @@ class ConfigurationAsCodeTest {
     void should_support_configuration_as_code(JenkinsConfiguredWithCodeRule r) {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         assertTrue(LRM.isAllowEmptyOrNullValues());
+        assertTrue(LRM.isAllowEphemeralResources());
 
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
@@ -92,5 +93,16 @@ class ConfigurationAsCodeTest {
         assertEquals("testUser", LRM.fromName("Resource_B").getReservedBy());
         assertEquals(timestampBeforeReload, LRM.fromName("Resource_B").getReservedTimestamp());
         assertEquals(noteBeforeReload, LRM.fromName("Resource_B").getNote());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-ephemeral-disabled.yml")
+    void should_support_ephemeral_resources_disabled_via_casc(JenkinsConfiguredWithCodeRule r) {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertTrue(LRM.isAllowEmptyOrNullValues());
+        assertThat(LRM.isAllowEphemeralResources(), is(false));
+
+        List<LockableResource> declaredResources = LRM.getDeclaredResources();
+        assertEquals(1, declaredResources.size());
     }
 }
