@@ -1,22 +1,15 @@
 ---
 ####################################################
 # Configuration as Code config file for unit tests #
+# with ephemeral resources disabled                #
 ####################################################
 jenkins:
   systemMessage: "Welcome to the Lockable Resource Jenkins Server"
 unclassified:
   lockableResourcesManager:
     allowEmptyOrNullValues: true
-    allowEphemeralResources: true
+    allowEphemeralResources: false
     declaredResources:
       - description: "Description_A"
         labels: "Label_A"
         name: "Resource_A"
-      - description: "Description_B"
-        labels: "Label_B"
-        name: "Resource_B"
-      - description: "Description_C"
-        labels: "Label_C"
-        name: "Resource_C"
-        reservedBy: "User_C"
-        note: "Note_C"

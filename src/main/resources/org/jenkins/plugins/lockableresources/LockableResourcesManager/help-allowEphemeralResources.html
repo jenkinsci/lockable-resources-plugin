@@ -1,0 +1,14 @@
+<div>
+    Controls whether ephemeral resources can be created automatically.
+    <ul>
+      <li><b>Enabled (default):</b> When a lock step references a resource name that does not exist,
+          the plugin automatically creates a temporary (ephemeral) resource for the duration of the build.</li>
+      <li><b>Disabled:</b> Locking a non-existent resource will cause the job to block until the
+          resource is manually created. This prevents accidental creation of resources due to typos
+          or misconfiguration.</li>
+    </ul>
+    <p>
+      <b>Note:</b> This setting only affects resources referenced by name. Resources selected by
+      label are not affected.
+    </p>
+</div>

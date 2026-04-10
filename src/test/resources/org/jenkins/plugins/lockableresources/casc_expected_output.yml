@@ -1,4 +1,5 @@
 allowEmptyOrNullValues: true
+allowEphemeralResources: true
 declaredResources:
 - description: "Description_A"
   labels: "Label_A"
