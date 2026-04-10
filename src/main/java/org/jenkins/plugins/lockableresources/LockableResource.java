@@ -1,11 +1,8 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2013, 6WIND S.A. All rights reserved.                 *
- *                                                                     *
- * This file is part of the Jenkins Lockable Resources Plugin and is   *
- * published under the MIT license.                                    *
- *                                                                     *
- * See the "LICENSE.txt" file for more information.                    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*
+ * The MIT License
+ *
+ * See the "LICENSE.txt" file for full copyright and license information.
+ */
 package org.jenkins.plugins.lockableresources;
 
 import static java.text.DateFormat.MEDIUM;
