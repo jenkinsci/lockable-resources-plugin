@@ -40,6 +40,8 @@
                   data-queue-on-fail="${%queue.change.on.fail}"
                   data-reserve-title="${%reserve.dialog.title}"
                   data-reserve-message="${%reserve.dialog.message}"
+                  data-steal-title="${%steal.dialog.title}"
+                  data-steal-message="${%steal.dialog.message}"
                   data-action-on-success="${%action.on.success}"
                   data-action-on-fail="${%action.on.fail}"
         />

@@ -48,14 +48,14 @@ function resource_action(button, action) {
   var resourceName = find_resource_name(button);
   console.log("[LR] resource_action called:", action, resourceName);
 
-  // For reserve action, prompt for a reason
-  if (action === "reserve") {
-    console.log("[LR] reserve action - showing dialog");
-    console.log("[LR] i18n template:", document.querySelector("#i18n"));
-    console.log("[LR] reserve-title attr:", document.querySelector("#i18n")?.getAttribute("data-reserve-title"));
+  // For reserve and steal actions, prompt for a reason
+  if (action === "reserve" || action === "steal") {
+    console.log("[LR] " + action + " action - showing dialog");
+    var titleKey = action + "-title";
+    var messageKey = action + "-message";
     dialog
-      .prompt(i18n("reserve-title", resourceName), {
-        message: i18n("reserve-message", resourceName),
+      .prompt(i18n(titleKey, resourceName), {
+        message: i18n(messageKey, resourceName),
         minWidth: "450px",
         maxWidth: "600px"
       })

@@ -1025,7 +1025,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @return true if all resources were successfully reserved, false if any was not free
      */
     public boolean reserve(List<LockableResource> resources, String userName, String reason) {
-        LOGGER.info("reserve() called user='" + userName + "' resources=" + getResourcesNames(resources) + " reason='" + reason + "'");
+        LOGGER.info("reserve() called user='" + userName + "' resources=" + getResourcesNames(resources) + " reason='"
+                + reason + "'");
         synchronized (syncResources) {
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
@@ -1049,6 +1050,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * scripted action, later decides to release the resource).
      */
     public boolean steal(List<LockableResource> resources, String userName) {
+        return steal(resources, userName, null);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Reserves a resource that may be or not be locked by some job (or reserved by some user)
+     * already, giving it away to the userName indefinitely (until that person, or some explicit
+     * scripted action, later decides to release the resource).
+     *
+     * @param resources list of resources to steal
+     * @param userName the user stealing the resources
+     * @param reason the reason for stealing (optional)
+     * @return true if stolen successfully
+     */
+    public boolean steal(List<LockableResource> resources, String userName, String reason) {
         synchronized (syncResources) {
             for (LockableResource r : resources) {
                 r.setReservedBy(userName);
@@ -1058,6 +1074,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Date date = new Date();
             for (LockableResource r : resources) {
                 r.setReservedTimestamp(date);
+                r.setLockReason(reason);
             }
             save();
         }
