@@ -972,10 +972,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             this.resources.add(resource);
             LOGGER.fine("Resource added : " + resource);
+
+            // Invalidate cache and process waiting pipeline jobs while still holding the lock
+            cachedCandidates.invalidateAll();
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
+
             if (doSave) {
                 this.save();
             }
         }
+        // Notify Jenkins queue for freestyle jobs (must be outside synchronized block)
+        scheduleQueueMaintenance();
         return true;
     }
 
@@ -1158,6 +1167,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         synchronized (syncResources) {
             this.resources.removeAll(toBeRemoved);
         }
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------
@@ -1465,6 +1475,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (j != null) {
             j.getQueue().scheduleMaintenance();
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Refresh the queue to allow waiting jobs to re-evaluate available resources.
+     * <p>
+     * This method should be called after modifying labels on existing resources,
+     * as label changes do not automatically trigger queue re-evaluation.
+     * <p>
+     * It performs the following actions:
+     * <ol>
+     *   <li>Invalidates the cached resource candidates</li>
+     *   <li>Processes waiting pipeline job contexts</li>
+     *   <li>Triggers Jenkins queue maintenance for freestyle jobs</li>
+     * </ol>
+     */
+    public void refreshQueue() {
+        // Invalidate cached candidates so waiting jobs re-evaluate with current labels
+        cachedCandidates.invalidateAll();
+
+        // Process waiting pipeline jobs
+        synchronized (syncResources) {
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
+        }
+
+        // Notify Jenkins queue for freestyle jobs
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------

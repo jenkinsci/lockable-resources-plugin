@@ -274,6 +274,26 @@ More examples are [here](src/doc/examples/readme.md).
 
 ----
 
+## Dynamic resource behavior
+
+When new resources are added to the system, waiting jobs can automatically pick them up:
+
+- **Pipeline jobs** waiting in the lock step queue are re-evaluated immediately
+- **Freestyle jobs** waiting in the Jenkins build queue are re-evaluated via queue maintenance
+
+This allows you to dynamically add resources to your resource pool without requiring waiting jobs to be restarted.
+
+### Example
+
+If a job is waiting for a resource with label `printer` and all existing printer resources are locked, adding a new resource with the label `printer` will allow the waiting job to acquire it immediately.
+
+### Limitations
+
+- **Modifying labels on existing resources does NOT trigger re-evaluation.** Only adding new resources triggers waiting jobs to re-evaluate. If you change labels on an existing resource, you can manually call `LockableResourcesManager.get().refreshQueue()` via Script Console to notify waiting jobs.
+- **Removing resources** does not affect waiting jobs (they continue waiting for other resources with matching criteria).
+
+----
+
 ## Node mirroring
 
 Lockable resources plugin allow to mirror nodes (agents) into lockable resources. This eliminate effort by re-creating resources on every node change.
