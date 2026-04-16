@@ -6,6 +6,7 @@ If you have an example to share, please create a [new documentation issue](https
 If you have a question, please open a [GitHub issue](https://github.com/jenkinsci/lockable-resources-plugin/issues/new/choose) with your question.
 
 - [Node depended resources](lock-nodes.md)
+- [Lock specific stages](lock-specific-stages.md)
 - [Locking multiple stages in declarative pipeline](locking-multiple-stages-in-declarative-pipeline.md)
 - [Locking a random free resource](locking-random-free-resource.md)
 - [Scripted vs declarative pipeline](scripted-vs-declarative-pipeline.md)
