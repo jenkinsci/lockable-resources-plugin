@@ -232,6 +232,36 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
 
     // ---------------------------------------------------------------------------
     @Test
+    void testDoReserveWithReason() throws Exception {
+
+        when(req.getMethod()).thenReturn("POST");
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        // Reserve with reason
+        SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
+        LockableResource resource = this.createResource("resource-with-reason");
+        String reason = "Testing the new feature";
+        when(req.getParameter("reason")).thenReturn(reason);
+        action.doReserve(req, rsp);
+
+        assertTrue(resource.isReserved(), "resource should be reserved");
+        assertEquals(this.reserve_user1.getId(), resource.getReservedBy(), "reserved by user1");
+        assertEquals(reason, resource.getLockReason(), "reason should be set");
+
+        // Unreserve should clear the reason
+        action.doUnreserve(req, rsp);
+        assertNull(resource.getReservedBy(), "should be unreserved");
+        assertTrue(resource.getLockReason().isEmpty(), "reason should be cleared");
+
+        // Reserve without reason (empty string)
+        when(req.getParameter("reason")).thenReturn("");
+        action.doReserve(req, rsp);
+        assertTrue(resource.isReserved(), "resource should be reserved");
+        assertTrue(resource.getLockReason().isEmpty(), "empty reason should be empty string");
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
     void testDoReset() throws IOException, ServletException {
 
         when(req.getMethod()).thenReturn("POST");
