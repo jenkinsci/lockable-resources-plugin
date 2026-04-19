@@ -145,7 +145,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     @DataBoundSetter
     public void setOnResourceEventScript(@CheckForNull SecureGroovyScript onResourceEventScript) {
-        this.onResourceEventScript = onResourceEventScript;
+        this.onResourceEventScript =
+                onResourceEventScript != null ? onResourceEventScript.configuringWithKeyItem() : null;
     }
 
     public boolean isEventCallbackAsync() {
@@ -183,6 +184,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public LockableResourcesManager() {
         resources = new ArrayList<>();
         load();
+        // SecureGroovyScript requires configuring() before evaluate() can be called.
+        // When deserialized from XML, the setter is not invoked, so configure here.
+        if (onResourceEventScript != null) {
+            onResourceEventScript = onResourceEventScript.configuringWithNonKeyItem();
+        }
     }
 
     // ---------------------------------------------------------------------------
