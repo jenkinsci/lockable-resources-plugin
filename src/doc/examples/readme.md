@@ -11,3 +11,4 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Locking a random free resource](locking-random-free-resource.md)
 - [Scripted vs declarative pipeline](scripted-vs-declarative-pipeline.md)
 - [Dynamic resource pool expansion](dynamic-resource-pool-expansion.md)
+- [Resource event notifications](resource-event-notifications.md)

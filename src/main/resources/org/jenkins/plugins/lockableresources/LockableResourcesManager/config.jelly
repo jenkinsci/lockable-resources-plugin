@@ -32,5 +32,15 @@
         </table>
       </f:repeatable>
     </f:entry>
+
+    <f:section title="${%eventCallback.section.title}">
+      <f:optionalProperty title="${%eventCallback.script.title}" field="onResourceEventScript"/>
+      <f:entry field="eventCallbackAsync">
+        <f:checkbox title="${%eventCallback.async.title}" default="true"/>
+      </f:entry>
+      <f:entry title="${%eventCallback.timeout.title}" field="eventCallbackTimeoutSec">
+        <f:number default="30" min="1"/>
+      </f:entry>
+    </f:section>
   </f:section>
 </j:jelly>
