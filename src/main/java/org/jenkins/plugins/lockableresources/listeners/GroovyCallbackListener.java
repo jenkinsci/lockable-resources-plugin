@@ -66,10 +66,11 @@ public class GroovyCallbackListener extends ResourceEventListener {
         String buildName = build != null ? build.getFullDisplayName() : null;
         boolean async = lrm.isEventCallbackAsync();
         int timeout = lrm.getEventCallbackTimeoutSec();
+        boolean ignoreExceptions = lrm.isEventCallbackIgnoreExceptions();
 
         if (async) {
             Future<?> future = CALLBACK_EXECUTOR.submit(() -> {
-                executeCallback(script, resourceInfos, eventName, buildName, userName);
+                executeCallback(script, resourceInfos, eventName, buildName, userName, ignoreExceptions);
             });
             // schedule timeout enforcement
             CALLBACK_EXECUTOR.submit(() -> {
@@ -83,7 +84,7 @@ public class GroovyCallbackListener extends ResourceEventListener {
                 }
             });
         } else {
-            executeCallback(script, resourceInfos, eventName, buildName, userName);
+            executeCallback(script, resourceInfos, eventName, buildName, userName, ignoreExceptions);
         }
     }
 
@@ -92,7 +93,8 @@ public class GroovyCallbackListener extends ResourceEventListener {
             List<ResourceInfo> resourceInfos,
             String eventName,
             @Nullable String buildName,
-            @Nullable String userName) {
+            @Nullable String userName,
+            boolean ignoreExceptions) {
         for (ResourceInfo info : resourceInfos) {
             try {
                 Binding binding = new Binding();
@@ -104,10 +106,15 @@ public class GroovyCallbackListener extends ResourceEventListener {
                 Jenkins jenkins = Jenkins.get();
                 script.evaluate(jenkins.getPluginManager().uberClassLoader, binding, null);
             } catch (Exception e) {
-                LOGGER.log(
-                        Level.WARNING,
-                        "Event callback script failed for " + eventName + " on " + info.getName(),
-                        e);
+                if (ignoreExceptions) {
+                    LOGGER.log(
+                            Level.WARNING,
+                            "Event callback script failed for " + eventName + " on " + info.getName(),
+                            e);
+                } else {
+                    throw new RuntimeException(
+                            "Event callback script failed for " + eventName + " on " + info.getName(), e);
+                }
             }
         }
     }

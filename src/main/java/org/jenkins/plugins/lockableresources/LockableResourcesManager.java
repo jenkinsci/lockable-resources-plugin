@@ -85,6 +85,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Timeout in seconds for the Groovy event callback (default: 30). */
     private int eventCallbackTimeoutSec = 30;
 
+    /** Whether to silently log Groovy callback exceptions instead of propagating them (default: true). */
+    private boolean eventCallbackIgnoreExceptions = true;
+
     /**
      * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
      * (freestyle builds) regular Jenkins queue is used.
@@ -161,6 +164,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @DataBoundSetter
     public void setEventCallbackTimeoutSec(int eventCallbackTimeoutSec) {
         this.eventCallbackTimeoutSec = eventCallbackTimeoutSec;
+    }
+
+    public boolean isEventCallbackIgnoreExceptions() {
+        return eventCallbackIgnoreExceptions;
+    }
+
+    @DataBoundSetter
+    public void setEventCallbackIgnoreExceptions(boolean eventCallbackIgnoreExceptions) {
+        this.eventCallbackIgnoreExceptions = eventCallbackIgnoreExceptions;
     }
 
     // ---------------------------------------------------------------------------

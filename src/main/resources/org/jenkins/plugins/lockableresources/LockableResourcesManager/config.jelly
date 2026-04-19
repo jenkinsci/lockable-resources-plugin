@@ -41,6 +41,9 @@
       <f:entry title="${%eventCallback.timeout.title}" field="eventCallbackTimeoutSec">
         <f:number default="30" min="1"/>
       </f:entry>
+      <f:entry field="eventCallbackIgnoreExceptions">
+        <f:checkbox title="${%eventCallback.ignoreExceptions.title}" default="true"/>
+      </f:entry>
     </f:section>
   </f:section>
 </j:jelly>
