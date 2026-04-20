@@ -40,6 +40,7 @@ THE SOFTWARE.
         data-table-configuration='
         {
           "stateSave": true,
+          "language": { "emptyTable": "${%table.empty}" },
           "lengthMenu": [
             [10, 25, 50, 100, -1],
             [10, 25, 50, 100, "${%table.settings.page.length.all}"]
