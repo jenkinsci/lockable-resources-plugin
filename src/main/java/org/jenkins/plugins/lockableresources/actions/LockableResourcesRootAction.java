@@ -8,6 +8,7 @@ package org.jenkins.plugins.lockableresources.actions;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.Api;
 import hudson.model.Descriptor;
 import hudson.model.RootAction;
@@ -536,15 +537,29 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
+        String reason = Util.fixEmptyAndTrim(req.getParameter("reason"));
+
+        LOGGER.info("doReserve called for resources=" + LockableResourcesManager.getResourcesNames(resources)
+                + " reason='" + reason + "' fromIP=" + req.getRemoteAddr());
+
         String userName = getUserName();
-        if (userName != null) {
-            if (!LockableResourcesManager.get().reserve(resources, userName)) {
-                rsp.sendError(
-                        423,
-                        Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
-                return;
-            }
+        if (userName == null) {
+            LOGGER.warning("doReserve: userName is null (unauthenticated?) for resources="
+                    + LockableResourcesManager.getResourcesNames(resources));
+            rsp.sendError(401, Messages.error_notAuthenticated());
+            return;
         }
+
+        boolean ok = LockableResourcesManager.get().reserve(resources, userName, reason);
+        if (!ok) {
+            LOGGER.info("doReserve failed - resource already locked: "
+                    + LockableResourcesManager.getResourcesNames(resources));
+            rsp.sendError(
+                    423, Messages.error_resourceAlreadyLocked(LockableResourcesManager.getResourcesNames(resources)));
+            return;
+        }
+        LOGGER.info("doReserve succeeded for user='" + userName + "' resources="
+                + LockableResourcesManager.getResourcesNames(resources));
         rsp.forwardToPreviousPage(req);
     }
 
@@ -558,11 +573,15 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
+        String reason = Util.fixEmptyAndTrim(req.getParameter("reason"));
+
         String userName = getUserName();
-        if (userName != null) {
-            LockableResourcesManager.get().steal(resources, userName);
+        if (userName == null) {
+            rsp.sendError(401, Messages.error_notAuthenticated());
+            return;
         }
 
+        LockableResourcesManager.get().steal(resources, userName, reason);
         rsp.forwardToPreviousPage(req);
     }
 

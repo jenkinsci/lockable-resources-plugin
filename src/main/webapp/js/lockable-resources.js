@@ -46,6 +46,46 @@ function find_resource_name(element) {
 
 function resource_action(button, action) {
   var resourceName = find_resource_name(button);
+  console.log("[LR] resource_action called:", action, resourceName);
+
+  // For reserve and steal actions, prompt for a reason
+  if (action === "reserve" || action === "steal") {
+    console.log("[LR] " + action + " action - showing dialog");
+    var titleKey = action + "-title";
+    var messageKey = action + "-message";
+    dialog
+      .prompt(i18n(titleKey, resourceName), {
+        message: i18n(messageKey, resourceName),
+        minWidth: "450px",
+        maxWidth: "600px"
+      })
+      .then(
+        (reason) => {
+          console.log("[LR] dialog resolved with reason:", reason);
+          var url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || "");
+          console.log("[LR] fetching:", url);
+          fetch(url,
+            {
+              method: "post",
+              headers: crumb.wrap({}),
+            },
+          ).then((rsp) => {
+            console.log("[LR] fetch response:", rsp.status, rsp.ok);
+            showResponse(rsp, i18n("action-on-success", action, resourceName), i18n("action-on-fail", action, resourceName));
+            if (!rsp.ok) {
+              window.location.reload();
+            }
+          }).catch((err) => {
+            console.error("[LR] fetch error:", err);
+          });
+        },
+        (cancelled) => {
+          console.log("[LR] dialog cancelled:", cancelled);
+        }
+      );
+    return;
+  }
+
   fetch(action + "?resource=" + encodeURIComponent(resourceName),
     {
       method: "post",

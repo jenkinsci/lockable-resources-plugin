@@ -35,10 +35,20 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public int quantity = 0;
 
+    /** The reason why this resource is being locked, displayed in the UI while locked. */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public String reason = null;
+
     LockStepResource(@Nullable String resource, @Nullable String label, int quantity) {
+        this(resource, label, quantity, null);
+    }
+
+    LockStepResource(@Nullable String resource, @Nullable String label, int quantity, @Nullable String reason) {
         this.resource = Util.fixEmptyAndTrim(resource);
         this.label = Util.fixEmptyAndTrim(label);
         this.quantity = quantity;
+        this.reason = Util.fixEmptyAndTrim(reason);
     }
 
     @DataBoundConstructor
@@ -56,24 +66,37 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         this.quantity = quantity;
     }
 
+    @DataBoundSetter
+    public void setReason(String reason) {
+        this.reason = Util.fixEmptyAndTrim(reason);
+    }
+
     @Override
     public String toString() {
-        return toString(resource, label, quantity);
+        return toString(resource, label, quantity, reason);
     }
 
     public static String toString(String resource, String label, int quantity) {
+        return toString(resource, label, quantity, null);
+    }
+
+    public static String toString(String resource, String label, int quantity, String reason) {
         // a label takes always priority
+        StringBuilder sb = new StringBuilder();
         if (label != null) {
+            sb.append("Label: ").append(label);
             if (quantity > 0) {
-                return "Label: " + label + ", Quantity: " + quantity;
+                sb.append(", Quantity: ").append(quantity);
             }
-            return "Label: " + label;
+        } else if (resource != null) {
+            sb.append("Resource: ").append(resource);
+        } else {
+            return "[no resource/label specified - probably a bug]";
         }
-        // make sure there is an actual resource specified
-        if (resource != null) {
-            return "Resource: " + resource;
+        if (reason != null && !reason.isEmpty()) {
+            sb.append(", Reason: ").append(reason);
         }
-        return "[no resource/label specified - probably a bug]";
+        return sb.toString();
     }
 
     // -------------------------------------------------------------------------

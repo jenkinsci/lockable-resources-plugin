@@ -29,16 +29,6 @@ THE SOFTWARE.
   xmlns:st="jelly:stapler">
   <st:adjunct includes="io.jenkins.plugins.data-tables"/>
 
-  <!-- translations for javascript--> 
-  <template id="i18n"
-            data-queue-title="${%queue.change.title}"
-            data-queue-message="${%queue.change.message}"
-            data-queue-on-success="${%queue.change.on.success}"
-            data-queue-on-fail="${%queue.change.on.fail}"
-            data-action-on-success="${%action.on.success}"
-            data-action-on-fail="${%action.on.fail}"
-             />
-
   <j:set var="queue" value="${it.getQueue()}"/>
 
   <div class="row py-3 queuebar">
