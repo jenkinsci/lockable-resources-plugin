@@ -205,8 +205,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
             if (variable != null && !variable.isEmpty()) {
                 // set the variable for the duration of the block
-                bodyInvoker.withContext(
-                        EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
+                bodyInvoker.withContext(EnvironmentExpander.merge(
+                        context.get(EnvironmentExpander.class), new EnvironmentExpander() {
                             private static final long serialVersionUID = -3431466225193397896L;
 
                             @Override
