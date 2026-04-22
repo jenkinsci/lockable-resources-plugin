@@ -110,6 +110,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private transient volatile AtomicBoolean savePending;
     private transient volatile ScheduledExecutorService saveExecutor;
 
+    /** Single scheduled timeout task. Guarded by {@link #syncResources}. */
+    private transient java.util.concurrent.ScheduledFuture<?> nextTimeoutTask;
+
+    /** Deadline (epoch ms) the current {@link #nextTimeoutTask} targets. 0 = none. */
+    private transient long nextTimeoutDeadline;
+
     @DataBoundSetter
     public void setAllowEmptyOrNullValues(boolean allowEmptyOrNullValues) {
         this.allowEmptyOrNullValues = allowEmptyOrNullValues;
@@ -935,8 +941,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         LOGGER.fine("current queue size: " + this.queuedContexts.size());
         LOGGER.finest("current queue: " + this.queuedContexts);
-        List<QueuedContextStruct> orphan = new ArrayList<>();
+        List<QueuedContextStruct> toRemove = new ArrayList<>();
         QueuedContextStruct nextEntry = null;
+        long earliestDeadline = Long.MAX_VALUE;
 
         // the first one added lock is the oldest one, and this wins
 
@@ -945,17 +952,42 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // check queue list first
             if (!entry.isValid()) {
                 LOGGER.fine("well be removed: " + idx + " " + entry);
-                orphan.add(entry);
+                toRemove.add(entry);
                 continue;
             }
+
+            // check if the entry has timed out waiting for resources
+            if (entry.isTimedOut()) {
+                LOGGER.info("Queue entry timed out waiting for resources: " + entry);
+                toRemove.add(entry);
+                PrintStream logger = entry.getLogger();
+                String msg = "[" + entry.getResourceDescription()
+                        + "] timed out waiting for resource allocation after "
+                        + entry.getTimeoutForAllocateResource() + " "
+                        + entry.getTimeoutUnit().toLowerCase(java.util.Locale.ENGLISH);
+                printLogs(msg, logger, Level.WARNING);
+                entry.getContext()
+                        .onFailure(new org.jenkins.plugins.lockableresources.queue.LockWaitTimeoutException(msg));
+                continue;
+            }
+
+            // track the earliest deadline among remaining entries for rescheduling
+            long deadline = entry.getTimeoutDeadlineMillis();
+            if (deadline > 0 && deadline < earliestDeadline) {
+                earliestDeadline = deadline;
+            }
+
             LOGGER.finest("oldest win - index: " + idx + " " + entry);
 
             nextEntry = getNextQueuedContextEntry(entry);
         }
 
-        if (!orphan.isEmpty()) {
-            this.queuedContexts.removeAll(orphan);
+        if (!toRemove.isEmpty()) {
+            this.queuedContexts.removeAll(toRemove);
         }
+
+        // reschedule for the next earliest deadline
+        scheduleTimeoutAt(earliestDeadline);
 
         return nextEntry;
     }
@@ -1529,12 +1561,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String variableName,
             boolean inversePrecedence,
             int priority) {
-        queueContext(context, requiredResources, resourceDescription, variableName, inversePrecedence, priority, null);
+        queueContext(
+                context,
+                requiredResources,
+                resourceDescription,
+                variableName,
+                inversePrecedence,
+                priority,
+                null,
+                0,
+                "MINUTES");
     }
 
+    // ---------------------------------------------------------------------------
     /*
      * Adds the given context and the required resources to the queue if
-     * this context is not yet queued.
+     * this context is not yet queued, with reason and timeout for resource allocation.
      */
     @Restricted(NoExternalUse.class)
     public void queueContext(
@@ -1544,7 +1586,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String variableName,
             boolean inversePrecedence,
             int priority,
-            String reason) {
+            String reason,
+            long timeoutForAllocateResource,
+            String timeoutUnit) {
         synchronized (syncResources) {
             for (QueuedContextStruct entry : this.queuedContexts) {
                 if (entry.getContext() == context) {
@@ -1555,7 +1599,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             int queueIndex = 0;
             QueuedContextStruct newQueueItem = new QueuedContextStruct(
-                    context, requiredResources, resourceDescription, variableName, priority, reason);
+                    context,
+                    requiredResources,
+                    resourceDescription,
+                    variableName,
+                    priority,
+                    reason,
+                    timeoutForAllocateResource,
+                    timeoutUnit);
 
             if (!inversePrecedence || priority != 0) {
                 queueIndex = this.queuedContexts.size() - 1;
@@ -1577,6 +1628,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     Level.FINE);
 
             save();
+
+            // If this entry has a timeout and its deadline is earlier than the
+            // currently scheduled one, (re)schedule so it fires on time.
+            long deadline = newQueueItem.getTimeoutDeadlineMillis();
+            if (deadline > 0 && (nextTimeoutDeadline == 0 || deadline < nextTimeoutDeadline)) {
+                scheduleTimeoutAt(deadline);
+            }
         }
     }
 
@@ -1633,7 +1691,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // Invalidate cached candidates so waiting jobs re-evaluate with current labels
         cachedCandidates.invalidateAll();
 
-        // Process waiting pipeline jobs
+        // Process waiting pipeline jobs (also handles timeouts)
         synchronized (syncResources) {
             while (proceedNextContext()) {
                 // process as many contexts as possible
@@ -1642,6 +1700,61 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         // Notify Jenkins queue for freestyle jobs
         scheduleQueueMaintenance();
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Checks for timed-out entries in the pipeline lock queue and fails them.
+     * Called by {@link org.jenkins.plugins.lockableresources.queue.LockWaitTimeoutPeriodicWork}
+     * as a safety net.
+     */
+    @Restricted(NoExternalUse.class)
+    public void checkTimeouts() {
+        synchronized (syncResources) {
+            // proceedNextContext → getNextQueuedContext handles timeouts + rescheduling
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Schedules (or reschedules) the single timeout task to fire at the given
+     * deadline. If {@code deadline} is {@link Long#MAX_VALUE} the current task
+     * is cancelled and nothing new is scheduled.
+     * Must be called while holding {@link #syncResources}.
+     */
+    private void scheduleTimeoutAt(long deadline) {
+        // Cancel the current task — we will either replace it or clear it
+        if (nextTimeoutTask != null) {
+            nextTimeoutTask.cancel(false);
+            nextTimeoutTask = null;
+            nextTimeoutDeadline = 0;
+        }
+
+        if (deadline == Long.MAX_VALUE || deadline <= 0) {
+            return;
+        }
+
+        nextTimeoutDeadline = deadline;
+        // Small buffer so the deadline has definitely passed when we check
+        long delayMs = Math.max(0, deadline - System.currentTimeMillis()) + 500L;
+        LOGGER.fine("Scheduling timeout check in " + delayMs + "ms");
+        nextTimeoutTask = jenkins.util.Timer.get()
+                .schedule(
+                        () -> {
+                            LOGGER.fine("Scheduled timeout check fired");
+                            synchronized (syncResources) {
+                                nextTimeoutDeadline = 0;
+                                nextTimeoutTask = null;
+                                while (proceedNextContext()) {
+                                    // process as many contexts as possible
+                                }
+                            }
+                        },
+                        delayMs,
+                        java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     // ---------------------------------------------------------------------------

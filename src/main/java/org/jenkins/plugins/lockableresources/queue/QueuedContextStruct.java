@@ -13,6 +13,7 @@ import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -53,6 +54,24 @@ public class QueuedContextStruct implements Serializable {
 
     private int priority = 0;
 
+    /*
+     * Timeout for waiting to acquire the resource, in the specified timeoutUnit.
+     * 0 means no timeout (wait indefinitely).
+     */
+    private long timeoutForAllocateResource = 0;
+
+    /*
+     * Time unit for the timeout. Defaults to MINUTES.
+     */
+    private String timeoutUnit = "MINUTES";
+
+    /*
+     * Pre-computed absolute deadline (epoch millis) when this entry times out.
+     * 0 means no timeout. Calculated once at construction time to avoid
+     * repeated TimeUnit.valueOf() + toMillis() on every queue check.
+     */
+    private long timeoutDeadlineMillis = 0;
+
     // cached candidates
     public transient List<String> candidates = null;
 
@@ -70,11 +89,11 @@ public class QueuedContextStruct implements Serializable {
             String resourceDescription,
             String variableName,
             int priority) {
-        this(context, lockableResourcesStruct, resourceDescription, variableName, priority, null);
+        this(context, lockableResourcesStruct, resourceDescription, variableName, priority, null, 0, "MINUTES");
     }
 
     /*
-     * Constructor for the QueuedContextStruct class with reason.
+     * Constructor for the QueuedContextStruct class with reason and timeout.
      */
     @Restricted(NoExternalUse.class)
     public QueuedContextStruct(
@@ -83,14 +102,29 @@ public class QueuedContextStruct implements Serializable {
             String resourceDescription,
             String variableName,
             int priority,
-            String reason) {
+            String reason,
+            long timeoutForAllocateResource,
+            String timeoutUnit) {
         this.context = context;
         this.lockableResourcesStruct = lockableResourcesStruct;
         this.resourceDescription = resourceDescription;
         this.variableName = variableName;
         this.priority = priority;
         this.reason = reason;
+        this.timeoutForAllocateResource = timeoutForAllocateResource;
+        this.timeoutUnit = timeoutUnit != null ? timeoutUnit : "MINUTES";
         this.id = UUID.randomUUID().toString();
+
+        // Pre-compute deadline once to avoid repeated calculation on every queue check
+        if (timeoutForAllocateResource > 0) {
+            try {
+                TimeUnit unit = TimeUnit.valueOf(this.timeoutUnit);
+                this.timeoutDeadlineMillis = System.currentTimeMillis() + unit.toMillis(timeoutForAllocateResource);
+            } catch (IllegalArgumentException e) {
+                LOGGER.warning("Invalid timeoutUnit '" + this.timeoutUnit + "', timeout disabled");
+                this.timeoutDeadlineMillis = 0;
+            }
+        }
     }
 
     @Restricted(NoExternalUse.class)
@@ -173,6 +207,42 @@ public class QueuedContextStruct implements Serializable {
      */
     public String getVariableName() {
         return this.variableName;
+    }
+
+    /**
+     * Checks whether this queued context has exceeded its allocation timeout.
+     * Uses a pre-computed deadline for performance since this is called on every queue check.
+     *
+     * @return true if a timeout was set and has expired, false otherwise
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean isTimedOut() {
+        return timeoutDeadlineMillis > 0 && System.currentTimeMillis() > timeoutDeadlineMillis;
+    }
+
+    /**
+     * Returns the pre-computed deadline (epoch millis) when this entry times out.
+     * 0 means no timeout is configured.
+     */
+    @Restricted(NoExternalUse.class)
+    public long getTimeoutDeadlineMillis() {
+        return this.timeoutDeadlineMillis;
+    }
+
+    /**
+     * Returns the configured timeout for resource allocation.
+     */
+    @Restricted(NoExternalUse.class)
+    public long getTimeoutForAllocateResource() {
+        return this.timeoutForAllocateResource;
+    }
+
+    /**
+     * Returns the time unit for the allocation timeout.
+     */
+    @Restricted(NoExternalUse.class)
+    public String getTimeoutUnit() {
+        return this.timeoutUnit;
     }
 
     @Restricted(NoExternalUse.class)

@@ -28,6 +28,12 @@
   <f:entry title="${%entry.priority.title}" field="priority">
     <f:number/>
   </f:entry>
+  <f:entry title="${%entry.timeoutForAllocateResource.title}" field="timeoutForAllocateResource">
+    <f:number default="0"/>
+  </f:entry>
+  <f:entry title="${%entry.timeoutUnit.title}" field="timeoutUnit">
+    <f:select/>
+  </f:entry>
   <f:entry title="${%entry.extra.title}">
     <f:repeatable field="extra" header="" minimum="0" add="${%entry.extra.add}">
       <table width="100%">

@@ -28,6 +28,12 @@
       <f:entry title="${%entry.resourceNumber.title}" field="resourceNumber">
         <f:textbox/>
       </f:entry>
+      <f:entry title="${%entry.lockTimeout.title}" field="lockTimeout">
+        <f:number default="0"/>
+      </f:entry>
+      <f:entry title="${%entry.lockTimeoutUnit.title}" field="lockTimeoutUnit">
+        <f:select/>
+      </f:entry>
     </f:nested>
   </f:optionalBlock>
 </j:jelly>

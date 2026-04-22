@@ -147,8 +147,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
             getContext().onSuccess(null);
         } else {
             this.printBlockCause(logger, resourceHolderList);
-            LockableResourcesManager.printLogs(
-                    "[" + step + "] is not free, waiting for execution ...", Level.FINE, LOGGER, logger);
+            String waitMsg = "[" + step + "] is not free, waiting for execution ...";
+            if (step.timeoutForAllocateResource > 0) {
+                waitMsg += " (timeout: " + step.timeoutForAllocateResource + " "
+                        + step.timeoutUnit.toLowerCase(java.util.Locale.ENGLISH) + ")";
+            }
+            LockableResourcesManager.printLogs(waitMsg, Level.FINE, LOGGER, logger);
             LockableResourcesManager lrm = LockableResourcesManager.get();
             lrm.queueContext(
                     getContext(),
@@ -157,7 +161,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     step.variable,
                     step.inversePrecedence,
                     step.priority,
-                    step.reason);
+                    step.reason,
+                    step.timeoutForAllocateResource,
+                    step.timeoutUnit);
         }
     }
 
@@ -205,8 +211,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Seri
                     context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
             if (variable != null && !variable.isEmpty()) {
                 // set the variable for the duration of the block
-                bodyInvoker.withContext(
-                        EnvironmentExpander.merge(context.get(EnvironmentExpander.class), new EnvironmentExpander() {
+                bodyInvoker.withContext(EnvironmentExpander.merge(
+                        context.get(EnvironmentExpander.class), new EnvironmentExpander() {
                             private static final long serialVersionUID = -3431466225193397896L;
 
                             @Override
