@@ -1,8 +1,12 @@
 # Auto-enable squash merge for Dependabot PRs
 # GitHub will automatically merge once all required checks pass
+#
+# Uses pull_request_target so the workflow runs in the base-branch context
+# and the default GITHUB_TOKEN has write permissions (Dependabot-triggered
+# pull_request events only expose a read-only token).
 name: Dependabot Auto-merge
 
-on: pull_request
+on: pull_request_target
 
 permissions:
   contents: write
@@ -17,4 +21,4 @@ jobs:
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}

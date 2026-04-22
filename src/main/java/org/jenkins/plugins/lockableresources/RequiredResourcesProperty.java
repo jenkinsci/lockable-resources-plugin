@@ -17,6 +17,7 @@ import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -26,6 +27,7 @@ import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.interceptor.RequirePOST;
@@ -37,6 +39,17 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     private final String resourceNumber;
     private final String labelName;
     private final @CheckForNull SecureGroovyScript resourceMatchScript;
+
+    /**
+     * Timeout for waiting to acquire the resource, in the specified {@link #lockTimeoutUnit}.
+     * 0 means no timeout (wait indefinitely).
+     */
+    private long lockTimeout = 0;
+
+    /**
+     * Time unit for {@link #lockTimeout}. Defaults to MINUTES.
+     */
+    private String lockTimeoutUnit = "MINUTES";
 
     @DataBoundConstructor
     public RequiredResourcesProperty(
@@ -142,6 +155,24 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     @CheckForNull
     public SecureGroovyScript getResourceMatchScript() {
         return resourceMatchScript;
+    }
+
+    public long getLockTimeout() {
+        return lockTimeout;
+    }
+
+    @DataBoundSetter
+    public void setLockTimeout(long lockTimeout) {
+        this.lockTimeout = lockTimeout;
+    }
+
+    public String getLockTimeoutUnit() {
+        return lockTimeoutUnit;
+    }
+
+    @DataBoundSetter
+    public void setLockTimeoutUnit(String lockTimeoutUnit) {
+        this.lockTimeoutUnit = lockTimeoutUnit;
     }
 
     @Extension
@@ -331,6 +362,16 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             } else {
                 Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             }
+        }
+
+        @RequirePOST
+        public ListBoxModel doFillLockTimeoutUnitItems(@AncestorInPath Item item) {
+            checkPermission(item);
+            ListBoxModel items = new ListBoxModel();
+            items.add("Seconds", "SECONDS");
+            items.add("Minutes", "MINUTES");
+            items.add("Hours", "HOURS");
+            return items;
         }
     }
 }

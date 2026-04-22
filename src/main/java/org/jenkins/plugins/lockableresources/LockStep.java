@@ -71,6 +71,20 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public int priority = 0;
 
+    /**
+     * Timeout in the specified {@link #timeoutUnit} for waiting to acquire the resource.
+     * 0 means no timeout (wait indefinitely). When the timeout expires, the step fails
+     * with an exception instead of waiting forever.
+     */
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public long timeoutForAllocateResource = 0;
+
+    /**
+     * Time unit for {@link #timeoutForAllocateResource}. Defaults to MINUTES.
+     */
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public String timeoutUnit = "MINUTES";
+
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
     // is not required)
@@ -154,6 +168,24 @@ public class LockStep extends Step implements Serializable {
         this.extra = extra;
     }
 
+    @DataBoundSetter
+    public void setTimeoutForAllocateResource(long timeoutForAllocateResource) {
+        this.timeoutForAllocateResource = Math.max(0, timeoutForAllocateResource);
+    }
+
+    @DataBoundSetter
+    public void setTimeoutUnit(String timeoutUnit) {
+        if (timeoutUnit != null && !timeoutUnit.trim().isEmpty()) {
+            // Validate it is a valid TimeUnit name
+            try {
+                java.util.concurrent.TimeUnit.valueOf(timeoutUnit.toUpperCase(Locale.ENGLISH));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid timeoutUnit: " + timeoutUnit);
+            }
+            this.timeoutUnit = timeoutUnit.toUpperCase(Locale.ENGLISH);
+        }
+    }
+
     @Extension
     public static final class DescriptorImpl extends StepDescriptor {
 
@@ -227,6 +259,20 @@ public class LockStep extends Step implements Serializable {
                 }
             }
             return FormValidation.ok();
+        }
+
+        @RequirePOST
+        public ListBoxModel doFillTimeoutUnitItems(@AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
+            ListBoxModel items = new ListBoxModel();
+            items.add("Seconds", "SECONDS");
+            items.add("Minutes", "MINUTES");
+            items.add("Hours", "HOURS");
+            return items;
         }
 
         @Override

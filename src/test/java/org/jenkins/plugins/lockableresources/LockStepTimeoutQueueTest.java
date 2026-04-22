@@ -34,7 +34,11 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
         // b1 holds the lock
         WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "holder");
         p1.setDefinition(new CpsFlowDefinition(
-                "lock('resource1') {\n" + "  semaphore 'hold'\n" + "}\n" + "echo 'holder done'", true));
+                "lock('resource1') {\n"
+                        + "  semaphore 'hold'\n"
+                        + "}\n"
+                        + "echo 'holder done'",
+                true));
         WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("hold/1", b1);
 
@@ -53,7 +57,11 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
         // b3 also waits for the lock — queued after b2
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "waiter");
         p3.setDefinition(new CpsFlowDefinition(
-                "lock('resource1') {\n" + "  semaphore 'waiter'\n" + "}\n" + "echo 'waiter done'", true));
+                "lock('resource1') {\n"
+                        + "  semaphore 'waiter'\n"
+                        + "}\n"
+                        + "echo 'waiter done'",
+                true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
 
@@ -103,22 +111,31 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // b1 holds the lock
         WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "holder");
-        p1.setDefinition(
-                new CpsFlowDefinition("lock(label: 'label1', quantity: 1) {\n" + "  semaphore 'hold'\n" + "}", true));
+        p1.setDefinition(new CpsFlowDefinition(
+                "lock(label: 'label1', quantity: 1) {\n"
+                        + "  semaphore 'hold'\n"
+                        + "}",
+                true));
         WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("hold/1", b1);
 
         // b2 waits for the lock
         WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "aborter");
         p2.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'label1', quantity: 1) {\n" + "  semaphore 'aborter'\n" + "}", true));
+                "lock(label: 'label1', quantity: 1) {\n"
+                        + "  semaphore 'aborter'\n"
+                        + "}",
+                true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
         j.waitForMessage(", waiting for execution ...", b2);
 
         // b3 also waits
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "waiter");
         p3.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'label1', quantity: 1) {\n" + "  semaphore 'waiter'\n" + "}\n" + "echo 'waiter done'",
+                "lock(label: 'label1', quantity: 1) {\n"
+                        + "  semaphore 'waiter'\n"
+                        + "}\n"
+                        + "echo 'waiter done'",
                 true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
         j.waitForMessage(", waiting for execution ...", b3);
@@ -166,13 +183,15 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // b1 holds the lock
         WorkflowJob holder = j.jenkins.createProject(WorkflowJob.class, "holder");
-        holder.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }\necho 'holder done'", true));
+        holder.setDefinition(
+                new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }\necho 'holder done'", true));
         WorkflowRun b1 = holder.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("hold/1", b1);
 
         // b2 waits (no timeout)
         WorkflowJob first = j.jenkins.createProject(WorkflowJob.class, "first");
-        first.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'first' }\necho 'first done'", true));
+        first.setDefinition(new CpsFlowDefinition(
+                "lock('resource1') { semaphore 'first' }\necho 'first done'", true));
         WorkflowRun b2 = first.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
 
@@ -190,7 +209,8 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // b4 waits (no timeout)
         WorkflowJob last = j.jenkins.createProject(WorkflowJob.class, "last");
-        last.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'last' }\necho 'last done'", true));
+        last.setDefinition(
+                new CpsFlowDefinition("lock('resource1') { semaphore 'last' }\necho 'last done'", true));
         WorkflowRun b4 = last.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b4);
 
@@ -243,22 +263,26 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // b1 holds the lock
         WorkflowJob holder = j.jenkins.createProject(WorkflowJob.class, "holder");
-        holder.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }\necho 'holder done'", true));
+        holder.setDefinition(
+                new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }\necho 'holder done'", true));
         WorkflowRun b1 = holder.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("hold/1", b1);
 
         // b2 waits for the lock — will be hard-killed
         WorkflowJob victim = j.jenkins.createProject(WorkflowJob.class, "victim");
-        victim.setDefinition(
-                new CpsFlowDefinition("lock('resource1') {\n" + "  echo 'victim inside lock'\n" + "}", true));
+        victim.setDefinition(new CpsFlowDefinition(
+                "lock('resource1') {\n"
+                        + "  echo 'victim inside lock'\n"
+                        + "}",
+                true));
         WorkflowRun b2 = victim.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
         isPaused(b2, 1, 1);
 
         // b3 also waits
         WorkflowJob waiter = j.jenkins.createProject(WorkflowJob.class, "waiter");
-        waiter.setDefinition(
-                new CpsFlowDefinition("lock('resource1') { semaphore 'waiter' }\necho 'waiter done'", true));
+        waiter.setDefinition(new CpsFlowDefinition(
+                "lock('resource1') { semaphore 'waiter' }\necho 'waiter done'", true));
         WorkflowRun b3 = waiter.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
         isPaused(b3, 1, 1);
@@ -302,13 +326,15 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // b1 holds the lock
         WorkflowJob holder = j.jenkins.createProject(WorkflowJob.class, "holder");
-        holder.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }\necho 'holder done'", true));
+        holder.setDefinition(
+                new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }\necho 'holder done'", true));
         WorkflowRun b1 = holder.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("hold/1", b1);
 
         // b2 waits — will be hard-killed
         WorkflowJob victim = j.jenkins.createProject(WorkflowJob.class, "victim");
-        victim.setDefinition(new CpsFlowDefinition("lock('resource1') { echo 'victim inside' }", true));
+        victim.setDefinition(new CpsFlowDefinition(
+                "lock('resource1') { echo 'victim inside' }", true));
         WorkflowRun b2 = victim.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
 
@@ -325,7 +351,8 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // A new build must be able to acquire the lock immediately
         WorkflowJob fresh = j.jenkins.createProject(WorkflowJob.class, "fresh");
-        fresh.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'fresh' }\necho 'fresh done'", true));
+        fresh.setDefinition(new CpsFlowDefinition(
+                "lock('resource1') { semaphore 'fresh' }\necho 'fresh done'", true));
         WorkflowRun b3 = fresh.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("fresh/1", b3);
         j.assertLogContains("Lock acquired on [Resource: resource1]", b3);
