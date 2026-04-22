@@ -21,12 +21,14 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -35,6 +37,9 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
     private transient Cache<Long, Date> lastLogged =
             Caffeine.newBuilder().expireAfterWrite(30, TimeUnit.MINUTES).build();
+
+    /** Tracks the deadline (epoch millis) for each queue item waiting for resources. */
+    private final transient ConcurrentHashMap<Long, Long> deadlines = new ConcurrentHashMap<>();
 
     static final Logger LOGGER = Logger.getLogger(LockableResourcesQueueTaskDispatcher.class.getName());
 
@@ -122,21 +127,64 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
             if (selected != null) {
                 LOGGER.finest(project.getName() + " reserved resources " + selected);
+                deadlines.remove(item.getId());
                 return null;
             } else {
                 LOGGER.finest(project.getName() + " waiting for resources");
+                CauseOfBlockage timeout = checkFreestyleTimeout(item, project);
+                if (timeout != null) return timeout;
                 return new BecauseResourcesLocked(resources);
             }
 
         } else {
             if (LockableResourcesManager.get().queue(resources.required, item.getId(), project.getFullDisplayName())) {
                 LOGGER.finest(project.getName() + " reserved resources " + resources.required);
+                deadlines.remove(item.getId());
                 return null;
             } else {
                 LOGGER.finest(project.getName() + " waiting for resources " + resources.required);
+                CauseOfBlockage timeout = checkFreestyleTimeout(item, project);
+                if (timeout != null) return timeout;
                 return new BecauseResourcesLocked(resources);
             }
         }
+    }
+
+    /**
+     * Checks whether a freestyle queue item has exceeded the configured lock timeout.
+     * If timed out, the item is cancelled from the Jenkins queue.
+     *
+     * @return a {@link BecauseResourcesTimeout} if timed out, {@code null} otherwise
+     */
+    private CauseOfBlockage checkFreestyleTimeout(Queue.Item item, Job<?, ?> project) {
+        RequiredResourcesProperty prop = project.getProperty(RequiredResourcesProperty.class);
+        if (prop == null || prop.getLockTimeout() <= 0) {
+            return null;
+        }
+
+        long now = System.currentTimeMillis();
+        long deadline = deadlines.computeIfAbsent(item.getId(), k -> {
+            long timeoutMillis;
+            try {
+                timeoutMillis = TimeUnit.valueOf(prop.getLockTimeoutUnit()).toMillis(prop.getLockTimeout());
+            } catch (IllegalArgumentException e) {
+                timeoutMillis = TimeUnit.MINUTES.toMillis(prop.getLockTimeout());
+            }
+            return now + timeoutMillis;
+        });
+
+        if (now >= deadline) {
+            LOGGER.log(Level.INFO, "{0} timed out waiting for lockable resources (timeout: {1} {2})", new Object[] {
+                project.getFullName(),
+                prop.getLockTimeout(),
+                prop.getLockTimeoutUnit().toLowerCase(java.util.Locale.ENGLISH)
+            });
+            deadlines.remove(item.getId());
+            // Cancel the queue item
+            jenkins.model.Jenkins.get().getQueue().cancel(item);
+            return new BecauseResourcesTimeout(project.getFullName(), prop.getLockTimeout(), prop.getLockTimeoutUnit());
+        }
+        return null;
     }
 
     public static class BecauseResourcesLocked extends CauseOfBlockage {
@@ -194,6 +242,28 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             String resourceInfo =
                     resources.label.isEmpty() ? resources.required.toString() : "with label " + resources.label;
             return "Execution failed while acquiring the resource " + resourceInfo + ". " + cause.getMessage();
+        }
+    }
+
+    // Only for UI
+    @Restricted(NoExternalUse.class)
+    public static class BecauseResourcesTimeout extends CauseOfBlockage {
+
+        private final String projectName;
+        private final long timeout;
+        private final String timeoutUnit;
+
+        public BecauseResourcesTimeout(String projectName, long timeout, String timeoutUnit) {
+            this.projectName = projectName;
+            this.timeout = timeout;
+            this.timeoutUnit = timeoutUnit;
+        }
+
+        @Override
+        public String getShortDescription() {
+            return projectName + " cancelled: timed out after " + timeout + " "
+                    + timeoutUnit.toLowerCase(java.util.Locale.ENGLISH)
+                    + " waiting for lockable resources";
         }
     }
 }
