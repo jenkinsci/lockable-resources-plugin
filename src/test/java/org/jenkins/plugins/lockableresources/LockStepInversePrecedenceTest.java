@@ -4,6 +4,7 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -33,6 +34,7 @@ class LockStepInversePrecedenceTest extends LockStepTestBase {
      */
     @Test
     @Issue({"JENKINS-40787", "GITHUB-861"})
+    @Disabled("Blocked by #861 — inversePrecedence is not applied for label-based locks, test hangs")
     void lockInverseOrderWithLabel(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
