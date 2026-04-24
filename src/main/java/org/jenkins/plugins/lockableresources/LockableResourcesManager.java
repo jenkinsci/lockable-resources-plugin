@@ -1178,6 +1178,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 uncacheIfFreeing(r, true, true);
                 r.reset();
             }
+
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
+
             save();
         }
         scheduleQueueMaintenance();
