@@ -91,7 +91,7 @@ class ConcurrentModificationExceptionTest {
             public void run() {
                 System.setProperty(Constants.SYSTEM_PROPERTY_ENABLE_NODE_MIRROR, "true");
                 LOGGER.info("run NodesMirror");
-                org.jenkins.plugins.lockableresources.NodesMirror.createNodeResources();
+                org.jenkins.plugins.lockableresources.nodes.NodesMirror.createNodeResources();
                 LOGGER.info("NodesMirror done");
             }
         };
