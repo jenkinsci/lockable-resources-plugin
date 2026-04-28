@@ -43,6 +43,8 @@ import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
+import org.jenkins.plugins.lockableresources.listeners.ResourceEvent;
+import org.jenkins.plugins.lockableresources.listeners.ResourceEventListener;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -72,6 +74,19 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * When disabled, locking a non-existent resource will block until it is manually created.
      */
     private boolean allowEphemeralResources = true;
+
+    /** Groovy callback script executed when a resource changes state. */
+    @CheckForNull
+    private SecureGroovyScript onResourceEventScript;
+
+    /** Whether the Groovy event callback runs asynchronously (default: true). */
+    private boolean eventCallbackAsync = true;
+
+    /** Timeout in seconds for the Groovy event callback (default: 30). */
+    private int eventCallbackTimeoutSec = 30;
+
+    /** Whether to silently log Groovy callback exceptions instead of propagating them (default: true). */
+    private boolean eventCallbackIgnoreExceptions = true;
 
     /**
      * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
@@ -129,6 +144,44 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return allowEphemeralResources;
     }
 
+    @CheckForNull
+    public SecureGroovyScript getOnResourceEventScript() {
+        return onResourceEventScript;
+    }
+
+    @DataBoundSetter
+    public void setOnResourceEventScript(@CheckForNull SecureGroovyScript onResourceEventScript) {
+        this.onResourceEventScript =
+                onResourceEventScript != null ? onResourceEventScript.configuringWithKeyItem() : null;
+    }
+
+    public boolean isEventCallbackAsync() {
+        return eventCallbackAsync;
+    }
+
+    @DataBoundSetter
+    public void setEventCallbackAsync(boolean eventCallbackAsync) {
+        this.eventCallbackAsync = eventCallbackAsync;
+    }
+
+    public int getEventCallbackTimeoutSec() {
+        return eventCallbackTimeoutSec;
+    }
+
+    @DataBoundSetter
+    public void setEventCallbackTimeoutSec(int eventCallbackTimeoutSec) {
+        this.eventCallbackTimeoutSec = eventCallbackTimeoutSec;
+    }
+
+    public boolean isEventCallbackIgnoreExceptions() {
+        return eventCallbackIgnoreExceptions;
+    }
+
+    @DataBoundSetter
+    public void setEventCallbackIgnoreExceptions(boolean eventCallbackIgnoreExceptions) {
+        this.eventCallbackIgnoreExceptions = eventCallbackIgnoreExceptions;
+    }
+
     // ---------------------------------------------------------------------------
     /** C-tor */
     @SuppressFBWarnings(
@@ -137,6 +190,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public LockableResourcesManager() {
         resources = new ArrayList<>();
         load();
+        // SecureGroovyScript requires configuring() before evaluate() can be called.
+        // When deserialized from XML, the setter is not invoked, so configure here.
+        if (onResourceEventScript != null) {
+            onResourceEventScript = onResourceEventScript.configuringWithNonKeyItem();
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -712,6 +770,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         LockedResourcesBuildAction.findAndInitAction(build).addUsedResources(getResourcesNames(resourcesToLock));
 
         save();
+        ResourceEventListener.fireEvent(ResourceEvent.LOCKED, resourcesToLock, build, null);
 
         return true;
     }
@@ -727,6 +786,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         List<LockableResource> toBeRemoved = new ArrayList<>();
+        List<LockableResource> freed = new ArrayList<>();
 
         for (LockableResource resource : unlockResources) {
             // No more contexts, unlock resource
@@ -738,6 +798,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resource.setBuild(null);
             resource.setLockReason(null);
             uncacheIfFreeing(resource, true, false);
+            freed.add(resource);
 
             if (resource.isEphemeral()) {
                 LOGGER.fine("Remove ephemeral resource: " + resource);
@@ -749,6 +810,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         // remove all ephemeral resources
         removeResources(toBeRemoved);
+
+        if (!freed.isEmpty()) {
+            ResourceEventListener.fireEvent(ResourceEvent.UNLOCKED, freed, build, null);
+        }
     }
 
     public void unlockBuild(@Nullable Run<?, ?> build) {
@@ -1075,6 +1140,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             save();
         }
+        ResourceEventListener.fireEvent(ResourceEvent.RESERVED, resources, null, userName);
         LOGGER.info("reserve() succeeded user='" + userName + "' resources=" + getResourcesNames(resources));
         return true;
     }
@@ -1114,6 +1180,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             save();
         }
+        ResourceEventListener.fireEvent(ResourceEvent.STOLEN, resources, null, userName);
         return true;
     }
 
@@ -1135,6 +1202,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
             save();
         }
+        ResourceEventListener.fireEvent(ResourceEvent.REASSIGNED, resources, null, userName);
     }
 
     // ---------------------------------------------------------------------------
@@ -1161,6 +1229,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             save();
         }
+        ResourceEventListener.fireEvent(ResourceEvent.UNRESERVED, resources, null, null);
         scheduleQueueMaintenance();
     }
 
@@ -1185,6 +1254,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             save();
         }
+        ResourceEventListener.fireEvent(ResourceEvent.RESET, resources, null, null);
         scheduleQueueMaintenance();
     }
 
@@ -1203,6 +1273,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             this.unlockResources(resources);
             this.unreserve(resources);
         }
+        ResourceEventListener.fireEvent(ResourceEvent.RECYCLED, resources, null, null);
     }
 
     // ---------------------------------------------------------------------------

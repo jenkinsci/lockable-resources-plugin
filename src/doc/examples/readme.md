@@ -13,4 +13,5 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Scripted vs declarative pipeline](scripted-vs-declarative-pipeline.md)
 - [Timeout inside lock](timeout-inside-lock.md)
 - [Dynamic resource pool expansion](dynamic-resource-pool-expansion.md)
+- [Resource event notifications](resource-event-notifications.md)
 - [Lock with allocation timeout](lock-with-timeout.md)
