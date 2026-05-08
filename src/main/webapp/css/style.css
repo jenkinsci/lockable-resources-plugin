@@ -58,3 +58,55 @@ table.dataTable td, table.dataTable th {
 .queuebar:empty {
   display: none;
 }
+
+.lockable-resources-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--background);
+  border-top: 1px solid var(--hairline-color);
+  padding: 0.75rem 0;
+}
+
+.lockable-resources-bulk-bar[aria-hidden="true"] {
+  display: none;
+}
+
+.lockable-resources-bulk-bar__content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lockable-resources-bulk-bar__count {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.lockable-resources-donut-layout {
+  display: flex;
+  justify-content: center;
+}
+
+.lockable-resources-donut-wrap {
+  position: relative;
+  width: 9rem;
+  height: 9rem;
+}
+
+.lockable-resources-donut {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 0 62%, #000 63% 100%);
+  mask: radial-gradient(circle, transparent 0 62%, #000 63% 100%);
+}
+
+.lockable-resources-donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

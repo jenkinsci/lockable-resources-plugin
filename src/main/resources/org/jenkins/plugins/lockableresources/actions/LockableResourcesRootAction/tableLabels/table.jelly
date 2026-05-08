@@ -28,6 +28,7 @@ THE SOFTWARE.
   <j:set var="allLabels" value="${it.getLabelsList()}" />
   <j:if test="${allLabels.size() != 0}">
     <st:adjunct includes="io.jenkins.plugins.data-tables"/>
+    <st:adjunct includes="io.jenkins.plugins.data-tables-buttons"/>
     <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
     <div class="table-responsive">
@@ -39,7 +40,9 @@ THE SOFTWARE.
         data-columns-definition="[null, null, null, null]"
         data-table-configuration='
         {
+        "dom": "lfrtBip",
           "stateSave": true,
+          "buttons": [{"extend": "colvis", "text": "${%table.buttons.columns}", "columns": [0,1,2,3]}],
           "language": { "emptyTable": "${%table.empty}" },
           "lengthMenu": [
             [10, 25, 50, 100, -1],
@@ -48,10 +51,21 @@ THE SOFTWARE.
         }'
       >
         <thead>
-          <th class="width-100">${%labels.table.column.labels}</th>
-          <th>${%labels.table.column.assigned}</th>
-          <th>${%labels.table.column.free}</th>
-          <th>${%labels.table.column.percentage}</th>
+          <tr>
+            <th class="width-100">${%labels.table.column.labels}</th>
+            <th>${%labels.table.column.assigned}</th>
+            <th>${%labels.table.column.free}</th>
+            <th>${%labels.table.column.percentage}</th>
+          </tr>
+          <tr class="lockable-resources-filters">
+            <th>
+              <input type="search" class="form-control form-control-sm lockable-resources-column-filter" data-dt-column="0"
+                     placeholder="${%table.filter.label}" />
+            </th>
+            <th></th>
+            <th></th>
+            <th></th>
+          </tr>
         </thead>
         <tbody>
           <j:forEach var="entry" items="${allLabels.entrySet()}">
@@ -110,6 +124,7 @@ THE SOFTWARE.
           </j:forEach>
         </tbody>
       </table>
+      <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
     </div>
   </j:if>
 </j:jelly>
