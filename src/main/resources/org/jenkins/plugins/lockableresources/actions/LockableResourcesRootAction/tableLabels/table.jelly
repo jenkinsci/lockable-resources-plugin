@@ -40,7 +40,6 @@ THE SOFTWARE.
         data-columns-definition="[null, null, null, null]"
         data-table-configuration='
         {
-        "dom": "lfrtBip",
           "stateSave": true,
           "buttons": [{"extend": "colvis", "text": "${%table.buttons.columns}", "columns": [0,1,2,3]}],
           "language": { "emptyTable": "${%table.empty}" },
