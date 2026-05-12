@@ -23,18 +23,14 @@
  */
 package org.jenkins.plugins.lockableresources;
 
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import hudson.Util;
+import hudson.security.ACL;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-import org.htmlunit.FailingHttpStatusCodeException;
-import org.htmlunit.html.HtmlElement;
-import org.htmlunit.html.HtmlElementUtil;
-import org.htmlunit.html.HtmlPage;
+import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -57,40 +53,36 @@ class LockableResourceRootActionSEC1361Test {
     private static void checkXssWithResourceName(JenkinsRule j, String resourceName) throws Exception {
         LockableResourcesManager.get().createResource(resourceName);
 
+        // The resources table loads rows asynchronously (DataTables TableModel), so validate XSS safety
+        // via the JSON row HTML: ensure the resource name is escaped inside an HTML attribute.
         j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
         j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(ACL.SYSTEM2);
 
-        JenkinsRule.WebClient wc = j.createWebClient();
-        wc.login("user");
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+        String json = action.getTableRows("lockable-resources");
+        JsonNode rows = new ObjectMapper().readTree(json);
 
-        final AtomicReference<String> lastAlertReceived = new AtomicReference<>();
-        wc.setAlertHandler((page, s) -> lastAlertReceived.set(s));
-
-        // disable exceptions, otherwise it will not parse jQuery scripts (used ba DataTable plugin)
-        wc.getOptions().setThrowExceptionOnScriptError(false);
-        HtmlPage htmlPage = wc.goTo("lockable-resources");
-        assertThat(lastAlertReceived.get(), nullValue());
-
-        // currently only one button but perhaps in future version of the core/plugin,
-        // other buttons will be added to the layout
-        List<HtmlElement> allButtons = htmlPage.getDocumentElement().getElementsByTagName("button");
-        assertThat(allButtons.size(), greaterThanOrEqualTo(1));
-
-        HtmlElement reserveButton = null;
-        for (HtmlElement b : allButtons) {
-            String action = b.getAttribute("data-action");
-            if (action != null && action.contains("reserve")) {
-                reserveButton = b;
+        String escapedName = Util.escape(resourceName);
+        String expectedAttr = "data-resource-name=\"" + escapedName + "\"";
+        String unsafeAttr = "data-resource-name=\"" + resourceName + "\"";
+        boolean foundEscapedCheckbox = false;
+        for (JsonNode row : rows) {
+            JsonNode selectCell = row.get("select");
+            if (selectCell == null || !selectCell.isTextual()) {
+                continue;
+            }
+            String selectHtml = selectCell.asText();
+            if (selectHtml.contains(expectedAttr)) {
+                foundEscapedCheckbox = true;
+                assertTrue(selectHtml.contains("lockable-resources-select"), "Expected selection checkbox");
+                if (!resourceName.equals(escapedName)) {
+                    assertTrue(!selectHtml.contains(unsafeAttr), "Expected unsafe attribute value to be escaped");
+                }
             }
         }
-        assertThat(reserveButton, not(nullValue()));
 
-        try {
-            HtmlElementUtil.click(reserveButton);
-        } catch (FailingHttpStatusCodeException e) {
-            // only happen if we have a XSS, but it's managed using the AlertHandler to ensure it's a XSS
-            // and not just an invalid page
-        }
-        assertThat(lastAlertReceived.get(), nullValue());
+        assertTrue(foundEscapedCheckbox, "Expected a selection checkbox for the created resource");
     }
 }

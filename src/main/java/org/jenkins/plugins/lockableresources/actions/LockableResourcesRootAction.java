@@ -5,10 +5,13 @@
  */
 package org.jenkins.plugins.lockableresources.actions;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Util;
+import hudson.markup.MarkupFormatter;
 import hudson.model.Api;
 import hudson.model.Descriptor;
 import hudson.model.RootAction;
@@ -17,13 +20,24 @@ import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
+import io.jenkins.plugins.datatables.AsyncTableContentProvider;
+import io.jenkins.plugins.datatables.DetailedCell;
+import io.jenkins.plugins.datatables.TableColumn;
+import io.jenkins.plugins.datatables.TableConfiguration;
+import io.jenkins.plugins.datatables.TableModel;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
+import java.io.StringWriter;
+import java.text.DateFormat;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
@@ -35,15 +49,17 @@ import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.StaplerResponse2;
+import org.kohsuke.stapler.bind.JavaScriptMethod;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @Extension
 @ExportedBean
-public class LockableResourcesRootAction implements RootAction {
+public class LockableResourcesRootAction implements RootAction, AsyncTableContentProvider {
 
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesRootAction.class.getName());
 
@@ -103,7 +119,423 @@ public class LockableResourcesRootAction implements RootAction {
 
     @Override
     public String getUrlName() {
-        return Jenkins.get().hasPermission(VIEW) ? "lockable-resources" : "";
+        return "lockable-resources";
+    }
+
+    private static final String RESOURCES_TABLE_ID = "lockable-resources";
+
+    @Restricted(NoExternalUse.class) // used by jelly
+    public Summary getSummary() {
+        Jenkins.get().checkPermission(VIEW);
+
+        int locked = 0;
+        int reserved = 0;
+        int queued = 0;
+        int free = 0;
+        int total = 0;
+
+        for (LockableResource r : LockableResourcesManager.get().getReadOnlyResources()) {
+            total++;
+            if (r.getReservedBy() != null) {
+                reserved++;
+            } else if (r.isLocked()) {
+                locked++;
+            } else if (r.isQueued()) {
+                queued++;
+            } else {
+                free++;
+            }
+        }
+
+        int queueItems = 0;
+        for (QueuedContextStruct context : LockableResourcesManager.get().getCurrentQueuedContext()) {
+            queueItems += context.getResources().size();
+        }
+
+        return new Summary(total, locked, reserved, queued, free, queueItems);
+    }
+
+    @Restricted(NoExternalUse.class)
+    public static final class Summary {
+        private final int total;
+        private final int locked;
+        private final int reserved;
+        private final int queued;
+        private final int free;
+        private final int queueItems;
+
+        Summary(
+                final int total,
+                final int locked,
+                final int reserved,
+                final int queued,
+                final int free,
+                final int queueItems) {
+            this.total = total;
+            this.locked = locked;
+            this.reserved = reserved;
+            this.queued = queued;
+            this.free = free;
+            this.queueItems = queueItems;
+        }
+
+        public int getTotal() {
+            return total;
+        }
+
+        public int getLocked() {
+            return locked;
+        }
+
+        public int getReserved() {
+            return reserved;
+        }
+
+        public int getQueued() {
+            return queued;
+        }
+
+        public int getFree() {
+            return free;
+        }
+
+        public int getQueueItems() {
+            return queueItems;
+        }
+    }
+
+    @Restricted(NoExternalUse.class) // used by jelly
+    public TableModel getResourcesTableModel() {
+        return new ResourcesTableModel(getLocale());
+    }
+
+    @Override
+    @JavaScriptMethod
+    public TableModel getTableModel(final String tableId) {
+        Jenkins.get().checkPermission(VIEW);
+        if (RESOURCES_TABLE_ID.equals(tableId)) {
+            return getResourcesTableModel();
+        }
+        throw new IllegalArgumentException("Unknown table model: " + tableId);
+    }
+
+    @Override
+    @JavaScriptMethod
+    public String getTableRows(final String tableId) {
+        Jenkins.get().checkPermission(VIEW);
+        List<Object> rows = getTableModel(tableId).getRows();
+        try {
+            return new ObjectMapper().writeValueAsString(rows);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(String.format("Can't convert table rows '%s' to JSON object", rows), e);
+        }
+    }
+
+    private static Locale getLocale() {
+        StaplerRequest2 current = Stapler.getCurrentRequest2();
+        return current != null ? current.getLocale() : Locale.getDefault();
+    }
+
+    private static ResourceBundle getTableResourcesBundle(final Locale locale) {
+        return ResourceBundle.getBundle(
+                "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.tableResources.table",
+                locale,
+                LockableResourcesRootAction.class.getClassLoader());
+    }
+
+    private static String tr(final ResourceBundle bundle, final String key, final Object... args) {
+        String pattern = bundle.getString(key);
+        if (args == null || args.length == 0) {
+            return pattern;
+        }
+        return MessageFormat.format(pattern, args);
+    }
+
+    private static final class ResourcesTableModel extends TableModel {
+        private final Locale locale;
+        private final ResourceBundle bundle;
+
+        ResourcesTableModel(final Locale locale) {
+            this.locale = locale;
+            this.bundle = getTableResourcesBundle(locale);
+        }
+
+        @Override
+        public String getId() {
+            return RESOURCES_TABLE_ID;
+        }
+
+        @Override
+        public List<TableColumn> getColumns() {
+            return List.of(
+                    new TableColumn.ColumnBuilder()
+                    .withHeaderLabel(tr(bundle, "resources.table.column.select"))
+                            .withDataPropertyKey("select")
+                            .withType(TableColumn.ColumnType.STRING)
+                            .withHeaderClass(TableColumn.ColumnCss.NO_SORT)
+                            .build(),
+                    new TableColumn.ColumnBuilder()
+                            .withHeaderLabel(tr(bundle, "resources.table.column.index"))
+                            .withDataPropertyKey("index")
+                            .withType(TableColumn.ColumnType.HTML_NUMBER)
+                            .withDetailedCell()
+                            .build(),
+                    new TableColumn.ColumnBuilder()
+                            .withHeaderLabel(tr(bundle, "resources.table.column.resource"))
+                            .withDataPropertyKey("resource")
+                            .withType(TableColumn.ColumnType.STRING)
+                            .withDetailedCell()
+                            .build(),
+                    new TableColumn.ColumnBuilder()
+                            .withHeaderLabel(tr(bundle, "resources.table.column.status"))
+                            .withDataPropertyKey("status")
+                            .withType(TableColumn.ColumnType.STRING)
+                            .withDetailedCell()
+                            .build(),
+                    new TableColumn.ColumnBuilder()
+                            .withHeaderLabel(tr(bundle, "resources.table.column.timestamp"))
+                            .withDataPropertyKey("timestamp")
+                            .withType(TableColumn.ColumnType.DATE)
+                            .withDetailedCell()
+                            .build(),
+                    new TableColumn.ColumnBuilder()
+                            .withHeaderLabel(tr(bundle, "resources.table.column.labels"))
+                            .withDataPropertyKey("labels")
+                            .withType(TableColumn.ColumnType.STRING)
+                            .withDetailedCell()
+                            .build(),
+                    new TableColumn.ColumnBuilder()
+                            .withHeaderLabel(tr(bundle, "resources.table.column.properties"))
+                            .withDataPropertyKey("properties")
+                            .withType(TableColumn.ColumnType.STRING)
+                            .withHeaderClass(TableColumn.ColumnCss.HIDDEN)
+                            .build());
+        }
+
+        @Override
+        public TableConfiguration getTableConfiguration() {
+            // Ensure required JS/CSS adjuncts are included by the dt:table tag.
+            // The full table config is still provided by getTableConfigurationDefinition().
+            return new TableConfiguration().buttons("colvis").stateSave();
+        }
+
+        @Override
+        public String getTableConfigurationDefinition() {
+            // Keep behavior aligned with the previous Jelly-based configuration, but rely on
+            // data-tables-api defaults for layout and column behaviors.
+            return "{\n"
+                    + "  \"order\": [[1, \"asc\"]],\n"
+                    + "  \"stateSave\": true,\n"
+                    + "  \"buttons\": [{\"extend\": \"colvis\", \"text\": \""
+                    + Util.escape(tr(bundle, "table.buttons.columns")).replace("\"", "\\\"")
+                    + "\", \"columns\": [1,2,3,4,5]}],\n"
+                    + "  \"language\": { \"emptyTable\": \""
+                    + Util.escape(tr(bundle, "table.empty")).replace("\"", "\\\"") + "\" },\n"
+                    + "  \"lengthMenu\": [[10, 25, 50, 100, -1], [10, 25, 50, 100, \""
+                    + Util.escape(tr(bundle, "table.settings.page.length.all")).replace("\"", "\\\"") + "\"]]\n"
+                    + "}";
+        }
+
+        @Override
+        public List<Object> getRows() {
+            List<Object> rows = new ArrayList<>();
+
+            DateFormat dateTime = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale);
+            MarkupFormatter markupFormatter = Jenkins.get().getMarkupFormatter();
+
+            int index = 0;
+            for (LockableResource resource : LockableResourcesManager.get().getReadOnlyResources()) {
+                index++;
+                Map<String, Object> row = new LinkedHashMap<>();
+
+                row.put(
+                        "select",
+                        "<input type=\"checkbox\" class=\"lockable-resources-select\" data-resource-name=\""
+                                + Util.escape(resource.getName())
+                                + "\" />");
+
+                String propertiesHtml = renderProperties(resource);
+                String details = TableColumn.renderDetailsColumn(propertiesHtml);
+                row.put("index", new DetailedCell<>(details + " " + index, index));
+
+                row.put(
+                        "resource",
+                        new DetailedCell<>(renderResourceCell(resource, markupFormatter), resource.getName()));
+                row.put("status", new DetailedCell<>(renderStatusCell(resource), renderStatusSortKey(resource)));
+
+                Date reservedTimestamp = resource.getReservedTimestamp();
+                if (reservedTimestamp != null) {
+                    row.put(
+                            "timestamp",
+                            new DetailedCell<>(dateTime.format(reservedTimestamp), reservedTimestamp.getTime()));
+                } else {
+                    row.put("timestamp", new DetailedCell<>("", 0L));
+                }
+
+                row.put(
+                        "labels",
+                        new DetailedCell<>(renderLabels(resource), String.join(",", resource.getLabelsAsList())));
+                row.put("properties", propertiesHtml);
+
+                rows.add(row);
+            }
+
+            return rows;
+        }
+
+        private String renderResourceCell(final LockableResource resource, final MarkupFormatter markupFormatter) {
+            StringBuilder html = new StringBuilder();
+
+            String resourceName = resource.getName();
+            String escapedName = Util.escape(resourceName);
+
+            html.append("<div class=\"row justify-content-end\">");
+            html.append("<div class=\"col-auto\"><strong>").append(escapedName).append("</strong></div>");
+            html.append("<div class=\"col\">");
+            if (resource.isEphemeral()) {
+                html.append("<span class=\"static-label\">")
+                        .append(Util.escape(tr(bundle, "resources.ephemeral")))
+                        .append("</span>");
+            }
+            html.append("</div>");
+
+            if (Jenkins.get().hasPermission(RESERVE)) {
+                html.append("<div class=\"col-auto jenkins-!-margin-right-2\">")
+                        .append(
+                                "<a class=\"jenkins-table__link lockable-resources-replace-note\" data-resource-name=\"")
+                        .append(Util.escape(resourceName))
+                        .append("\" href=\"editNote\">")
+                        .append(Util.escape(tr(bundle, "btn.editNote")))
+                        .append("</a></div>");
+            }
+            html.append("</div>");
+
+            if (resource.getDescription() != null && !resource.getDescription().isEmpty()) {
+                html.append("<div class=\"row\"><div class=\"col\">")
+                        .append(Util.escape(resource.getDescription()))
+                        .append("</div></div>");
+            }
+
+            html.append("<div class=\"row\"><div id=\"note-")
+                    .append(Util.escape(resourceName))
+                    .append("\">");
+            if (resource.getNote() != null && !resource.getNote().isEmpty()) {
+                html.append("<div class=\"note-wrapper jenkins-!-padding-2 jenkins-!-margin-right-1 overflow-auto\">");
+                html.append(translateNote(markupFormatter, resource.getNote()));
+                html.append("</div>");
+            }
+            html.append("</div></div>");
+
+            return html.toString();
+        }
+
+        private static String translateNote(final MarkupFormatter markupFormatter, final String note) {
+            try {
+                StringWriter writer = new StringWriter();
+                markupFormatter.translate(note, writer);
+                return writer.toString();
+            } catch (IOException e) {
+                // Fallback: show escaped raw note if translation fails.
+                return Util.escape(note);
+            }
+        }
+
+        private String renderStatusCell(final LockableResource resource) {
+            StringBuilder html = new StringBuilder();
+
+            if (resource.getReservedBy() != null) {
+                html.append(tr(bundle, "resource.status.reservedBy", Util.escape(resource.getReservedBy())));
+                appendReason(html, resource);
+            } else if (resource.isLocked()) {
+                Run<?, ?> build = resource.getBuild();
+                if (build != null) {
+                    html.append(tr(
+                            bundle,
+                            "resource.status.locked",
+                            Util.escape("/" + build.getUrl()),
+                            Util.escape(build.getFullDisplayName())));
+                } else {
+                    html.append(tr(bundle, "resource.status.locked", "#", "N/A"));
+                }
+                appendReason(html, resource);
+            } else if (resource.isQueued()) {
+                html.append(tr(
+                        bundle,
+                        "resource.status.queuedBy",
+                        Util.escape(resource.getQueueItemProject()),
+                        Util.escape(String.valueOf(resource.getQueueItemId()))));
+            } else {
+                html.append(tr(bundle, "resource.status.free"));
+            }
+
+            Date reservedTimestamp = resource.getReservedTimestamp();
+            if (reservedTimestamp != null) {
+                long delta = Math.max(0L, System.currentTimeMillis() - reservedTimestamp.getTime());
+                String ago = tr(bundle, "ago", Util.getTimeSpanString(delta));
+                html.append("<br />").append(Util.escape(ago));
+            }
+
+            return html.toString();
+        }
+
+        private void appendReason(final StringBuilder html, final LockableResource resource) {
+            if (resource.getLockReason() != null && !resource.getLockReason().isEmpty()) {
+                html.append("<br/>")
+                        .append("<span class=\"jenkins-!-font-weight-normal\">")
+                        .append(Util.escape(tr(bundle, "resource.status.reason")))
+                        .append(": ")
+                        .append(Util.escape(resource.getLockReason()))
+                        .append("</span>");
+            }
+        }
+
+        private static int renderStatusSortKey(final LockableResource resource) {
+            if (resource.getReservedBy() != null) {
+                return 3;
+            }
+            if (resource.isLocked()) {
+                return 2;
+            }
+            if (resource.isQueued()) {
+                return 1;
+            }
+            return 0;
+        }
+
+        private String renderLabels(final LockableResource resource) {
+            StringBuilder html = new StringBuilder();
+            for (String label : resource.getLabelsAsList()) {
+                if (label == null || label.isEmpty()) {
+                    continue;
+                }
+                html.append("<a class=\"jenkins-table__link model-link\" href=\"/label/")
+                        .append(Util.rawEncode(label))
+                        .append("\">")
+                        .append(Util.escape(label))
+                        .append("</a>");
+            }
+            return html.toString();
+        }
+
+        private String renderProperties(final LockableResource resource) {
+            if (resource.getProperties() == null || resource.getProperties().isEmpty()) {
+                return "";
+            }
+
+            StringBuilder html = new StringBuilder();
+            html.append(
+                    "<div class=\"table-responsive\"><table class=\"jenkins-table jenkins-!-margin-0 table-properties\"><tbody>");
+            resource.getProperties().forEach(property -> {
+                html.append("<tr><td>")
+                        .append(Util.escape(property.getName()))
+                        .append("</td><td>")
+                        .append(Util.escape(property.getValue()))
+                        .append("</td></tr>");
+            });
+            html.append("</tbody></table></div>");
+            return html.toString();
+        }
+
     }
 
     // ---------------------------------------------------------------------------

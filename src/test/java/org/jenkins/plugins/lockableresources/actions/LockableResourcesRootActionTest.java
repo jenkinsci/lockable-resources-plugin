@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hudson.model.Item;
 import hudson.model.User;
 import hudson.security.AccessDeniedException3;
@@ -17,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import jenkins.model.Jenkins;
+import org.htmlunit.html.HtmlPage;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -258,6 +261,126 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         action.doReserve(req, rsp);
         assertTrue(resource.isReserved(), "resource should be reserved");
         assertTrue(resource.getLockReason().isEmpty(), "empty reason should be empty string");
+    }
+
+    @Test
+    void tableModelReturnsRowsAsJson() throws Exception {
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        // Prepare a couple of resources
+        this.createResource("resource-a");
+        this.createResource("resource-b");
+
+        SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
+
+        String json = action.getTableRows("lockable-resources");
+        JsonNode node = new ObjectMapper().readTree(json);
+
+        assertTrue(node.isArray(), "Expected JSON array of rows");
+        assertTrue(node.size() >= 2, "Expected at least two rows");
+
+        // Ensure our resource names are present somewhere in the rendered cells
+        String all = node.toString();
+        assertTrue(all.contains("resource-a"), "Expected resource-a to be present in JSON");
+        assertTrue(all.contains("resource-b"), "Expected resource-b to be present in JSON");
+    }
+
+    @Test
+    void tableModelIncludesSelectionCheckbox() throws Exception {
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        this.createResource("resource-select");
+
+        SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
+
+        String json = action.getTableRows("lockable-resources");
+        JsonNode rows = new ObjectMapper().readTree(json);
+        assertTrue(rows.isArray(), "Expected JSON array of rows");
+        assertTrue(rows.size() >= 1, "Expected at least one row");
+
+        JsonNode matched = null;
+        for (JsonNode row : rows) {
+            if (row.toString().contains("resource-select")) {
+                matched = row;
+                break;
+            }
+        }
+        assertNotNull(matched, "Expected to find the resource-select row");
+
+        assertTrue(matched.has("select"), "Expected select column to be present");
+        String selectHtml = matched.get("select").asText();
+        assertTrue(selectHtml.contains("lockable-resources-select"), "Expected selection checkbox in select cell");
+        assertTrue(selectHtml.contains("data-resource-name=\"resource-select\""), "Expected data-resource-name on checkbox");
+
+        assertFalse(matched.has("action"), "Did not expect per-row action column");
+    }
+
+    @Test
+    void resourcesTableColumnsDefinitionIsGenerated() {
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        String columnsDefinition = action.getResourcesTableModel().getColumnsDefinition();
+        assertNotNull(columnsDefinition);
+        assertFalse(columnsDefinition.isBlank());
+        assertTrue(columnsDefinition.contains("\"select\""), "Expected select column definition");
+    }
+
+    @Test
+    void subPagesRenderWithJenkinsSidePanelNavigation() throws Exception {
+        // Ensure we're in the "configured" branch of resources.jelly so the sidebar is rendered.
+        LockableResource r = this.createResource("ui-smoke-resource");
+        r.setLabels("ui-smoke-label");
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(ADMIN);
+        // DataTables/Bootstrap JS is not relevant for this smoke test.
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+
+        for (String path : List.of(
+                "lockable-resources/",
+                "lockable-resources/resources",
+                "lockable-resources/labels",
+                "lockable-resources/queue")) {
+            HtmlPage page = wc.goTo(path);
+
+            assertNotNull(page.getElementById("side-panel"), "Expected Jenkins side panel for " + path);
+
+            String html = page.asXml();
+            assertTrue(html.contains("/lockable-resources/"), "Expected sidebar overview link on " + path);
+            assertTrue(html.contains("/lockable-resources/resources"), "Expected sidebar resources link on " + path);
+            assertTrue(html.contains("/lockable-resources/labels"), "Expected sidebar labels link on " + path);
+            assertTrue(html.contains("/lockable-resources/queue"), "Expected sidebar queue link on " + path);
+
+            if (path.endsWith("/labels")) {
+                assertTrue(html.contains("lockable-resources-labels"), "Expected labels table on " + path);
+                assertTrue(html.contains("colvis"), "Expected column selector (colvis) config on " + path);
+                assertTrue(html.contains("lockable-resources-column-filter"), "Expected labels column filter input on " + path);
+                assertTrue(html.contains("lockable-resources.js"), "Expected shared LR JS on " + path);
+            }
+            if (path.endsWith("/queue")) {
+                assertTrue(html.contains("lockable-resources-queue"), "Expected queue table on " + path);
+                assertTrue(html.contains("colvis"), "Expected column selector (colvis) config on " + path);
+                assertTrue(html.contains("lockable-resources-column-filter"), "Expected per-column filters on " + path);
+            }
+
+            if (path.endsWith("/")) {
+                assertNotNull(
+                        page.getElementById("lockable-resources-state-summary"),
+                        "Expected combined state summary card on " + path);
+                assertNotNull(
+                        page.getElementById("lockable-resources-state-donut"), "Expected state donut chart on " + path);
+                assertTrue(html.contains("100%"), "Expected a 100% legend entry on " + path);
+            }
+
+            if (path.endsWith("/resources")) {
+                assertNotNull(page.getElementById("lockable-resources"), "Expected resources table element on " + path);
+                // data-tables-api loads rows via JS: tableDataProxy.getTableRows(...)
+                // The proxy only exposes methods annotated with @JavaScriptMethod.
+                assertTrue(html.contains("tableDataProxy"), "Expected Stapler JS proxy binding on " + path);
+                assertTrue(html.contains("getTableRows"), "Expected getTableRows() to be exposed to JS on " + path);
+                assertTrue(html.contains("table-resources-filters.js"), "Expected resources filter init JS on " + path);
+            }
+        }
     }
 
     // ---------------------------------------------------------------------------

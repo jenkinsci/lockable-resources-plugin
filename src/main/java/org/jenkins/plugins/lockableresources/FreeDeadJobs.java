@@ -24,7 +24,6 @@ public final class FreeDeadJobs {
 
     @Initializer(after = InitMilestone.JOB_LOADED)
     public static void freePostMortemResources() {
-
         LockableResourcesManager lrm = LockableResourcesManager.get();
         boolean freedAny = false;
         synchronized (lrm.syncResources) {

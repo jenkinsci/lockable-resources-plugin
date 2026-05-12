@@ -28,310 +28,48 @@ THE SOFTWARE.
   xmlns:f="/lib/form"
   xmlns:i="jelly:fmt"
   xmlns:st="jelly:stapler"
+  xmlns:dt="/data-tables"
   >
-  <st:adjunct includes="io.jenkins.plugins.data-tables"/>
-
   <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
-  <div class="table-responsive">
-    <table
-      class="jenkins-!-margin-bottom-4 table table-striped display data-table"
-      id="lockable-resources"
-      data-remember-search-text="true"
-      isLoaded="true"
-      data-columns-definition="[null, null, null, null, null, null, null]"
-      data-table-configuration='
-      {
-        "responsive": {
-          "details": {
-            "type": "column"
-          }
-        },
-        "columnDefs": [
-            { "targets": "index", "className": "dt-control" },
-            { "targets": "properties", "visible": false }
-        ],
-        "order": [ 0, "asc" ],
-        "stateSave": true,
-        "language": { "emptyTable": "${%table.empty}" },
-        "lengthMenu": [
-          [10, 25, 50, 100, -1],
-          [10, 25, 50, 100, "${%table.settings.page.length.all}"]
-        ]
-       }'
-    >
-      <thead>
-        <th data-class-name="index">${%resources.table.column.index}</th>
-        <th data-class-name="resource" class="width-100">${%resources.table.column.resource}</th>
-        <th data-class-name="status">${%resources.table.column.status}</th>
-        <th data-class-name="timestamp">${%resources.table.column.timestamp}</th>
-        <th data-class-name="labels" class="width-100">${%resources.table.column.labels}</th>
-        <th data-class-name="properties">${%resources.table.column.properties}</th>
-        <th data-class-name="action">${%resources.table.column.action}</th>
-      </thead>
-      <tbody>
-        <j:forEach var="resource" items="${it.resources}" varStatus="idx">
-          <tr data-resource-name="${resource.name}">
-            <!-- **************************************************************
-                 Index
-            -->
-            <td>${idx.index + 1}</td>
+  <dt:table model="${it.resourcesTableModel}" class="jenkins-!-margin-bottom-4 table-striped display" />
 
-            <!-- **************************************************************
-                 Column with common resource data
-            -->
-            <td>
-              <div class="row justify-content-end">
-                <div class="col-auto">
-                  <strong>${resource.name}</strong>
-                </div>
-                <div class="col">
-                  <j:if test="${resource.ephemeral}">
-                    <span class="static-label">${%resources.ephemeral}</span>
-                  </j:if>
-                </div>
-                <div class="col-auto jenkins-!-margin-right-2">
-                  <l:hasPermission permission="${it.RESERVE}">
-                    <a class="jenkins-table__link lockable-resources-replace-note" data-resource-name="${resource.name}"
-                       id="note-link" href="editNote">
-                      <l:icon class="symbol-edit-note icon-sm" />
-                      ${%btn.editNote}
-                    </a>
-                  </l:hasPermission>
-                </div>
-              <!-- this does not look good when we use bootstrap5
-                <l:copyButton message="${%btn.copy.message}" text="${resource.name}" tooltip="${%btn.copy.detail}"/>
-              -->
-              </div>
-              <j:if test="${resource.description != null and !resource.description.isEmpty()}">
-                <div class="row">
-                  <div class="col">
-                    ${resource.description}
-                  </div>
-                </div>
-              </j:if>
-              <div class="row">
-                <div id="note-${resource.name}">
-                  <j:if test="${resource.note != null and !resource.note.isEmpty()}">
-                  <div class="note-wrapper jenkins-!-padding-2 jenkins-!-margin-right-1 overflow-auto">
-                    <j:out value="${resource.note !=null ? app.markupFormatter.translate(resource.note) : ''}"/>
-                  </div>
-                  </j:if>
-                </div>
-              </div>
-            </td>
+  <div id="lockable-resources-bulk-bar" class="lockable-resources-bulk-bar" aria-hidden="true">
+    <div class="lockable-resources-bulk-bar__content">
+      <span class="lockable-resources-bulk-bar__label">${%bulk.selected}</span>
+      <span class="lockable-resources-bulk-bar__count" id="lockable-resources-selected-count">0</span>
 
+      <l:hasPermission permission="${it.RESERVE}">
+        <button type="button" class="jenkins-button jenkins-button--primary lockable-resources-bulk-action-button" data-action="reserve" disabled="disabled">
+          ${%btn.reserve}
+        </button>
+        <button type="button" class="jenkins-button jenkins-!-success-color lockable-resources-bulk-action-button" data-action="unreserve" disabled="disabled">
+          ${%btn.unReserve}
+        </button>
+      </l:hasPermission>
 
-            <!-- **************************************************************
-                 Status column
-            -->
-            <j:set var="cssClass" value=""/>
-            <j:choose>
-            <!-- Reserved by user, config or API.
-                 It differs to lock() or `queue` that this must be unreserve by some action.
-                 This kind is dangeresous, because it might leads to long blockage.
-                 Therefore we use `danger`color here.
-            -->
-              <j:when test="${resource.reservedBy != null}">
-                <j:set var="cssClass" value="destructive"/>
-              </j:when>
-            <!-- Locked by job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
-              <j:when test="${resource.locked}">
-                <j:set var="cssClass" value="warning"/>
-              </j:when>
-            <!-- Queued by matrix-job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
-              <j:when test="${resource.queued}">
-                <j:set var="cssClass" value="warning"/>
-              </j:when>
-            <!-- Resource is (or it looks so) fre
-            -->
-              <j:otherwise>
-                <j:set var="cssClass" value="success"/>
-              </j:otherwise>
-            </j:choose>
+      <l:hasPermission permission="${it.UNLOCK}">
+        <button type="button" class="jenkins-button jenkins-!-warning-color lockable-resources-bulk-action-button" data-action="unlock" disabled="disabled">
+          ${%btn.unlock}
+        </button>
+        <button type="button" class="jenkins-button jenkins-!-destructive-color lockable-resources-bulk-action-button" data-action="reset" disabled="disabled">
+          ${%btn.reset}
+        </button>
+      </l:hasPermission>
 
-            <td class="jenkins-!-${cssClass}-color">
-              <j:choose>
-            <!-- Reserved by user, config or API.
-                 It differs to lock() or `queue` that this must be unreserve by some action.
-                 This kind is dangeresous, because it might leads to long blockage.
-                 Therefore we use `danger`color here.
-            -->
-              <j:when test="${resource.reservedBy != null}">
-                ${%resource.status.reservedBy(resource.reservedBy)}
-                <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
-                  <br/>
-                  <span class="jenkins-!-font-weight-normal">${%resource.status.reason}: ${resource.lockReason}</span>
-                </j:if>
-              </j:when>
-            <!-- Locked by job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
-              <j:when test="${resource.locked}">
-                ${%resource.status.locked(rootURL + '/' + resource.build.url, resource.build.fullDisplayName)}
-                <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
-                  <br/>
-                  <span class="jenkins-!-font-weight-normal">${%resource.status.reason}: ${resource.lockReason}</span>
-                </j:if>
-              </j:when>
-            <!-- Queued by matrix-job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
-              <j:when test="${resource.queued}">
-                ${%resource.status.queuedBy(resource.queueItemProject, resource.queueItemId)}
-              </j:when>
-            <!-- Resource is (or it looks so) free
-            -->
-              <j:otherwise>
-                ${%resource.status.free}
-              </j:otherwise>
-            </j:choose>
-
-            <!-- add timestamp when possible -->
-              <j:if test="${resource.reservedTimestamp != null}">
-                <br />
-                ${%ago(h.getTimeSpanString(resource.reservedTimestamp))}
-              </j:if>
-            </td>
-
-
-            <!-- **************************************************************
-                 Reserved / locked timestamp column
-            -->
-            <j:choose>
-              <j:when test="${resource.reservedTimestamp != null}">
-                <td data-order="${resource.reservedTimestamp.time}">
-                  <i:formatDate
-                    value="${resource.reservedTimestamp}"
-                    type="both"
-                    dateStyle="medium"
-                    timeStyle="short"
-                  />
-                </td>
-              </j:when>
-              <j:otherwise>
-                <td></td>
-              </j:otherwise>
-            </j:choose>
-
-
-            <!-- **************************************************************
-                 Labels column
-            -->
-            <td>
-              <!--todo replace it by getLabelsAsList() -->
-              <j:forEach var="label" items="${resource.getLabelsAsList()}">
-                <a class="jenkins-table__link model-link" href="${rootURL}/label/${label}">
-                  ${label}
-                  <button class="jenkins-menu-dropdown-chevron"></button
-                >
-                </a>
-              </j:forEach>
-            </td>
-
-            <!-- **************************************************************
-                 Table with assigned properties
-            -->
-            <td class="jenkins-!-padding-0">
-              <j:if test="${resource.properties.size() gt 0}">
-                <div class="table-responsive">
-                  <table class="jenkins-table jenkins-!-margin-0 table-properties">
-                    <tbody>
-                     <j:forEach var="property" items="${resource.properties}">
-                        <tr>
-                          <td>${property.name}</td>
-                          <td>${property.value}</td>
-                        </tr>
-                      </j:forEach>
-                    </tbody>
-                  </table>
-                </div>
-              </j:if>
-            </td>
-
-            <!-- **************************************************************
-                 Action column
-            -->
-            <td>
-              <j:choose>
-                <j:when test="${resource.locked}">
-                  <l:hasPermission permission="${it.UNLOCK}">
-                    <button
-                      data-action="unlock"
-                      class="jenkins-button j.jenkins-!-warning-color lockable-resources-action-button"
-                      tooltip="${%btn.unlock.detail}"
-                    >
-                      ${%btn.unlock}
-                    </button>
-                  </l:hasPermission>
-                  <l:hasPermission permission="${it.STEAL}">
-                    <button
-                      data-action="steal"
-                      class="jenkins-button jenkins-!-destructive-color lockable-resources-action-button"
-                      tooltip="${%btn.steal.detail}"
-                    >
-                      ${%btn.steal}
-                    </button>
-                  </l:hasPermission>
-                </j:when>
-                <j:when test="${resource.reservedBy != null}">
-                  <l:hasPermission permission="${it.RESERVE}">
-                    <j:if test="${resource.isReservedByCurrentUser() or h.hasPermission(app.ADMINISTER)}">
-                      <button
-                        data-action="unreserve"
-                        class="jenkins-button jenkins-!-success-color lockable-resources-action-button"
-                        tooltip="${%btn.unReserve.detail}"
-                      >
-                        ${%btn.unReserve}
-                      </button>
-                    </j:if>
-                  </l:hasPermission>
-                  <l:hasPermission permission="${it.STEAL}">
-                    <j:if test="${!resource.isReservedByCurrentUser()}">
-                      <button
-                        data-action="reassign"
-                        class="jenkins-button jenkins-button--primary lockable-resources-action-button"
-                        tooltip="${%btn.reassign.detail}"
-                      >
-                        ${%btn.reassign}
-                      </button>
-                    </j:if>
-                  </l:hasPermission>
-                </j:when>
-                <j:when test="${resource.queued}">
-                  <l:hasPermission permission="${it.UNLOCK}">
-                    <button
-                      data-action="reset"
-                      class="jenkins-button jenkins-!-destructive-color lockable-resources-action-button"
-                      tooltip="${%btn.reset.detail}"
-                    >
-                      ${%btn.reset}
-                    </button>
-                  </l:hasPermission>
-                </j:when>
-                <j:otherwise>
-                  <l:hasPermission permission="${it.RESERVE}">
-                    <button
-                      data-action="reserve"
-                      class="jenkins-button jenkins-button--primary lockable-resources-action-button"
-                      tooltip="${%btn.reserve.detail}"
-                    >
-                      ${%btn.reserve}
-                    </button>
-                  </l:hasPermission>
-                </j:otherwise>
-              </j:choose>
-            </td>
-          </tr>
-        </j:forEach>
-      </tbody>
-    </table>
+      <l:hasPermission permission="${it.STEAL}">
+        <button type="button" class="jenkins-button jenkins-!-destructive-color lockable-resources-bulk-action-button" data-action="steal" disabled="disabled">
+          ${%btn.steal}
+        </button>
+        <button type="button" class="jenkins-button jenkins-button--primary lockable-resources-bulk-action-button" data-action="reassign" disabled="disabled">
+          ${%btn.reassign}
+        </button>
+      </l:hasPermission>
+    </div>
   </div>
-  <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
+
+  <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/table-resources-filters.js"></script>
+  <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
 
 
 

@@ -1,0 +1,16 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler" xmlns:t="/lib/hudson">
+  <l:layout title="${it.displayName}">
+    <st:include page="sidebar"/>
+
+    <l:main-panel>
+      <l:app-bar title="${%header.resources}">
+        <t:help href="https://github.com/jenkinsci/lockable-resources-plugin#lockable-resources-overview" />
+      </l:app-bar>
+
+      <st:adjunct includes="io.jenkins.plugins.bootstrap5"/>
+      <st:adjunct includes="io.jenkins.plugins.bind-tables"/>
+      <st:include page="tableLabels/table"/>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>
