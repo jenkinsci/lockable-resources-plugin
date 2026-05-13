@@ -1,4 +1,4 @@
-package org.jenkins.plugins.lockableresources;
+package org.jenkins.plugins.lockableresources.nodes;
 
 import hudson.Extension;
 import hudson.init.InitMilestone;
@@ -10,6 +10,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
+import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.util.Constants;
 
 // -----------------------------------------------------------------------------
