@@ -40,9 +40,9 @@ THE SOFTWARE.
               codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
           </f:entry>
         </div>
-        <div align="right">
+        <f:bottomButtonBar>
           <f:submit value="${%Save}"/>
-        </div>
+        </f:bottomButtonBar>
       </form>
     </f:block>
   </l:ajax>

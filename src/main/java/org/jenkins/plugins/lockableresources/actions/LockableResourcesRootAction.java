@@ -11,7 +11,7 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.Api;
 import hudson.model.Descriptor;
-import hudson.model.RootAction;
+import hudson.model.ManagementLink;
 import hudson.model.Run;
 import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
@@ -43,7 +44,7 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @Extension
 @ExportedBean
-public class LockableResourcesRootAction implements RootAction {
+public class LockableResourcesRootAction extends ManagementLink {
 
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesRootAction.class.getName());
 
@@ -84,7 +85,7 @@ public class LockableResourcesRootAction implements RootAction {
 
     @Override
     public String getIconFileName() {
-        return Jenkins.get().hasPermission(VIEW) ? ICON : null;
+        return ICON;
     }
 
     public Api getApi() {
@@ -103,7 +104,24 @@ public class LockableResourcesRootAction implements RootAction {
 
     @Override
     public String getUrlName() {
-        return Jenkins.get().hasPermission(VIEW) ? "lockable-resources" : "";
+        return "lockable-resources";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.LockableResourcesRootAction_ManagementLink_Description();
+    }
+
+    @NonNull
+    @Override
+    public Category getCategory() {
+        return Category.CONFIGURATION;
+    }
+
+    @NonNull
+    @Override
+    public Permission getRequiredPermission() {
+        return VIEW;
     }
 
     // ---------------------------------------------------------------------------
@@ -708,6 +726,150 @@ public class LockableResourcesRootAction implements RootAction {
             rsp.sendError(423, e.toString().replace("java.io.IOException: ", ""));
             return;
         }
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Parse properties from a JSON array. */
+    private List<LockableResourceProperty> parsePropertiesFromJson(net.sf.json.JSONObject json) {
+        List<LockableResourceProperty> properties = new ArrayList<>();
+        net.sf.json.JSONArray propsArr = json.optJSONArray("properties");
+        if (propsArr != null) {
+            for (int i = 0; i < propsArr.size(); i++) {
+                net.sf.json.JSONObject p = propsArr.getJSONObject(i);
+                String pName = Util.fixEmptyAndTrim(p.optString("name", null));
+                String pValue = p.optString("value", "");
+                if (pName != null) {
+                    LockableResourceProperty prop = new LockableResourceProperty();
+                    prop.setName(pName);
+                    prop.setValue(pValue);
+                    properties.add(prop);
+                }
+            }
+        }
+        return properties;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Create a new lockable resource from the management page. */
+    @Restricted(NoExternalUse.class)
+    @RequirePOST
+    public void doCreateResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+
+        String name;
+        String description;
+        String labels;
+        List<LockableResourceProperty> properties = new ArrayList<>();
+
+        String contentType = req.getContentType();
+        if (contentType != null && contentType.contains("application/json")) {
+            // JSON body from the inline dialog
+            net.sf.json.JSONObject json = net.sf.json.JSONObject.fromObject(
+                    new String(req.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            name = Util.fixEmptyAndTrim(json.optString("name", null));
+            description = Util.fixEmptyAndTrim(json.optString("description", null));
+            labels = Util.fixEmptyAndTrim(json.optString("labels", null));
+            properties = parsePropertiesFromJson(json);
+        } else {
+            // Form-encoded (e.g. from tests)
+            name = Util.fixEmptyAndTrim(req.getParameter("name"));
+            description = Util.fixEmptyAndTrim(req.getParameter("description"));
+            labels = Util.fixEmptyAndTrim(req.getParameter("labels"));
+        }
+
+        if (name == null) {
+            rsp.sendError(400, "Resource name is required.");
+            return;
+        }
+
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        if (manager.fromName(name) != null) {
+            rsp.sendError(409, Messages.error_resourceAlreadyExists(name));
+            return;
+        }
+
+        LockableResource resource = new LockableResource(name);
+
+        if (description != null) {
+            resource.setDescription(description);
+        }
+        if (labels != null) {
+            resource.setLabels(labels);
+        }
+        if (!properties.isEmpty()) {
+            resource.setProperties(properties);
+        }
+
+        manager.addResource(resource, /*doSave*/ true);
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Edit an existing lockable resource from the management page. */
+    @Restricted(NoExternalUse.class)
+    @RequirePOST
+    public void doEditResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+
+        String contentType = req.getContentType();
+        if (contentType == null || !contentType.contains("application/json")) {
+            rsp.sendError(400, "JSON body required.");
+            return;
+        }
+
+        net.sf.json.JSONObject json = net.sf.json.JSONObject.fromObject(
+                new String(req.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+
+        String name = Util.fixEmptyAndTrim(json.optString("name", null));
+        if (name == null) {
+            rsp.sendError(400, "Resource name is required.");
+            return;
+        }
+
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        LockableResource resource = manager.fromName(name);
+        if (resource == null) {
+            rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+            return;
+        }
+
+        resource.setDescription(Util.fixEmptyAndTrim(json.optString("description", null)));
+        resource.setLabels(Util.fixEmptyAndTrim(json.optString("labels", null)));
+        resource.setProperties(parsePropertiesFromJson(json));
+
+        manager.save();
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Delete a lockable resource from the management page. */
+    @Restricted(NoExternalUse.class)
+    @RequirePOST
+    public void doDeleteResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+
+        String name = req.getParameter("resource");
+        LockableResource resource = LockableResourcesManager.get().fromName(name);
+        if (resource == null) {
+            rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+            return;
+        }
+
+        if (resource.isLocked() || resource.isQueued() || resource.isReserved()) {
+            rsp.sendError(423, Messages.error_resourceAlreadyLocked(name));
+            return;
+        }
+
+        List<LockableResource> toRemove = new ArrayList<>();
+        toRemove.add(resource);
+        LockableResourcesManager.get().removeResources(toRemove);
+        LockableResourcesManager.get().save();
 
         rsp.forwardToPreviousPage(req);
     }
