@@ -32,9 +32,8 @@ Thx very much for supporting us.
 
 ### Adding lockable resources
 
-1. In *Manage Jenkins* > *Configure System* go to **Lockable Resources
-   Manager**
-2. Select *Add Lockable Resource*
+1. In *Manage Jenkins* > *Lockable Resources* (under the Configuration category)
+2. Click *Add Resource* in the top bar
 
 Each lockable resource has the following properties:
 
@@ -47,7 +46,7 @@ Each lockable resource has the following properties:
   `DK_Printer_Production`, `DK_Printer_Engineering`
 - **Reserved by** - Optional reserved / locked cause. If non-empty,
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
-  This option is still possible, but we recommend to use the page `<jenkinsRootUrl>/lockable-resources/`
+  This option is still possible, but we recommend to use the *Manage Jenkins* > *Lockable Resources* page
 
 A resource is always the one thing that is locked (or free or reserved).
 It exists once and has an unique name (if we take the hardware example, this may be `office_printer_14`).
@@ -397,7 +396,7 @@ Fields like *reservedBy*, *reservedTimestamp* or *note* are not supported, they 
 
 ## lockable-resources overview
 
-The page `<jenkinsRootUrl>/lockable-resources/` provides an overview over all lockable-resources.
+The page *Manage Jenkins* > *Lockable Resources* (also accessible at `<jenkinsRootUrl>/manage/lockable-resources/`) provides an overview over all lockable-resources.
 
 ### Resources
 
