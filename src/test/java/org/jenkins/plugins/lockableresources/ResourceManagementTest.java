@@ -9,7 +9,6 @@ import static org.hamcrest.Matchers.nullValue;
 
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.htmlunit.HttpMethod;
@@ -316,7 +315,10 @@ class ResourceManagementTest {
 
         var response = wc.getPage(req).getWebResponse();
         assertThat(response.getStatusCode(), is(403));
-        assertThat("Resource should not be created", LockableResourcesManager.get().fromName("forbidden-resource"), is(nullValue()));
+        assertThat(
+                "Resource should not be created",
+                LockableResourcesManager.get().fromName("forbidden-resource"),
+                is(nullValue()));
     }
 
     @Test
@@ -343,7 +345,10 @@ class ResourceManagementTest {
 
         var response = wc.getPage(req).getWebResponse();
         assertThat(response.getStatusCode(), is(403));
-        assertThat("Resource should still exist", LockableResourcesManager.get().fromName("protected-resource"), is(not(nullValue())));
+        assertThat(
+                "Resource should still exist",
+                LockableResourcesManager.get().fromName("protected-resource"),
+                is(not(nullValue())));
     }
 
     // --- UI element tests ---
@@ -389,8 +394,7 @@ class ResourceManagementTest {
                 .grant(jenkins.model.Jenkins.READ, jenkins.model.Jenkins.SYSTEM_READ)
                 .everywhere()
                 .to("viewer")
-                .grant(
-                        org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.VIEW)
+                .grant(org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.VIEW)
                 .everywhere()
                 .to("viewer"));
         j.jenkins.setCrumbIssuer(null);
@@ -400,6 +404,7 @@ class ResourceManagementTest {
         wc.getOptions().setThrowExceptionOnScriptError(false);
         HtmlPage page = wc.goTo("lockable-resources");
         String content = page.getWebResponse().getContentAsString();
-        assertThat("Add button should NOT be visible for non-admin", content, not(containsString("lr-add-resource-btn")));
+        assertThat(
+                "Add button should NOT be visible for non-admin", content, not(containsString("lr-add-resource-btn")));
     }
 }
