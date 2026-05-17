@@ -1,4 +1,94 @@
-span.static-label {
+/* Tab bar — reuse Jenkins app-build-tabs pattern, centered in app-bar */
+.lr-tab-bar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Filter — icon button with expanding popover */
+.lr-filter-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lr-filter-toggle.lr-filter-active {
+  color: var(--primary, #1a73e8) !important;
+}
+
+.lr-filter-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--card-background, var(--background));
+  border: var(--jenkins-border--subtle);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  white-space: nowrap;
+}
+
+.lr-filter-resources {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.lr-filter-search {
+  display: flex;
+  align-items: center;
+}
+
+.lr-filter-search .jenkins-input {
+  width: 14rem;
+}
+
+.lr-filter-popover .jenkins-input {
+  width: 11rem;
+  font-size: 0.8125rem;
+}
+
+.lr-filter-popover .jenkins-select {
+  width: auto;
+}
+
+.lr-filter-popover .jenkins-select__input {
+  font-size: 0.8125rem;
+  padding: 0.35rem 1.5rem 0.35rem 0.5rem;
+}
+
+tr.lr-filtered-out {
+  display: none !important;
+}
+
+/* Tab panes */
+.lr-tab-pane {
+  display: none;
+}
+
+.lr-tab-pane--active {
+  display: block;
+}
+
+/* Resource header layout */
+.lr-resource-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lr-resource-header__spacer {
+  flex: 1;
+}
+
+.lr-resource-description {
+  margin-top: 0.25rem;
+}
+
+/* Resource labels */
+span.lr-static-label {
   border: 1px solid #666;
   border-radius: 4px;
   color: var(--orange);
@@ -13,48 +103,153 @@ span.static-label {
   white-space: nowrap;
 }
 
-.note-wrapper {
+.lr-note-wrapper {
   max-height: 300px;
   color: darkgray;
   font-size: small;
   flex-grow: 1;
 }
 
-.dataTable .jenkins-button {
-    margin: 2px;
+/* Queue status */
+.lr-queue-status {
+  padding: 0.75rem 0;
 }
 
-.dataTable.jenkins-table > tbody > tr > td {
-    vertical-align: top;
+/* Action buttons in table rows — icon-only, compact */
+.jenkins-table .jenkins-table__cell__button-wrapper {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: flex-end;
 }
 
-table.dataTable {
-  border-spacing: 0 2px;
+/* Constrain resources table to its container */
+#lockable-resources {
+    table-layout: fixed;
+    width: 100%;
 }
 
-table.dataTable > tbody > tr {
-  background-color: var(--table-body-background);
+/* Column widths for the resources table */
+#lockable-resources th:nth-child(1) { width: 3rem; }    /* # */
+#lockable-resources th:nth-child(2) { width: 20%; }     /* Resource */
+#lockable-resources th:nth-child(3) { width: 10%; }     /* Status */
+#lockable-resources th:nth-child(4) { width: 15%; }     /* Timestamp */
+#lockable-resources th:nth-child(5) { width: 12%; }     /* Labels */
+#lockable-resources th:nth-child(6) { width: 15%; }    /* Properties */
+#lockable-resources th:nth-child(7) { width: 10rem; }   /* Actions */
+
+/* Allow cell content to wrap and truncate */
+#lockable-resources td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
 }
 
-table.dataTable td, table.dataTable th {
-    -webkit-box-sizing: inherit;
-    box-sizing: content-inherit;
+/* Properties — inline key=value pills */
+.lr-properties-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
 }
 
-
-.table-properties {
-  border-width: 0px;
-  -webkit-border-vertical-spacing: unset;
+.lr-property-pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--input-border, #c3c3c3);
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1;
+    overflow: hidden;
 }
 
-.table-properties>tbody>tr>td {
-  height: 1rem;
+.lr-property-pill__key {
+    padding: 0.2rem 0.4rem;
+    background: var(--table-header-background, rgba(0, 0, 0, 0.03));
+    font-weight: 500;
+    color: var(--text-color-secondary, #555);
 }
 
-.width-100 {
+.lr-property-pill__value {
+    padding: 0.2rem 0.4rem;
+}
+
+.lr-width-100 {
   width: 100%;
 }
 
-.queuebar:empty {
-  display: none;
+/* Pagination controls */
+.lr-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0.5rem 0.25rem;
+}
+
+.lr-pagination__select-wrapper {
+    width: auto;
+}
+
+.lr-pagination__select {
+    font-size: 0.8125rem;
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+}
+
+.lr-pagination__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.lr-pagination__info {
+    font-size: 0.8125rem;
+    color: var(--text-color-secondary, #666);
+    padding: 0 0.25rem;
+}
+
+.lr-pagination__prev,
+.lr-pagination__next {
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0.15rem 0.5rem !important;
+}
+
+/* Dialog form layout (used inside Jenkins dialog.modal) */
+.app-parameters-dialog .jenkins-form-item {
+  margin-bottom: 1rem;
+}
+
+.app-parameters-dialog .jenkins-form-item:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Property rows in dialog */
+.lr-property-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.lr-property-row .lr-prop-name,
+.lr-property-row .lr-prop-value {
+  flex: 1;
+}
+
+.lr-property-row .lr-remove-property {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+/* Global config notice: "resources moved" info box */
+.lr-config-moved-notice {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--light-blue, #e8f4fd);
+  border: 1px solid var(--focus-input-border, #5ba3cf);
+  color: var(--text-color, #333);
+  font-size: 0.9375rem;
+}
+
+.lr-config-moved-notice a {
+  font-weight: 600;
 }

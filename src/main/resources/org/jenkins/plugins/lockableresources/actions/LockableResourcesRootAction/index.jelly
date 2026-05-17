@@ -16,24 +16,84 @@
   xmlns:st="jelly:stapler"
   xmlns:t="/lib/hudson"
 >
-  <l:layout title="${it.displayName}" type="one-column">
-    <l:app-bar title="${%header.resources}">
-      <t:help href="https://github.com/jenkinsci/lockable-resources-plugin#lockable-resources-overview" />
-    </l:app-bar>
+  <l:settings-subpage permission="${app.SYSTEM_READ}" header="${null}">
+      <l:app-bar title="${%header.resources}">
+        <j:if test="${it.resources.size() > 0}">
+          <div class="app-build-tabs lr-tab-bar" role="tablist">
+            <a class="jenkins-button lr-tab-button lr-tab-button--active"
+              role="tab" aria-selected="true" data-lr-tab="resources">${%tab.resources}</a>
+            <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
+              role="tab" aria-selected="false" data-lr-tab="labels">${%tab.labels}</a>
+            <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
+              role="tab" aria-selected="false" data-lr-tab="queue">${%tab.queue}</a>
+          </div>
+        </j:if>
+        <j:if test="${it.resources.size() > 0}">
+          <div class="lr-filter-wrapper">
+            <button class="jenkins-button jenkins-button--tertiary lr-filter-toggle" tooltip="${%filter.tooltip}">
+              <l:icon src="symbol-options-outline plugin-ionicons-api" />
+            </button>
+            <div class="lr-filter-popover" style="display:none;">
+              <!-- Resources tab: structured filter -->
+              <div class="lr-filter-resources">
+                <input type="text" class="jenkins-input lr-filter-input" id="lr-filter-name" placeholder="${%filter.name}" />
+                <input type="text" class="jenkins-input lr-filter-input" id="lr-filter-label" placeholder="${%filter.label}" />
+                <div class="jenkins-select">
+                  <select class="jenkins-select__input lr-filter-input" id="lr-filter-status">
+                    <option value="" disabled="disabled" selected="selected" hidden="hidden">${%filter.status}</option>
+                    <option value="">${%filter.status.all}</option>
+                    <option value="free">${%filter.status.free}</option>
+                    <option value="reserved">${%filter.status.reserved}</option>
+                    <option value="locked">${%filter.status.locked}</option>
+                    <option value="queued">${%filter.status.queued}</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Labels/Queue tabs: plain text search -->
+              <div class="lr-filter-search" style="display:none;">
+                <input type="text" class="jenkins-input" id="lr-filter-text" placeholder="${%filter.search}" />
+              </div>
+            </div>
+          </div>
+        </j:if>
+        <l:hasPermission permission="${app.ADMINISTER}">
+          <button class="jenkins-button jenkins-button--primary lr-add-resource-btn">
+            <l:icon src="symbol-add" />
+            ${%btn.addResource}
+          </button>
+        </l:hasPermission>
+      </l:app-bar>
+      <!-- Add Resource dialog content (rendered via dialog.modal on click) -->
+      <l:hasPermission permission="${app.ADMINISTER}">
+        <template id="lr-add-resource-template">
+          <div class="app-parameters-dialog">
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.name} <span class="jenkins-!-error-color">*</span></label>
+              <input type="text" name="name" class="jenkins-input" required="required" />
+            </div>
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.description}</label>
+              <input type="text" name="description" class="jenkins-input" />
+            </div>
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.labels}</label>
+              <input type="text" name="labels" class="jenkins-input" placeholder="label1 label2" />
+            </div>
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.properties}</label>
+              <div class="lr-properties-container">
+                <!-- dynamic property rows inserted here by JS -->
+              </div>
+              <button type="button" class="jenkins-button jenkins-!-margin-top-1 lr-add-property-btn">
+                + ${%add.resource.dialog.addProperty}
+              </button>
+            </div>
+          </div>
+        </template>
+      </l:hasPermission>
 
-    <l:main-panel>
-      <j:choose>
-        <j:when test="${it.resources.size() == 0}">
-          <p>
-            ${%resources.not_configured}<br />
-            <j:if test="${h.hasPermission(app.ADMINISTER)}">
-              ${%resources.configure.here(rootURL + "/configure")}
-            </j:if>
-        </p>
-      </j:when>
-      <j:otherwise>
-        <!-- translations for javascript -->
-        <template id="i18n"
+      <!-- translations for javascript -->
+      <template id="i18n"
                   data-queue-title="${%queue.change.title}"
                   data-queue-message="${%queue.change.message}"
                   data-queue-on-success="${%queue.change.on.success}"
@@ -44,45 +104,45 @@
                   data-steal-message="${%steal.dialog.message}"
                   data-action-on-success="${%action.on.success}"
                   data-action-on-fail="${%action.on.fail}"
-        />
-        <div class="fluid-container">
-          <!-- Nav tabs -->
-          <ul class="nav nav-tabs" id="lockable-resources-tab" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resources"
-                type="button" role="tab" aria-controls="resources" aria-selected="true">${%tab.resources}</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="labels-tab" data-bs-toggle="tab" data-bs-target="#labels" type="button"
-                role="tab" aria-controls="labels" aria-selected="false">${%tab.labels}</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="queue-tab" data-bs-toggle="tab" data-bs-target="#queue" type="button"
-                role="tab" aria-controls="queue" aria-selected="false">${%tab.queue}</button>
-            </li>
-            <!-- more tabs like logs can be added here -->
-          </ul>
+                  data-add-resource-on-success="${%add.resource.on.success}"
+                  data-add-resource-on-fail="${%add.resource.on.fail}"
+                  data-add-resource-name-required="${%add.resource.name.required}"
+                  data-add-resource-dialog-title="${%add.resource.dialog.title}"
+                  data-btn-addResource="${%btn.addResource}"
+                  data-delete-resource-title="${%delete.resource.dialog.title}"
+                  data-delete-resource-message="${%delete.resource.dialog.message}"
+                  data-delete-resource-on-success="${%delete.resource.on.success}"
+                  data-delete-resource-on-fail="${%delete.resource.on.fail}"
+                  data-edit-resource-dialog-title="${%edit.resource.dialog.title}"
+                  data-edit-resource-btn-save="${%edit.resource.btn.save}"
+                  data-edit-resource-on-success="${%edit.resource.on.success}"
+                  data-edit-resource-on-fail="${%edit.resource.on.fail}"
+      />
+
+      <j:choose>
+        <j:when test="${it.resources.size() == 0}">
+          <l:notice title="${%resources.not_configured}" icon="symbol-lock-closed">
+            <l:hasPermission permission="${app.ADMINISTER}">
+              <p>${%resources.empty.hint}</p>
+            </l:hasPermission>
+          </l:notice>
+        </j:when>
+        <j:otherwise>
+        <div class="lr-tabs">
           <!-- Tab panes -->
-          <div class="tab-content">
-            <div class="tab-pane jenkins-!-margin-top-1 active" id="resources" role="tabpanel" aria-labelledby="resources-tab">
-              <st:include page="tableResources/table"/>
-            </div>
+          <div class="lr-tab-pane lr-tab-pane--active" id="lr-tab-resources" role="tabpanel">
+            <st:include page="tableResources/table"/>
           </div>
-          <div class="tab-content">
-            <div class="tab-pane jenkins-!-margin-top-1" id="labels" role="tabpanel" aria-labelledby="labels-tab">
-              <st:include page="tableLabels/table"/>
-            </div>
+          <div class="lr-tab-pane" id="lr-tab-labels" role="tabpanel">
+            <st:include page="tableLabels/table"/>
           </div>
-          <div class="tab-content">
-            <div class="tab-pane jenkins-!-margin-top-1" id="queue" role="tabpanel" aria-labelledby="queue-tab">
-              <st:include page="tableQueue/table"/>
-            </div>
+          <div class="lr-tab-pane" id="lr-tab-queue" role="tabpanel">
+            <st:include page="tableQueue/table"/>
           </div>
         </div>
 
-        <script type="text/javascript" src="${resURL}/plugin/data-tables-api/js/table.js"/>
+        <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
         </j:otherwise>
       </j:choose>
-    </l:main-panel>
-  </l:layout>
+  </l:settings-subpage>
 </j:jelly>
