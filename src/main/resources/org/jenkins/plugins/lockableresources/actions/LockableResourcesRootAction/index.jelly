@@ -17,6 +17,7 @@
   xmlns:t="/lib/hudson"
 >
   <l:settings-subpage permission="${app.SYSTEM_READ}" header="${null}">
+      <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
       <l:app-bar title="${%header.resources}">
         <j:if test="${it.resources.size() > 0}">
           <div class="app-build-tabs lr-tab-bar" role="tablist">
@@ -30,9 +31,17 @@
         </j:if>
         <j:if test="${it.resources.size() > 0}">
           <div class="lr-filter-wrapper">
-            <button class="jenkins-button jenkins-button--tertiary lr-filter-toggle" tooltip="${%filter.tooltip}">
+            <button class="jenkins-button jenkins-button--tertiary lr-search-toggle" tooltip="${%filter.search.tooltip}">
+              <l:icon src="symbol-search" />
+            </button>
+            <button class="jenkins-button jenkins-button--tertiary lr-filter-toggle" tooltip="${%filter.advanced.tooltip}">
               <l:icon src="symbol-options-outline plugin-ionicons-api" />
             </button>
+            <!-- Quick search popover -->
+            <div class="lr-search-popover" style="display:none;">
+              <input type="text" class="jenkins-input lr-filter-quick" id="lr-filter-quick" placeholder="${%filter.search}" />
+            </div>
+            <!-- Structured filter popover -->
             <div class="lr-filter-popover" style="display:none;">
               <!-- Resources tab: structured filter -->
               <div class="lr-filter-resources">
@@ -49,7 +58,7 @@
                   </select>
                 </div>
               </div>
-              <!-- Labels/Queue tabs: plain text search -->
+              <!-- Labels/Queue tabs: plain text search (structured not applicable) -->
               <div class="lr-filter-search" style="display:none;">
                 <input type="text" class="jenkins-input" id="lr-filter-text" placeholder="${%filter.search}" />
               </div>
@@ -140,9 +149,8 @@
             <st:include page="tableQueue/table"/>
           </div>
         </div>
-
-        <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
         </j:otherwise>
       </j:choose>
+      <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
   </l:settings-subpage>
 </j:jelly>

@@ -5,15 +5,36 @@
   transform: translateX(-50%);
 }
 
-/* Filter — icon button with expanding popover */
+/* Filter — icon buttons with expanding popovers */
 .lr-filter-wrapper {
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 0.125rem;
 }
 
+.lr-search-toggle.lr-filter-active,
 .lr-filter-toggle.lr-filter-active {
   color: var(--primary, #1a73e8) !important;
+}
+
+.lr-search-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--card-background, var(--background));
+  border: var(--jenkins-border--subtle);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 101;
+  white-space: nowrap;
+}
+
+.lr-search-popover .lr-filter-quick {
+  width: 16rem;
+  font-size: 0.8125rem;
 }
 
 .lr-filter-popover {
@@ -77,6 +98,19 @@ tr.lr-filtered-out {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.lr-note-btn {
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary, #1a73e8);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.lr-note-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .lr-resource-header__spacer {
@@ -232,6 +266,61 @@ span.lr-static-label {
 .lr-property-row .lr-prop-name,
 .lr-property-row .lr-prop-value {
   flex: 1;
+}
+
+/* ====================================================================
+   Responsive — mobile & narrow viewports
+   ==================================================================== */
+
+/* Let tables scroll horizontally rather than collapse */
+.lr-tab-pane {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#lockable-resources,
+#lockable-resources-labels,
+#lockable-resources-queue {
+  min-width: 700px;
+}
+
+@media (max-width: 768px) {
+  /* Stack filter icons below tabs */
+  .lr-filter-wrapper {
+    position: static;
+  }
+
+  .lr-search-popover,
+  .lr-filter-popover {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0.75rem 0.75rem 0 0;
+    margin-top: 0;
+    padding: 1rem;
+    z-index: 200;
+  }
+
+  .lr-search-popover .lr-filter-quick {
+    width: 100%;
+  }
+
+  .lr-filter-resources {
+    flex-wrap: wrap;
+  }
+
+  .lr-filter-resources .jenkins-input,
+  .lr-filter-resources .jenkins-select {
+    width: 100%;
+  }
+
+  /* Tab bar: don't absolute-center on small screens */
+  .lr-tab-bar {
+    position: static;
+    transform: none;
+  }
 }
 
 .lr-property-row .lr-remove-property {

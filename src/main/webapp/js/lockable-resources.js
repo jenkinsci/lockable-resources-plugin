@@ -184,10 +184,8 @@ function deleteResource(button) {
 
 function resource_action(button, action) {
   const resourceName = button.closest('tr').getAttribute('data-resource-name');
-  console.log("[LR] resource_action called:", action, resourceName);
 
   if (action === "reserve" || action === "steal") {
-    console.log("[LR] " + action + " action - showing dialog");
     dialog
       .prompt(i18n(action + "-title", resourceName), {
         message: i18n(action + "-message", resourceName),
@@ -196,22 +194,14 @@ function resource_action(button, action) {
       })
       .then(
         (reason) => {
-          console.log("[LR] dialog resolved with reason:", reason);
           const url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || "");
-          console.log("[LR] fetching:", url);
           fetch(url, {
             method: "post",
             headers: crumb.wrap({}),
           }).then((rsp) => {
-            console.log("[LR] fetch response:", rsp.status, rsp.ok);
             showResponse(rsp, i18n("action-on-success", action, resourceName), i18n("action-on-fail", action, resourceName));
             if (!rsp.ok) window.location.reload();
-          }).catch((err) => {
-            console.error("[LR] fetch error:", err);
           });
-        },
-        (cancelled) => {
-          console.log("[LR] dialog cancelled:", cancelled);
         }
       );
     return;
@@ -228,6 +218,15 @@ function resource_action(button, action) {
 
 function replaceNote(resourceName) {
   const d = document.getElementById("note-" + resourceName);
+  // Toggle: if note form is already open, collapse it
+  if (d.dataset.noteOpen === "true") {
+    d.innerHTML = d.dataset.noteOriginal || "";
+    d.dataset.noteOpen = "false";
+    return;
+  }
+  // Save original content for collapse
+  d.dataset.noteOriginal = d.innerHTML;
+  d.dataset.noteOpen = "true";
   d.innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>loading...</div>";
   fetch("noteForm", {
     method: "post",
@@ -303,14 +302,6 @@ document.addEventListener("DOMContentLoaded", function () {
       showAddResourceDialog();
     } else if ((btn = event.target.closest(".lockable-resources-edit-button"))) {
       editResource(btn);
-    } else if ((btn = event.target.closest(".lr-filter-toggle"))) {
-      const popover = btn.parentElement.querySelector(".lr-filter-popover");
-      if (popover) {
-        const isOpen = popover.style.display !== "none";
-        popover.style.display = isOpen ? "none" : "flex";
-        btn.classList.toggle("lr-filter-active", !isOpen);
-        if (!isOpen) popover.querySelector("input")?.focus();
-      }
     }
   });
 
@@ -427,33 +418,51 @@ function filterRows(tableId, predicate) {
 }
 
 function initFilter() {
+  const quickInput = document.getElementById("lr-filter-quick");
   const nameInput = document.getElementById("lr-filter-name");
   const labelInput = document.getElementById("lr-filter-label");
   const statusSelect = document.getElementById("lr-filter-status");
   const textInput = document.getElementById("lr-filter-text");
   const resourcesPane = document.querySelector(".lr-filter-resources");
   const searchPane = document.querySelector(".lr-filter-search");
-  if (!nameInput || !resourcesPane) return; // no filter on page (0 resources)
+  const searchPopover = document.querySelector(".lr-search-popover");
+  const filterPopover = document.querySelector(".lr-filter-popover");
+  const searchToggle = document.querySelector(".lr-search-toggle");
+  const filterToggle = document.querySelector(".lr-filter-toggle");
+  if (!quickInput) return; // no filter on page (0 resources)
 
+  const STORAGE_KEY = "lockable-resources-filter";
   let activeTab = "resources";
+  let searchOpen = false;
+  let advancedOpen = false;
 
-  window.updateFilterMode = function (tabId) {
-    activeTab = tabId;
-    const popover = document.querySelector(".lr-filter-popover");
-    if (popover) popover.style.display = "none";
-    document.querySelector(".lr-filter-toggle")?.classList.remove("lr-filter-active");
-    resourcesPane.style.display = tabId === "resources" ? "flex" : "none";
-    searchPane.style.display = tabId === "resources" ? "none" : "flex";
-    nameInput.value = "";
-    labelInput.value = "";
-    statusSelect.selectedIndex = 0;
-    if (textInput) textInput.value = "";
-    Object.values(TABLE_IDS).forEach(function (id) {
-      filterRows(id, function () { return true; });
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveState(patch) {
+    try {
+      const state = Object.assign(loadState(), patch);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* noop */ }
+  }
+
+  // Quick search across all columns of the active table
+  function applyQuickFilter() {
+    const query = quickInput.value.trim().toLowerCase();
+    const tableId = TABLE_IDS[activeTab];
+    if (!tableId) return;
+    filterRows(tableId, function (row) {
+      return !query || row.textContent.toLowerCase().indexOf(query) !== -1;
     });
-  };
+    saveState({ quick: quickInput.value, tab: activeTab });
+  }
 
-  function applyResourceFilter() {
+  // Structured filter for resources tab only
+  function applyStructuredFilter() {
     const nameVal = nameInput.value.trim().toLowerCase();
     const labelVal = labelInput.value.trim().toLowerCase();
     const statusVal = statusSelect.value;
@@ -462,33 +471,106 @@ function initFilter() {
         && (!labelVal || (row.dataset.resourceLabels || "").toLowerCase().indexOf(labelVal) !== -1)
         && (!statusVal || (row.dataset.resourceStatus || "") === statusVal);
     });
+    saveState({ name: nameInput.value, label: labelInput.value, status: statusVal });
   }
 
-  nameInput.addEventListener("input", applyResourceFilter);
-  labelInput.addEventListener("input", applyResourceFilter);
-  statusSelect.addEventListener("change", applyResourceFilter);
+  function applyActiveFilter() {
+    if (advancedOpen && activeTab === "resources") {
+      applyStructuredFilter();
+    } else if (searchOpen) {
+      applyQuickFilter();
+    }
+  }
 
-  // Text search for labels / queue
-  if (textInput) {
-    textInput.addEventListener("input", function () {
-      const tableId = TABLE_IDS[activeTab];
-      if (!tableId || activeTab === "resources") return;
-      const query = textInput.value.trim().toLowerCase();
-      filterRows(tableId, function (row) {
-        return !query || row.textContent.toLowerCase().indexOf(query) !== -1;
-      });
+  // Toggle search popover
+  function setSearchOpen(open, skipFocus) {
+    searchOpen = open;
+    if (!searchPopover) return;
+    searchPopover.style.display = open ? "block" : "none";
+    searchToggle?.classList.toggle("lr-filter-active", open);
+    if (open) {
+      if (advancedOpen) setAdvancedOpen(false, true);
+      if (!skipFocus) quickInput.focus();
+    }
+    saveState({ mode: open ? "search" : "closed" });
+    applyActiveFilter();
+  }
+
+  // Toggle advanced filter popover
+  function setAdvancedOpen(open, skipFocus) {
+    advancedOpen = open;
+    if (!filterPopover) return;
+    filterPopover.style.display = open ? "flex" : "none";
+    filterToggle?.classList.toggle("lr-filter-active", open);
+    if (open) {
+      if (searchOpen) setSearchOpen(false, true);
+      if (!skipFocus) {
+        if (activeTab === "resources") nameInput?.focus();
+        else textInput?.focus();
+      }
+    }
+    saveState({ mode: open ? "advanced" : "closed" });
+    applyActiveFilter();
+  }
+
+  // Tab change: update filter panes
+  window.updateFilterMode = function (tabId) {
+    activeTab = tabId;
+    if (resourcesPane) resourcesPane.style.display = tabId === "resources" ? "flex" : "none";
+    if (searchPane) searchPane.style.display = tabId === "resources" ? "none" : "flex";
+    // Hide advanced filter icon on non-resource tabs
+    if (filterToggle) filterToggle.style.display = tabId === "resources" ? "" : "none";
+    if (advancedOpen && tabId !== "resources") setAdvancedOpen(false);
+    applyActiveFilter();
+  };
+
+  // Wire events
+  quickInput.addEventListener("input", applyQuickFilter);
+  if (nameInput) nameInput.addEventListener("input", applyStructuredFilter);
+  if (labelInput) labelInput.addEventListener("input", applyStructuredFilter);
+  if (statusSelect) statusSelect.addEventListener("change", applyStructuredFilter);
+  if (textInput) textInput.addEventListener("input", function () {
+    const tableId = TABLE_IDS[activeTab];
+    if (!tableId || activeTab === "resources") return;
+    const query = textInput.value.trim().toLowerCase();
+    filterRows(tableId, function (row) {
+      return !query || row.textContent.toLowerCase().indexOf(query) !== -1;
+    });
+  });
+
+  // Toggle buttons
+  if (searchToggle) {
+    searchToggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setSearchOpen(!searchOpen);
+    });
+  }
+  if (filterToggle) {
+    filterToggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setAdvancedOpen(!advancedOpen);
     });
   }
 
-  // Close popover when clicking outside
+  // Close popovers when clicking outside
   document.addEventListener("click", function (e) {
     const wrapper = document.querySelector(".lr-filter-wrapper");
     if (!wrapper) return;
-    const popover = wrapper.querySelector(".lr-filter-popover");
-    if (!popover || popover.style.display === "none") return;
     if (!wrapper.contains(e.target)) {
-      popover.style.display = "none";
-      wrapper.querySelector(".lr-filter-toggle")?.classList.remove("lr-filter-active");
+      if (searchOpen) setSearchOpen(false);
+      if (advancedOpen) setAdvancedOpen(false);
     }
   });
+
+  // Restore persisted state
+  const state = loadState();
+  if (state.name && nameInput) nameInput.value = state.name;
+  if (state.label && labelInput) labelInput.value = state.label;
+  if (state.status && statusSelect) statusSelect.value = state.status;
+  if (state.quick) quickInput.value = state.quick;
+  if (state.mode === "advanced") {
+    setAdvancedOpen(true, true);
+  } else if (state.mode === "search" || state.quick) {
+    setSearchOpen(true, true);
+  }
 }

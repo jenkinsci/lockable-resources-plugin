@@ -68,10 +68,9 @@ THE SOFTWARE.
                 </j:if>
                 <div class="lr-resource-header__spacer"></div>
                 <l:hasPermission permission="${it.RESERVE}">
-                  <a class="jenkins-table__link lockable-resources-replace-note" data-resource-name="${resource.name}"
-                     id="note-link" href="editNote">
-                    <l:icon class="symbol-edit-note icon-sm" />
-                    ${%btn.editNote}
+                  <a class="lr-note-btn lockable-resources-replace-note"
+                     data-resource-name="${resource.name}" id="note-link" href="editNote" tooltip="${%btn.editNote}">
+                    <l:icon class="symbol-create-outline plugin-ionicons-api" />
                   </a>
                 </l:hasPermission>
               </div>
