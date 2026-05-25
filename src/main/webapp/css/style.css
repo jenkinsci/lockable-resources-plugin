@@ -153,7 +153,7 @@ span.lr-static-label {
 .jenkins-table .jenkins-table__cell__button-wrapper {
     display: flex;
     gap: 0.25rem;
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 
 /* Resources table — auto layout with scroll wrapper handles overflow */
