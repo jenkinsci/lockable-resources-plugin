@@ -330,9 +330,15 @@ function initPagination() {
     let pageSize = PAGE_SIZES.indexOf(saved) !== -1 ? saved : DEFAULT_PAGE_SIZE;
     let currentPage = 1;
 
+    // Wrap table in a scroll container so pagination stays outside
+    const scrollWrapper = document.createElement("div");
+    scrollWrapper.className = "lr-table-scroll";
+    table.parentNode.insertBefore(scrollWrapper, table);
+    scrollWrapper.appendChild(table);
+
     const controls = document.createElement("div");
     controls.className = "lr-pagination";
-    table.parentNode.insertBefore(controls, table.nextSibling);
+    scrollWrapper.parentNode.insertBefore(controls, scrollWrapper.nextSibling);
 
     function getRows() {
       const tbody = table.querySelector("tbody");

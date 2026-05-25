@@ -274,6 +274,10 @@ span.lr-static-label {
 
 /* Let tables scroll horizontally rather than collapse */
 .lr-tab-pane {
+  position: relative;
+}
+
+.lr-table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
