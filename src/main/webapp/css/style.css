@@ -156,25 +156,15 @@ span.lr-static-label {
     justify-content: flex-end;
 }
 
-/* Constrain resources table to its container */
+/* Resources table — auto layout with scroll wrapper handles overflow */
 #lockable-resources {
-    table-layout: fixed;
     width: 100%;
 }
 
-/* Column widths for the resources table */
 #lockable-resources th:nth-child(1) { width: 3rem; }    /* # */
-#lockable-resources th:nth-child(2) { width: 20%; }     /* Resource */
-#lockable-resources th:nth-child(3) { width: 10%; }     /* Status */
-#lockable-resources th:nth-child(4) { width: 15%; }     /* Timestamp */
-#lockable-resources th:nth-child(5) { width: 12%; }     /* Labels */
-#lockable-resources th:nth-child(6) { width: 15%; }    /* Properties */
-#lockable-resources th:nth-child(7) { width: 10rem; }   /* Actions */
 
-/* Allow cell content to wrap and truncate */
+/* Allow cell content to wrap */
 #lockable-resources td {
-    overflow: hidden;
-    text-overflow: ellipsis;
     word-break: break-word;
 }
 
