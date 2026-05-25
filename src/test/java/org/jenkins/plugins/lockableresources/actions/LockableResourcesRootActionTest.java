@@ -286,46 +286,6 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
     }
 
     @Test
-    void tableModelIncludesSelectionCheckbox() throws Exception {
-        LockableResourcesRootAction action = new LockableResourcesRootAction();
-
-        this.createResource("resource-select");
-
-        SecurityContextHolder.getContext().setAuthentication(this.admin.impersonate2());
-
-        String json = action.getTableRows("lockable-resources");
-        JsonNode rows = new ObjectMapper().readTree(json);
-        assertTrue(rows.isArray(), "Expected JSON array of rows");
-        assertTrue(rows.size() >= 1, "Expected at least one row");
-
-        JsonNode matched = null;
-        for (JsonNode row : rows) {
-            if (row.toString().contains("resource-select")) {
-                matched = row;
-                break;
-            }
-        }
-        assertNotNull(matched, "Expected to find the resource-select row");
-
-        assertTrue(matched.has("select"), "Expected select column to be present");
-        String selectHtml = matched.get("select").asText();
-        assertTrue(selectHtml.contains("lockable-resources-select"), "Expected selection checkbox in select cell");
-        assertTrue(selectHtml.contains("data-resource-name=\"resource-select\""), "Expected data-resource-name on checkbox");
-
-        assertFalse(matched.has("action"), "Did not expect per-row action column");
-    }
-
-    @Test
-    void resourcesTableColumnsDefinitionIsGenerated() {
-        LockableResourcesRootAction action = new LockableResourcesRootAction();
-
-        String columnsDefinition = action.getResourcesTableModel().getColumnsDefinition();
-        assertNotNull(columnsDefinition);
-        assertFalse(columnsDefinition.isBlank());
-        assertTrue(columnsDefinition.contains("\"select\""), "Expected select column definition");
-    }
-
-    @Test
     void subPagesRenderWithJenkinsSidePanelNavigation() throws Exception {
         // Ensure we're in the "configured" branch of resources.jelly so the sidebar is rendered.
         LockableResource r = this.createResource("ui-smoke-resource");
@@ -354,8 +314,7 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
             if (path.endsWith("/labels")) {
                 assertTrue(html.contains("lockable-resources-labels"), "Expected labels table on " + path);
                 assertTrue(html.contains("colvis"), "Expected column selector (colvis) config on " + path);
-                assertTrue(html.contains("lockable-resources-column-filter"), "Expected labels column filter input on " + path);
-                assertTrue(html.contains("lockable-resources.js"), "Expected shared LR JS on " + path);
+                assertTrue(html.contains("table-labels-filters.js"), "Expected labels filter init JS on " + path);
             }
             if (path.endsWith("/queue")) {
                 assertTrue(html.contains("lockable-resources-queue"), "Expected queue table on " + path);

@@ -208,6 +208,42 @@
           <injectedTestPackage>org.jenkins.plugins.lockableresources</injectedTestPackage>
         </configuration>
       </plugin>
+
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>backup-sezpoz-extension-index</id>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <phase>process-classes</phase>
+            <configuration>
+              <target>
+                <mkdir dir="${project.build.directory}/sezpoz-extension-index" />
+                <copy failonerror="false" overwrite="true" todir="${project.build.directory}/sezpoz-extension-index">
+                  <fileset dir="${project.build.outputDirectory}/META-INF/annotations" erroronmissingdir="false" />
+                </copy>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <id>restore-sezpoz-extension-index</id>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <phase>process-test-classes</phase>
+            <configuration>
+              <target>
+                <mkdir dir="${project.build.outputDirectory}/META-INF/annotations" />
+                <copy failonerror="false" overwrite="true" todir="${project.build.outputDirectory}/META-INF/annotations">
+                  <fileset dir="${project.build.directory}/sezpoz-extension-index" erroronmissingdir="false" />
+                </copy>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

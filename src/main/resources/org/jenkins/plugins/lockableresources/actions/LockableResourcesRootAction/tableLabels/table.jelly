@@ -123,7 +123,7 @@ THE SOFTWARE.
           </j:forEach>
         </tbody>
       </table>
-      <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
+      <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/table-labels-filters.js"></script>
     </div>
   </j:if>
 </j:jelly>

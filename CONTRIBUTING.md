@@ -2,7 +2,7 @@
 # Contributing
 
 If you want to contribute to this plugin, you probably will need a Jenkins plugin development
-environment. This basically means a current version of Java (Java 11 should probably be okay for now)
+environment. This basically means a current version of Java (Java 17+)
 and [Apache Maven]. See the [Jenkins Plugin Tutorial] for details.
 You could also go the [GitPod](https://gitpod.io/#https://github.com/jenkinsci/lockable-resources-plugin) way.
 
@@ -28,17 +28,30 @@ local changes before committing.
 ## Code Style
 
 This plugin tries to migrate to [Google Java Code Style], please try to adhere to that style
-whenever adding new files or making big changes to existing files. If your IDE doesn't support
-this style, you can use the [fmt-maven-plugin], like this:
+whenever adding new files or making big changes to existing files.
+
+Formatting is enforced by the build via Spotless (configured by the Jenkins plugin parent POM).
+To verify formatting locally:
 
 ```sh
-    mvn fmt:format -DfilesNamePattern=ChangedFile\.java
+mvn -DskipTests spotless:check
+```
+
+To auto-format the code:
+
+```sh
+mvn -DskipTests spotless:apply
+```
+
+Tip: to format just a subset of files, Spotless supports `-DspotlessFiles=...` (path or glob), e.g.:
+
+```sh
+mvn -DskipTests -DspotlessFiles=src/main/java/**/ChangedFile.java spotless:apply
 ```
 
 to reformat Java code in the proper style.
 
 [Google Java Code Style]: https://google.github.io/styleguide/javaguide.html
-[fmt-maven-plugin]: https://github.com/coveo/fmt-maven-plugin
 
 ## Code coverage
 

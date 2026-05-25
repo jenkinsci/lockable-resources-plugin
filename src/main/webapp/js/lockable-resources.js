@@ -1,33 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2020, Tobias Gruetzmacher
 
-// Jenkins core used to expose a global `crumb` helper. Newer Jenkins pages expose
-// crumb data via <head data-crumb-header/data-crumb-value> instead.
-// The Stapler JS proxy (org/kohsuke/stapler/bind.js) and this plugin both rely on
-// `crumb.wrap(...)` to attach the CSRF crumb to POST requests.
-// Create a minimal compatibility shim if it's missing.
-(function () {
-  if (typeof window.crumb !== 'undefined') {
-    return;
-  }
-  const head = document.querySelector('head');
-  if (!head) {
-    return;
-  }
-  const header = head.getAttribute('data-crumb-header');
-  const value = head.getAttribute('data-crumb-value');
-  if (!header || !value) {
-    return;
-  }
-  window.crumb = {
-    wrap: function (headers) {
-      const merged = headers ? Object.assign({}, headers) : {};
-      merged[header] = value;
-      return merged;
-    }
-  };
-})();
-
 function changeQueueOrder(queueId) {
 
   dialog
@@ -227,79 +200,37 @@ function bulk_resource_action(action) {
   run(null);
 }
 
-function initDataTableColumnFilters(tableEl, api, tableId) {
-  if (!tableEl || !api) {
-    return;
-  }
-
-  const toolbar = tableId ? document.getElementById('toolbar-' + tableId) : null;
-  const container = toolbar || tableEl;
-
-  const inputs = container.querySelectorAll('input.lockable-resources-column-filter[data-dt-column]');
-  if (!inputs || inputs.length === 0) {
-    return;
-  }
-
-  inputs.forEach(function (input) {
-    if (input.dataset.lrBound === 'true') {
-      return;
-    }
-
-    const columnIndex = parseInt(input.dataset.dtColumn, 10);
-    if (Number.isNaN(columnIndex)) {
-      return;
-    }
-
-    // Initialize from restored state (stateSave).
-    const existing = api.column(columnIndex).search();
-    if (existing) {
-      input.value = existing;
-    }
-
-    input.addEventListener('input', function () {
-      api.column(columnIndex).search(input.value || '').draw();
-    });
-
-    // When filters are inside a <th>, prevent triggering sort.
-    input.addEventListener('click', function (e) {
-      e.stopPropagation();
-    });
-
-    input.dataset.lrBound = 'true';
-  });
-}
-
-// Column filters for DataTables instances on LR pages.
-// Prefer the init.dt event, but also handle tables that initialized before this script attached.
-jQuery3(document).on('init.dt', 'table.data-table', function (_event, settings) {
-  try {
-    const tableEl = settings && settings.nTable;
-    if (!tableEl) {
-      return;
-    }
-    const api = new jQuery3.fn.dataTable.Api(settings);
-    initDataTableColumnFilters(tableEl, api, settings.sTableId);
-  } catch (e) {
-    console.warn('[LR] Failed to initialize column filters', e);
-  }
-});
-
 jQuery3(document).ready(function () {
-  try {
-    if (!jQuery3.fn.dataTable || !jQuery3.fn.dataTable.isDataTable) {
-      return;
-    }
-
-    jQuery3('table.data-table').each(function () {
-      if (!jQuery3.fn.dataTable.isDataTable(this)) {
+  // Column filters for DataTables instances on LR pages.
+  // We hook into DataTables' init event (triggered by data-tables-api) to avoid race conditions.
+  jQuery3(document).on('init.dt', 'table.data-table', function (_event, settings) {
+    try {
+      const api = new jQuery3.fn.dataTable.Api(settings);
+      const toolbar = document.getElementById('toolbar-' + settings.sTableId);
+      if (!toolbar) {
         return;
       }
-      const api = jQuery3(this).DataTable();
-      initDataTableColumnFilters(this, api, this.id);
-    });
-  } catch (e) {
-    console.warn('[LR] Failed to initialize existing column filters', e);
-  }
+
+      toolbar.querySelectorAll('input.lockable-resources-column-filter[data-dt-column]').forEach(function (input) {
+        const columnIndex = parseInt(input.dataset.dtColumn, 10);
+        if (Number.isNaN(columnIndex)) {
+          return;
+        }
+
+        // Initialize from restored state (stateSave).
+        const existing = api.column(columnIndex).search();
+        if (existing) {
+          input.value = existing;
+        }
+
+        input.addEventListener('input', function () {
+          api.column(columnIndex).search(input.value || '').draw();
+        });
+      });
+    } catch (e) {
+      console.warn('[LR] Failed to initialize column filters', e);
+    }
+  });
 
   // Delegate clicks since table rows are loaded asynchronously.
   document.addEventListener("click", function (event) {

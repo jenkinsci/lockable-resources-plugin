@@ -269,7 +269,7 @@ public class LockableResourcesRootAction implements RootAction, AsyncTableConten
         public List<TableColumn> getColumns() {
             return List.of(
                     new TableColumn.ColumnBuilder()
-                    .withHeaderLabel(tr(bundle, "resources.table.column.select"))
+                            .withHeaderLabel("")
                             .withDataPropertyKey("select")
                             .withType(TableColumn.ColumnType.STRING)
                             .withHeaderClass(TableColumn.ColumnCss.NO_SORT)
@@ -536,6 +536,72 @@ public class LockableResourcesRootAction implements RootAction, AsyncTableConten
             return html.toString();
         }
 
+        private String renderActionCell(final LockableResource resource) {
+            String resourceName = resource.getName();
+            StringBuilder html = new StringBuilder();
+
+            if (resource.isLocked()) {
+                if (Jenkins.get().hasPermission(UNLOCK)) {
+                    html.append(button(
+                            "unlock", "jenkins-!-warning-color", "btn.unlock", "btn.unlock.detail", resourceName));
+                }
+                if (Jenkins.get().hasPermission(STEAL)) {
+                    html.append(button(
+                            "steal", "jenkins-!-destructive-color", "btn.steal", "btn.steal.detail", resourceName));
+                }
+                return html.toString();
+            }
+
+            if (resource.getReservedBy() != null) {
+                if (Jenkins.get().hasPermission(RESERVE)) {
+                    if (resource.isReservedByCurrentUser() || Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
+                        html.append(button(
+                                "unreserve",
+                                "jenkins-!-success-color",
+                                "btn.unReserve",
+                                "btn.unReserve.detail",
+                                resourceName));
+                    }
+                }
+                if (Jenkins.get().hasPermission(STEAL)) {
+                    if (!resource.isReservedByCurrentUser()) {
+                        html.append(button(
+                                "reassign",
+                                "jenkins-button--primary",
+                                "btn.reassign",
+                                "btn.reassign.detail",
+                                resourceName));
+                    }
+                }
+                return html.toString();
+            }
+
+            if (resource.isQueued()) {
+                if (Jenkins.get().hasPermission(UNLOCK)) {
+                    html.append(button(
+                            "reset", "jenkins-!-destructive-color", "btn.reset", "btn.reset.detail", resourceName));
+                }
+                return html.toString();
+            }
+
+            if (Jenkins.get().hasPermission(RESERVE)) {
+                html.append(button(
+                        "reserve", "jenkins-button--primary", "btn.reserve", "btn.reserve.detail", resourceName));
+            }
+            return html.toString();
+        }
+
+        private String button(
+                final String action,
+                final String extraClass,
+                final String labelKey,
+                final String tooltipKey,
+                final String resourceName) {
+            return "<button data-resource-name=\"" + Util.escape(resourceName) + "\" data-action=\""
+                    + Util.escape(action)
+                    + "\" class=\"jenkins-button " + extraClass + " lockable-resources-action-button\" tooltip=\""
+                    + Util.escape(tr(bundle, tooltipKey)) + "\">" + Util.escape(tr(bundle, labelKey)) + "</button>";
+        }
     }
 
     // ---------------------------------------------------------------------------
