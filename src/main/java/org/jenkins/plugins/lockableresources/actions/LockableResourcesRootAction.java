@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -892,25 +893,30 @@ public class LockableResourcesRootAction extends ManagementLink {
 
         // Apply filter if provided
         if (filter != null || typeFilter != null || requestFilter != null || requestedByFilter != null) {
-            final String lowerFilter = filter != null ? filter.toLowerCase() : null;
-            final String lowerTypeFilter = typeFilter != null ? typeFilter.toLowerCase() : null;
-            final String lowerRequestFilter = requestFilter != null ? requestFilter.toLowerCase() : null;
-            final String lowerRequestedByFilter = requestedByFilter != null ? requestedByFilter.toLowerCase() : null;
+            final String lowerFilter = filter != null ? filter.toLowerCase(Locale.ENGLISH) : null;
+            final String lowerTypeFilter = typeFilter != null ? typeFilter.toLowerCase(Locale.ENGLISH) : null;
+            final String lowerRequestFilter = requestFilter != null ? requestFilter.toLowerCase(Locale.ENGLISH) : null;
+            final String lowerRequestedByFilter =
+                    requestedByFilter != null ? requestedByFilter.toLowerCase(Locale.ENGLISH) : null;
             allItems = allItems.stream()
                     .filter(item -> {
                         if (lowerTypeFilter != null
-                                && !getQueueItemType(item).toLowerCase().contains(lowerTypeFilter)) {
+                                && !getQueueItemType(item)
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerTypeFilter)) {
                             return false;
                         }
                         if (lowerRequestFilter != null
-                                && !getQueueItemRequestText(item).toLowerCase().contains(lowerRequestFilter)) {
+                                && !getQueueItemRequestText(item)
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerRequestFilter)) {
                             return false;
                         }
                         if (lowerRequestedByFilter != null) {
                             Run<?, ?> requestedByBuild = item.getBuild();
                             String requestedByText =
                                     requestedByBuild != null ? requestedByBuild.getFullDisplayName() : "";
-                            if (!requestedByText.toLowerCase().contains(lowerRequestedByFilter)) {
+                            if (!requestedByText.toLowerCase(Locale.ENGLISH).contains(lowerRequestedByFilter)) {
                                 return false;
                             }
                         }
@@ -921,14 +927,23 @@ public class LockableResourcesRootAction extends ManagementLink {
 
                         if (item.resourcesMatch()) {
                             for (LockableResource r : item.getRequiredResources()) {
-                                if (r.getName().toLowerCase().contains(lowerFilter)) return true;
+                                if (r.getName().toLowerCase(Locale.ENGLISH).contains(lowerFilter)) return true;
                             }
                         }
                         if (item.labelsMatch()
-                                && item.getRequiredLabel().toLowerCase().contains(lowerFilter)) return true;
+                                && item.getRequiredLabel()
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerFilter)) {
+                            return true;
+                        }
                         Run<?, ?> b = item.getBuild();
-                        if (b != null && b.getFullDisplayName().toLowerCase().contains(lowerFilter)) return true;
-                        return item.getId().toLowerCase().contains(lowerFilter);
+                        if (b != null
+                                && b.getFullDisplayName()
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerFilter)) {
+                            return true;
+                        }
+                        return item.getId().toLowerCase(Locale.ENGLISH).contains(lowerFilter);
                     })
                     .collect(Collectors.toList());
         }
