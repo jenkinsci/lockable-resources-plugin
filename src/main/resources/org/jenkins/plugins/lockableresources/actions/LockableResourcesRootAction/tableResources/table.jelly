@@ -37,6 +37,7 @@ THE SOFTWARE.
     >
       <thead>
         <tr>
+          <th data-sort-disable="true"><input type="checkbox" class="lr-select-all" aria-label="Select all" /></th>
           <th>${%resources.table.column.index}</th>
           <th>${%resources.table.column.resource}</th>
           <th>${%resources.table.column.status}</th>
@@ -45,13 +46,17 @@ THE SOFTWARE.
           <th>${%resources.table.column.properties}</th>
           <th data-sort-disable="true">${%resources.table.column.action}</th>
         </tr>
+
       </thead>
       <tbody>
         <j:forEach var="resource" items="${it.resources}" varStatus="idx">
           <tr data-resource-name="${resource.name}"
               data-resource-description="${resource.description != null ? resource.description : ''}"
               data-resource-labels="${resource.labels != null ? resource.labels : ''}"
-              data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : 'free'))}">
+              data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : 'free'))}"
+              data-resource-owner="${resource.reservedBy != null ? resource.reservedBy : (resource.buildName != null ? resource.buildName : '')}">
+            <!-- Checkbox -->
+            <td><input type="checkbox" class="lr-select-resource" data-resource-name="${resource.name}" aria-label="Select ${resource.name}" /></td>
             <!-- **************************************************************
                  Index
             -->
@@ -229,7 +234,7 @@ THE SOFTWARE.
                       class="jenkins-button jenkins-button--tertiary jenkins-!-warning-color lockable-resources-action-button"
                       tooltip="${%btn.unlock}"
                     >
-                      <l:icon src="symbol-lock-open" />
+                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
                     </button>
                   </l:hasPermission>
                   <l:hasPermission permission="${it.STEAL}">
@@ -238,7 +243,7 @@ THE SOFTWARE.
                       class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
                       tooltip="${%btn.steal}"
                     >
-                      <l:icon src="symbol-swap-horizontal-outline plugin-ionicons-api" />
+                      <l:icon src="symbol-flash-outline plugin-ionicons-api" />
                     </button>
                   </l:hasPermission>
                 </j:when>
@@ -250,7 +255,7 @@ THE SOFTWARE.
                         class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-action-button"
                         tooltip="${%btn.unReserve}"
                       >
-                        <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                        <l:icon src="symbol-log-out-outline plugin-ionicons-api" />
                       </button>
                     </j:if>
                   </l:hasPermission>
@@ -284,7 +289,7 @@ THE SOFTWARE.
                       class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
                       tooltip="${%btn.reserve}"
                     >
-                      <l:icon src="symbol-lock-closed" />
+                      <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
                     </button>
                   </l:hasPermission>
                   <l:hasPermission permission="${app.ADMINISTER}">
@@ -312,6 +317,39 @@ THE SOFTWARE.
         </j:forEach>
       </tbody>
     </table>
+
+  <!-- Bulk action bar (hidden until selection) -->
+  <div id="lr-bulk-bar" class="lr-bulk-bar" aria-hidden="true">
+    <span class="lr-bulk-bar__label">${%bulk.selected}</span>
+    <span class="lr-bulk-bar__count" id="lr-bulk-count">0</span>
+    <div class="lr-bulk-bar__actions">
+      <l:hasPermission permission="${it.RESERVE}">
+        <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lr-bulk-action" data-action="reserve" tooltip="${%btn.reserve}">
+          <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
+        </button>
+        <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lr-bulk-action" data-action="unreserve" tooltip="${%btn.unReserve}">
+          <l:icon src="symbol-log-out-outline plugin-ionicons-api" />
+        </button>
+      </l:hasPermission>
+      <l:hasPermission permission="${it.UNLOCK}">
+        <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-warning-color lr-bulk-action" data-action="unlock" tooltip="${%btn.unlock}">
+          <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+        </button>
+        <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lr-bulk-action" data-action="reset" tooltip="${%btn.reset}">
+          <l:icon src="symbol-refresh" />
+        </button>
+      </l:hasPermission>
+      <l:hasPermission permission="${it.STEAL}">
+        <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lr-bulk-action" data-action="steal" tooltip="${%btn.steal}">
+          <l:icon src="symbol-flash-outline plugin-ionicons-api" />
+        </button>
+        <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lr-bulk-action" data-action="reassign" tooltip="${%btn.reassign}">
+          <l:icon src="symbol-people" />
+        </button>
+      </l:hasPermission>
+    </div>
+  </div>
+
   <!-- JS loaded from index.jelly -->
 
 

@@ -1,8 +1,3 @@
-/*
- * The MIT License
- *
- * See the "LICENSE.txt" file for full copyright and license information.
- */
 package org.jenkins.plugins.lockableresources.actions;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
@@ -26,7 +21,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.FreeDeadJobs;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -122,6 +119,118 @@ public class LockableResourcesRootAction extends ManagementLink {
     @Override
     public Permission getRequiredPermission() {
         return VIEW;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Returns a summary of resource states for the overview tab. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public Summary getSummary() {
+        Jenkins.get().checkPermission(VIEW);
+
+        int locked = 0;
+        int reserved = 0;
+        int queued = 0;
+        int free = 0;
+        int total = 0;
+
+        for (LockableResource r : LockableResourcesManager.get().getReadOnlyResources()) {
+            total++;
+            if (r.getReservedBy() != null) {
+                reserved++;
+            } else if (r.isLocked()) {
+                locked++;
+            } else if (r.isQueued()) {
+                queued++;
+            } else {
+                free++;
+            }
+        }
+
+        int queueItems = 0;
+        for (QueuedContextStruct context : LockableResourcesManager.get().getCurrentQueuedContext()) {
+            queueItems += context.getResources().size();
+        }
+
+        int labelsCount = getLabelsList().size();
+
+        List<LockableResourcesLabel> topLabels = getLabelsList().values().stream()
+                .sorted((a, b) -> Integer.compare(b.getAssigned(), a.getAssigned()))
+                .limit(3)
+                .collect(Collectors.toList());
+
+        return new Summary(total, locked, reserved, queued, free, queueItems, labelsCount, topLabels);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Restricted(NoExternalUse.class)
+    public static final class Summary {
+        private final int total;
+        private final int locked;
+        private final int reserved;
+        private final int queued;
+        private final int free;
+        private final int queueItems;
+        private final int labelsCount;
+        private final List<LockableResourcesLabel> topLabels;
+
+        Summary(int total, int locked, int reserved, int queued, int free, int queueItems, int labelsCount, List<LockableResourcesLabel> topLabels) {
+            this.total = total;
+            this.locked = locked;
+            this.reserved = reserved;
+            this.queued = queued;
+            this.free = free;
+            this.queueItems = queueItems;
+            this.labelsCount = labelsCount;
+            this.topLabels = topLabels;
+        }
+
+        public int getTotal() {
+            return total;
+        }
+
+        public int getLocked() {
+            return locked;
+        }
+
+        public int getReserved() {
+            return reserved;
+        }
+
+        public int getQueued() {
+            return queued;
+        }
+
+        public int getFree() {
+            return free;
+        }
+
+        public int getQueueItems() {
+            return queueItems;
+        }
+
+        public int getLabelsCount() {
+            return labelsCount;
+        }
+
+        public List<LockableResourcesLabel> getTopLabels() {
+            return topLabels;
+        }
+
+        public int getLockedPct() {
+            return total > 0 ? (locked * 100) / total : 0;
+        }
+
+        public int getReservedPct() {
+            return total > 0 ? (reserved * 100) / total : 0;
+        }
+
+        public int getQueuedPct() {
+            return total > 0 ? (queued * 100) / total : 0;
+        }
+
+        public int getFreePct() {
+            return total > 0 ? (free * 100) / total : 0;
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -676,6 +785,14 @@ public class LockableResourcesRootAction extends ManagementLink {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
+    public void doRecycleDeadLocks(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        FreeDeadJobs.freePostMortemResources();
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    @RequirePOST
     public void doSaveNote(final StaplerRequest2 req, final StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(RESERVE);
 
@@ -803,7 +920,11 @@ public class LockableResourcesRootAction extends ManagementLink {
             resource.setProperties(properties);
         }
 
-        manager.addResource(resource, /*doSave*/ true);
+        boolean added = manager.addResource(resource, /*doSave*/ true);
+        if (!added) {
+            rsp.sendError(409, Messages.error_resourceAlreadyExists(name));
+            return;
+        }
 
         rsp.forwardToPreviousPage(req);
     }
@@ -832,17 +953,19 @@ public class LockableResourcesRootAction extends ManagementLink {
         }
 
         LockableResourcesManager manager = LockableResourcesManager.get();
-        LockableResource resource = manager.fromName(name);
-        if (resource == null) {
-            rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
-            return;
+        synchronized (LockableResourcesManager.syncResources) {
+            LockableResource resource = manager.fromName(name);
+            if (resource == null) {
+                rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+                return;
+            }
+
+            resource.setDescription(Util.fixEmptyAndTrim(json.optString("description", null)));
+            resource.setLabels(Util.fixEmptyAndTrim(json.optString("labels", null)));
+            resource.setProperties(parsePropertiesFromJson(json));
+
+            manager.save();
         }
-
-        resource.setDescription(Util.fixEmptyAndTrim(json.optString("description", null)));
-        resource.setLabels(Util.fixEmptyAndTrim(json.optString("labels", null)));
-        resource.setProperties(parsePropertiesFromJson(json));
-
-        manager.save();
         rsp.forwardToPreviousPage(req);
     }
 
@@ -855,22 +978,25 @@ public class LockableResourcesRootAction extends ManagementLink {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         String name = req.getParameter("resource");
-        LockableResource resource = LockableResourcesManager.get().fromName(name);
-        if (resource == null) {
-            rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
-            return;
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        synchronized (LockableResourcesManager.syncResources) {
+            LockableResource resource = manager.fromName(name);
+            if (resource == null) {
+                rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+                return;
+            }
+
+            if (!resource.isFree()) {
+                String cause = resource.isLocked() ? "locked" : resource.isReserved() ? "reserved" : "queued";
+                rsp.sendError(423, Messages.error_resourceAlreadyLocked(name) + " (" + cause + ")");
+                return;
+            }
+
+            List<LockableResource> toRemove = new ArrayList<>();
+            toRemove.add(resource);
+            manager.removeResources(toRemove);
+            manager.save();
         }
-
-        if (resource.isLocked() || resource.isQueued() || resource.isReserved()) {
-            rsp.sendError(423, Messages.error_resourceAlreadyLocked(name));
-            return;
-        }
-
-        List<LockableResource> toRemove = new ArrayList<>();
-        toRemove.add(resource);
-        LockableResourcesManager.get().removeResources(toRemove);
-        LockableResourcesManager.get().save();
-
         rsp.forwardToPreviousPage(req);
     }
 

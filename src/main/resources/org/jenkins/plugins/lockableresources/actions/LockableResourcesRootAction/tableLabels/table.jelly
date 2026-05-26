@@ -74,7 +74,7 @@ THE SOFTWARE.
                 <j:set var="cssClass" value="" />
               </j:otherwise>
             </j:choose>
-            <tr>
+            <tr data-label-name="${label.name}" data-label-assigned="${allCount}">
               <td>
                 <a
                   class="jenkins-table__link model-link"

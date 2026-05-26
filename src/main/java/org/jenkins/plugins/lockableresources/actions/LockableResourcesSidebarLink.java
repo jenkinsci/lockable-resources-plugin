@@ -1,8 +1,3 @@
-/*
- * The MIT License
- *
- * See the "LICENSE.txt" file for full copyright and license information.
- */
 package org.jenkins.plugins.lockableresources.actions;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
@@ -34,6 +29,6 @@ public class LockableResourcesSidebarLink implements RootAction {
 
     @Override
     public String getUrlName() {
-        return "/manage/lockable-resources/";
+        return "/lockable-resources/";
     }
 }

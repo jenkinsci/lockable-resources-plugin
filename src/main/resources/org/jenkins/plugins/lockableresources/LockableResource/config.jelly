@@ -23,7 +23,7 @@
   <f:entry title="${%entry.properties.title}">
     <f:repeatableProperty field="properties" header="" minimum="0" add="${%entry.properties.add}">
       <f:block>
-        <div align="right">
+        <div style="text-align: right;">
           <f:repeatableDeleteButton value="${%entry.properties.delete}" />
         </div>
       </f:block>

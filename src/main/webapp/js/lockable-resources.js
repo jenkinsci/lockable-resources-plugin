@@ -32,6 +32,11 @@ function showResponse(rsp, okText, errorText) {
       });
     } else {
       notificationBar.show(okText, notificationBar.SUCCESS);
+      // Preserve current tab on reload
+      var activeTab = document.querySelector(".lr-tab-button--active");
+      if (activeTab && !window.location.hash) {
+        window.location.hash = activeTab.dataset.lrTab;
+      }
       window.location.reload();
     }
   });
@@ -249,42 +254,162 @@ function replaceNote(resourceName) {
   });
 }
 
-function i18n(messageId, arg0, arg1) {
+function i18n(messageId, arg0, arg1, arg2) {
   const el = document.querySelector("#i18n");
   if (!el) return messageId;
   const val = el.getAttribute("data-" + messageId);
   if (!val) return messageId;
-  return val.replace("{0}", arg0).replace("{1}", arg1);
+  var result = val;
+  if (arg0 !== undefined) result = result.replace("{0}", arg0);
+  if (arg1 !== undefined) result = result.replace("{1}", arg1);
+  if (arg2 !== undefined) result = result.replace("{2}", arg2);
+  return result;
 }
 
 document.addEventListener("DOMContentLoaded", function () {
 
-  // Tab switching
+  // Tab switching (with history state)
+  function switchTab(tabId, pushState) {
+    document.querySelectorAll(".lr-tab-button").forEach(function (b) {
+      var active = b.dataset.lrTab === tabId;
+      b.classList.toggle("lr-tab-button--active", active);
+      b.classList.toggle("jenkins-button--tertiary", !active);
+      b.setAttribute("aria-selected", String(active));
+    });
+    document.querySelectorAll(".lr-tab-pane").forEach(function (p) {
+      p.classList.toggle("lr-tab-pane--active", p.id === "lr-tab-" + tabId);
+    });
+    if (pushState !== false) {
+      var url = new URL(window.location);
+      url.hash = tabId;
+      history.pushState({ lrTab: tabId }, "", url);
+    }
+    if (typeof window.updateFilterMode === "function") window.updateFilterMode(tabId);
+  }
+
   document.querySelectorAll(".lr-tab-button").forEach(function (tabBtn) {
     tabBtn.addEventListener("click", function () {
-      const tabId = tabBtn.dataset.lrTab;
-      document.querySelectorAll(".lr-tab-button").forEach(function (b) {
-        const active = b === tabBtn;
-        b.classList.toggle("lr-tab-button--active", active);
-        b.classList.toggle("jenkins-button--tertiary", !active);
-        b.setAttribute("aria-selected", String(active));
-      });
-      document.querySelectorAll(".lr-tab-pane").forEach(function (p) {
-        p.classList.toggle("lr-tab-pane--active", p.id === "lr-tab-" + tabId);
-      });
-      try { localStorage.setItem("lockable-resources-active-tab", tabId); } catch (e) { /* noop */ }
-      if (typeof window.updateFilterMode === "function") window.updateFilterMode(tabId);
+      switchTab(tabBtn.dataset.lrTab);
     });
   });
 
-  // Restore last active tab
-  try {
-    const activeTab = localStorage.getItem("lockable-resources-active-tab");
-    if (activeTab) {
-      const restoreBtn = document.querySelector('.lr-tab-button[data-lr-tab="' + activeTab + '"]');
-      if (restoreBtn) restoreBtn.click();
+  // Restore from URL hash or default to overview
+  var hashTab = window.location.hash ? window.location.hash.substring(1) : null;
+  if (hashTab && document.querySelector('.lr-tab-button[data-lr-tab="' + hashTab + '"]')) {
+    switchTab(hashTab, false);
+  }
+  // else: stay on overview (the default active pane in HTML)
+
+  // Browser back/forward
+  window.addEventListener("popstate", function (e) {
+    var tabId = (e.state && e.state.lrTab) ? e.state.lrTab : "overview";
+    switchTab(tabId, false);
+  });
+
+  // Overview card headers navigate to tabs
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest("[data-lr-tab-link]");
+    if (!link) return;
+    e.preventDefault();
+    var tabId = link.getAttribute("data-lr-tab-link");
+    switchTab(tabId);
+  });
+
+  // Quick action buttons
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".lr-quick-action-btn");
+    if (!btn) return;
+    var action = btn.dataset.action;
+    if (action === "reserveAll") {
+      // Navigate to resources tab for selection
+      switchTab("resources");
+    } else if (action === "freeAll") {
+      // Navigate to resources tab and select all locked/reserved for bulk action
+      switchTab("resources");
+      setTimeout(function () {
+        document.querySelectorAll('#lr-tab-resources table tbody tr').forEach(function (row) {
+          var status = (row.dataset.resourceStatus || "").toLowerCase();
+          if (status === "reserved" || status === "locked") {
+            var cb = row.querySelector('input[type="checkbox"]');
+            if (cb && !cb.checked) { cb.click(); }
+          }
+        });
+      }, 100);
+    } else if (action === "resetQueued") {
+      // Navigate to resources tab and select all queued resources
+      switchTab("resources");
+      setTimeout(function () {
+        document.querySelectorAll('#lr-tab-resources table tbody tr').forEach(function (row) {
+          var status = (row.dataset.resourceStatus || "").toLowerCase();
+          if (status === "queued") {
+            var cb = row.querySelector('input[type="checkbox"]');
+            if (cb && !cb.checked) { cb.click(); }
+          }
+        });
+      }, 100);
+    } else if (action === "reserveByLabel") {
+      // Switch to resources tab and focus the label filter
+      switchTab("resources");
+      setTimeout(function () {
+        var labelInput = document.getElementById("lr-filter-label");
+        if (labelInput) { labelInput.focus(); labelInput.select(); }
+      }, 100);
+    } else if (action === "myResources") {
+      // Switch to resources tab and filter by current user
+      switchTab("resources");
+      setTimeout(function () {
+        var currentUser = (document.getElementById("lr-page-data") || {}).dataset;
+        var user = currentUser ? currentUser.currentUser : "";
+        if (!user) return;
+        document.querySelectorAll('#lr-tab-resources table tbody tr').forEach(function (row) {
+          var owner = (row.dataset.resourceOwner || "").toLowerCase();
+          var isMatch = owner.indexOf(user.toLowerCase()) !== -1;
+          row.classList.toggle("lr-global-search-hidden", !isMatch);
+        });
+      }, 100);
+    } else if (action === "recycleDeadLocks") {
+      // Call server endpoint to free dead locks
+      fetch("recycleDeadLocks", {
+        method: "post",
+        headers: crumb.wrap({}),
+      }).then(function () {
+        window.location.reload();
+      });
+    } else if (action === "stealAll") {
+      // Navigate to resources tab and select all locked/reserved for steal
+      switchTab("resources");
+      setTimeout(function () {
+        document.querySelectorAll('#lr-tab-resources table tbody tr').forEach(function (row) {
+          var status = (row.dataset.resourceStatus || "").toLowerCase();
+          if (status === "reserved" || status === "locked") {
+            var cb = row.querySelector('input[type="checkbox"]');
+            if (cb && !cb.checked) { cb.click(); }
+          }
+        });
+      }, 100);
     }
-  } catch (e) { /* noop */ }
+  });
+
+  // Threshold coloring for utilization percentages
+  document.querySelectorAll(".lr-overview-stats-list .lr-overview-stat__number[data-pct]").forEach(function (el) {
+    var pct = parseInt(el.dataset.pct, 10);
+    var type = el.dataset.type;
+    if (type === "free") {
+      // Green when high, red when low
+      if (pct <= 20) el.style.color = "var(--red)";
+      else if (pct <= 40) el.style.color = "var(--orange)";
+      else el.style.color = "var(--green)";
+    } else if (type === "locked" || type === "reserved") {
+      // Red when high
+      if (pct >= 80) el.style.color = "var(--red)";
+      else if (pct >= 50) el.style.color = "var(--orange)";
+      else if (type === "locked") el.style.color = "var(--red)";
+      else el.style.color = "var(--orange)";
+    } else if (type === "queued") {
+      if (pct >= 50) el.style.color = "var(--red)";
+      else el.style.color = "var(--blue)";
+    }
+  });
 
   // Event delegation
   document.addEventListener("click", function (event) {
@@ -307,11 +432,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Client-side pagination for all tables
   initPagination();
-
-  // ====================================================================
-  // Filter / search (adapts per active tab)
-  // ====================================================================
-  initFilter();
 });
 
 // ====================================================================
@@ -336,13 +456,20 @@ function initPagination() {
     table.parentNode.insertBefore(scrollWrapper, table);
     scrollWrapper.appendChild(table);
 
+    // Place pagination in the toolbar (right of the eye icon) if available
     const controls = document.createElement("div");
     controls.className = "lr-pagination";
-    scrollWrapper.parentNode.insertBefore(controls, scrollWrapper.nextSibling);
+    const tabPane = table.closest(".lr-tab-pane");
+    const toolbar = tabPane ? tabPane.querySelector(".lr-toolbar__actions") : null;
+    if (toolbar) {
+      toolbar.appendChild(controls);
+    } else {
+      scrollWrapper.parentNode.insertBefore(controls, scrollWrapper.nextSibling);
+    }
 
     function getRows() {
       const tbody = table.querySelector("tbody");
-      return tbody ? Array.from(tbody.querySelectorAll(":scope > tr:not(.lr-filtered-out)")) : [];
+      return tbody ? Array.from(tbody.querySelectorAll(":scope > tr:not(.lr-filtered-out):not(.lr-col-filtered-out)")) : [];
     }
 
     function render() {
@@ -406,177 +533,579 @@ function initPagination() {
 }
 
 // ====================================================================
-// Filter / search — adapts per active tab
+// Tab change: hide/show add-resource button on overview
 // ====================================================================
+window.updateFilterMode = function (tabId) {
+  const addBtn = document.querySelector(".lr-add-resource-btn");
+  if (addBtn) addBtn.style.display = tabId === "overview" ? "none" : "";
+};
 
-const TABLE_IDS = { resources: "lockable-resources", labels: "lockable-resources-labels", queue: "lockable-resources-queue" };
+// ============ Bulk selection & actions ============
+(function () {
+  const selectedResources = new Set();
 
-function filterRows(tableId, predicate) {
-  const table = document.getElementById(tableId);
-  if (!table) return;
-  const tbody = table.querySelector("tbody");
-  if (!tbody) return;
-  Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
-    row.classList.toggle("lr-filtered-out", !predicate(row));
-    row.style.display = "";
+  function updateBulkBar() {
+    const bar = document.getElementById("lr-bulk-bar");
+    if (!bar) return;
+    const count = selectedResources.size;
+    const countEl = document.getElementById("lr-bulk-count");
+    if (countEl) countEl.textContent = count;
+    bar.setAttribute("aria-hidden", count === 0 ? "true" : "false");
+  }
+
+  function syncSelectAll() {
+    const selectAll = document.querySelector(".lr-select-all");
+    if (!selectAll) return;
+    const checkboxes = document.querySelectorAll(".lr-select-resource");
+    const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(function (cb) { return cb.checked; });
+    selectAll.checked = allChecked;
+    selectAll.indeterminate = !allChecked && selectedResources.size > 0;
+  }
+
+  document.addEventListener("change", function (e) {
+    if (e.target.classList.contains("lr-select-all")) {
+      const checked = e.target.checked;
+      document.querySelectorAll(".lr-select-resource").forEach(function (cb) {
+        cb.checked = checked;
+        const name = cb.getAttribute("data-resource-name");
+        if (checked) {
+          selectedResources.add(name);
+        } else {
+          selectedResources.delete(name);
+        }
+      });
+      updateBulkBar();
+      return;
+    }
+
+    if (e.target.classList.contains("lr-select-resource")) {
+      const name = e.target.getAttribute("data-resource-name");
+      if (e.target.checked) {
+        selectedResources.add(name);
+      } else {
+        selectedResources.delete(name);
+      }
+      syncSelectAll();
+      updateBulkBar();
+    }
   });
-  table.dispatchEvent(new CustomEvent("lr-filter-changed"));
+
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".lr-bulk-action");
+    if (!btn) return;
+    const action = btn.getAttribute("data-action");
+    if (selectedResources.size === 0) return;
+    bulkResourceAction(action, Array.from(selectedResources));
+  });
+
+  function bulkResourceAction(action, resources) {
+    if (action === "reserve" || action === "steal" || action === "reassign") {
+      dialog
+        .prompt(i18n(action + "-title", resources.join(", ")), {
+          message: i18n(action + "-message", resources.join(", ")),
+          minWidth: "450px",
+          maxWidth: "600px"
+        })
+        .then(function (reason) {
+          executeBulk(action, resources, reason || "");
+        });
+      return;
+    }
+    executeBulk(action, resources, null);
+  }
+
+  function executeBulk(action, resources, reason) {
+    let success = 0;
+    let fail = 0;
+    const total = resources.length;
+
+    function next(idx) {
+      if (idx >= total) {
+        const msg = i18n("bulk-result", success, fail, total);
+        if (fail > 0) {
+          dialog.alert(msg);
+        } else {
+          notificationBar.show(msg, notificationBar.SUCCESS);
+        }
+        window.location.reload();
+        return;
+      }
+      let url = action + "?resource=" + encodeURIComponent(resources[idx]);
+      if (reason !== null) {
+        url += "&reason=" + encodeURIComponent(reason);
+      }
+      fetch(url, {
+        method: "post",
+        headers: crumb.wrap({}),
+      }).then(function (rsp) {
+        if (rsp.ok) { success++; } else { fail++; }
+        next(idx + 1);
+      }).catch(function () {
+        fail++;
+        next(idx + 1);
+      });
+    }
+    next(0);
+  }
+
+  // Clear selection when switching away from resources tab
+  document.addEventListener("click", function (e) {
+    const tab = e.target.closest("[data-lr-tab]");
+    if (tab && tab.getAttribute("data-lr-tab") !== "resources") {
+      selectedResources.clear();
+      document.querySelectorAll(".lr-select-resource").forEach(function (cb) { cb.checked = false; });
+      const selectAll = document.querySelector(".lr-select-all");
+      if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+      updateBulkBar();
+    }
+  });
+})();
+
+// ============ Per-column inline filters (factory) ============
+function initColumnFilters(config) {
+  // config: { storageKey, tableId, filterClass, applyFn }
+  // applyFn(table): reads filter inputs and applies row visibility
+
+  function persist() {
+    try {
+      var state = {};
+      document.querySelectorAll("." + config.filterClass).forEach(function (f) {
+        if (f.id && f.value) state[f.id] = f.value;
+      });
+      localStorage.setItem(config.storageKey, JSON.stringify(state));
+    } catch (e) { /* noop */ }
+  }
+
+  function apply() {
+    var table = document.getElementById(config.tableId);
+    if (!table) return;
+    config.applyFn(table);
+    persist();
+  }
+
+  function restore() {
+    try {
+      var raw = localStorage.getItem(config.storageKey);
+      if (!raw) return;
+      var state = JSON.parse(raw);
+      Object.keys(state).forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.value = state[id];
+      });
+      apply();
+    } catch (e) { /* noop */ }
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target.classList.contains(config.filterClass)) apply();
+  });
+  document.addEventListener("change", function (e) {
+    if (e.target.classList.contains(config.filterClass)) apply();
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", restore);
+  } else {
+    restore();
+  }
 }
 
-function initFilter() {
-  const quickInput = document.getElementById("lr-filter-quick");
-  const nameInput = document.getElementById("lr-filter-name");
-  const labelInput = document.getElementById("lr-filter-label");
-  const statusSelect = document.getElementById("lr-filter-status");
-  const textInput = document.getElementById("lr-filter-text");
-  const resourcesPane = document.querySelector(".lr-filter-resources");
-  const searchPane = document.querySelector(".lr-filter-search");
-  const searchPopover = document.querySelector(".lr-search-popover");
-  const filterPopover = document.querySelector(".lr-filter-popover");
-  const searchToggle = document.querySelector(".lr-search-toggle");
-  const filterToggle = document.querySelector(".lr-filter-toggle");
-  if (!quickInput) return; // no filter on page (0 resources)
+// ============ Column visibility toggle (factory) ============
+function initColumnVisibility(config) {
+  // config: { storageKey, tableId, menuId, toggleId, dataAttr, columns }
 
-  const STORAGE_KEY = "lockable-resources-filter";
-  let activeTab = "resources";
-  let searchOpen = false;
-  let advancedOpen = false;
-
-  function loadState() {
+  function getVisibility() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(config.storageKey);
       return raw ? JSON.parse(raw) : {};
     } catch (e) { return {}; }
   }
 
-  function saveState(patch) {
-    try {
-      const state = Object.assign(loadState(), patch);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) { /* noop */ }
+  function setVisibility(key, visible) {
+    var state = getVisibility();
+    state[key] = visible;
+    try { localStorage.setItem(config.storageKey, JSON.stringify(state)); } catch (e) { /* noop */ }
   }
 
-  // Quick search across all columns of the active table
-  function applyQuickFilter() {
-    const query = quickInput.value.trim().toLowerCase();
-    const tableId = TABLE_IDS[activeTab];
-    if (!tableId) return;
-    filterRows(tableId, function (row) {
-      return !query || row.textContent.toLowerCase().indexOf(query) !== -1;
+  function applyVisibility() {
+    var table = document.getElementById(config.tableId);
+    if (!table) return;
+    var state = getVisibility();
+    config.columns.forEach(function (col) {
+      var visible = state[col.key] !== false;
+      table.querySelectorAll("thead tr").forEach(function (tr) {
+        var cell = tr.querySelectorAll("th")[col.idx];
+        if (cell) cell.classList.toggle("lr-col-hidden", !visible);
+      });
+      table.querySelectorAll("tbody tr").forEach(function (tr) {
+        var cell = tr.querySelectorAll("td")[col.idx];
+        if (cell) cell.classList.toggle("lr-col-hidden", !visible);
+      });
     });
-    saveState({ quick: quickInput.value, tab: activeTab });
   }
 
-  // Structured filter for resources tab only
-  function applyStructuredFilter() {
-    const nameVal = nameInput.value.trim().toLowerCase();
-    const labelVal = labelInput.value.trim().toLowerCase();
-    const statusVal = statusSelect.value;
-    filterRows(TABLE_IDS.resources, function (row) {
-      return (!nameVal || (row.dataset.resourceName || "").toLowerCase().indexOf(nameVal) !== -1)
-        && (!labelVal || (row.dataset.resourceLabels || "").toLowerCase().indexOf(labelVal) !== -1)
-        && (!statusVal || (row.dataset.resourceStatus || "") === statusVal);
+  function buildMenu() {
+    var container = document.getElementById(config.menuId);
+    if (!container) return;
+    var state = getVisibility();
+    container.innerHTML = "";
+
+    // Select All / Deselect All controls
+    var controls = document.createElement("div");
+    controls.className = "lr-col-vis-controls";
+    var selectAll = document.createElement("button");
+    selectAll.type = "button";
+    selectAll.className = "jenkins-button jenkins-button--tertiary";
+    selectAll.textContent = "All";
+    selectAll.addEventListener("click", function () {
+      toggleAll(true);
     });
-    saveState({ name: nameInput.value, label: labelInput.value, status: statusVal });
-  }
-
-  function applyActiveFilter() {
-    if (advancedOpen && activeTab === "resources") {
-      applyStructuredFilter();
-    } else if (searchOpen) {
-      applyQuickFilter();
-    }
-  }
-
-  // Toggle search popover
-  function setSearchOpen(open, skipFocus) {
-    searchOpen = open;
-    if (!searchPopover) return;
-    searchPopover.style.display = open ? "block" : "none";
-    searchToggle?.classList.toggle("lr-filter-active", open);
-    if (open) {
-      if (advancedOpen) setAdvancedOpen(false, true);
-      if (!skipFocus) quickInput.focus();
-    }
-    saveState({ mode: open ? "search" : "closed" });
-    applyActiveFilter();
-  }
-
-  // Toggle advanced filter popover
-  function setAdvancedOpen(open, skipFocus) {
-    advancedOpen = open;
-    if (!filterPopover) return;
-    filterPopover.style.display = open ? "flex" : "none";
-    filterToggle?.classList.toggle("lr-filter-active", open);
-    if (open) {
-      if (searchOpen) setSearchOpen(false, true);
-      if (!skipFocus) {
-        if (activeTab === "resources") nameInput?.focus();
-        else textInput?.focus();
-      }
-    }
-    saveState({ mode: open ? "advanced" : "closed" });
-    applyActiveFilter();
-  }
-
-  // Tab change: update filter panes
-  window.updateFilterMode = function (tabId) {
-    activeTab = tabId;
-    if (resourcesPane) resourcesPane.style.display = tabId === "resources" ? "flex" : "none";
-    if (searchPane) searchPane.style.display = tabId === "resources" ? "none" : "flex";
-    // Hide advanced filter icon on non-resource tabs
-    if (filterToggle) filterToggle.style.display = tabId === "resources" ? "" : "none";
-    if (advancedOpen && tabId !== "resources") setAdvancedOpen(false);
-    applyActiveFilter();
-  };
-
-  // Wire events
-  quickInput.addEventListener("input", applyQuickFilter);
-  if (nameInput) nameInput.addEventListener("input", applyStructuredFilter);
-  if (labelInput) labelInput.addEventListener("input", applyStructuredFilter);
-  if (statusSelect) statusSelect.addEventListener("change", applyStructuredFilter);
-  if (textInput) textInput.addEventListener("input", function () {
-    const tableId = TABLE_IDS[activeTab];
-    if (!tableId || activeTab === "resources") return;
-    const query = textInput.value.trim().toLowerCase();
-    filterRows(tableId, function (row) {
-      return !query || row.textContent.toLowerCase().indexOf(query) !== -1;
+    var deselectAll = document.createElement("button");
+    deselectAll.type = "button";
+    deselectAll.className = "jenkins-button jenkins-button--tertiary";
+    deselectAll.textContent = "None";
+    deselectAll.addEventListener("click", function () {
+      toggleAll(false);
     });
+
+    // Highlight active state
+    var allChecked = config.columns.every(function (col) { return state[col.key] !== false; });
+    var noneChecked = config.columns.every(function (col) { return state[col.key] === false; });
+    if (allChecked) selectAll.classList.add("lr-col-vis-controls--active");
+    if (noneChecked) deselectAll.classList.add("lr-col-vis-controls--active");
+
+    controls.appendChild(selectAll);
+    controls.appendChild(deselectAll);
+    container.appendChild(controls);
+
+    config.columns.forEach(function (col) {
+      var checked = state[col.key] !== false;
+      var wrapper = document.createElement("div");
+      wrapper.className = "jenkins-checkbox lr-col-vis-item";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = checked;
+      cb.id = config.menuId + "-" + col.key;
+      cb.setAttribute("data-" + config.dataAttr, col.key);
+      var label = document.createElement("label");
+      label.setAttribute("for", cb.id);
+      label.textContent = col.label;
+      wrapper.appendChild(cb);
+      wrapper.appendChild(label);
+      container.appendChild(wrapper);
+    });
+  }
+
+  function toggleAll(checked) {
+    config.columns.forEach(function (col) {
+      setVisibility(col.key, checked);
+    });
+    applyVisibility();
+    buildMenu();
+  }
+
+  document.addEventListener("change", function (e) {
+    if (e.target.getAttribute("data-" + config.dataAttr)) {
+      setVisibility(e.target.getAttribute("data-" + config.dataAttr), e.target.checked);
+      applyVisibility();
+    }
   });
 
-  // Toggle buttons
-  if (searchToggle) {
-    searchToggle.addEventListener("click", function (e) {
-      e.stopPropagation();
-      setSearchOpen(!searchOpen);
-    });
-  }
-  if (filterToggle) {
-    filterToggle.addEventListener("click", function (e) {
-      e.stopPropagation();
-      setAdvancedOpen(!advancedOpen);
-    });
-  }
-
-  // Close popovers when clicking outside
   document.addEventListener("click", function (e) {
-    const wrapper = document.querySelector(".lr-filter-wrapper");
-    if (!wrapper) return;
-    if (!wrapper.contains(e.target)) {
-      if (searchOpen) setSearchOpen(false);
-      if (advancedOpen) setAdvancedOpen(false);
+    var toggle = e.target.closest("#" + config.toggleId);
+    var menu = document.getElementById(config.menuId);
+    if (!menu) return;
+    if (toggle) {
+      var open = menu.style.display === "block";
+      menu.style.display = open ? "none" : "block";
+      return;
+    }
+    if (!menu.contains(e.target)) {
+      menu.style.display = "none";
     }
   });
 
-  // Restore persisted state
-  const state = loadState();
-  if (state.name && nameInput) nameInput.value = state.name;
-  if (state.label && labelInput) labelInput.value = state.label;
-  if (state.status && statusSelect) statusSelect.value = state.status;
-  if (state.quick) quickInput.value = state.quick;
-  if (state.mode === "advanced") {
-    setAdvancedOpen(true, true);
-  } else if (state.mode === "search" || state.quick) {
-    setSearchOpen(true, true);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () { buildMenu(); applyVisibility(); });
+  } else {
+    buildMenu();
+    applyVisibility();
   }
 }
+
+// ============ Instantiate filters & column visibility for all tabs ============
+(function () {
+  // Resources tab filters
+  initColumnFilters({
+    storageKey: "lockable-resources-col-filters",
+    tableId: "lockable-resources",
+    filterClass: "lr-col-filter",
+    applyFn: function (table) {
+      var quickInput = document.getElementById("lr-filter-quick");
+      var statusSelect = document.getElementById("lr-filter-status");
+      var labelInput = document.getElementById("lr-filter-label");
+      var nameVal = quickInput ? quickInput.value.trim().toLowerCase() : "";
+      var statusVal = statusSelect ? statusSelect.value : "";
+      var labelVal = labelInput ? labelInput.value.trim().toLowerCase() : "";
+      var tbody = table.querySelector("tbody");
+      if (!tbody) return;
+      Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+        var show = (!nameVal || (row.dataset.resourceName || "").toLowerCase().indexOf(nameVal) !== -1)
+          && (!statusVal || (row.dataset.resourceStatus || "") === statusVal)
+          && (!labelVal || (row.dataset.resourceLabels || "").toLowerCase().indexOf(labelVal) !== -1);
+        row.classList.toggle("lr-col-filtered-out", !show);
+      });
+      table.dispatchEvent(new CustomEvent("lr-filter-changed"));
+    }
+  });
+
+  // Labels tab filters
+  initColumnFilters({
+    storageKey: "lockable-resources-labels-filters",
+    tableId: "lockable-resources-labels",
+    filterClass: "lr-labels-filter",
+    applyFn: function (table) {
+      var nameInput = document.getElementById("lr-labels-filter-name");
+      var assignedInput = document.getElementById("lr-labels-filter-assigned");
+      var nameVal = nameInput ? nameInput.value.trim().toLowerCase() : "";
+      var assignedVal = assignedInput ? assignedInput.value.trim() : "";
+      var tbody = table.querySelector("tbody");
+      if (!tbody) return;
+      Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+        var show = (!nameVal || (row.dataset.labelName || "").toLowerCase().indexOf(nameVal) !== -1)
+          && (!assignedVal || (row.dataset.labelAssigned || "") === assignedVal);
+        row.classList.toggle("lr-col-filtered-out", !show);
+      });
+    }
+  });
+
+  // Queue tab filters
+  initColumnFilters({
+    storageKey: "lockable-resources-queue-filters",
+    tableId: "lockable-resources-queue",
+    filterClass: "lr-queue-filter",
+    applyFn: function (table) {
+      var typeInput = document.getElementById("lr-queue-filter-type");
+      var requestInput = document.getElementById("lr-queue-filter-request");
+      var requestedByInput = document.getElementById("lr-queue-filter-requested-by");
+      var typeVal = typeInput ? typeInput.value.trim().toLowerCase() : "";
+      var requestVal = requestInput ? requestInput.value.trim().toLowerCase() : "";
+      var requestedByVal = requestedByInput ? requestedByInput.value.trim().toLowerCase() : "";
+      var tbody = table.querySelector("tbody");
+      if (!tbody) return;
+      Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+        var show = (!typeVal || (row.dataset.queueType || "").toLowerCase().indexOf(typeVal) !== -1)
+          && (!requestVal || (row.dataset.queueRequest || "").toLowerCase().indexOf(requestVal) !== -1)
+          && (!requestedByVal || (row.dataset.queueRequestedBy || "").toLowerCase().indexOf(requestedByVal) !== -1);
+        row.classList.toggle("lr-col-filtered-out", !show);
+      });
+    }
+  });
+
+  // Resources column visibility
+  initColumnVisibility({
+    storageKey: "lockable-resources-col-visibility",
+    tableId: "lockable-resources",
+    menuId: "lr-col-visibility-menu",
+    toggleId: "lr-col-visibility-toggle",
+    dataAttr: "col-key",
+    columns: [
+      { idx: 1, key: "index", label: "#" },
+      { idx: 2, key: "name", label: "Resource" },
+      { idx: 3, key: "status", label: "Status" },
+      { idx: 4, key: "timestamp", label: "Timestamp" },
+      { idx: 5, key: "labels", label: "Labels" },
+      { idx: 6, key: "properties", label: "Properties" }
+    ]
+  });
+
+  // Labels column visibility
+  initColumnVisibility({
+    storageKey: "lockable-resources-labels-col-visibility",
+    tableId: "lockable-resources-labels",
+    menuId: "lr-labels-col-visibility-menu",
+    toggleId: "lr-labels-col-visibility-toggle",
+    dataAttr: "labels-col-key",
+    columns: [
+      { idx: 0, key: "labels", label: "Labels" },
+      { idx: 1, key: "assigned", label: "Assigned" },
+      { idx: 2, key: "free", label: "Free" },
+      { idx: 3, key: "percentage", label: "Free %" }
+    ]
+  });
+
+  // Queue column visibility
+  initColumnVisibility({
+    storageKey: "lockable-resources-queue-col-visibility",
+    tableId: "lockable-resources-queue",
+    menuId: "lr-queue-col-visibility-menu",
+    toggleId: "lr-queue-col-visibility-toggle",
+    dataAttr: "queue-col-key",
+    columns: [
+      { idx: 0, key: "position", label: "Position" },
+      { idx: 1, key: "action", label: "Action" },
+      { idx: 2, key: "type", label: "Request type" },
+      { idx: 3, key: "request", label: "Request" },
+      { idx: 4, key: "reason", label: "Reason" },
+      { idx: 5, key: "requestedBy", label: "Requested by" },
+      { idx: 6, key: "requestedAt", label: "Requested at" },
+      { idx: 7, key: "priority", label: "Priority" },
+      { idx: 8, key: "queueId", label: "Queue ID" }
+    ]
+  });
+})();
+
+// ============ Global cross-field search ============
+(function () {
+  var STORAGE_KEY = "lockable-resources-global-search";
+  var TAB_TABLE_MAP = {
+    resources: "#lr-tab-resources table",
+    labels: "#lr-tab-labels table",
+    queue: "#lr-tab-queue table"
+  };
+
+  function getState() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    } catch (e) { return {}; }
+  }
+
+  function saveState(state) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* noop */ }
+  }
+
+  function applySearch(wrapper) {
+    var tab = wrapper.dataset.tab;
+    var input = wrapper.querySelector(".lr-global-search-input");
+    var query = (input.value || "").toLowerCase().trim();
+    var table = document.querySelector(TAB_TABLE_MAP[tab]);
+    if (!table) return;
+    var tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+      if (!query) {
+        row.classList.remove("lr-global-search-hidden");
+        return;
+      }
+      var text = row.textContent.toLowerCase();
+      row.classList.toggle("lr-global-search-hidden", text.indexOf(query) === -1);
+    });
+    var state = getState();
+    if (query) { state[tab] = query; } else { delete state[tab]; }
+    saveState(state);
+  }
+
+  function restoreAll() {
+    var state = getState();
+    document.querySelectorAll(".lr-global-search-wrapper").forEach(function (wrapper) {
+      var tab = wrapper.dataset.tab;
+      var input = wrapper.querySelector(".lr-global-search-input");
+      if (state[tab]) {
+        input.value = state[tab];
+        var popup = wrapper.querySelector(".lr-global-search-popup");
+        popup.style.display = "";
+        wrapper.querySelector(".lr-global-search-toggle").classList.add("lr-global-search-toggle--active");
+        applySearch(wrapper);
+      }
+    });
+  }
+
+  // Toggle popup
+  document.addEventListener("click", function (e) {
+    var toggleBtn = e.target.closest(".lr-global-search-toggle");
+    if (toggleBtn) {
+      var wrapper = toggleBtn.closest(".lr-global-search-wrapper");
+      var popup = wrapper.querySelector(".lr-global-search-popup");
+      var isOpen = popup.style.display !== "none";
+      if (isOpen) {
+        popup.style.display = "none";
+        toggleBtn.classList.remove("lr-global-search-toggle--active");
+      } else {
+        popup.style.display = "";
+        toggleBtn.classList.add("lr-global-search-toggle--active");
+        popup.querySelector(".lr-global-search-input").focus();
+      }
+      return;
+    }
+    // Close if click outside
+    document.querySelectorAll(".lr-global-search-wrapper").forEach(function (wrapper) {
+      if (!wrapper.contains(e.target)) {
+        var popup = wrapper.querySelector(".lr-global-search-popup");
+        var input = wrapper.querySelector(".lr-global-search-input");
+        if (!input.value) {
+          popup.style.display = "none";
+          wrapper.querySelector(".lr-global-search-toggle").classList.remove("lr-global-search-toggle--active");
+        }
+      }
+    });
+  });
+
+  // Filter on input
+  document.addEventListener("input", function (e) {
+    if (!e.target.classList.contains("lr-global-search-input")) return;
+    var wrapper = e.target.closest(".lr-global-search-wrapper");
+    applySearch(wrapper);
+  });
+
+  // Restore on load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", restoreAll);
+  } else {
+    restoreAll();
+  }
+})();
+
+// ============ Reset filters ============
+(function () {
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".lr-reset-filters-btn");
+    if (!btn) return;
+    var pane = btn.closest(".lr-tab-pane");
+    if (!pane) return;
+
+    // Clear column/field filter inputs and selects
+    pane.querySelectorAll(".lr-col-filter, .lr-labels-filter, .lr-queue-filter").forEach(function (f) {
+      if (f.tagName === "SELECT") {
+        f.selectedIndex = 0;
+      } else {
+        f.value = "";
+      }
+    });
+
+    // Clear global search for this tab
+    var searchWrapper = pane.querySelector(".lr-global-search-wrapper");
+    if (searchWrapper) {
+      var input = searchWrapper.querySelector(".lr-global-search-input");
+      if (input) input.value = "";
+      var popup = searchWrapper.querySelector(".lr-global-search-popup");
+      if (popup) popup.style.display = "none";
+      var toggle = searchWrapper.querySelector(".lr-global-search-toggle");
+      if (toggle) toggle.classList.remove("lr-global-search-toggle--active");
+    }
+
+    // Re-apply filter logic to show all rows
+    pane.querySelectorAll("table tbody tr").forEach(function (row) {
+      row.classList.remove("lr-filtered-out", "lr-col-filtered-out", "lr-global-search-hidden");
+    });
+
+    // Clear persisted filter state
+    try {
+      var tabId = pane.id;
+      if (tabId === "lr-tab-resources") {
+        localStorage.removeItem("lockable-resources-col-filters");
+      } else if (tabId === "lr-tab-labels") {
+        localStorage.removeItem("lockable-resources-labels-filters");
+      } else if (tabId === "lr-tab-queue") {
+        localStorage.removeItem("lockable-resources-queue-filters");
+      }
+      // Clear global search state for this tab
+      var gsKey = "lockable-resources-global-search";
+      var gs = JSON.parse(localStorage.getItem(gsKey) || "{}");
+      var tab = searchWrapper ? searchWrapper.dataset.tab : "";
+      if (tab && gs[tab]) {
+        delete gs[tab];
+        localStorage.setItem(gsKey, JSON.stringify(gs));
+      }
+    } catch (ex) { /* noop */ }
+  });
+})();
