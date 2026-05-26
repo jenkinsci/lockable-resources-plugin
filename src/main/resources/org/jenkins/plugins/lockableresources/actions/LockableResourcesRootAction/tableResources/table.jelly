@@ -130,7 +130,7 @@ THE SOFTWARE.
             <td>
               <j:choose>
                 <j:when test="${resource.reservedBy != null}">
-                  ${resource.reservedBy}
+                  <a class="jenkins-table__link" href="${rootURL}/user/${resource.reservedBy}">${resource.reservedBy}</a>
                 </j:when>
                 <j:when test="${resource.locked}">
                   <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>
