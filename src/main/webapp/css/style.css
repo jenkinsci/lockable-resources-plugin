@@ -204,6 +204,21 @@ span.lr-static-label {
     padding: 0.15rem 0.5rem !important;
 }
 
+/* Queue pagination */
+.lr-queue-pagination {
+    margin-top: 0.5rem;
+}
+
+.lr-toolbar__actions .lr-queue-pagination {
+  margin-top: 0;
+}
+
+.lr-queue-loading {
+    text-align: center;
+    padding: 2rem !important;
+    color: var(--text-color-secondary, #666);
+}
+
 /* Dialog form layout (used inside Jenkins dialog.modal) */
 .app-parameters-dialog .jenkins-form-item {
   margin-bottom: 1rem;

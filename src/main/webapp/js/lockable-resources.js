@@ -285,6 +285,7 @@ document.addEventListener("DOMContentLoaded", function () {
       history.pushState({ lrTab: tabId }, "", url);
     }
     if (typeof window.updateFilterMode === "function") window.updateFilterMode(tabId);
+    if (tabId === "queue" && typeof window.loadQueuePage === "function") window.loadQueuePage();
   }
 
   document.querySelectorAll(".lr-tab-button").forEach(function (tabBtn) {
@@ -443,6 +444,8 @@ const DEFAULT_PAGE_SIZE = 25;
 
 function initPagination() {
   document.querySelectorAll("table.jenkins-table.sortable").forEach(function (table) {
+    // Skip the queue table - it uses server-side pagination
+    if (table.id === "lockable-resources-queue") return;
     const id = table.id || "table";
     const storageKey = "lr-page-size-" + id;
     let saved = null;
@@ -884,21 +887,10 @@ function initColumnVisibility(config) {
     storageKey: "lockable-resources-queue-filters",
     tableId: "lockable-resources-queue",
     filterClass: "lr-queue-filter",
-    applyFn: function (table) {
-      var typeInput = document.getElementById("lr-queue-filter-type");
-      var requestInput = document.getElementById("lr-queue-filter-request");
-      var requestedByInput = document.getElementById("lr-queue-filter-requested-by");
-      var typeVal = typeInput ? typeInput.value.trim().toLowerCase() : "";
-      var requestVal = requestInput ? requestInput.value.trim().toLowerCase() : "";
-      var requestedByVal = requestedByInput ? requestedByInput.value.trim().toLowerCase() : "";
-      var tbody = table.querySelector("tbody");
-      if (!tbody) return;
-      Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
-        var show = (!typeVal || (row.dataset.queueType || "").toLowerCase().indexOf(typeVal) !== -1)
-          && (!requestVal || (row.dataset.queueRequest || "").toLowerCase().indexOf(requestVal) !== -1)
-          && (!requestedByVal || (row.dataset.queueRequestedBy || "").toLowerCase().indexOf(requestedByVal) !== -1);
-        row.classList.toggle("lr-col-filtered-out", !show);
-      });
+    applyFn: function () {
+      if (typeof window.reloadQueuePage === "function") {
+        window.reloadQueuePage();
+      }
     }
   });
 
@@ -1108,4 +1100,203 @@ function initColumnVisibility(config) {
       }
     } catch (ex) { /* noop */ }
   });
+})();
+
+// ====================================================================
+// Server-side queue pagination
+// ====================================================================
+(function () {
+  var queueTable = document.getElementById("lockable-resources-queue");
+  if (!queueTable) return;
+
+  var endpointUrl = queueTable.dataset.queueUrl;
+  var rootUrl = queueTable.dataset.rootUrl || "";
+  var hasQueuePermission = !!document.getElementById("lr-queue-has-permission");
+  var queueOrderIconTemplate = document.getElementById("lr-queue-order-icon-template");
+  var queueOrderIconHtml = queueOrderIconTemplate ? queueOrderIconTemplate.innerHTML : "";
+  var tbody = document.getElementById("lr-queue-tbody");
+  var statusEl = document.getElementById("lr-queue-status");
+  var paginationEl = document.getElementById("lr-queue-pagination");
+  var queueToolbarActions = document.querySelector("#lr-tab-queue .lr-toolbar__actions");
+
+  // Keep queue pagination in the toolbar, aligned with other tabs
+  if (paginationEl && queueToolbarActions && paginationEl.parentElement !== queueToolbarActions) {
+    queueToolbarActions.appendChild(paginationEl);
+  }
+
+  var currentPage = 1;
+  var pageSize = 25;
+  var queueLoaded = false;
+
+  try {
+    var saved = parseInt(localStorage.getItem("lr-queue-page-size"), 10);
+    if ([10, 25, 50, 100].indexOf(saved) !== -1) pageSize = saved;
+  } catch (e) { /* noop */ }
+
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function renderRow(item) {
+    var requestText = item.requestText || "";
+    var requestedByText = item.requestedBy || "";
+    var html = "<tr data-queue-type=\"" + escapeHtml(item.type) + "\" data-queue-request=\"" + escapeHtml(requestText) + "\" data-queue-requested-by=\"" + escapeHtml(requestedByText) + "\" data-queue-id=\"" + escapeHtml(item.id) + "\" data-queue-priority=\"" + item.priority + "\">";
+
+    // Position
+    html += "<td>" + item.index + "</td>";
+
+    // Action
+    html += "<td>";
+    if (hasQueuePermission) {
+      html += "<button data-queue-item-id=\"" + escapeHtml(item.id) + "\" class=\"jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-change-queue-order\" title=\"Change Position\" tooltip=\"Change Position\" aria-label=\"Change Position\">" + queueOrderIconHtml + "</button>";
+    }
+    html += "</td>";
+
+    // Request type, info, reason
+    if (item.type === "resources") {
+      html += "<td>Resources</td>";
+      var resources = item.request || [];
+      if (resources.length > 0) {
+        var resHtml = resources.map(function (r) {
+          var s = "<div class=\"lr-resource-header\"><strong>" + escapeHtml(r.name) + "</strong>";
+          if (r.ephemeral) s += " <span class=\"lr-static-label\">Ephemeral</span>";
+          s += "</div>";
+          if (r.description) s += "<div class=\"lr-resource-description\">" + escapeHtml(r.description) + "</div>";
+          return s;
+        }).join("");
+        html += "<td>" + resHtml + "</td>";
+      } else {
+        html += "<td></td>";
+      }
+      html += "<td></td>";
+    } else if (item.type === "label") {
+      html += "<td>Label</td>";
+      html += "<td><a class=\"jenkins-table__link model-link\" href=\"" + rootUrl + "/label/" + encodeURIComponent(item.request) + "\">" + escapeHtml(item.request) + "</a></td>";
+      html += "<td>" + escapeHtml(item.reason) + "</td>";
+    } else {
+      html += "<td>Groovy expression</td>";
+      html += "<td>" + escapeHtml(item.request) + "</td>";
+      html += "<td></td>";
+    }
+
+    // Requested by
+    html += "<td>";
+    if (item.requestedBy && item.requestedByUrl) {
+      html += "<a class=\"jenkins-table__link jenkins-table__badge model-link inside\" href=\"" + rootUrl + "/" + escapeHtml(item.requestedByUrl) + "\">" + escapeHtml(item.requestedBy) + "</a>";
+    } else if (item.requestedBy) {
+      html += escapeHtml(item.requestedBy);
+    } else {
+      html += "N/A";
+    }
+    html += "</td>";
+
+    // Requested at
+    html += "<td>";
+    if (item.queuedAtHuman) html += escapeHtml(item.queuedAtHuman) + " ago";
+    html += "</td>";
+
+    // Priority
+    html += "<td>" + item.priority + "</td>";
+
+    // ID
+    html += "<td>" + escapeHtml(item.id) + "</td>";
+
+    html += "</tr>";
+    return html;
+  }
+
+  function renderPagination(data) {
+    if (data.total === 0) { paginationEl.innerHTML = ""; return; }
+    var opts = [10, 25, 50, 100].map(function (s) {
+      return "<option value=\"" + s + "\"" + (s === pageSize ? " selected" : "") + ">" + s + "</option>";
+    }).join("");
+    var html = "<div class=\"lr-pagination\"><div class=\"lr-pagination__nav\">"
+      + "<div class=\"jenkins-select lr-pagination__select-wrapper\"><select class=\"jenkins-select__input lr-pagination__select lr-queue-page-size\">" + opts + "</select></div>";
+    if (data.pages > 1) {
+      html += "<button class=\"jenkins-button jenkins-button--tertiary lr-queue-prev\"" + (currentPage <= 1 ? " disabled" : "") + ">&lsaquo;</button>"
+        + "<span class=\"lr-pagination__info\">" + currentPage + " / " + data.pages + "</span>"
+        + "<button class=\"jenkins-button jenkins-button--tertiary lr-queue-next\"" + (currentPage >= data.pages ? " disabled" : "") + ">&rsaquo;</button>";
+    }
+    html += "</div></div>";
+    paginationEl.innerHTML = html;
+  }
+
+  function loadPage(page) {
+    currentPage = page || 1;
+    var params = new URLSearchParams();
+    params.set("page", currentPage);
+    params.set("size", pageSize);
+
+    var typeInput = document.getElementById("lr-queue-filter-type");
+    var requestInput = document.getElementById("lr-queue-filter-request");
+    var requestedByInput = document.getElementById("lr-queue-filter-requested-by");
+    if (typeInput && typeInput.value.trim()) params.set("type", typeInput.value.trim());
+    if (requestInput && requestInput.value.trim()) params.set("request", requestInput.value.trim());
+    if (requestedByInput && requestedByInput.value.trim()) params.set("requestedBy", requestedByInput.value.trim());
+
+    var url = endpointUrl + "?" + params.toString();
+    tbody.innerHTML = "<tr><td colspan=\"9\" class=\"lr-queue-loading\">Loading...</td></tr>";
+
+    fetch(url, { headers: crumb.wrap({}) })
+      .then(function (rsp) {
+        if (!rsp.ok) throw new Error("HTTP " + rsp.status);
+        return rsp.json();
+      })
+      .then(function (data) {
+        // Status/warning
+        if (data.total === 0) {
+          statusEl.innerHTML = "<p>The queue is currently empty.</p>";
+          tbody.innerHTML = "";
+        } else {
+          if (data.warningCount) {
+            statusEl.innerHTML = "<p class=\"jenkins-!-warning-color\">The queue has " + data.warningCount + " item(s). The oldest one was inserted " + escapeHtml(data.warningAge) + " ago!</p>";
+          } else {
+            statusEl.innerHTML = "";
+          }
+          tbody.innerHTML = data.items.map(renderRow).join("");
+        }
+        renderPagination(data);
+      })
+      .catch(function (err) {
+        tbody.innerHTML = "<tr><td colspan=\"9\">Error loading queue: " + escapeHtml(err.message) + "</td></tr>";
+        statusEl.innerHTML = "";
+        paginationEl.innerHTML = "";
+      });
+  }
+
+  // Event delegation for pagination controls
+  paginationEl.addEventListener("change", function (e) {
+    if (e.target.classList.contains("lr-queue-page-size")) {
+      pageSize = parseInt(e.target.value, 10);
+      try { localStorage.setItem("lr-queue-page-size", pageSize); } catch (ex) { /* noop */ }
+      loadPage(1);
+    }
+  });
+  paginationEl.addEventListener("click", function (e) {
+    if (e.target.closest(".lr-queue-prev") && currentPage > 1) loadPage(currentPage - 1);
+    else if (e.target.closest(".lr-queue-next")) loadPage(currentPage + 1);
+  });
+
+  // Expose for tab switching
+  window.loadQueuePage = function () {
+    if (!queueLoaded) {
+      queueLoaded = true;
+      loadPage(1);
+    }
+  };
+
+  window.reloadQueuePage = function () {
+    if (queueLoaded) {
+      loadPage(1);
+    }
+  };
+
+  // Auto-load if queue tab is already active (e.g. direct link)
+  var queuePane = document.getElementById("lr-tab-queue");
+  if (queuePane && queuePane.classList.contains("lr-tab-pane--active")) {
+    loadPage(1);
+    queueLoaded = true;
+  }
 })();

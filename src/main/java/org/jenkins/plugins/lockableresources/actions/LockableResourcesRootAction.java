@@ -173,7 +173,15 @@ public class LockableResourcesRootAction extends ManagementLink {
         private final int labelsCount;
         private final List<LockableResourcesLabel> topLabels;
 
-        Summary(int total, int locked, int reserved, int queued, int free, int queueItems, int labelsCount, List<LockableResourcesLabel> topLabels) {
+        Summary(
+                int total,
+                int locked,
+                int reserved,
+                int queued,
+                int free,
+                int queueItems,
+                int labelsCount,
+                List<LockableResourcesLabel> topLabels) {
             this.total = total;
             this.locked = locked;
             this.reserved = reserved;
@@ -845,6 +853,182 @@ public class LockableResourcesRootAction extends ManagementLink {
         }
 
         rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Returns a page of queue items as JSON for server-side pagination. */
+    @Restricted(NoExternalUse.class)
+    public void doGetQueuePage(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(VIEW);
+
+        int page = 1;
+        int size = 25;
+        String filter = Util.fixEmptyAndTrim(req.getParameter("filter"));
+        String typeFilter = Util.fixEmptyAndTrim(req.getParameter("type"));
+        String requestFilter = Util.fixEmptyAndTrim(req.getParameter("request"));
+        String requestedByFilter = Util.fixEmptyAndTrim(req.getParameter("requestedBy"));
+
+        try {
+            String pageParam = req.getParameter("page");
+            if (pageParam != null) page = Math.max(1, Integer.parseInt(pageParam));
+        } catch (NumberFormatException ignored) {
+        }
+        try {
+            String sizeParam = req.getParameter("size");
+            if (sizeParam != null) size = Math.max(1, Math.min(200, Integer.parseInt(sizeParam)));
+        } catch (NumberFormatException ignored) {
+        }
+
+        Queue queue;
+        try {
+            queue = getQueue();
+        } catch (Descriptor.FormException e) {
+            rsp.sendError(500, e.getMessage());
+            return;
+        }
+
+        List<Queue.QueueStruct> allItems = queue.getAll();
+
+        // Apply filter if provided
+        if (filter != null || typeFilter != null || requestFilter != null || requestedByFilter != null) {
+            final String lowerFilter = filter != null ? filter.toLowerCase() : null;
+            final String lowerTypeFilter = typeFilter != null ? typeFilter.toLowerCase() : null;
+            final String lowerRequestFilter = requestFilter != null ? requestFilter.toLowerCase() : null;
+            final String lowerRequestedByFilter = requestedByFilter != null ? requestedByFilter.toLowerCase() : null;
+            allItems = allItems.stream()
+                    .filter(item -> {
+                        if (lowerTypeFilter != null
+                                && !getQueueItemType(item).toLowerCase().contains(lowerTypeFilter)) {
+                            return false;
+                        }
+                        if (lowerRequestFilter != null
+                                && !getQueueItemRequestText(item).toLowerCase().contains(lowerRequestFilter)) {
+                            return false;
+                        }
+                        if (lowerRequestedByFilter != null) {
+                            Run<?, ?> requestedByBuild = item.getBuild();
+                            String requestedByText =
+                                    requestedByBuild != null ? requestedByBuild.getFullDisplayName() : "";
+                            if (!requestedByText.toLowerCase().contains(lowerRequestedByFilter)) {
+                                return false;
+                            }
+                        }
+
+                        if (lowerFilter == null) {
+                            return true;
+                        }
+
+                        if (item.resourcesMatch()) {
+                            for (LockableResource r : item.getRequiredResources()) {
+                                if (r.getName().toLowerCase().contains(lowerFilter)) return true;
+                            }
+                        }
+                        if (item.labelsMatch()
+                                && item.getRequiredLabel().toLowerCase().contains(lowerFilter)) return true;
+                        Run<?, ?> b = item.getBuild();
+                        if (b != null && b.getFullDisplayName().toLowerCase().contains(lowerFilter)) return true;
+                        return item.getId().toLowerCase().contains(lowerFilter);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        int total = allItems.size();
+        int pages = (int) Math.ceil((double) total / size);
+        int fromIndex = Math.min((page - 1) * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<Queue.QueueStruct> pageItems = allItems.subList(fromIndex, toIndex);
+
+        // Build JSON response
+        net.sf.json.JSONObject result = new net.sf.json.JSONObject();
+        result.put("page", page);
+        result.put("size", size);
+        result.put("total", total);
+        result.put("pages", pages);
+
+        net.sf.json.JSONArray items = new net.sf.json.JSONArray();
+        int index = fromIndex;
+        for (Queue.QueueStruct item : pageItems) {
+            net.sf.json.JSONObject obj = new net.sf.json.JSONObject();
+            obj.put("index", index + 1);
+            obj.put("id", item.getId());
+            obj.put("priority", item.getPriority());
+            obj.put("queuedAt", item.getQueuedAt());
+            obj.put("requestText", getQueueItemRequestText(item));
+            obj.put(
+                    "queuedAtHuman",
+                    item.getQueuedAt() > 0
+                            ? Util.getTimeSpanString(System.currentTimeMillis() - item.getQueuedAt())
+                            : "");
+
+            Run<?, ?> build = item.getBuild();
+            if (build != null) {
+                obj.put("requestedBy", build.getFullDisplayName());
+                obj.put("requestedByUrl", build.getUrl());
+            } else {
+                obj.put("requestedBy", "");
+                obj.put("requestedByUrl", "");
+            }
+
+            if (item.resourcesMatch()) {
+                obj.put("type", "resources");
+                net.sf.json.JSONArray resources = new net.sf.json.JSONArray();
+                for (LockableResource r : item.getRequiredResources()) {
+                    net.sf.json.JSONObject ro = new net.sf.json.JSONObject();
+                    ro.put("name", r.getName());
+                    ro.put("ephemeral", r.isEphemeral());
+                    ro.put("description", r.getDescription() != null ? r.getDescription() : "");
+                    resources.add(ro);
+                }
+                obj.put("request", resources);
+                obj.put("reason", "");
+            } else if (item.labelsMatch()) {
+                obj.put("type", "label");
+                obj.put("request", item.getRequiredLabel());
+                String requiredNum = item.getRequiredNumber();
+                obj.put("reason", "0".equals(requiredNum) ? "all" : requiredNum + " required");
+            } else {
+                obj.put("type", "groovy");
+                obj.put("request", "Groovy expression");
+                obj.put("reason", "");
+            }
+
+            items.add(obj);
+            index++;
+        }
+        result.put("items", items);
+
+        // Warning info
+        Queue.QueueStruct oldest = queue.getOldest();
+        if (oldest != null && oldest.takeTooLong()) {
+            result.put("warningCount", allItems.size());
+            result.put("warningAge", Util.getTimeSpanString(System.currentTimeMillis() - oldest.getQueuedAt()));
+        }
+
+        rsp.setContentType("application/json;charset=UTF-8");
+        rsp.getWriter().write(result.toString());
+    }
+
+    private String getQueueItemType(final Queue.QueueStruct item) {
+        if (item.resourcesMatch()) {
+            return "resources";
+        }
+        if (item.labelsMatch()) {
+            return "label";
+        }
+        return "groovy";
+    }
+
+    private String getQueueItemRequestText(final Queue.QueueStruct item) {
+        if (item.resourcesMatch()) {
+            return item.getRequiredResources().stream()
+                    .map(LockableResource::getName)
+                    .collect(Collectors.joining(", "));
+        }
+        if (item.labelsMatch()) {
+            return item.getRequiredLabel();
+        }
+        return "Groovy expression";
     }
 
     // ---------------------------------------------------------------------------
