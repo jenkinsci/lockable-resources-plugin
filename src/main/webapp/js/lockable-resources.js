@@ -477,7 +477,13 @@ function initPagination() {
 
     function getRows() {
       const tbody = table.querySelector("tbody");
-      return tbody ? Array.from(tbody.querySelectorAll(":scope > tr:not(.lr-filtered-out):not(.lr-col-filtered-out)")) : [];
+      return tbody
+        ? Array.from(tbody.children).filter(function (row) {
+            return row.matches("tr")
+              && !row.classList.contains("lr-filtered-out")
+              && !row.classList.contains("lr-col-filtered-out");
+          })
+        : [];
     }
 
     function render() {
