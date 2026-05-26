@@ -62,6 +62,4 @@ THE SOFTWARE.
       </tbody>
     </table>
   </div>
-
-  <div class="lr-queue-pagination" id="lr-queue-pagination"></div>
 </j:jelly>

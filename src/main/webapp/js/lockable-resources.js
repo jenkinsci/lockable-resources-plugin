@@ -1116,11 +1116,17 @@ function initColumnVisibility(config) {
   var queueOrderIconHtml = queueOrderIconTemplate ? queueOrderIconTemplate.innerHTML : "";
   var tbody = document.getElementById("lr-queue-tbody");
   var statusEl = document.getElementById("lr-queue-status");
-  var paginationEl = document.getElementById("lr-queue-pagination");
   var queueToolbarActions = document.querySelector("#lr-tab-queue .lr-toolbar__actions");
+  var paginationEl = document.getElementById("lr-queue-pagination");
+
+  if (!paginationEl) {
+    paginationEl = document.createElement("div");
+    paginationEl.id = "lr-queue-pagination";
+    paginationEl.className = "lr-queue-pagination";
+  }
 
   // Keep queue pagination in the toolbar, aligned with other tabs
-  if (paginationEl && queueToolbarActions && paginationEl.parentElement !== queueToolbarActions) {
+  if (queueToolbarActions && paginationEl.parentElement !== queueToolbarActions) {
     queueToolbarActions.appendChild(paginationEl);
   }
 

@@ -251,6 +251,17 @@ span.lr-static-label {
   -webkit-overflow-scrolling: touch;
 }
 
+#lr-tab-queue .table-responsive {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#lr-tab-queue #lockable-resources-queue {
+  min-width: 700px;
+  width: max-content;
+}
+
 #lockable-resources,
 #lockable-resources-labels,
 #lockable-resources-queue {
