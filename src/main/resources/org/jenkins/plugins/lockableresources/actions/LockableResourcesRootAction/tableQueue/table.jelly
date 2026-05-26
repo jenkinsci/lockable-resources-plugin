@@ -50,7 +50,7 @@ THE SOFTWARE.
           <th>${%queue.table.column.action}</th>
           <th>${%queue.table.column.request.type}</th>
           <th>${%queue.table.column.request.info}</th>
-          <th class="lr-width-100">${%queue.table.column.reason}</th>
+          <th>${%queue.table.column.reason}</th>
           <th>${%queue.table.column.requested.by}</th>
           <th>${%queue.table.column.requested.at}</th>
           <th>${%queue.table.column.priority}</th>

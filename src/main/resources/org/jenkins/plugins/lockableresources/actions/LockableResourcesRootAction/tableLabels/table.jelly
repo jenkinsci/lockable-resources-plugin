@@ -36,7 +36,7 @@ THE SOFTWARE.
       >
         <thead>
           <tr>
-            <th class="lr-width-100">${%labels.table.column.labels}</th>
+            <th>${%labels.table.column.labels}</th>
             <th>${%labels.table.column.assigned}</th>
             <th>${%labels.table.column.free}</th>
             <th>${%labels.table.column.percentage}</th>

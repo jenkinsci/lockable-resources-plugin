@@ -356,14 +356,19 @@ document.addEventListener("DOMContentLoaded", function () {
         if (labelInput) { labelInput.focus(); labelInput.select(); }
       }, 100);
     } else if (action === "myResources") {
-      // Switch to resources tab and filter by current user
+      // Switch to resources tab and filter by current user using Held By column
       switchTab("resources");
       setTimeout(function () {
         var currentUser = (document.getElementById("lr-page-data") || {}).dataset;
         var user = currentUser ? currentUser.currentUser : "";
         if (!user) return;
         document.querySelectorAll('#lr-tab-resources table tbody tr').forEach(function (row) {
-          var owner = (row.dataset.resourceOwner || "").toLowerCase();
+          var cells = row.querySelectorAll("td");
+          var heldByText = cells.length > 4 ? (cells[4].textContent || "") : "";
+          var owner = (heldByText || row.dataset.resourceOwner || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
           var isMatch = owner.indexOf(user.toLowerCase()) !== -1;
           row.classList.toggle("lr-global-search-hidden", !isMatch);
         });
@@ -846,15 +851,18 @@ function initColumnVisibility(config) {
     applyFn: function (table) {
       var quickInput = document.getElementById("lr-filter-quick");
       var statusSelect = document.getElementById("lr-filter-status");
+      var heldByInput = document.getElementById("lr-filter-held-by");
       var labelInput = document.getElementById("lr-filter-label");
       var nameVal = quickInput ? quickInput.value.trim().toLowerCase() : "";
       var statusVal = statusSelect ? statusSelect.value : "";
+      var heldByVal = heldByInput ? heldByInput.value.trim().toLowerCase() : "";
       var labelVal = labelInput ? labelInput.value.trim().toLowerCase() : "";
       var tbody = table.querySelector("tbody");
       if (!tbody) return;
       Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
         var show = (!nameVal || (row.dataset.resourceName || "").toLowerCase().indexOf(nameVal) !== -1)
           && (!statusVal || (row.dataset.resourceStatus || "") === statusVal)
+          && (!heldByVal || (row.dataset.resourceOwner || "").toLowerCase().indexOf(heldByVal) !== -1)
           && (!labelVal || (row.dataset.resourceLabels || "").toLowerCase().indexOf(labelVal) !== -1);
         row.classList.toggle("lr-col-filtered-out", !show);
       });
@@ -905,9 +913,12 @@ function initColumnVisibility(config) {
       { idx: 1, key: "index", label: "#" },
       { idx: 2, key: "name", label: "Resource" },
       { idx: 3, key: "status", label: "Status" },
-      { idx: 4, key: "timestamp", label: "Timestamp" },
-      { idx: 5, key: "labels", label: "Labels" },
-      { idx: 6, key: "properties", label: "Properties" }
+      { idx: 4, key: "heldBy", label: "Held By" },
+      { idx: 5, key: "reason", label: "Reason" },
+      { idx: 6, key: "since", label: "Since" },
+      { idx: 7, key: "labels", label: "Labels" },
+      { idx: 8, key: "properties", label: "Properties" },
+      { idx: 9, key: "actions", label: "Actions" }
     ]
   });
 
@@ -920,9 +931,9 @@ function initColumnVisibility(config) {
     dataAttr: "labels-col-key",
     columns: [
       { idx: 0, key: "labels", label: "Labels" },
-      { idx: 1, key: "assigned", label: "Assigned" },
-      { idx: 2, key: "free", label: "Free" },
-      { idx: 3, key: "percentage", label: "Free %" }
+      { idx: 1, key: "assigned", label: "Assigned Resources" },
+      { idx: 2, key: "free", label: "Available" },
+      { idx: 3, key: "percentage", label: "Availability %" }
     ]
   });
 
@@ -935,12 +946,12 @@ function initColumnVisibility(config) {
     dataAttr: "queue-col-key",
     columns: [
       { idx: 0, key: "position", label: "Position" },
-      { idx: 1, key: "action", label: "Action" },
-      { idx: 2, key: "type", label: "Request type" },
-      { idx: 3, key: "request", label: "Request" },
+      { idx: 1, key: "action", label: "Reorder" },
+      { idx: 2, key: "type", label: "Type" },
+      { idx: 3, key: "request", label: "Resource(s)" },
       { idx: 4, key: "reason", label: "Reason" },
-      { idx: 5, key: "requestedBy", label: "Requested by" },
-      { idx: 6, key: "requestedAt", label: "Requested at" },
+      { idx: 5, key: "requestedBy", label: "Requested By" },
+      { idx: 6, key: "requestedAt", label: "Queued At" },
       { idx: 7, key: "priority", label: "Priority" },
       { idx: 8, key: "queueId", label: "Queue ID" }
     ]

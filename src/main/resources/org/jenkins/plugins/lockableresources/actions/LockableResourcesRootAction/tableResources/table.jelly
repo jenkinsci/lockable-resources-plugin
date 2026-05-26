@@ -41,7 +41,9 @@ THE SOFTWARE.
           <th>${%resources.table.column.index}</th>
           <th>${%resources.table.column.resource}</th>
           <th>${%resources.table.column.status}</th>
-          <th>${%resources.table.column.timestamp}</th>
+          <th>${%resources.table.column.heldBy}</th>
+          <th>${%resources.table.column.reason}</th>
+          <th>${%resources.table.column.since}</th>
           <th>${%resources.table.column.labels}</th>
           <th>${%resources.table.column.properties}</th>
           <th data-sort-disable="true">${%resources.table.column.action}</th>
@@ -95,32 +97,19 @@ THE SOFTWARE.
 
 
             <!-- **************************************************************
-                 Status column
+                 Status column (state only)
             -->
             <j:set var="cssClass" value=""/>
             <j:choose>
-            <!-- Reserved by user, config or API.
-                 It differs to lock() or `queue` that this must be unreserve by some action.
-                 This kind is dangeresous, because it might leads to long blockage.
-                 Therefore we use `danger`color here.
-            -->
               <j:when test="${resource.reservedBy != null}">
                 <j:set var="cssClass" value="destructive"/>
               </j:when>
-            <!-- Locked by job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
               <j:when test="${resource.locked}">
                 <j:set var="cssClass" value="warning"/>
               </j:when>
-            <!-- Queued by matrix-job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
               <j:when test="${resource.queued}">
                 <j:set var="cssClass" value="warning"/>
               </j:when>
-            <!-- Resource is (or it looks so) fre
-            -->
               <j:otherwise>
                 <j:set var="cssClass" value="success"/>
               </j:otherwise>
@@ -128,51 +117,42 @@ THE SOFTWARE.
 
             <td class="jenkins-!-${cssClass}-color">
               <j:choose>
-            <!-- Reserved by user, config or API.
-                 It differs to lock() or `queue` that this must be unreserve by some action.
-                 This kind is dangeresous, because it might leads to long blockage.
-                 Therefore we use `danger`color here.
-            -->
-              <j:when test="${resource.reservedBy != null}">
-                ${%resource.status.reservedBy(resource.reservedBy)}
-                <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
-                  <br/>
-                  <span class="jenkins-!-font-weight-normal">${%resource.status.reason}: ${resource.lockReason}</span>
-                </j:if>
-              </j:when>
-            <!-- Locked by job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
-              <j:when test="${resource.locked}">
-                ${%resource.status.locked(rootURL + '/' + resource.build.url, resource.build.fullDisplayName)}
-                <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
-                  <br/>
-                  <span class="jenkins-!-font-weight-normal">${%resource.status.reason}: ${resource.lockReason}</span>
-                </j:if>
-              </j:when>
-            <!-- Queued by matrix-job. This will be unlock automatically (I hope)
-                 Therefore use `warning`only
-            -->
-              <j:when test="${resource.queued}">
-                ${%resource.status.queuedBy(resource.queueItemProject, resource.queueItemId)}
-              </j:when>
-            <!-- Resource is (or it looks so) free
-            -->
-              <j:otherwise>
-                ${%resource.status.free}
-              </j:otherwise>
-            </j:choose>
+                <j:when test="${resource.reservedBy != null}">${%resource.status.reserved}</j:when>
+                <j:when test="${resource.locked}">${%resource.status.locked}</j:when>
+                <j:when test="${resource.queued}">${%resource.status.queued}</j:when>
+                <j:otherwise>${%resource.status.free}</j:otherwise>
+              </j:choose>
+            </td>
 
-            <!-- add timestamp when possible -->
-              <j:if test="${resource.reservedTimestamp != null}">
-                <br />
-                ${%ago(h.getTimeSpanString(resource.reservedTimestamp))}
+            <!-- **************************************************************
+                 Held By column
+            -->
+            <td>
+              <j:choose>
+                <j:when test="${resource.reservedBy != null}">
+                  ${resource.reservedBy}
+                </j:when>
+                <j:when test="${resource.locked}">
+                  <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>
+                </j:when>
+                <j:when test="${resource.queued}">
+                  ${resource.queueItemProject}
+                </j:when>
+                <j:otherwise />
+              </j:choose>
+            </td>
+
+            <!-- **************************************************************
+                 Reason column
+            -->
+            <td>
+              <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
+                ${resource.lockReason}
               </j:if>
             </td>
 
-
             <!-- **************************************************************
-                 Reserved / locked timestamp column
+                 Since column
             -->
             <j:choose>
               <j:when test="${resource.reservedTimestamp != null}">
@@ -183,6 +163,8 @@ THE SOFTWARE.
                     dateStyle="medium"
                     timeStyle="short"
                   />
+                  <br/>
+                  <span class="jenkins-!-color-secondary">(${%ago(h.getTimeSpanString(resource.reservedTimestamp))})</span>
                 </td>
               </j:when>
               <j:otherwise>

@@ -128,8 +128,6 @@ span.lr-static-label {
     width: 100%;
 }
 
-#lockable-resources th:nth-child(1) { width: 3rem; }    /* # */
-
 /* Allow cell content to wrap */
 #lockable-resources td {
     word-break: break-word;
@@ -161,10 +159,6 @@ span.lr-static-label {
 
 .lr-property-pill__value {
     padding: 0.2rem 0.4rem;
-}
-
-.lr-width-100 {
-  width: 100%;
 }
 
 /* Pagination controls */
@@ -252,14 +246,36 @@ span.lr-static-label {
 }
 
 #lr-tab-queue .table-responsive {
+  width: 100%;
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 #lr-tab-queue #lockable-resources-queue {
-  min-width: 700px;
+  min-width: 100%;
   width: max-content;
+}
+
+/* Queue table: prevent a single column from consuming all space */
+#lockable-resources-queue th,
+#lockable-resources-queue td {
+  vertical-align: middle;
+}
+
+/* Keep Requested By and Queued At compact and single-line */
+#lockable-resources-queue th:nth-child(6),
+#lockable-resources-queue td:nth-child(6),
+#lockable-resources-queue th:nth-child(7),
+#lockable-resources-queue td:nth-child(7) {
+  white-space: nowrap;
+}
+
+/* Reason can wrap naturally */
+#lockable-resources-queue th:nth-child(5),
+#lockable-resources-queue td:nth-child(5) {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 #lockable-resources,

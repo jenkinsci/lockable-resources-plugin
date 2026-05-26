@@ -233,7 +233,8 @@
                     <option value="queued">${%filter.status.queued}</option>
                   </select>
                 </div>
-                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-label" placeholder="${%filter.label}" />
+                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-held-by" placeholder="${%filter.heldBy}" />
+                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-label" placeholder="${%filter.resources.labels}" />
               </div>
               <div class="lr-toolbar__actions">
                 <div class="lr-global-search-wrapper" data-tab="resources">
@@ -263,7 +264,7 @@
             <div class="lr-toolbar">
               <div class="lr-toolbar__filters">
                 <span class="lr-toolbar__heading">${%filter.heading}</span>
-                <input type="text" class="jenkins-input lr-labels-filter" id="lr-labels-filter-name" placeholder="${%filter.label}" />
+                <input type="text" class="jenkins-input lr-labels-filter" id="lr-labels-filter-name" placeholder="${%filter.labels.name}" />
                 <input type="text" class="jenkins-input lr-labels-filter" id="lr-labels-filter-assigned" placeholder="${%filter.assigned}" />
               </div>
               <div class="lr-toolbar__actions">
