@@ -10,12 +10,18 @@ import static org.hamcrest.Matchers.nullValue;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 import org.htmlunit.HttpMethod;
 import org.htmlunit.WebRequest;
 import org.htmlunit.html.HtmlPage;
 import org.htmlunit.util.NameValuePair;
 import org.jenkins.plugins.lockableresources.util.Constants;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -38,6 +44,33 @@ class ResourceManagementTest {
         wc.login("admin");
         wc.getOptions().setThrowExceptionOnScriptError(false);
         return wc;
+    }
+
+    private WorkflowJob enqueueQueuedBuilds(JenkinsRule j, String resourceName, String jobName, int count)
+            throws Exception {
+        LockableResource resource = LockableResourcesManager.get().fromName(resourceName);
+        LockableResourcesManager.get().reserve(Collections.singletonList(resource), "queue-admin");
+
+        WorkflowJob job = j.jenkins.createProject(WorkflowJob.class, jobName);
+        job.setDefinition(new CpsFlowDefinition("""
+                lock('%s') {
+                    echo('inside queue test')
+                }
+                """.formatted(resourceName), true));
+
+        for (int i = 0; i < count; i++) {
+            WorkflowRun run = job.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("[Resource: " + resourceName + "] is not free, waiting for execution ...", run);
+        }
+
+        return job;
+    }
+
+    private JSONObject getQueuePage(JenkinsRule j, JenkinsRule.WebClient wc, String query) throws Exception {
+        String path = "lockable-resources/getQueuePage" + (query == null || query.isEmpty() ? "" : "?" + query);
+        URL url = new URL(j.getURL(), path);
+        WebRequest req = new WebRequest(url, HttpMethod.GET);
+        return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
     }
 
     @Test
@@ -66,6 +99,7 @@ class ResourceManagementTest {
 
         URL url = new URL(j.getURL(), "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
+        req.setAdditionalHeader("Referer", new URL(j.getURL(), "lockable-resources").toString());
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", "minimal-resource"));
         req.setRequestParameters(params);
@@ -373,7 +407,61 @@ class ResourceManagementTest {
         assertThat("Resources tab present", content, containsString("lr-tab-resources"));
         assertThat("Labels tab present", content, containsString("lr-tab-labels"));
         assertThat("Queue tab present", content, containsString("lr-tab-queue"));
-        assertThat("Filter toggle present", content, containsString("lr-filter-toggle"));
+        assertThat("Global search toggle present", content, containsString("lr-global-search-toggle"));
+        assertThat("Reset filters button present", content, containsString("lr-reset-filters-btn"));
+        assertThat("Column visibility toggle present", content, containsString("lr-col-visibility-toggle"));
+    }
+
+    @Test
+    void overviewAndBulkActionsRendered(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("overview-resource", "some-label");
+
+        JenkinsRule.WebClient wc = loginAsAdmin(j);
+        HtmlPage page = wc.goTo("lockable-resources");
+        String content = page.getWebResponse().getContentAsString();
+
+        assertThat("Overview tab present", content, containsString("lr-tab-overview"));
+        assertThat("Overview grid present", content, containsString("lr-overview-grid"));
+        assertThat("Bulk actions bar present", content, containsString("lr-bulk-bar"));
+    }
+
+    @Test
+    void queuePageEndpointReturnsPagedJson(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("queue-page-resource", null);
+        WorkflowJob job = enqueueQueuedBuilds(j, "queue-page-resource", "queue-page-job", 3);
+
+        JenkinsRule.WebClient wc = loginAsAdmin(j);
+        JSONObject response = getQueuePage(j, wc, "page=1&size=2");
+
+        assertThat(response.getInt("page"), is(1));
+        assertThat(response.getInt("size"), is(2));
+        assertThat(response.getInt("total"), is(3));
+        assertThat(response.getInt("pages"), is(2));
+
+        JSONArray items = response.getJSONArray("items");
+        assertThat(items.size(), is(2));
+        assertThat(items.getJSONObject(0).getString("type"), is("resources"));
+        assertThat(items.getJSONObject(0).getString("requestText"), containsString("queue-page-resource"));
+        assertThat(items.getJSONObject(0).getString("requestedBy"), containsString(job.getFullName()));
+    }
+
+    @Test
+    void queuePageEndpointAppliesServerSideFilters(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("queue-filter-resource", null);
+        enqueueQueuedBuilds(j, "queue-filter-resource", "queue-filter-job", 3);
+
+        JenkinsRule.WebClient wc = loginAsAdmin(j);
+
+        JSONObject byRequest = getQueuePage(j, wc, "request=queue-filter-resource");
+        assertThat(byRequest.getInt("total"), is(3));
+
+        JSONObject byRequestedBy = getQueuePage(j, wc, "requestedBy=%232");
+        assertThat(byRequestedBy.getInt("total"), is(1));
+        assertThat(byRequestedBy.getJSONArray("items").getJSONObject(0).getString("requestedBy"), containsString("#2"));
+
+        JSONObject combined = getQueuePage(j, wc, "type=resources&filter=queue-filter-resource");
+        assertThat(combined.getInt("total"), is(3));
+        assertThat(combined.getJSONArray("items").getJSONObject(0).getString("type"), is("resources"));
     }
 
     @Test
