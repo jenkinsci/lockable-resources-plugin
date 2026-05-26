@@ -140,9 +140,9 @@ public class LockableResourcesRootAction extends ManagementLink {
                 reserved++;
             } else if (r.isLocked()) {
                 locked++;
-            } else if (r.isQueued()) {
-                queued++;
             } else {
+                // Queued resources are counted as free since the queued state
+                // is transient and nearly invisible in practice.
                 free++;
             }
         }
@@ -231,10 +231,6 @@ public class LockableResourcesRootAction extends ManagementLink {
 
         public int getReservedPct() {
             return total > 0 ? (reserved * 100) / total : 0;
-        }
-
-        public int getQueuedPct() {
-            return total > 0 ? (queued * 100) / total : 0;
         }
 
         public int getFreePct() {

@@ -150,21 +150,18 @@
                 <div class="lr-donut-wrap">
                   <j:set var="lockedPct" value="${summary.total > 0 ? (summary.locked * 100.0) / summary.total : 0}" />
                   <j:set var="reservedPct" value="${summary.total > 0 ? (summary.reserved * 100.0) / summary.total : 0}" />
-                  <j:set var="queuedPct" value="${summary.total > 0 ? (summary.queued * 100.0) / summary.total : 0}" />
                   <j:set var="freePct" value="${summary.total > 0 ? (summary.free * 100.0) / summary.total : 0}" />
                   <j:set var="lockedEnd" value="${lockedPct}" />
                   <j:set var="reservedEnd" value="${lockedPct + reservedPct}" />
-                  <j:set var="queuedEnd" value="${lockedPct + reservedPct + queuedPct}" />
                   <div class="lr-donut"
-                       style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--blue) ${reservedEnd}% ${queuedEnd}%, var(--green) ${queuedEnd}% 100%);"
-                       aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.queued}: ${summary.queued}, ${%overview.free}: ${summary.free}">
+                       style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--green) ${reservedEnd}% 100%);"
+                       aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.free}: ${summary.free}">
                   </div>
                   <div class="lr-donut-center">${summary.total}</div>
                 </div>
                 <div class="lr-donut-legend">
                   <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--locked"></span> ${%overview.locked} <strong>${summary.locked}</strong></div>
                   <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--reserved"></span> ${%overview.reserved} <strong>${summary.reserved}</strong></div>
-                  <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--queued"></span> ${%overview.queued} <strong>${summary.queued}</strong></div>
                   <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--free"></span> ${%overview.free} <strong>${summary.free}</strong></div>
                 </div>
               </div>
@@ -179,10 +176,6 @@
                   <div class="lr-overview-stat">
                     <span class="lr-overview-stat__number" data-pct="${summary.reservedPct}" data-type="reserved">${summary.reservedPct}%</span>
                     <span class="lr-overview-stat__label">${%overview.reserved}</span>
-                  </div>
-                  <div class="lr-overview-stat">
-                    <span class="lr-overview-stat__number" data-pct="${summary.queuedPct}" data-type="queued">${summary.queuedPct}%</span>
-                    <span class="lr-overview-stat__label">${%overview.queued}</span>
                   </div>
                   <div class="lr-overview-stat">
                     <span class="lr-overview-stat__number" data-pct="${summary.freePct}" data-type="free">${summary.freePct}%</span>

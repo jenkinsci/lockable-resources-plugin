@@ -411,9 +411,6 @@ document.addEventListener("DOMContentLoaded", function () {
       else if (pct >= 50) el.style.color = "var(--orange)";
       else if (type === "locked") el.style.color = "var(--red)";
       else el.style.color = "var(--orange)";
-    } else if (type === "queued") {
-      if (pct >= 50) el.style.color = "var(--red)";
-      else el.style.color = "var(--blue)";
     }
   });
 
