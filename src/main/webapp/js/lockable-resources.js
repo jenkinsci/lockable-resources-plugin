@@ -244,12 +244,46 @@ function replaceNote(resourceName) {
   }).then((rsp) => {
     rsp.text().then((responseText) => {
       d.innerHTML = responseText;
-      Behaviour.applySubtree(d);
-      const textarea = d.getElementsByTagName("TEXTAREA")[0];
-      if (textarea) {
-        textarea.focus();
-      }
-      layoutUpdateCallback.call();
+      evalInnerHtmlScripts(responseText, function () {
+        Behaviour.applySubtree(d);
+        const textarea = d.getElementsByTagName("TEXTAREA")[0];
+        if (textarea) {
+          textarea.focus();
+        }
+        // Prevent preview/hide-preview links from navigating to #
+        d.addEventListener("click", function (e) {
+          var link = e.target.closest("a");
+          if (link && link.getAttribute("href") === "#") {
+            e.preventDefault();
+          }
+        });
+        // Intercept form submit to avoid page reload to wrong tab
+        const form = d.querySelector("form");
+        if (form) {
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const noteValue = textarea ? textarea.value : "";
+            fetch("saveNote", {
+              method: "post",
+              headers: crumb.wrap({
+                "Content-Type": "application/x-www-form-urlencoded",
+              }),
+              body: new URLSearchParams({
+                resource: resourceName,
+                note: noteValue,
+              }),
+            }).then(function () {
+              // Preserve current tab and reload to get server-rendered content
+              var activeTab = document.querySelector(".lr-tab-button--active");
+              if (activeTab && !window.location.hash) {
+                window.location.hash = activeTab.dataset.lrTab;
+              }
+              window.location.reload();
+            });
+          });
+        }
+        layoutUpdateCallback.call();
+      });
     });
   });
 }
@@ -314,6 +348,69 @@ document.addEventListener("DOMContentLoaded", function () {
     e.preventDefault();
     var tabId = link.getAttribute("data-lr-tab-link");
     switchTab(tabId);
+  });
+
+  // Helper: clear all resource tab filters
+  function clearResourceFilters() {
+    var quickInput = document.getElementById("lr-filter-quick");
+    var statusSelect = document.getElementById("lr-filter-status");
+    var heldByInput = document.getElementById("lr-filter-held-by");
+    var labelInput = document.getElementById("lr-filter-label");
+    if (quickInput) quickInput.value = "";
+    if (statusSelect) statusSelect.value = "";
+    if (heldByInput) heldByInput.value = "";
+    if (labelInput) labelInput.value = "";
+  }
+
+  // Legend status pills navigate to resources tab with status filter
+  document.addEventListener("click", function (e) {
+    var pill = e.target.closest("[data-filter-status]");
+    if (!pill) return;
+    e.preventDefault();
+    var status = pill.getAttribute("data-filter-status");
+    switchTab("resources");
+    setTimeout(function () {
+      clearResourceFilters();
+      var statusSelect = document.getElementById("lr-filter-status");
+      if (statusSelect) {
+        statusSelect.value = status;
+        statusSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }, 100);
+  });
+
+  // Top label pills navigate to resources tab with label filter
+  document.addEventListener("click", function (e) {
+    var pill = e.target.closest("[data-filter-label]");
+    if (!pill) return;
+    e.preventDefault();
+    var label = pill.getAttribute("data-filter-label");
+    switchTab("resources");
+    setTimeout(function () {
+      clearResourceFilters();
+      var labelInput = document.getElementById("lr-filter-label");
+      if (labelInput) {
+        labelInput.value = label;
+        labelInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    }, 100);
+  });
+
+  // Most contended resource name navigates to resources tab with name filter
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest("[data-filter-name]");
+    if (!link) return;
+    e.preventDefault();
+    var name = link.getAttribute("data-filter-name");
+    switchTab("resources");
+    setTimeout(function () {
+      clearResourceFilters();
+      var quickInput = document.getElementById("lr-filter-quick");
+      if (quickInput) {
+        quickInput.value = name;
+        quickInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    }, 100);
   });
 
   // Quick action buttons
@@ -411,6 +508,10 @@ document.addEventListener("DOMContentLoaded", function () {
       else if (pct >= 50) el.style.color = "var(--orange)";
       else if (type === "locked") el.style.color = "var(--red)";
       else el.style.color = "var(--orange)";
+    } else if (type === "inuse") {
+      if (pct >= 80) el.style.color = "var(--red)";
+      else if (pct >= 50) el.style.color = "var(--orange)";
+      else el.style.color = "var(--text-color)";
     }
   });
 

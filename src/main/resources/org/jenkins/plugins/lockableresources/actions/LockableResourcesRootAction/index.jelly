@@ -160,15 +160,19 @@
                   <div class="lr-donut-center">${summary.total}</div>
                 </div>
                 <div class="lr-donut-legend">
-                  <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--locked"></span> ${%overview.locked} <strong>${summary.locked}</strong></div>
-                  <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--reserved"></span> ${%overview.reserved} <strong>${summary.reserved}</strong></div>
-                  <div class="lr-legend-item"><span class="lr-legend-dot lr-legend-dot--free"></span> ${%overview.free} <strong>${summary.free}</strong></div>
+                  <a class="lr-legend-item lr-legend-item--locked" data-filter-status="locked" href="#"><span class="lr-legend-dot lr-legend-dot--locked"></span><span class="lr-legend-label">${%overview.locked}</span><span class="lr-legend-count">${summary.locked}</span></a>
+                  <a class="lr-legend-item lr-legend-item--reserved" data-filter-status="reserved" href="#"><span class="lr-legend-dot lr-legend-dot--reserved"></span><span class="lr-legend-label">${%overview.reserved}</span><span class="lr-legend-count">${summary.reserved}</span></a>
+                  <a class="lr-legend-item lr-legend-item--free" data-filter-status="free" href="#"><span class="lr-legend-dot lr-legend-dot--free"></span><span class="lr-legend-label">${%overview.free}</span><span class="lr-legend-count">${summary.free}</span></a>
                 </div>
               </div>
               <!-- Utilization stats card -->
               <div class="lr-overview-card">
                 <a class="lr-overview-card__header" data-lr-tab-link="resources">${%overview.utilization}</a>
                 <div class="lr-overview-stats-list">
+                  <div class="lr-overview-stat lr-overview-stat--highlight">
+                    <span class="lr-overview-stat__number" data-pct="${summary.lockedPct + summary.reservedPct}" data-type="inuse">${summary.lockedPct + summary.reservedPct}%</span>
+                    <span class="lr-overview-stat__label">${%overview.inUse}</span>
+                  </div>
                   <div class="lr-overview-stat">
                     <span class="lr-overview-stat__number" data-pct="${summary.lockedPct}" data-type="locked">${summary.lockedPct}%</span>
                     <span class="lr-overview-stat__label">${%overview.locked}</span>
@@ -193,10 +197,10 @@
                 <j:if test="${summary.topLabels.size() > 0}">
                   <div class="lr-top-labels">
                     <j:forEach var="lbl" items="${summary.topLabels}">
-                      <div class="lr-top-label-item">
+                      <a class="lr-top-label-item" data-filter-label="${lbl.name}" href="#">
                         <span class="lr-top-label-item__name">${lbl.name}</span>
                         <span class="lr-top-label-item__count">${lbl.assigned}</span>
-                      </div>
+                      </a>
                     </j:forEach>
                   </div>
                 </j:if>
@@ -208,6 +212,28 @@
                   <span class="lr-overview-stat__number">${summary.queueItems}</span>
                   <span class="lr-overview-stat__label">${%overview.queueWaiting}</span>
                 </div>
+                <j:if test="${summary.queueItems > 0}">
+                  <div class="lr-queue-details">
+                    <j:if test="${summary.oldestBuildName != null}">
+                      <div class="lr-queue-section">
+                        <span class="lr-queue-section__label">${%overview.longestWait}</span>
+                        <div class="lr-queue-section__row">
+                          <a class="lr-queue-section__value" href="${rootURL}/${summary.oldestBuildUrl}">${summary.oldestBuildName}</a>
+                          <span class="lr-queue-section__meta">${summary.oldestWaitTime}</span>
+                        </div>
+                      </div>
+                    </j:if>
+                    <j:if test="${summary.mostContendedResource != null}">
+                      <div class="lr-queue-section">
+                        <span class="lr-queue-section__label">${%overview.mostContended}</span>
+                        <div class="lr-queue-section__row">
+                          <a class="lr-queue-section__value" data-filter-name="${summary.mostContendedResource}" href="#">${summary.mostContendedResource}</a>
+                          <span class="lr-queue-section__meta">${summary.mostContendedCount} ${%overview.contendedBuilds}</span>
+                        </div>
+                      </div>
+                    </j:if>
+                  </div>
+                </j:if>
               </div>
             </div>
           </div>

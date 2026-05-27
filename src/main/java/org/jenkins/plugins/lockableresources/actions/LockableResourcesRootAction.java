@@ -17,9 +17,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -123,6 +125,20 @@ public class LockableResourcesRootAction extends ManagementLink {
     }
 
     // ---------------------------------------------------------------------------
+    private static String formatDuration(long millis) {
+        long seconds = millis / 1000;
+        if (seconds < 60) return seconds + "s";
+        long minutes = seconds / 60;
+        if (minutes < 60) return minutes + "m";
+        long hours = minutes / 60;
+        long remainingMin = minutes % 60;
+        if (hours < 24) return hours + "h " + remainingMin + "m";
+        long days = hours / 24;
+        long remainingHours = hours % 24;
+        return days + "d " + remainingHours + "h";
+    }
+
+    // ---------------------------------------------------------------------------
     /** Returns a summary of resource states for the overview tab. */
     @Restricted(NoExternalUse.class) // used by jelly
     public Summary getSummary() {
@@ -148,8 +164,38 @@ public class LockableResourcesRootAction extends ManagementLink {
         }
 
         int queueItems = 0;
+        int distinctBuildsWaiting = 0;
+        String oldestBuildName = null;
+        String oldestBuildUrl = null;
+        long oldestQueuedAt = Long.MAX_VALUE;
+        Map<String, Integer> resourceDemand = new HashMap<>();
         for (QueuedContextStruct context : LockableResourcesManager.get().getCurrentQueuedContext()) {
             queueItems += context.getResources().size();
+            distinctBuildsWaiting++;
+            Run<?, ?> run = context.getBuild();
+            for (LockableResourcesStruct rs : context.getResources()) {
+                if (rs.queuedAt > 0 && rs.queuedAt < oldestQueuedAt) {
+                    oldestQueuedAt = rs.queuedAt;
+                    oldestBuildName = (run != null) ? run.getFullDisplayName() : null;
+                    oldestBuildUrl = (run != null) ? run.getUrl() : null;
+                }
+                for (LockableResource r : rs.required) {
+                    resourceDemand.merge(r.getName(), 1, Integer::sum);
+                }
+            }
+        }
+        String oldestWaitTime = null;
+        if (oldestBuildName != null && oldestQueuedAt < Long.MAX_VALUE) {
+            long elapsed = System.currentTimeMillis() - oldestQueuedAt;
+            oldestWaitTime = formatDuration(elapsed);
+        }
+        String mostContendedResource = null;
+        int mostContendedCount = 0;
+        for (Map.Entry<String, Integer> entry : resourceDemand.entrySet()) {
+            if (entry.getValue() > mostContendedCount) {
+                mostContendedCount = entry.getValue();
+                mostContendedResource = entry.getKey();
+            }
         }
 
         int labelsCount = getLabelsList().size();
@@ -159,7 +205,21 @@ public class LockableResourcesRootAction extends ManagementLink {
                 .limit(3)
                 .collect(Collectors.toList());
 
-        return new Summary(total, locked, reserved, queued, free, queueItems, labelsCount, topLabels);
+        return new Summary(
+                total,
+                locked,
+                reserved,
+                queued,
+                free,
+                queueItems,
+                distinctBuildsWaiting,
+                labelsCount,
+                topLabels,
+                oldestBuildName,
+                oldestBuildUrl,
+                oldestWaitTime,
+                mostContendedResource,
+                mostContendedCount);
     }
 
     // ---------------------------------------------------------------------------
@@ -171,8 +231,14 @@ public class LockableResourcesRootAction extends ManagementLink {
         private final int queued;
         private final int free;
         private final int queueItems;
+        private final int distinctBuildsWaiting;
         private final int labelsCount;
         private final List<LockableResourcesLabel> topLabels;
+        private final String oldestBuildName;
+        private final String oldestBuildUrl;
+        private final String oldestWaitTime;
+        private final String mostContendedResource;
+        private final int mostContendedCount;
 
         Summary(
                 int total,
@@ -181,16 +247,28 @@ public class LockableResourcesRootAction extends ManagementLink {
                 int queued,
                 int free,
                 int queueItems,
+                int distinctBuildsWaiting,
                 int labelsCount,
-                List<LockableResourcesLabel> topLabels) {
+                List<LockableResourcesLabel> topLabels,
+                String oldestBuildName,
+                String oldestBuildUrl,
+                String oldestWaitTime,
+                String mostContendedResource,
+                int mostContendedCount) {
             this.total = total;
             this.locked = locked;
             this.reserved = reserved;
             this.queued = queued;
             this.free = free;
             this.queueItems = queueItems;
+            this.distinctBuildsWaiting = distinctBuildsWaiting;
             this.labelsCount = labelsCount;
             this.topLabels = topLabels;
+            this.oldestBuildName = oldestBuildName;
+            this.oldestBuildUrl = oldestBuildUrl;
+            this.oldestWaitTime = oldestWaitTime;
+            this.mostContendedResource = mostContendedResource;
+            this.mostContendedCount = mostContendedCount;
         }
 
         public int getTotal() {
@@ -217,6 +295,10 @@ public class LockableResourcesRootAction extends ManagementLink {
             return queueItems;
         }
 
+        public int getDistinctBuildsWaiting() {
+            return distinctBuildsWaiting;
+        }
+
         public int getLabelsCount() {
             return labelsCount;
         }
@@ -235,6 +317,26 @@ public class LockableResourcesRootAction extends ManagementLink {
 
         public int getFreePct() {
             return total > 0 ? (free * 100) / total : 0;
+        }
+
+        public String getOldestBuildName() {
+            return oldestBuildName;
+        }
+
+        public String getOldestBuildUrl() {
+            return oldestBuildUrl;
+        }
+
+        public String getOldestWaitTime() {
+            return oldestWaitTime;
+        }
+
+        public String getMostContendedResource() {
+            return mostContendedResource;
+        }
+
+        public int getMostContendedCount() {
+            return mostContendedCount;
         }
     }
 
