@@ -514,8 +514,10 @@ class ResourceManagementTest {
         wc.login("viewuser");
         wc.getOptions().setThrowExceptionOnScriptError(false);
         HtmlPage page = wc.goTo("lockable-resources");
-        assertThat("Page should be accessible with VIEW permission",
-                page.getWebResponse().getStatusCode(), is(200));
+        assertThat(
+                "Page should be accessible with VIEW permission",
+                page.getWebResponse().getStatusCode(),
+                is(200));
     }
 
     @Test
@@ -532,8 +534,10 @@ class ResourceManagementTest {
         wc.login("readuser");
         wc.getOptions().setThrowExceptionOnScriptError(false);
         HtmlPage page = wc.goTo("lockable-resources");
-        assertThat("Jenkins.READ should imply VIEW and allow page access",
-                page.getWebResponse().getStatusCode(), is(200));
+        assertThat(
+                "Jenkins.READ should imply VIEW and allow page access",
+                page.getWebResponse().getStatusCode(),
+                is(200));
     }
 
     @Test

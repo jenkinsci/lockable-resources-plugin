@@ -24,9 +24,7 @@ public class LockableResourcesManagementLink extends ManagementLink {
 
     @Override
     public String getIconFileName() {
-        return Jenkins.get().hasPermission(LockableResourcesRootAction.VIEW)
-                ? LockableResourcesRootAction.ICON
-                : null;
+        return Jenkins.get().hasPermission(LockableResourcesRootAction.VIEW) ? LockableResourcesRootAction.ICON : null;
     }
 
     @Override
