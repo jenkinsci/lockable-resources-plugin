@@ -43,33 +43,21 @@ class LockStepLabelQuantityOneTest extends LockStepTestBase {
         // Build 1: lock one resource
         WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
         p1.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b1'\n"
-                        + "}\n"
-                        + "echo 'b1 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b1'\n" + "}\n" + "echo 'b1 done'", true));
         WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait-b1/1", b1);
 
         // Build 2: lock a second resource
         WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
         p2.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b2'\n"
-                        + "}\n"
-                        + "echo 'b2 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b2'\n" + "}\n" + "echo 'b2 done'", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait-b2/1", b2);
 
         // Build 3: must also lock the remaining resource without waiting
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
         p3.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b3'\n"
-                        + "}\n"
-                        + "echo 'b3 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b3'\n" + "}\n" + "echo 'b3 done'", true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
         // If #939 is present, b3 would report "Found 0 available resource(s)" and hang here
         SemaphoreStep.waitForStart("wait-b3/1", b3);
@@ -103,45 +91,28 @@ class LockStepLabelQuantityOneTest extends LockStepTestBase {
         // Builds 1-3 lock all three resources
         WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
         p1.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b1'\n"
-                        + "}\n"
-                        + "echo 'b1 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b1'\n" + "}\n" + "echo 'b1 done'", true));
         WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait-b1/1", b1);
 
         WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
         p2.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b2'\n"
-                        + "}\n"
-                        + "echo 'b2 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b2'\n" + "}\n" + "echo 'b2 done'", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait-b2/1", b2);
 
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
         p3.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b3'\n"
-                        + "}\n"
-                        + "echo 'b3 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b3'\n" + "}\n" + "echo 'b3 done'", true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait-b3/1", b3);
 
         // Build 4: all resources taken — must wait
         WorkflowJob p4 = j.jenkins.createProject(WorkflowJob.class, "p4");
         p4.setDefinition(new CpsFlowDefinition(
-                "lock(label: 'imx8', quantity: 1) {\n"
-                        + "  semaphore 'wait-b4'\n"
-                        + "}\n"
-                        + "echo 'b4 done'",
-                true));
+                "lock(label: 'imx8', quantity: 1) {\n" + "  semaphore 'wait-b4'\n" + "}\n" + "echo 'b4 done'", true));
         WorkflowRun b4 = p4.scheduleBuild2(0).waitForStart();
-        j.waitForMessage(
-                "[Label: imx8, Quantity: 1] is not free, waiting for execution ...", b4);
+        j.waitForMessage("[Label: imx8, Quantity: 1] is not free, waiting for execution ...", b4);
         j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 1.", b4);
 
         // Release b1 → b4 should proceed
