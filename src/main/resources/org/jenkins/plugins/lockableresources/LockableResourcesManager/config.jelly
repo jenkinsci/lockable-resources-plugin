@@ -25,7 +25,7 @@
     <f:entry title="${%entry.title}">
       <div class="lr-config-moved-notice">
         ${%entry.moved}
-        <a href="${rootURL}/manage/lockable-resources/">${%entry.moved.link}</a>
+        <a href="${rootURL}/lockable-resources/">${%entry.moved.link}</a>
       </div>
     </f:entry>
   </f:section>

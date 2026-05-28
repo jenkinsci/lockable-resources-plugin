@@ -10,6 +10,7 @@ import static org.hamcrest.Matchers.nullValue;
 
 import hudson.model.ManagementLink;
 import org.htmlunit.html.HtmlPage;
+import org.jenkins.plugins.lockableresources.actions.LockableResourcesManagementLink;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,21 +28,21 @@ class ManagementLinkTest {
 
     @Test
     void managementLinkIsRegistered(JenkinsRule j) {
-        LockableResourcesRootAction link = ManagementLink.all().get(LockableResourcesRootAction.class);
+        LockableResourcesManagementLink link = ManagementLink.all().get(LockableResourcesManagementLink.class);
         assertThat("ManagementLink should be registered", link, is(not(nullValue())));
         assertThat(link, instanceOf(ManagementLink.class));
     }
 
     @Test
     void managementLinkCategory(JenkinsRule j) {
-        LockableResourcesRootAction link = ManagementLink.all().get(LockableResourcesRootAction.class);
+        LockableResourcesManagementLink link = ManagementLink.all().get(LockableResourcesManagementLink.class);
         assertThat(link, is(not(nullValue())));
         assertThat(link.getCategory(), is(ManagementLink.Category.CONFIGURATION));
     }
 
     @Test
     void managementLinkProperties(JenkinsRule j) {
-        LockableResourcesRootAction link = ManagementLink.all().get(LockableResourcesRootAction.class);
+        LockableResourcesManagementLink link = ManagementLink.all().get(LockableResourcesManagementLink.class);
         assertThat(link, is(not(nullValue())));
         assertThat(link.getUrlName(), is("lockable-resources"));
         assertThat(link.getIconFileName(), is("symbol-lock-closed"));

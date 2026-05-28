@@ -274,7 +274,7 @@ THE SOFTWARE.
                       <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
                     </button>
                   </l:hasPermission>
-                  <l:hasPermission permission="${app.ADMINISTER}">
+                  <l:hasPermission permission="${it.CONFIGURE}">
                     <button
                       data-action="deleteResource"
                       class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-delete-button"
@@ -285,7 +285,7 @@ THE SOFTWARE.
                   </l:hasPermission>
                 </j:otherwise>
               </j:choose>
-              <l:hasPermission permission="${app.ADMINISTER}">
+              <l:hasPermission permission="${it.CONFIGURE}">
                 <button
                   class="jenkins-button jenkins-button--tertiary lockable-resources-edit-button"
                   tooltip="${%btn.edit}"

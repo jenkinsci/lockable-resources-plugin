@@ -3,10 +3,11 @@ package org.jenkins.plugins.lockableresources.actions;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.Util;
 import hudson.model.Api;
 import hudson.model.Descriptor;
-import hudson.model.ManagementLink;
+import hudson.model.RootAction;
 import hudson.model.Run;
 import hudson.security.AccessDeniedException3;
 import hudson.security.Permission;
@@ -44,7 +45,7 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @Extension
 @ExportedBean
-public class LockableResourcesRootAction extends ManagementLink {
+public class LockableResourcesRootAction implements RootAction {
 
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesRootAction.class.getName());
 
@@ -72,7 +73,7 @@ public class LockableResourcesRootAction extends ManagementLink {
             PERMISSIONS_GROUP,
             "View",
             Messages._LockableResourcesRootAction_ViewPermission_Description(),
-            Jenkins.ADMINISTER,
+            Jenkins.READ,
             PermissionScope.JENKINS);
     public static final Permission QUEUE = new Permission(
             PERMISSIONS_GROUP,
@@ -80,12 +81,29 @@ public class LockableResourcesRootAction extends ManagementLink {
             Messages._LockableResourcesRootAction_QueueChangeOrderPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
+    public static final Permission CONFIGURE = new Permission(
+            PERMISSIONS_GROUP,
+            "Configure",
+            Messages._LockableResourcesRootAction_ConfigurePermission_Description(),
+            Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
 
     public static final String ICON = "symbol-lock-closed";
 
+    @CheckForNull
     @Override
     public String getIconFileName() {
-        return ICON;
+        return Jenkins.get().hasPermission(VIEW) ? ICON : null;
+    }
+
+    /**
+     * Returns the ManagementLink instance for use by the Jelly view when rendering
+     * within the Manage Jenkins layout.
+     * Used by {@code index.jelly}.
+     */
+    @Restricted(NoExternalUse.class)
+    public LockableResourcesManagementLink getManagementLink() {
+        return ExtensionList.lookupSingleton(LockableResourcesManagementLink.class);
     }
 
     public Api getApi() {
@@ -97,31 +115,15 @@ public class LockableResourcesRootAction extends ManagementLink {
         return LockableResource.getUserName();
     }
 
+    @CheckForNull
     @Override
     public String getDisplayName() {
-        return Messages.LockableResourcesRootAction_PermissionGroup();
+        return Jenkins.get().hasPermission(VIEW) ? Messages.LockableResourcesRootAction_PermissionGroup() : null;
     }
 
     @Override
     public String getUrlName() {
         return "lockable-resources";
-    }
-
-    @Override
-    public String getDescription() {
-        return Messages.LockableResourcesRootAction_ManagementLink_Description();
-    }
-
-    @NonNull
-    @Override
-    public Category getCategory() {
-        return Category.CONFIGURATION;
-    }
-
-    @NonNull
-    @Override
-    public Permission getRequiredPermission() {
-        return VIEW;
     }
 
     // ---------------------------------------------------------------------------
@@ -1171,7 +1173,7 @@ public class LockableResourcesRootAction extends ManagementLink {
     @RequirePOST
     public void doCreateResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
             throws IOException, ServletException {
-        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        Jenkins.get().checkPermission(CONFIGURE);
 
         String name;
         String description;
@@ -1232,7 +1234,7 @@ public class LockableResourcesRootAction extends ManagementLink {
     @RequirePOST
     public void doEditResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
             throws IOException, ServletException {
-        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        Jenkins.get().checkPermission(CONFIGURE);
 
         String contentType = req.getContentType();
         if (contentType == null || !contentType.contains("application/json")) {
@@ -1272,7 +1274,7 @@ public class LockableResourcesRootAction extends ManagementLink {
     @RequirePOST
     public void doDeleteResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
             throws IOException, ServletException {
-        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        Jenkins.get().checkPermission(CONFIGURE);
 
         String name = req.getParameter("resource");
         LockableResourcesManager manager = LockableResourcesManager.get();

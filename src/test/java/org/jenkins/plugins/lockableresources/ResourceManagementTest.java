@@ -470,7 +470,7 @@ class ResourceManagementTest {
         HtmlPage page = wc.goTo("manage/configure");
         String content = page.getWebResponse().getContentAsString();
         assertThat("Notice div present", content, containsString("lr-config-moved-notice"));
-        assertThat("Link to manage page present", content, containsString("manage/lockable-resources"));
+        assertThat("Link to manage page present", content, containsString("lockable-resources"));
     }
 
     @Test
@@ -494,5 +494,60 @@ class ResourceManagementTest {
         String content = page.getWebResponse().getContentAsString();
         assertThat(
                 "Add button should NOT be visible for non-admin", content, not(containsString("lr-add-resource-btn")));
+    }
+
+    @Test
+    void pageAccessibleWithViewPermissionOnly(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("perm-test-resource", null);
+
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
+                .grant(jenkins.model.Jenkins.READ)
+                .everywhere()
+                .to("viewuser")
+                .grant(org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction.VIEW)
+                .everywhere()
+                .to("viewuser"));
+        j.jenkins.setCrumbIssuer(null);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login("viewuser");
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        HtmlPage page = wc.goTo("lockable-resources");
+        assertThat("Page should be accessible with VIEW permission",
+                page.getWebResponse().getStatusCode(), is(200));
+    }
+
+    @Test
+    void pageAccessibleWithJenkinsReadOnly(JenkinsRule j) throws Exception {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
+                .grant(jenkins.model.Jenkins.READ)
+                .everywhere()
+                .to("readuser"));
+        j.jenkins.setCrumbIssuer(null);
+
+        // Jenkins.READ implies Lockable Resources/View, so the page should load
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login("readuser");
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        HtmlPage page = wc.goTo("lockable-resources");
+        assertThat("Jenkins.READ should imply VIEW and allow page access",
+                page.getWebResponse().getStatusCode(), is(200));
+    }
+
+    @Test
+    void pageDeniedWithoutJenkinsRead(JenkinsRule j) throws Exception {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy());
+        j.jenkins.setCrumbIssuer(null);
+
+        // Anonymous user with no READ cannot access the page
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        HtmlPage page = wc.goTo("lockable-resources");
+        assertThat("User without Jenkins.READ should be denied",
+                page.getWebResponse().getStatusCode(), is(403));
     }
 }
