@@ -396,14 +396,25 @@ Fields like *reservedBy*, *reservedTimestamp* or *note* are not supported, they 
 
 ## lockable-resources overview
 
-The page *Manage Jenkins* > *Lockable Resources* (also accessible at `<jenkinsRootUrl>/manage/lockable-resources/`) provides an overview over all lockable-resources.
+The page *Manage Jenkins* > *Lockable Resources* (also accessible at `<jenkinsRootUrl>/lockable-resources/`) provides a management dashboard for all lockable resources. When accessed from Manage Jenkins, it renders with the sidebar layout; when accessed directly via the URL, it renders as a standalone page.
+
+The page has four tabs: **Overview**, **Resources**, **Labels**, and **Queue**.
+
+### Overview
+
+Provides at-a-glance stats including a resource donut chart (locked/reserved/free), utilization percentages, top labels, and queue metrics (longest wait, most contended resource). Cards are clickable to jump to the relevant tab.
 
 ### Resources
 
-Provides an status overview over all resources and actions to change resource status.
+Provides a status overview of all resources and actions to change resource status.
+
+Resources can be created, edited, and deleted directly from this tab using the **Add Resource** button and per-row edit/delete actions (requires CONFIGURE permission). Bulk actions (reserve, unreserve, unlock, steal) are available via multi-select checkboxes.
 
 Name | Permission | Description
 -----|------------|------------
+Add Resource | CONFIGURE | Creates a new lockable resource.
+Edit (Gear Icon) | CONFIGURE | Edits an existing resource (name, description, labels, properties).
+Delete | CONFIGURE | Deletes a resource (only if not locked, reserved, or queued).
 Reserve | RESERVE | Reserves an available resource for currently logged user indefinitely (until that person, or some explicit scripted action, decides to release the resource).
 Unreserve | RESERVE | Un-reserves a resource that may be reserved by some person already. The user can unreserve only own resource. Administrator can unreserve any resource.
 Unlock | UNLOCK | Unlocks a resource that may be or not be locked by some job (or reserved by some user) already.
@@ -420,7 +431,7 @@ Provides an overview over all lockable-resources labels.
 
 ### Queue
 
-Provides an overview over currently queued requests.
+Provides an overview of currently queued requests with server-side pagination for performance with large queues.
 A request is queued by the pipeline step `lock()`. When the requested resource(s) is currently in use (not free), then any new request for this resource will be added into the queue.
 
 A resource may be requested by:
@@ -431,6 +442,21 @@ A resource may be requested by:
 > *Note:* Please keep in mind that groovy expressions are currently supported only in free-style jobs. Free-style jobs do not update this queue and therefore can not be shown in this view.
 
 > *Note:* An empty value in the column 'Requested at' means that this build has been started in an older plugin version - [1117.v157231b_03882](https://github.com/jenkinsci/lockable-resources-plugin/releases/tag/1117.v157231b_03882) and early. In this case we cannot recognize the timestamp.
+
+### Permissions
+
+The plugin defines its own permission group under *Manage Jenkins* > *Security* > *Authorization*:
+
+Permission | Implied by | Description
+-----------|------------|------------
+View | Jenkins.READ | See the lockable resources page and resource status.
+Configure | Jenkins.ADMINISTER | Create, edit, and delete resources.
+Unlock | Jenkins.ADMINISTER | Manually unlock a resource.
+Reserve | Jenkins.ADMINISTER | Reserve or unreserve a resource.
+Steal | Jenkins.ADMINISTER | Steal a lock from another build.
+Queue | Jenkins.ADMINISTER | Reorder the lock wait queue.
+
+All mutating permissions default to `ADMINISTER`, preserving existing behavior. Admins can delegate individual permissions to specific roles without granting full admin access.
 
 ----
 
