@@ -1,0 +1,345 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Shared page body for Lockable Resources. Included by both index.jelly
+  (RootAction at /lockable-resources/) and the ManagementLink view
+  (at /manage/lockable-resources/).
+
+  Expects 'it' to be the LockableResourcesRootAction instance.
+ -->
+<j:jelly
+  xmlns:j="jelly:core"
+  xmlns:l="/lib/layout"
+  xmlns:f="/lib/form"
+  xmlns:i="jelly:fmt"
+  xmlns:st="jelly:stapler"
+  xmlns:t="/lib/hudson"
+>
+      <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
+      <div id="lr-page-data" data-current-user="${it.userName}" style="display:none;"></div>
+      <l:app-bar title="${%header.resources}">
+        <j:if test="${it.resources.size() > 0}">
+          <div class="app-build-tabs lr-tab-bar" role="tablist">
+            <a class="jenkins-button lr-tab-button lr-tab-button--active"
+              role="tab" aria-selected="true" data-lr-tab="overview">${%tab.overview}</a>
+            <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
+              role="tab" aria-selected="false" data-lr-tab="resources">${%tab.resources}</a>
+            <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
+              role="tab" aria-selected="false" data-lr-tab="labels">${%tab.labels}</a>
+            <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
+              role="tab" aria-selected="false" data-lr-tab="queue">${%tab.queue}</a>
+          </div>
+        </j:if>
+        <l:hasPermission permission="${it.CONFIGURE}">
+          <button class="jenkins-button jenkins-button--primary lr-add-resource-btn">
+            <l:icon src="symbol-add" />
+            <span class="lr-add-resource-btn__text">${%btn.addResource}</span>
+          </button>
+        </l:hasPermission>
+      </l:app-bar>
+      <!-- Add Resource dialog content (rendered via dialog.modal on click) -->
+      <l:hasPermission permission="${it.CONFIGURE}">
+        <template id="lr-add-resource-template">
+          <div class="app-parameters-dialog">
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.name} <span class="jenkins-!-error-color">*</span></label>
+              <input type="text" name="name" class="jenkins-input" required="required" />
+            </div>
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.description}</label>
+              <input type="text" name="description" class="jenkins-input" />
+            </div>
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.labels}</label>
+              <input type="text" name="labels" class="jenkins-input" placeholder="label1 label2" />
+            </div>
+            <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.properties}</label>
+              <div class="lr-properties-container">
+                <!-- dynamic property rows inserted here by JS -->
+              </div>
+              <button type="button" class="jenkins-button jenkins-!-margin-top-1 lr-add-property-btn">
+                + ${%add.resource.dialog.addProperty}
+              </button>
+            </div>
+          </div>
+        </template>
+      </l:hasPermission>
+
+      <!-- translations for javascript -->
+      <template id="i18n"
+                  data-queue-title="${%queue.change.title}"
+                  data-queue-message="${%queue.change.message}"
+                  data-queue-on-success="${%queue.change.on.success}"
+                  data-queue-on-fail="${%queue.change.on.fail}"
+                  data-reserve-title="${%reserve.dialog.title}"
+                  data-reserve-message="${%reserve.dialog.message}"
+                  data-steal-title="${%steal.dialog.title}"
+                  data-steal-message="${%steal.dialog.message}"
+                  data-reassign-title="${%reassign.dialog.title}"
+                  data-reassign-message="${%reassign.dialog.message}"
+                  data-action-on-success="${%action.on.success}"
+                  data-action-on-fail="${%action.on.fail}"
+                  data-bulk-result="${%bulk.result}"
+                  data-add-resource-on-success="${%add.resource.on.success}"
+                  data-add-resource-on-fail="${%add.resource.on.fail}"
+                  data-add-resource-name-required="${%add.resource.name.required}"
+                  data-add-resource-dialog-title="${%add.resource.dialog.title}"
+                  data-btn-addResource="${%btn.addResource}"
+                  data-delete-resource-title="${%delete.resource.dialog.title}"
+                  data-delete-resource-message="${%delete.resource.dialog.message}"
+                  data-delete-resource-on-success="${%delete.resource.on.success}"
+                  data-delete-resource-on-fail="${%delete.resource.on.fail}"
+                  data-edit-resource-dialog-title="${%edit.resource.dialog.title}"
+                  data-edit-resource-btn-save="${%edit.resource.btn.save}"
+                  data-edit-resource-on-success="${%edit.resource.on.success}"
+                  data-edit-resource-on-fail="${%edit.resource.on.fail}"
+      />
+
+      <j:choose>
+        <j:when test="${it.resources.size() == 0}">
+          <l:notice title="${%resources.not_configured}" icon="symbol-lock-closed">
+            <l:hasPermission permission="${it.CONFIGURE}">
+              <p>${%resources.empty.hint}</p>
+            </l:hasPermission>
+          </l:notice>
+        </j:when>
+        <j:otherwise>
+        <div class="lr-tabs">
+          <!-- Tab panes -->
+          <div class="lr-tab-pane lr-tab-pane--active" id="lr-tab-overview" role="tabpanel">
+            <j:set var="summary" value="${it.summary}" />
+            <div class="lr-overview-grid">
+              <!-- Quick Actions card (top, full width) -->
+              <l:hasPermission permission="${app.ADMINISTER}">
+                <div class="lr-overview-card lr-overview-card--actions">
+                  <span class="lr-overview-card__header">${%overview.quickActions}</span>
+                  <div class="lr-quick-actions">
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lr-add-resource-btn" tooltip="${%btn.addResource}">
+                      <l:icon src="symbol-add" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary lr-quick-action-btn" data-action="myResources" tooltip="${%overview.action.myResources}">
+                      <l:icon src="symbol-person" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lr-quick-action-btn" data-action="reserveAll" tooltip="${%overview.action.reserve}">
+                      <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lr-quick-action-btn" data-action="freeAll" tooltip="${%overview.action.freeAll}">
+                      <l:icon src="symbol-log-out-outline plugin-ionicons-api" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lr-quick-action-btn" data-action="reserveByLabel" tooltip="${%overview.action.reserveByLabel}">
+                      <l:icon src="symbol-pricetag-outline plugin-ionicons-api" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lr-quick-action-btn" data-action="resetQueued" tooltip="${%overview.action.resetQueued}">
+                      <l:icon src="symbol-refresh" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-warning-color lr-quick-action-btn" data-action="recycleDeadLocks" tooltip="${%overview.action.recycleDead}">
+                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                    </button>
+                    <button class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lr-quick-action-btn" data-action="stealAll" tooltip="${%overview.action.stealAll}">
+                      <l:icon src="symbol-flash-outline plugin-ionicons-api" />
+                    </button>
+                  </div>
+                </div>
+              </l:hasPermission>
+              <!-- Resources donut card -->
+              <div class="lr-overview-card">
+                <a class="lr-overview-card__header" data-lr-tab-link="resources">${%tab.resources}</a>
+                <div class="lr-donut-wrap">
+                  <j:set var="lockedPct" value="${summary.total > 0 ? (summary.locked * 100.0) / summary.total : 0}" />
+                  <j:set var="reservedPct" value="${summary.total > 0 ? (summary.reserved * 100.0) / summary.total : 0}" />
+                  <j:set var="freePct" value="${summary.total > 0 ? (summary.free * 100.0) / summary.total : 0}" />
+                  <j:set var="lockedEnd" value="${lockedPct}" />
+                  <j:set var="reservedEnd" value="${lockedPct + reservedPct}" />
+                  <div class="lr-donut"
+                       style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--green) ${reservedEnd}% 100%);"
+                       aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.free}: ${summary.free}">
+                  </div>
+                  <div class="lr-donut-center">${summary.total}</div>
+                </div>
+                <div class="lr-donut-legend">
+                  <a class="lr-legend-item lr-legend-item--locked" data-filter-status="locked" href="#"><span class="lr-legend-dot lr-legend-dot--locked"></span><span class="lr-legend-label">${%overview.locked}</span><span class="lr-legend-count">${summary.locked}</span></a>
+                  <a class="lr-legend-item lr-legend-item--reserved" data-filter-status="reserved" href="#"><span class="lr-legend-dot lr-legend-dot--reserved"></span><span class="lr-legend-label">${%overview.reserved}</span><span class="lr-legend-count">${summary.reserved}</span></a>
+                  <a class="lr-legend-item lr-legend-item--free" data-filter-status="free" href="#"><span class="lr-legend-dot lr-legend-dot--free"></span><span class="lr-legend-label">${%overview.free}</span><span class="lr-legend-count">${summary.free}</span></a>
+                </div>
+              </div>
+              <!-- Utilization stats card -->
+              <div class="lr-overview-card">
+                <a class="lr-overview-card__header" data-lr-tab-link="resources">${%overview.utilization}</a>
+                <div class="lr-overview-stats-list">
+                  <div class="lr-overview-stat lr-overview-stat--highlight">
+                    <span class="lr-overview-stat__number" data-pct="${summary.lockedPct + summary.reservedPct}" data-type="inuse">${summary.lockedPct + summary.reservedPct}%</span>
+                    <span class="lr-overview-stat__label">${%overview.inUse}</span>
+                  </div>
+                  <div class="lr-overview-stat">
+                    <span class="lr-overview-stat__number" data-pct="${summary.lockedPct}" data-type="locked">${summary.lockedPct}%</span>
+                    <span class="lr-overview-stat__label">${%overview.locked}</span>
+                  </div>
+                  <div class="lr-overview-stat">
+                    <span class="lr-overview-stat__number" data-pct="${summary.reservedPct}" data-type="reserved">${summary.reservedPct}%</span>
+                    <span class="lr-overview-stat__label">${%overview.reserved}</span>
+                  </div>
+                  <div class="lr-overview-stat">
+                    <span class="lr-overview-stat__number" data-pct="${summary.freePct}" data-type="free">${summary.freePct}%</span>
+                    <span class="lr-overview-stat__label">${%overview.free}</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Labels card -->
+              <div class="lr-overview-card">
+                <a class="lr-overview-card__header" data-lr-tab-link="labels">${%tab.labels}</a>
+                <div class="lr-overview-stat">
+                  <span class="lr-overview-stat__number">${summary.labelsCount}</span>
+                  <span class="lr-overview-stat__label">${%overview.labelsTotal}</span>
+                </div>
+                <j:if test="${summary.topLabels.size() > 0}">
+                  <div class="lr-top-labels">
+                    <j:forEach var="lbl" items="${summary.topLabels}">
+                      <a class="lr-top-label-item" data-filter-label="${lbl.name}" href="#">
+                        <span class="lr-top-label-item__name">${lbl.name}</span>
+                        <span class="lr-top-label-item__count">${lbl.assigned}</span>
+                      </a>
+                    </j:forEach>
+                  </div>
+                </j:if>
+              </div>
+              <!-- Queue card -->
+              <div class="lr-overview-card">
+                <a class="lr-overview-card__header" data-lr-tab-link="queue">${%overview.queueItems}</a>
+                <div class="lr-overview-stat">
+                  <span class="lr-overview-stat__number">${summary.queueItems}</span>
+                  <span class="lr-overview-stat__label">${%overview.queueWaiting}</span>
+                </div>
+                <j:if test="${summary.queueItems > 0}">
+                  <div class="lr-queue-details">
+                    <j:if test="${summary.oldestBuildName != null}">
+                      <div class="lr-queue-section">
+                        <span class="lr-queue-section__label">${%overview.longestWait}</span>
+                        <div class="lr-queue-section__row">
+                          <a class="lr-queue-section__value" href="${rootURL}/${summary.oldestBuildUrl}">${summary.oldestBuildName}</a>
+                          <span class="lr-queue-section__meta">${summary.oldestWaitTime}</span>
+                        </div>
+                      </div>
+                    </j:if>
+                    <j:if test="${summary.mostContendedResource != null}">
+                      <div class="lr-queue-section">
+                        <span class="lr-queue-section__label">${%overview.mostContended}</span>
+                        <div class="lr-queue-section__row">
+                          <a class="lr-queue-section__value" data-filter-name="${summary.mostContendedResource}" href="#">${summary.mostContendedResource}</a>
+                          <span class="lr-queue-section__meta">${summary.mostContendedCount} ${%overview.contendedBuilds}</span>
+                        </div>
+                      </div>
+                    </j:if>
+                  </div>
+                </j:if>
+              </div>
+            </div>
+          </div>
+          <div class="lr-tab-pane" id="lr-tab-resources" role="tabpanel">
+            <!-- Toolbar: filters + column visibility -->
+            <div class="lr-toolbar">
+              <div class="lr-toolbar__filters">
+                <span class="lr-toolbar__heading">${%filter.heading}</span>
+                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-quick" placeholder="${%filter.name}" />
+                <div class="jenkins-select">
+                  <select class="jenkins-select__input lr-col-filter" id="lr-filter-status">
+                    <option value="">${%filter.status.all}</option>
+                    <option value="free">${%filter.status.free}</option>
+                    <option value="reserved">${%filter.status.reserved}</option>
+                    <option value="locked">${%filter.status.locked}</option>
+                    <option value="queued">${%filter.status.queued}</option>
+                  </select>
+                </div>
+                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-held-by" placeholder="${%filter.heldBy}" />
+                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-label" placeholder="${%filter.resources.labels}" />
+              </div>
+              <div class="lr-toolbar__actions">
+                <div class="lr-global-search-wrapper" data-tab="resources">
+                  <button class="jenkins-button jenkins-button--tertiary lr-global-search-toggle" tooltip="${%filter.search.tooltip}">
+                    <l:icon src="symbol-search" />
+                  </button>
+                  <div class="lr-global-search-popup" style="display:none;">
+                    <input type="text" class="jenkins-input lr-global-search-input" placeholder="${%filter.search.placeholder}" />
+                  </div>
+                </div>
+                <button class="jenkins-button jenkins-button--tertiary lr-reset-filters-btn" tooltip="${%filter.reset.tooltip}">
+                  <l:icon src="symbol-close-circle-outline plugin-ionicons-api" />
+                </button>
+                <div class="lr-col-visibility-wrapper">
+                  <button id="lr-col-visibility-toggle" class="jenkins-button jenkins-button--tertiary" tooltip="${%filter.columns.tooltip}">
+                    <l:icon src="symbol-eye-outline plugin-ionicons-api" />
+                  </button>
+                  <div id="lr-col-visibility-menu" class="lr-col-visibility-menu" style="display:none;">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <st:include page="tableResources/table"/>
+          </div>
+          <div class="lr-tab-pane" id="lr-tab-labels" role="tabpanel">
+            <!-- Toolbar: filters + column visibility for labels -->
+            <div class="lr-toolbar">
+              <div class="lr-toolbar__filters">
+                <span class="lr-toolbar__heading">${%filter.heading}</span>
+                <input type="text" class="jenkins-input lr-labels-filter" id="lr-labels-filter-name" placeholder="${%filter.labels.name}" />
+                <input type="text" class="jenkins-input lr-labels-filter" id="lr-labels-filter-assigned" placeholder="${%filter.assigned}" />
+              </div>
+              <div class="lr-toolbar__actions">
+                <div class="lr-global-search-wrapper" data-tab="labels">
+                  <button class="jenkins-button jenkins-button--tertiary lr-global-search-toggle" tooltip="${%filter.search.tooltip}">
+                    <l:icon src="symbol-search" />
+                  </button>
+                  <div class="lr-global-search-popup" style="display:none;">
+                    <input type="text" class="jenkins-input lr-global-search-input" placeholder="${%filter.search.placeholder}" />
+                  </div>
+                </div>
+                <button class="jenkins-button jenkins-button--tertiary lr-reset-filters-btn" tooltip="${%filter.reset.tooltip}">
+                  <l:icon src="symbol-close-circle-outline plugin-ionicons-api" />
+                </button>
+                <div class="lr-col-visibility-wrapper">
+                  <button id="lr-labels-col-visibility-toggle" class="jenkins-button jenkins-button--tertiary" tooltip="${%filter.columns.tooltip}">
+                    <l:icon src="symbol-eye-outline plugin-ionicons-api" />
+                  </button>
+                  <div id="lr-labels-col-visibility-menu" class="lr-col-visibility-menu" style="display:none;">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <st:include page="tableLabels/table"/>
+          </div>
+          <div class="lr-tab-pane" id="lr-tab-queue" role="tabpanel">
+            <!-- Toolbar: filters + column visibility for queue -->
+            <div class="lr-toolbar">
+              <div class="lr-toolbar__filters">
+                <span class="lr-toolbar__heading">${%filter.heading}</span>
+                <input type="text" class="jenkins-input lr-queue-filter" id="lr-queue-filter-type" placeholder="${%filter.queue.type}" />
+                <input type="text" class="jenkins-input lr-queue-filter" id="lr-queue-filter-request" placeholder="${%filter.queue.request}" />
+                <input type="text" class="jenkins-input lr-queue-filter" id="lr-queue-filter-requested-by" placeholder="${%filter.queue.requestedBy}" />
+              </div>
+              <div class="lr-toolbar__actions">
+                <div class="lr-global-search-wrapper" data-tab="queue">
+                  <button class="jenkins-button jenkins-button--tertiary lr-global-search-toggle" tooltip="${%filter.search.tooltip}">
+                    <l:icon src="symbol-search" />
+                  </button>
+                  <div class="lr-global-search-popup" style="display:none;">
+                    <input type="text" class="jenkins-input lr-global-search-input" placeholder="${%filter.search.placeholder}" />
+                  </div>
+                </div>
+                <button class="jenkins-button jenkins-button--tertiary lr-reset-filters-btn" tooltip="${%filter.reset.tooltip}">
+                  <l:icon src="symbol-close-circle-outline plugin-ionicons-api" />
+                </button>
+                <div class="lr-col-visibility-wrapper">
+                  <button id="lr-queue-col-visibility-toggle" class="jenkins-button jenkins-button--tertiary" tooltip="${%filter.columns.tooltip}">
+                    <l:icon src="symbol-eye-outline plugin-ionicons-api" />
+                  </button>
+                  <div id="lr-queue-col-visibility-menu" class="lr-col-visibility-menu" style="display:none;">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <st:include page="tableQueue/table"/>
+          </div>
+        </div>
+        </j:otherwise>
+      </j:choose>
+      <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
+</j:jelly>

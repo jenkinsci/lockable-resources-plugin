@@ -23,14 +23,10 @@
     </f:entry>
 
     <f:entry title="${%entry.title}">
-      <f:repeatable field="declaredResources" header="${%field.header}" minimum="0" add="${%field.add}">
-        <table width="100%">
-          <st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.LockableResource"/>
-          <f:entry title="">
-            <div align="right"><f:repeatableDeleteButton/></div>
-          </f:entry>
-        </table>
-      </f:repeatable>
+      <div class="lr-config-moved-notice">
+        ${%entry.moved}
+        <a href="${rootURL}/lockable-resources/">${%entry.moved.link}</a>
+      </div>
     </f:entry>
   </f:section>
 </j:jelly>

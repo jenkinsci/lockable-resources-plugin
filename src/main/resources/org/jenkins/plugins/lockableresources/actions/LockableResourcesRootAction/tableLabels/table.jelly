@@ -27,31 +27,20 @@ THE SOFTWARE.
   xmlns:st="jelly:stapler">
   <j:set var="allLabels" value="${it.getLabelsList()}" />
   <j:if test="${allLabels.size() != 0}">
-    <st:adjunct includes="io.jenkins.plugins.data-tables"/>
     <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
     <div class="table-responsive">
       <table
-        class="jenkins-!-margin-bottom-4 table table-striped display data-table"
+        class="jenkins-table sortable"
         id="lockable-resources-labels"
-        isLoaded="true"
-        data-remember-search-text="true"
-        data-columns-definition="[null, null, null, null]"
-        data-table-configuration='
-        {
-          "stateSave": true,
-          "language": { "emptyTable": "${%table.empty}" },
-          "lengthMenu": [
-            [10, 25, 50, 100, -1],
-            [10, 25, 50, 100, "${%table.settings.page.length.all}"]
-          ]
-        }'
       >
         <thead>
-          <th class="width-100">${%labels.table.column.labels}</th>
-          <th>${%labels.table.column.assigned}</th>
-          <th>${%labels.table.column.free}</th>
-          <th>${%labels.table.column.percentage}</th>
+          <tr>
+            <th>${%labels.table.column.labels}</th>
+            <th>${%labels.table.column.assigned}</th>
+            <th>${%labels.table.column.free}</th>
+            <th>${%labels.table.column.percentage}</th>
+          </tr>
         </thead>
         <tbody>
           <j:forEach var="entry" items="${allLabels.entrySet()}">
@@ -73,7 +62,7 @@ THE SOFTWARE.
             />
             <j:choose>
               <j:when test="${percentage lt 5}">
-                <j:set var="cssClass" value="jenkins-!-color-red" />
+                <j:set var="cssClass" value="jenkins-!-error-color" />
               </j:when>
               <j:when test="${percentage lt 10}">
                 <j:set var="cssClass" value="jenkins-!-warning-color" />
@@ -85,7 +74,7 @@ THE SOFTWARE.
                 <j:set var="cssClass" value="" />
               </j:otherwise>
             </j:choose>
-            <tr>
+            <tr data-label-name="${label.name}" data-label-assigned="${allCount}">
               <td>
                 <a
                   class="jenkins-table__link model-link"
