@@ -42,6 +42,7 @@ import org.kohsuke.stapler.StaplerResponse2;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
+import org.kohsuke.stapler.verb.GET;
 
 @Extension
 @ExportedBean
@@ -926,6 +927,45 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     // ---------------------------------------------------------------------------
+    /** Returns resource names matching a Jenkins label expression as JSON. */
+    @Restricted(NoExternalUse.class)
+    @GET
+    public void doGetResourcesByLabelExpression(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException {
+        Jenkins.get().checkPermission(VIEW);
+
+        String expr = Util.fixEmptyAndTrim(req.getParameter("expr"));
+
+        final List<LockableResource> resources;
+        try {
+            resources = (expr == null)
+                    ? LockableResourcesManager.get().getReadOnlyResources()
+                    : LockableResourcesManager.get().getResourcesWithLabel(expr);
+        } catch (IllegalArgumentException e) {
+            rsp.sendError(400, "Invalid label expression: " + e.getMessage());
+            return;
+        }
+
+        net.sf.json.JSONArray items = new net.sf.json.JSONArray();
+        for (LockableResource r : resources) {
+            if (r == null || r.getName().isEmpty()) {
+                continue;
+            }
+            net.sf.json.JSONObject obj = new net.sf.json.JSONObject();
+            obj.put("name", r.getName());
+            items.add(obj);
+        }
+
+        net.sf.json.JSONObject result = new net.sf.json.JSONObject();
+        result.put("expr", expr == null ? "" : expr);
+        result.put("total", items.size());
+        result.put("items", items);
+
+        rsp.setContentType("application/json;charset=UTF-8");
+        rsp.getWriter().write(result.toString());
+    }
+
+    // ---------------------------------------------------------------------------
     /** Change queue order (item position) */
     @Restricted(NoExternalUse.class) // used by jelly
     @RequirePOST
@@ -1123,6 +1163,7 @@ public class LockableResourcesRootAction implements RootAction {
         rsp.setContentType("application/json;charset=UTF-8");
         rsp.getWriter().write(result.toString());
     }
+
 
     private String getQueueItemType(final Queue.QueueStruct item) {
         if (item.resourcesMatch()) {

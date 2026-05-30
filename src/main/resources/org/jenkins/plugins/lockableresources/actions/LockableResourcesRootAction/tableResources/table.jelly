@@ -34,6 +34,7 @@ THE SOFTWARE.
     <table
       class="jenkins-table sortable"
       id="lockable-resources"
+      data-resources-by-label-expression-url="getResourcesByLabelExpression"
     >
       <thead>
         <tr>
