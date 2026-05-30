@@ -1592,7 +1592,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public static LockableResourcesManager get() {
-        return (LockableResourcesManager) Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
+        LockableResourcesManager mgr = Jenkins.get().getDescriptorByType(LockableResourcesManager.class);
+        if (mgr == null) {
+            throw new IllegalStateException("LockableResourcesManager is not registered");
+        }
+        return mgr;
     }
 
     // ---------------------------------------------------------------------------

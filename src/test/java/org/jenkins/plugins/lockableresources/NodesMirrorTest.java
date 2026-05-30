@@ -18,7 +18,7 @@ import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 class NodesMirrorTest {
 
     private static final Logger LOGGER =
-            Logger.getLogger(org.jenkins.plugins.lockableresources.NodesMirror.class.getName());
+            Logger.getLogger(org.jenkins.plugins.lockableresources.nodes.NodesMirror.class.getName());
 
     @Test
     void mirror_few_nodes(JenkinsRule j) throws Exception {
