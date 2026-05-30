@@ -1360,7 +1360,7 @@ function initColumnVisibility(config) {
     var url = endpointUrl + "?" + params.toString();
     tbody.innerHTML = "<tr><td colspan=\"9\" class=\"lr-queue-loading\">Loading...</td></tr>";
 
-    fetch(url, { headers: crumb.wrap({}) })
+    fetch(url, { method: "POST", headers: crumb.wrap({}) })
       .then(function (rsp) {
         if (!rsp.ok) throw new Error("HTTP " + rsp.status);
         return rsp.json();
