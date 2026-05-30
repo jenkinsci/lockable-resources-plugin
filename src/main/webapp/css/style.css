@@ -1,6 +1,97 @@
-span.static-label {
-  border: 1px solid #666;
-  border-radius: 4px;
+/* Tab bar — reuse Jenkins app-build-tabs pattern, centered in app-bar */
+.lr-tab-bar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Toolbar — sits between app-bar and table */
+.lr-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  flex-wrap: wrap;
+}
+
+.lr-toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.lr-toolbar__heading {
+  font-weight: 600;
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color-secondary, #666);
+  flex-basis: 100%;
+}
+
+.lr-toolbar__filters .jenkins-input {
+  max-width: 14rem;
+}
+
+.lr-toolbar__filters .jenkins-select {
+  max-width: 10rem;
+}
+
+.lr-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+tr.lr-filtered-out,
+tr.lr-col-filtered-out,
+tr.lr-global-search-hidden {
+  display: none !important;
+}
+
+/* Tab panes */
+.lr-tab-pane {
+  display: none;
+}
+
+.lr-tab-pane--active {
+  display: block;
+}
+
+/* Resource header layout */
+.lr-resource-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lr-note-btn {
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary, #1a73e8);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.lr-note-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lr-resource-header__spacer {
+  flex: 1;
+}
+
+.lr-resource-description {
+  margin-top: 0.25rem;
+}
+
+/* Resource labels */
+span.lr-static-label {
+  border: var(--jenkins-border--subtle);
+  border-radius: var(--form-input-border-radius, 0.66rem);
   color: var(--orange);
   display: inline-block;
   font-size: 0.75rem;
@@ -13,48 +104,665 @@ span.static-label {
   white-space: nowrap;
 }
 
-.note-wrapper {
+.lr-note-wrapper {
   max-height: 300px;
-  color: darkgray;
-  font-size: small;
+  color: var(--text-color-secondary);
+  font-size: var(--font-size-xs, 0.75rem);
   flex-grow: 1;
 }
 
-.dataTable .jenkins-button {
-    margin: 2px;
+/* Queue status */
+.lr-queue-status {
+  padding: 0.75rem 0;
 }
 
-.dataTable.jenkins-table > tbody > tr > td {
-    vertical-align: top;
+/* Action buttons in table rows — icon-only, compact */
+.jenkins-table .jenkins-table__cell__button-wrapper {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: flex-start;
 }
 
-table.dataTable {
-  border-spacing: 0 2px;
+/* Resources table — auto layout with scroll wrapper handles overflow */
+#lockable-resources {
+    width: 100%;
 }
 
-table.dataTable > tbody > tr {
-  background-color: var(--table-body-background);
+/* Allow cell content to wrap */
+#lockable-resources td {
+    word-break: break-word;
 }
 
-table.dataTable td, table.dataTable th {
-    -webkit-box-sizing: inherit;
-    box-sizing: content-inherit;
+/* Properties — inline key=value pills */
+.lr-properties-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
 }
 
-
-.table-properties {
-  border-width: 0px;
-  -webkit-border-vertical-spacing: unset;
+.lr-property-pill {
+    display: inline-flex;
+    align-items: center;
+    border: var(--jenkins-border--subtle);
+    border-radius: var(--form-input-border-radius, 0.66rem);
+    font-size: var(--font-size-xs, 0.75rem);
+    line-height: 1;
+    overflow: hidden;
 }
 
-.table-properties>tbody>tr>td {
-  height: 1rem;
+.lr-property-pill__key {
+    padding: 0.2rem 0.4rem;
+    background: var(--table-header-background, rgba(0, 0, 0, 0.03));
+    font-weight: 500;
+    color: var(--text-color-secondary, #555);
 }
 
-.width-100 {
+.lr-property-pill__value {
+    padding: 0.2rem 0.4rem;
+}
+
+/* Pagination controls */
+.lr-pagination {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+}
+
+.lr-pagination__select-wrapper {
+    width: auto;
+}
+
+.lr-pagination__select {
+    font-size: 0.8125rem;
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+}
+
+.lr-pagination__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.lr-pagination__info {
+    font-size: 0.8125rem;
+    color: var(--text-color-secondary, #666);
+    padding: 0 0.25rem;
+}
+
+.lr-pagination__prev,
+.lr-pagination__next {
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0.15rem 0.5rem !important;
+}
+
+/* Queue pagination */
+.lr-queue-pagination {
+    margin-top: 0.5rem;
+}
+
+.lr-toolbar__actions .lr-queue-pagination {
+  margin-top: 0;
+}
+
+.lr-queue-loading {
+    text-align: center;
+    padding: 2rem !important;
+    color: var(--text-color-secondary, #666);
+}
+
+/* Dialog form layout (used inside Jenkins dialog.modal) */
+.app-parameters-dialog .jenkins-form-item {
+  margin-bottom: 1rem;
+}
+
+.app-parameters-dialog .jenkins-form-item:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Property rows in dialog */
+.lr-property-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.lr-property-row .lr-prop-name,
+.lr-property-row .lr-prop-value {
+  flex: 1;
+}
+
+/* Let tables scroll horizontally rather than collapse */
+.lr-tab-pane {
+  position: relative;
+}
+
+.lr-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#lr-tab-queue .table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#lr-tab-queue #lockable-resources-queue {
+  min-width: 100%;
+  width: max-content;
+}
+
+/* Queue table: prevent a single column from consuming all space */
+#lockable-resources-queue th,
+#lockable-resources-queue td {
+  vertical-align: middle;
+}
+
+/* Keep Requested By and Queued At compact and single-line */
+#lockable-resources-queue th:nth-child(6),
+#lockable-resources-queue td:nth-child(6),
+#lockable-resources-queue th:nth-child(7),
+#lockable-resources-queue td:nth-child(7) {
+  white-space: nowrap;
+}
+
+/* Reason can wrap naturally */
+#lockable-resources-queue th:nth-child(5),
+#lockable-resources-queue td:nth-child(5) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#lockable-resources,
+#lockable-resources-labels,
+#lockable-resources-queue {
+  min-width: 700px;
+}
+
+.lr-property-row .lr-remove-property {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+/* Global config notice: "resources moved" info box */
+.lr-config-moved-notice {
+  padding: 12px 16px;
+  border-radius: var(--form-input-border-radius, 0.66rem);
+  background: color-mix(in sRGB, var(--focus-input-border) 10%, transparent);
+  border: var(--jenkins-border-width, 1px) solid var(--focus-input-border);
+  color: var(--text-color);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.lr-config-moved-notice a {
+  font-weight: 600;
+}
+
+/* Overview tab — donut chart and stats */
+.lr-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.lr-overview-card {
+  background: var(--card-background, var(--background));
+  border: var(--jenkins-border--subtle);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lr-overview-card__header {
+  align-self: center;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-color-secondary, #666) !important;
+  text-decoration: none !important;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  padding: 0;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.lr-overview-card__header:hover {
+  color: var(--text-color, #333) !important;
+  text-decoration: none !important;
+}
+
+.lr-overview-stats-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+  text-align: center;
+}
+
+.lr-overview-stats-list .lr-overview-stat__number {
+  font-size: 2rem;
+}
+
+.lr-donut-wrap {
+  position: relative;
+  width: 8rem;
+  height: 8rem;
+  margin-bottom: 1rem;
+}
+
+.lr-donut {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  mask: radial-gradient(circle, transparent 0 60%, #000 61% 100%);
+  -webkit-mask: radial-gradient(circle, transparent 0 60%, #000 61% 100%);
+}
+
+.lr-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.lr-donut-legend {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.lr-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  padding: 0.3rem 0.625rem;
+  border-radius: 6px;
+  background: var(--pre-background, rgba(255,255,255,0.06));
+  transition: opacity 0.15s, transform 0.15s;
+  cursor: pointer;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.lr-legend-item:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.lr-legend-label {
+  color: var(--text-color-secondary, #999);
+}
+
+.lr-legend-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lr-legend-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lr-legend-dot--locked { background: var(--red); }
+.lr-legend-dot--reserved { background: var(--orange); }
+.lr-legend-dot--free { background: var(--green); }
+
+.lr-overview-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lr-overview-stat__number {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.lr-overview-stat__label {
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+}
+
+/* Top labels list in Labels card */
+.lr-top-labels {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--hairline-color, #e0e0e0);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.lr-top-label-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+  padding: 0.3rem 0.625rem;
+  border-radius: 6px;
+  background: var(--pre-background, rgba(255,255,255,0.06));
+  transition: opacity 0.15s, transform 0.15s;
+  cursor: pointer;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.lr-top-label-item:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.lr-top-label-item__name {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.lr-top-label-item__count {
+  color: var(--text-color-secondary);
+  font-size: 0.75rem;
+  background: var(--item-background--hover, rgba(0, 0, 0, 0.06));
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Queue details */
+.lr-queue-details {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--hairline-color, #e0e0e0);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lr-queue-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lr-queue-section__label {
+  color: var(--text-color-secondary, #999);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lr-queue-section__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  min-width: 0;
+}
+
+.lr-queue-section__value {
+  color: var(--text-color) !important;
+  font-weight: 500;
+  text-decoration: none !important;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.lr-queue-section__value:hover {
+  text-decoration: underline !important;
+  color: var(--text-color) !important;
+}
+
+.lr-queue-section__meta {
+  color: var(--text-color-secondary, #999);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Utilization highlight stat */
+.lr-overview-stat--highlight {
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Quick Actions card */
+.lr-overview-card--actions {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.lr-overview-card--actions .lr-overview-card__header {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.lr-quick-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+  justify-content: space-evenly;
+}
+
+.lr-quick-actions .jenkins-button {
+  padding: 0.5rem 0.75rem;
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+/* Global search popup */
+.lr-global-search-wrapper {
+  position: relative;
+}
+
+.lr-global-search-popup {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.3125rem);
+  z-index: 10;
+  backdrop-filter: var(--dropdown-backdrop-filter, blur(15px));
+  background: color-mix(in sRGB, var(--card-background) 85%, transparent);
+  border-radius: 1rem;
+  padding: 0.5rem;
+  box-shadow: var(--dropdown-box-shadow, 0 10px 30px rgba(0, 0, 0, 0.1));
+  min-width: 16rem;
+}
+
+.lr-global-search-popup .jenkins-input {
   width: 100%;
 }
 
-.queuebar:empty {
+.lr-global-search-toggle.lr-global-search-toggle--active {
+  color: var(--focus-input-border);
+}
+
+/* Bulk action bar */
+.lr-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--card-background, var(--background));
+  border-top: 2px solid var(--focus-input-border, var(--primary, #1b78d1));
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.lr-bulk-bar[aria-hidden="true"] {
   display: none;
+}
+
+.lr-bulk-bar__label {
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-color-secondary, #666);
+}
+
+.lr-bulk-bar__count {
+  font-weight: 700;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-color, #333);
+}
+
+.lr-bulk-bar__actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--hairline-color, #e0e0e0);
+  flex: 1;
+  justify-content: space-evenly;
+}
+
+.lr-bulk-action.jenkins-button {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.lr-select-all,
+.lr-select-resource {
+  cursor: pointer;
+}
+
+/* Column visibility */
+.lr-col-hidden {
+  display: none !important;
+}
+
+.lr-col-visibility-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.lr-col-visibility-menu {
+  position: absolute;
+  top: calc(100% + 0.3125rem);
+  right: 0;
+  z-index: 10;
+  backdrop-filter: var(--dropdown-backdrop-filter, blur(15px));
+  background: color-mix(in sRGB, var(--card-background) 85%, transparent);
+  border-radius: 1rem;
+  padding: 0.5rem;
+  min-width: 150px;
+  box-shadow: var(--dropdown-box-shadow, 0 10px 30px rgba(0, 0, 0, 0.1));
+}
+
+.lr-col-vis-item {
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  transition: background var(--standard-transition, 0.2s);
+}
+
+.lr-col-vis-item:hover {
+  background: var(--item-background--hover, rgba(0, 0, 0, 0.05));
+}
+
+.lr-col-vis-controls {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.4rem;
+  margin-bottom: 0.25rem;
+  border-bottom: var(--jenkins-border--subtle);
+}
+
+.lr-col-vis-controls .jenkins-button {
+  font-size: var(--font-size-xs, 0.75rem);
+  padding: 0.15rem 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.lr-col-vis-controls .jenkins-button.lr-col-vis-controls--active {
+  color: var(--focus-input-border);
+  font-weight: var(--font-bold-weight, 600);
+}
+
+/* ====================================================================
+   Responsive — mobile & narrow viewports
+   ==================================================================== */
+@media (max-width: 768px) {
+  .lr-tab-bar {
+    position: static;
+    transform: none;
+  }
+
+  .lr-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lr-add-resource-btn__text {
+    display: none;
+  }
+
+  .lr-overview-card--actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .lr-quick-actions {
+    justify-content: center;
+  }
+
+  .lr-quick-actions .jenkins-button {
+    flex: 0 1 auto;
+    padding: 0.5rem;
+  }
+
+  .lr-bulk-bar {
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .lr-bulk-bar__actions {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    flex-basis: 100%;
+    justify-content: center;
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .lr-bulk-action.jenkins-button {
+    flex: 0 1 auto;
+    padding: 0.5rem;
+  }
 }

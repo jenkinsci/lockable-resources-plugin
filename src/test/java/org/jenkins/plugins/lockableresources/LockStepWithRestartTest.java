@@ -57,7 +57,9 @@ class LockStepWithRestartTest extends LockStepTestBase {
             j.waitForMessage("Lock released on resource [Resource: resource1]", b1);
             isPaused(b1, 1, 0);
 
-            j.waitForMessage("Trying to acquire lock on [Resource: resource1]", b2);
+            // Wait for b2 to actually acquire the lock (not just "Trying to acquire"
+            // which was already logged before restart)
+            j.waitForMessage("Lock acquired on [Resource: resource1]", b2);
             isPaused(b2, 1, 0);
             j.assertLogContains("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
             isPaused(b3, 1, 1);

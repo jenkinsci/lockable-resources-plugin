@@ -1,13 +1,9 @@
-/*
- * The MIT License
- *
- * See the "LICENSE.txt" file for full copyright and license information.
- */
 package org.jenkins.plugins.lockableresources.actions;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.Util;
 import hudson.model.Api;
 import hudson.model.Descriptor;
@@ -22,12 +18,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.FreeDeadJobs;
 import org.jenkins.plugins.lockableresources.LockableResource;
+import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
@@ -71,7 +73,7 @@ public class LockableResourcesRootAction implements RootAction {
             PERMISSIONS_GROUP,
             "View",
             Messages._LockableResourcesRootAction_ViewPermission_Description(),
-            Jenkins.ADMINISTER,
+            Jenkins.READ,
             PermissionScope.JENKINS);
     public static final Permission QUEUE = new Permission(
             PERMISSIONS_GROUP,
@@ -79,12 +81,29 @@ public class LockableResourcesRootAction implements RootAction {
             Messages._LockableResourcesRootAction_QueueChangeOrderPermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
+    public static final Permission CONFIGURE = new Permission(
+            PERMISSIONS_GROUP,
+            "Configure",
+            Messages._LockableResourcesRootAction_ConfigurePermission_Description(),
+            Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
 
     public static final String ICON = "symbol-lock-closed";
 
+    @CheckForNull
     @Override
     public String getIconFileName() {
         return Jenkins.get().hasPermission(VIEW) ? ICON : null;
+    }
+
+    /**
+     * Returns the ManagementLink instance for use by the Jelly view when rendering
+     * within the Manage Jenkins layout.
+     * Used by {@code index.jelly}.
+     */
+    @Restricted(NoExternalUse.class)
+    public LockableResourcesManagementLink getManagementLink() {
+        return ExtensionList.lookupSingleton(LockableResourcesManagementLink.class);
     }
 
     public Api getApi() {
@@ -96,14 +115,231 @@ public class LockableResourcesRootAction implements RootAction {
         return LockableResource.getUserName();
     }
 
+    @CheckForNull
     @Override
     public String getDisplayName() {
-        return Messages.LockableResourcesRootAction_PermissionGroup();
+        return Jenkins.get().hasPermission(VIEW) ? Messages.LockableResourcesRootAction_PermissionGroup() : null;
     }
 
     @Override
     public String getUrlName() {
-        return Jenkins.get().hasPermission(VIEW) ? "lockable-resources" : "";
+        return "lockable-resources";
+    }
+
+    // ---------------------------------------------------------------------------
+    private static String formatDuration(long millis) {
+        long seconds = millis / 1000;
+        if (seconds < 60) return seconds + "s";
+        long minutes = seconds / 60;
+        if (minutes < 60) return minutes + "m";
+        long hours = minutes / 60;
+        long remainingMin = minutes % 60;
+        if (hours < 24) return hours + "h " + remainingMin + "m";
+        long days = hours / 24;
+        long remainingHours = hours % 24;
+        return days + "d " + remainingHours + "h";
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Returns a summary of resource states for the overview tab. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public Summary getSummary() {
+        Jenkins.get().checkPermission(VIEW);
+
+        int locked = 0;
+        int reserved = 0;
+        int queued = 0;
+        int free = 0;
+        int total = 0;
+
+        for (LockableResource r : LockableResourcesManager.get().getReadOnlyResources()) {
+            total++;
+            if (r.getReservedBy() != null) {
+                reserved++;
+            } else if (r.isLocked()) {
+                locked++;
+            } else {
+                // Queued resources are counted as free since the queued state
+                // is transient and nearly invisible in practice.
+                free++;
+            }
+        }
+
+        int queueItems = 0;
+        int distinctBuildsWaiting = 0;
+        String oldestBuildName = null;
+        String oldestBuildUrl = null;
+        long oldestQueuedAt = Long.MAX_VALUE;
+        Map<String, Integer> resourceDemand = new HashMap<>();
+        for (QueuedContextStruct context : LockableResourcesManager.get().getCurrentQueuedContext()) {
+            queueItems += context.getResources().size();
+            distinctBuildsWaiting++;
+            Run<?, ?> run = context.getBuild();
+            for (LockableResourcesStruct rs : context.getResources()) {
+                if (rs.queuedAt > 0 && rs.queuedAt < oldestQueuedAt) {
+                    oldestQueuedAt = rs.queuedAt;
+                    oldestBuildName = (run != null) ? run.getFullDisplayName() : null;
+                    oldestBuildUrl = (run != null) ? run.getUrl() : null;
+                }
+                for (LockableResource r : rs.required) {
+                    resourceDemand.merge(r.getName(), 1, Integer::sum);
+                }
+            }
+        }
+        String oldestWaitTime = null;
+        if (oldestBuildName != null && oldestQueuedAt < Long.MAX_VALUE) {
+            long elapsed = System.currentTimeMillis() - oldestQueuedAt;
+            oldestWaitTime = formatDuration(elapsed);
+        }
+        String mostContendedResource = null;
+        int mostContendedCount = 0;
+        for (Map.Entry<String, Integer> entry : resourceDemand.entrySet()) {
+            if (entry.getValue() > mostContendedCount) {
+                mostContendedCount = entry.getValue();
+                mostContendedResource = entry.getKey();
+            }
+        }
+
+        int labelsCount = getLabelsList().size();
+
+        List<LockableResourcesLabel> topLabels = getLabelsList().values().stream()
+                .sorted((a, b) -> Integer.compare(b.getAssigned(), a.getAssigned()))
+                .limit(3)
+                .collect(Collectors.toList());
+
+        return new Summary(
+                total,
+                locked,
+                reserved,
+                queued,
+                free,
+                queueItems,
+                distinctBuildsWaiting,
+                labelsCount,
+                topLabels,
+                oldestBuildName,
+                oldestBuildUrl,
+                oldestWaitTime,
+                mostContendedResource,
+                mostContendedCount);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Restricted(NoExternalUse.class)
+    public static final class Summary {
+        private final int total;
+        private final int locked;
+        private final int reserved;
+        private final int queued;
+        private final int free;
+        private final int queueItems;
+        private final int distinctBuildsWaiting;
+        private final int labelsCount;
+        private final List<LockableResourcesLabel> topLabels;
+        private final String oldestBuildName;
+        private final String oldestBuildUrl;
+        private final String oldestWaitTime;
+        private final String mostContendedResource;
+        private final int mostContendedCount;
+
+        Summary(
+                int total,
+                int locked,
+                int reserved,
+                int queued,
+                int free,
+                int queueItems,
+                int distinctBuildsWaiting,
+                int labelsCount,
+                List<LockableResourcesLabel> topLabels,
+                String oldestBuildName,
+                String oldestBuildUrl,
+                String oldestWaitTime,
+                String mostContendedResource,
+                int mostContendedCount) {
+            this.total = total;
+            this.locked = locked;
+            this.reserved = reserved;
+            this.queued = queued;
+            this.free = free;
+            this.queueItems = queueItems;
+            this.distinctBuildsWaiting = distinctBuildsWaiting;
+            this.labelsCount = labelsCount;
+            this.topLabels = topLabels;
+            this.oldestBuildName = oldestBuildName;
+            this.oldestBuildUrl = oldestBuildUrl;
+            this.oldestWaitTime = oldestWaitTime;
+            this.mostContendedResource = mostContendedResource;
+            this.mostContendedCount = mostContendedCount;
+        }
+
+        public int getTotal() {
+            return total;
+        }
+
+        public int getLocked() {
+            return locked;
+        }
+
+        public int getReserved() {
+            return reserved;
+        }
+
+        public int getQueued() {
+            return queued;
+        }
+
+        public int getFree() {
+            return free;
+        }
+
+        public int getQueueItems() {
+            return queueItems;
+        }
+
+        public int getDistinctBuildsWaiting() {
+            return distinctBuildsWaiting;
+        }
+
+        public int getLabelsCount() {
+            return labelsCount;
+        }
+
+        public List<LockableResourcesLabel> getTopLabels() {
+            return topLabels;
+        }
+
+        public int getLockedPct() {
+            return total > 0 ? (locked * 100) / total : 0;
+        }
+
+        public int getReservedPct() {
+            return total > 0 ? (reserved * 100) / total : 0;
+        }
+
+        public int getFreePct() {
+            return total > 0 ? (free * 100) / total : 0;
+        }
+
+        public String getOldestBuildName() {
+            return oldestBuildName;
+        }
+
+        public String getOldestBuildUrl() {
+            return oldestBuildUrl;
+        }
+
+        public String getOldestWaitTime() {
+            return oldestWaitTime;
+        }
+
+        public String getMostContendedResource() {
+            return mostContendedResource;
+        }
+
+        public int getMostContendedCount() {
+            return mostContendedCount;
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -658,6 +894,14 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
+    public void doRecycleDeadLocks(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        FreeDeadJobs.freePostMortemResources();
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    @RequirePOST
     public void doSaveNote(final StaplerRequest2 req, final StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(RESERVE);
 
@@ -709,6 +953,349 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Returns a page of queue items as JSON for server-side pagination. */
+    @Restricted(NoExternalUse.class)
+    public void doGetQueuePage(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(VIEW);
+
+        int page = 1;
+        int size = 25;
+        String filter = Util.fixEmptyAndTrim(req.getParameter("filter"));
+        String typeFilter = Util.fixEmptyAndTrim(req.getParameter("type"));
+        String requestFilter = Util.fixEmptyAndTrim(req.getParameter("request"));
+        String requestedByFilter = Util.fixEmptyAndTrim(req.getParameter("requestedBy"));
+
+        try {
+            String pageParam = req.getParameter("page");
+            if (pageParam != null) page = Math.max(1, Integer.parseInt(pageParam));
+        } catch (NumberFormatException ignored) {
+        }
+        try {
+            String sizeParam = req.getParameter("size");
+            if (sizeParam != null) size = Math.max(1, Math.min(200, Integer.parseInt(sizeParam)));
+        } catch (NumberFormatException ignored) {
+        }
+
+        Queue queue;
+        try {
+            queue = getQueue();
+        } catch (Descriptor.FormException e) {
+            rsp.sendError(500, e.getMessage());
+            return;
+        }
+
+        List<Queue.QueueStruct> allItems = queue.getAll();
+
+        // Apply filter if provided
+        if (filter != null || typeFilter != null || requestFilter != null || requestedByFilter != null) {
+            final String lowerFilter = filter != null ? filter.toLowerCase(Locale.ENGLISH) : null;
+            final String lowerTypeFilter = typeFilter != null ? typeFilter.toLowerCase(Locale.ENGLISH) : null;
+            final String lowerRequestFilter = requestFilter != null ? requestFilter.toLowerCase(Locale.ENGLISH) : null;
+            final String lowerRequestedByFilter =
+                    requestedByFilter != null ? requestedByFilter.toLowerCase(Locale.ENGLISH) : null;
+            allItems = allItems.stream()
+                    .filter(item -> {
+                        if (lowerTypeFilter != null
+                                && !getQueueItemType(item)
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerTypeFilter)) {
+                            return false;
+                        }
+                        if (lowerRequestFilter != null
+                                && !getQueueItemRequestText(item)
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerRequestFilter)) {
+                            return false;
+                        }
+                        if (lowerRequestedByFilter != null) {
+                            Run<?, ?> requestedByBuild = item.getBuild();
+                            String requestedByText =
+                                    requestedByBuild != null ? requestedByBuild.getFullDisplayName() : "";
+                            if (!requestedByText.toLowerCase(Locale.ENGLISH).contains(lowerRequestedByFilter)) {
+                                return false;
+                            }
+                        }
+
+                        if (lowerFilter == null) {
+                            return true;
+                        }
+
+                        if (item.resourcesMatch()) {
+                            for (LockableResource r : item.getRequiredResources()) {
+                                if (r.getName().toLowerCase(Locale.ENGLISH).contains(lowerFilter)) return true;
+                            }
+                        }
+                        if (item.labelsMatch()
+                                && item.getRequiredLabel()
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerFilter)) {
+                            return true;
+                        }
+                        Run<?, ?> b = item.getBuild();
+                        if (b != null
+                                && b.getFullDisplayName()
+                                        .toLowerCase(Locale.ENGLISH)
+                                        .contains(lowerFilter)) {
+                            return true;
+                        }
+                        return item.getId().toLowerCase(Locale.ENGLISH).contains(lowerFilter);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        int total = allItems.size();
+        int pages = (int) Math.ceil((double) total / size);
+        int fromIndex = Math.min((page - 1) * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<Queue.QueueStruct> pageItems = allItems.subList(fromIndex, toIndex);
+
+        // Build JSON response
+        net.sf.json.JSONObject result = new net.sf.json.JSONObject();
+        result.put("page", page);
+        result.put("size", size);
+        result.put("total", total);
+        result.put("pages", pages);
+
+        net.sf.json.JSONArray items = new net.sf.json.JSONArray();
+        int index = fromIndex;
+        for (Queue.QueueStruct item : pageItems) {
+            net.sf.json.JSONObject obj = new net.sf.json.JSONObject();
+            obj.put("index", index + 1);
+            obj.put("id", item.getId());
+            obj.put("priority", item.getPriority());
+            obj.put("queuedAt", item.getQueuedAt());
+            obj.put("requestText", getQueueItemRequestText(item));
+            obj.put(
+                    "queuedAtHuman",
+                    item.getQueuedAt() > 0
+                            ? Util.getTimeSpanString(System.currentTimeMillis() - item.getQueuedAt())
+                            : "");
+
+            Run<?, ?> build = item.getBuild();
+            if (build != null) {
+                obj.put("requestedBy", build.getFullDisplayName());
+                obj.put("requestedByUrl", build.getUrl());
+            } else {
+                obj.put("requestedBy", "");
+                obj.put("requestedByUrl", "");
+            }
+
+            if (item.resourcesMatch()) {
+                obj.put("type", "resources");
+                net.sf.json.JSONArray resources = new net.sf.json.JSONArray();
+                for (LockableResource r : item.getRequiredResources()) {
+                    net.sf.json.JSONObject ro = new net.sf.json.JSONObject();
+                    ro.put("name", r.getName());
+                    ro.put("ephemeral", r.isEphemeral());
+                    ro.put("description", r.getDescription() != null ? r.getDescription() : "");
+                    resources.add(ro);
+                }
+                obj.put("request", resources);
+                obj.put("reason", "");
+            } else if (item.labelsMatch()) {
+                obj.put("type", "label");
+                obj.put("request", item.getRequiredLabel());
+                String requiredNum = item.getRequiredNumber();
+                obj.put("reason", "0".equals(requiredNum) ? "all" : requiredNum + " required");
+            } else {
+                obj.put("type", "groovy");
+                obj.put("request", "Groovy expression");
+                obj.put("reason", "");
+            }
+
+            items.add(obj);
+            index++;
+        }
+        result.put("items", items);
+
+        // Warning info
+        Queue.QueueStruct oldest = queue.getOldest();
+        if (oldest != null && oldest.takeTooLong()) {
+            result.put("warningCount", allItems.size());
+            result.put("warningAge", Util.getTimeSpanString(System.currentTimeMillis() - oldest.getQueuedAt()));
+        }
+
+        rsp.setContentType("application/json;charset=UTF-8");
+        rsp.getWriter().write(result.toString());
+    }
+
+    private String getQueueItemType(final Queue.QueueStruct item) {
+        if (item.resourcesMatch()) {
+            return "resources";
+        }
+        if (item.labelsMatch()) {
+            return "label";
+        }
+        return "groovy";
+    }
+
+    private String getQueueItemRequestText(final Queue.QueueStruct item) {
+        if (item.resourcesMatch()) {
+            return item.getRequiredResources().stream()
+                    .map(LockableResource::getName)
+                    .collect(Collectors.joining(", "));
+        }
+        if (item.labelsMatch()) {
+            return item.getRequiredLabel();
+        }
+        return "Groovy expression";
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Parse properties from a JSON array. */
+    private List<LockableResourceProperty> parsePropertiesFromJson(net.sf.json.JSONObject json) {
+        List<LockableResourceProperty> properties = new ArrayList<>();
+        net.sf.json.JSONArray propsArr = json.optJSONArray("properties");
+        if (propsArr != null) {
+            for (int i = 0; i < propsArr.size(); i++) {
+                net.sf.json.JSONObject p = propsArr.getJSONObject(i);
+                String pName = Util.fixEmptyAndTrim(p.optString("name", null));
+                String pValue = p.optString("value", "");
+                if (pName != null) {
+                    LockableResourceProperty prop = new LockableResourceProperty();
+                    prop.setName(pName);
+                    prop.setValue(pValue);
+                    properties.add(prop);
+                }
+            }
+        }
+        return properties;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Create a new lockable resource from the management page. */
+    @Restricted(NoExternalUse.class)
+    @RequirePOST
+    public void doCreateResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(CONFIGURE);
+
+        String name;
+        String description;
+        String labels;
+        List<LockableResourceProperty> properties = new ArrayList<>();
+
+        String contentType = req.getContentType();
+        if (contentType != null && contentType.contains("application/json")) {
+            // JSON body from the inline dialog
+            net.sf.json.JSONObject json = net.sf.json.JSONObject.fromObject(
+                    new String(req.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            name = Util.fixEmptyAndTrim(json.optString("name", null));
+            description = Util.fixEmptyAndTrim(json.optString("description", null));
+            labels = Util.fixEmptyAndTrim(json.optString("labels", null));
+            properties = parsePropertiesFromJson(json);
+        } else {
+            // Form-encoded (e.g. from tests)
+            name = Util.fixEmptyAndTrim(req.getParameter("name"));
+            description = Util.fixEmptyAndTrim(req.getParameter("description"));
+            labels = Util.fixEmptyAndTrim(req.getParameter("labels"));
+        }
+
+        if (name == null) {
+            rsp.sendError(400, "Resource name is required.");
+            return;
+        }
+
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        if (manager.fromName(name) != null) {
+            rsp.sendError(409, Messages.error_resourceAlreadyExists(name));
+            return;
+        }
+
+        LockableResource resource = new LockableResource(name);
+
+        if (description != null) {
+            resource.setDescription(description);
+        }
+        if (labels != null) {
+            resource.setLabels(labels);
+        }
+        if (!properties.isEmpty()) {
+            resource.setProperties(properties);
+        }
+
+        boolean added = manager.addResource(resource, /*doSave*/ true);
+        if (!added) {
+            rsp.sendError(409, Messages.error_resourceAlreadyExists(name));
+            return;
+        }
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Edit an existing lockable resource from the management page. */
+    @Restricted(NoExternalUse.class)
+    @RequirePOST
+    public void doEditResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(CONFIGURE);
+
+        String contentType = req.getContentType();
+        if (contentType == null || !contentType.contains("application/json")) {
+            rsp.sendError(400, "JSON body required.");
+            return;
+        }
+
+        net.sf.json.JSONObject json = net.sf.json.JSONObject.fromObject(
+                new String(req.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+
+        String name = Util.fixEmptyAndTrim(json.optString("name", null));
+        if (name == null) {
+            rsp.sendError(400, "Resource name is required.");
+            return;
+        }
+
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        synchronized (LockableResourcesManager.syncResources) {
+            LockableResource resource = manager.fromName(name);
+            if (resource == null) {
+                rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+                return;
+            }
+
+            resource.setDescription(Util.fixEmptyAndTrim(json.optString("description", null)));
+            resource.setLabels(Util.fixEmptyAndTrim(json.optString("labels", null)));
+            resource.setProperties(parsePropertiesFromJson(json));
+
+            manager.save();
+        }
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Delete a lockable resource from the management page. */
+    @Restricted(NoExternalUse.class)
+    @RequirePOST
+    public void doDeleteResource(final StaplerRequest2 req, final StaplerResponse2 rsp)
+            throws IOException, ServletException {
+        Jenkins.get().checkPermission(CONFIGURE);
+
+        String name = req.getParameter("resource");
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        synchronized (LockableResourcesManager.syncResources) {
+            LockableResource resource = manager.fromName(name);
+            if (resource == null) {
+                rsp.sendError(404, Messages.error_resourceDoesNotExist(name));
+                return;
+            }
+
+            if (!resource.isFree()) {
+                String cause = resource.isLocked() ? "locked" : resource.isReserved() ? "reserved" : "queued";
+                rsp.sendError(423, Messages.error_resourceAlreadyLocked(name) + " (" + cause + ")");
+                return;
+            }
+
+            List<LockableResource> toRemove = new ArrayList<>();
+            toRemove.add(resource);
+            manager.removeResources(toRemove);
+            manager.save();
+        }
         rsp.forwardToPreviousPage(req);
     }
 

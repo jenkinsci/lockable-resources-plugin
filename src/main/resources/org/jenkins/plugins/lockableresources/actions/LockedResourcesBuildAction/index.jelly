@@ -47,32 +47,21 @@ THE SOFTWARE.
         <t:help href="https://github.com/jenkinsci/lockable-resources-plugin#locked-resources-build-page" />
       </l:app-bar>
 
-      <st:adjunct includes="io.jenkins.plugins.data-tables"/>
       <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
 
       <div class="table-responsive">
         <table
-            class="jenkins-!-margin-bottom-4 table table-striped display data-table"
+            class="jenkins-table sortable"
             id="used-lockable-resources-by-build"
-            isLoaded="true"
-            data-remember-search-text="true"
-            data-columns-definition="[null, null, null, null, null]"
-            data-table-configuration='
-            {
-              "stateSave": true,
-              "language": { "emptyTable": "${%table.empty}" },
-              "lengthMenu": [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "${%table.settings.page.length.all}"]
-              ]
-            }'
           >
             <thead>
+              <tr>
               <th>${%table.column.index}</th>
               <th>${%table.column.timeStamp}</th>
               <th>${%table.column.action}</th>
               <th>${%table.column.step}</th>
               <th>${%table.column.name}</th>
+              </tr>
             </thead>
             <tbody>
               <j:forEach var="loEntry" items="${it.getReadOnlyLogs()}" varStatus="idx">
@@ -95,7 +84,6 @@ THE SOFTWARE.
             </tbody>
           </table>
       </div>
-      <script type="text/javascript" src="${resURL}/plugin/data-tables-api/js/table.js"/>
     </l:main-panel>
   </l:layout>
 </j:jelly>

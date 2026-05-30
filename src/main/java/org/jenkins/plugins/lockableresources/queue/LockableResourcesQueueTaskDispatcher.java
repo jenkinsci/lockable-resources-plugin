@@ -265,5 +265,15 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
                     + timeoutUnit.toLowerCase(java.util.Locale.ENGLISH)
                     + " waiting for lockable resources";
         }
+
+        /**
+         * Signals that this blockage is fatal and the queue item should be removed.
+         * Since Jenkins 2.532 (core PR #11173), the queue checks this flag and
+         * cancels the item itself instead of re-adding it as a {@code BlockedItem}.
+         */
+        @Override
+        public boolean isFatal() {
+            return true;
+        }
     }
 }

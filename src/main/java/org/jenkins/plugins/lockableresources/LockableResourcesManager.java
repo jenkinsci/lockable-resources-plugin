@@ -219,13 +219,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Get declared resources, means only defined in config file (xml or JCaC yaml). */
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getDeclaredResources() {
-        ArrayList<LockableResource> declaredResources = new ArrayList<>();
-        for (LockableResource r : this.getResources()) {
-            if (!r.isEphemeral() && !r.isNodeResource()) {
-                declaredResources.add(r);
+        synchronized (syncResources) {
+            ArrayList<LockableResource> declaredResources = new ArrayList<>();
+            for (LockableResource r : this.resources) {
+                if (!r.isEphemeral() && !r.isNodeResource()) {
+                    declaredResources.add(r);
+                }
             }
+            return declaredResources;
         }
-        return declaredResources;
     }
 
     // ---------------------------------------------------------------------------
@@ -289,14 +291,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Get all resources used by project. */
     @Restricted(NoExternalUse.class)
     public List<LockableResource> getResourcesFromProject(String fullName) {
-        List<LockableResource> matching = new ArrayList<>();
-        for (LockableResource r : this.getResources()) {
-            String rName = r.getQueueItemProject();
-            if (rName != null && rName.equals(fullName)) {
-                matching.add(r);
+        synchronized (syncResources) {
+            List<LockableResource> matching = new ArrayList<>();
+            for (LockableResource r : this.resources) {
+                String rName = r.getQueueItemProject();
+                if (rName != null && rName.equals(fullName)) {
+                    matching.add(r);
+                }
             }
+            return matching;
         }
-        return matching;
     }
 
     // ---------------------------------------------------------------------------
@@ -1243,6 +1247,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 uncacheIfFreeing(r, true, true);
                 r.reset();
             }
+
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
+
             save();
         }
         ResourceEventListener.fireEvent(ResourceEvent.RESET, resources, null, null);
@@ -1654,7 +1663,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public static LockableResourcesManager get() {
-        return (LockableResourcesManager) Jenkins.get().getDescriptorOrDie(LockableResourcesManager.class);
+        LockableResourcesManager mgr = Jenkins.get().getDescriptorByType(LockableResourcesManager.class);
+        if (mgr == null) {
+            throw new IllegalStateException("LockableResourcesManager is not registered");
+        }
+        return mgr;
     }
 
     // ---------------------------------------------------------------------------
