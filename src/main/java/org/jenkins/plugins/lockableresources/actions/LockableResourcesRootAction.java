@@ -1164,7 +1164,6 @@ public class LockableResourcesRootAction implements RootAction {
         rsp.getWriter().write(result.toString());
     }
 
-
     private String getQueueItemType(final Queue.QueueStruct item) {
         if (item.resourcesMatch()) {
             return "resources";

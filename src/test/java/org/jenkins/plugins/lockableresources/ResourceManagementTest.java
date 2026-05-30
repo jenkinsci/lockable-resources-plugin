@@ -75,7 +75,8 @@ class ResourceManagementTest {
         return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
     }
 
-    private JSONObject getResourcesByLabelExpression(JenkinsRule j, JenkinsRule.WebClient wc, String expr) throws Exception {
+    private JSONObject getResourcesByLabelExpression(JenkinsRule j, JenkinsRule.WebClient wc, String expr)
+            throws Exception {
         String query = expr == null ? "" : "expr=" + URLEncoder.encode(expr, StandardCharsets.UTF_8);
         String path = "lockable-resources/getResourcesByLabelExpression" + (query.isEmpty() ? "" : "?" + query);
         URL url = new URL(j.getURL(), path);
