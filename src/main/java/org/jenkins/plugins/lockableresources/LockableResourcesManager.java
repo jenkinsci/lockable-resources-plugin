@@ -1591,6 +1591,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /**
+     * Returns the singleton {@link LockableResourcesManager} instance.
+     *
+     * <p>{@link LockableResourcesManager} extends {@link GlobalConfiguration}, which means it is
+     * registered in Jenkins as a descriptor/extension instance. Therefore, it must be looked up by
+     * descriptor type via {@link Jenkins#getDescriptorByType(Class)}.
+     *
+     * <p>Do <strong>not</strong> use {@link Jenkins#getDescriptorOrDie(Class)} here: that API is
+     * intended for resolving the {@link Descriptor} of a {@code Describable} type (e.g. a build
+     * step), and can fail during early initialization (notably in {@code JenkinsRule} startup)
+     * because {@link GlobalConfiguration} instances are registered differently.
+     *
+     * @return the configured {@link LockableResourcesManager} instance
+     * @throws IllegalStateException if the extension is not registered
+     */
     public static LockableResourcesManager get() {
         LockableResourcesManager mgr = Jenkins.get().getDescriptorByType(LockableResourcesManager.class);
         if (mgr == null) {
