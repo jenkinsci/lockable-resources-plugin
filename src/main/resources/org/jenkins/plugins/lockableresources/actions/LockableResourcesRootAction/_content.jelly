@@ -251,6 +251,7 @@
                 </div>
                 <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-held-by" placeholder="${%filter.heldBy}" />
                 <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-label" placeholder="${%filter.resources.labels}" />
+                <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-label-expression" placeholder="${%filter.resources.labelExpression}" />
               </div>
               <div class="lr-toolbar__actions">
                 <div class="lr-global-search-wrapper" data-tab="resources">
