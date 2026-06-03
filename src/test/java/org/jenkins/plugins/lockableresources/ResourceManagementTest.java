@@ -9,6 +9,8 @@ import static org.hamcrest.Matchers.nullValue;
 
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -68,6 +70,15 @@ class ResourceManagementTest {
 
     private JSONObject getQueuePage(JenkinsRule j, JenkinsRule.WebClient wc, String query) throws Exception {
         String path = "lockable-resources/getQueuePage" + (query == null || query.isEmpty() ? "" : "?" + query);
+        URL url = new URL(j.getURL(), path);
+        WebRequest req = new WebRequest(url, HttpMethod.GET);
+        return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
+    }
+
+    private JSONObject getResourcesByLabelExpression(JenkinsRule j, JenkinsRule.WebClient wc, String expr)
+            throws Exception {
+        String query = expr == null ? "" : "expr=" + URLEncoder.encode(expr, StandardCharsets.UTF_8);
+        String path = "lockable-resources/getResourcesByLabelExpression" + (query.isEmpty() ? "" : "?" + query);
         URL url = new URL(j.getURL(), path);
         WebRequest req = new WebRequest(url, HttpMethod.GET);
         return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
@@ -462,6 +473,27 @@ class ResourceManagementTest {
         JSONObject combined = getQueuePage(j, wc, "type=resources&filter=queue-filter-resource");
         assertThat(combined.getInt("total"), is(3));
         assertThat(combined.getJSONArray("items").getJSONObject(0).getString("type"), is("resources"));
+    }
+
+    @Test
+    void resourcesByLabelExpressionEndpointAppliesExpression(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("expr-r1", "A B");
+        LockableResourcesManager.get().createResourceWithLabel("expr-r2", "A");
+        LockableResourcesManager.get().createResourceWithLabel("expr-r3", "B C");
+
+        JenkinsRule.WebClient wc = loginAsAdmin(j);
+        JSONObject response = getResourcesByLabelExpression(j, wc, "A && B");
+
+        JSONArray items = response.getJSONArray("items");
+        List<String> names = new ArrayList<>();
+        for (Object o : items) {
+            names.add(((JSONObject) o).getString("name"));
+        }
+
+        assertThat(response.getInt("total"), is(1));
+        assertThat(names.contains("expr-r1"), is(true));
+        assertThat(names.contains("expr-r2"), is(false));
+        assertThat(names.contains("expr-r3"), is(false));
     }
 
     @Test

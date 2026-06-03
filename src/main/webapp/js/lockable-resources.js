@@ -356,10 +356,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var statusSelect = document.getElementById("lr-filter-status");
     var heldByInput = document.getElementById("lr-filter-held-by");
     var labelInput = document.getElementById("lr-filter-label");
+    var labelExprInput = document.getElementById("lr-filter-label-expression");
     if (quickInput) quickInput.value = "";
     if (statusSelect) statusSelect.value = "";
     if (heldByInput) heldByInput.value = "";
     if (labelInput) labelInput.value = "";
+    if (labelExprInput) labelExprInput.value = "";
   }
 
   // Legend status pills navigate to resources tab with status filter
@@ -947,30 +949,163 @@ function initColumnVisibility(config) {
 
 // ============ Instantiate filters & column visibility for all tabs ============
 (function () {
+  var resourcesExprState = {
+    pendingExpr: null,
+    loadedExpr: null,
+    inflight: false,
+    timer: null,
+    allowedNames: null,
+  };
+
+  function isProbablyCompleteLabelExpression(expr) {
+    // Heuristic to prevent calling the server on intermediate/incomplete inputs while typing.
+    // We still rely on the server for actual validation.
+    if (!expr) return true;
+
+    // Must contain at least one label-ish character.
+    try {
+      if (!/[\p{L}\p{N}_\-\.]/u.test(expr)) return false;
+    } catch (e) {
+      // Fallback for older JS engines without unicode property escapes.
+      if (!/[A-Za-z0-9_\-\.]/.test(expr)) return false;
+    }
+
+    // Parentheses must be balanced.
+    var depth = 0;
+    for (var i = 0; i < expr.length; i++) {
+      var ch = expr.charAt(i);
+      if (ch === "(") depth++;
+      else if (ch === ")") {
+        depth--;
+        if (depth < 0) return false;
+      }
+    }
+    if (depth !== 0) return false;
+
+    // Trailing operators are incomplete.
+    if (/(&&|\|\||[&|])\s*$/.test(expr)) return false;
+    if (/!\s*$/.test(expr)) return false;
+    if (/\(\s*$/.test(expr)) return false;
+
+    return true;
+  }
+
+  function scheduleResourcesExpressionReload(table, expr, afterReload) {
+    if (!table) return;
+    var trimmed = (expr || "").trim();
+
+    // Empty expression = no server-side restriction.
+    if (!trimmed) {
+      resourcesExprState.pendingExpr = "";
+      resourcesExprState.loadedExpr = "";
+      resourcesExprState.allowedNames = null;
+      return;
+    }
+
+    // Don't query the server for intermediate input while the user is typing.
+    if (!isProbablyCompleteLabelExpression(trimmed)) {
+      resourcesExprState.pendingExpr = trimmed;
+      resourcesExprState.loadedExpr = "";
+      resourcesExprState.allowedNames = null;
+      return;
+    }
+
+    resourcesExprState.pendingExpr = trimmed;
+
+    if (resourcesExprState.timer) {
+      clearTimeout(resourcesExprState.timer);
+    }
+
+    resourcesExprState.timer = setTimeout(function () {
+      if (resourcesExprState.inflight) {
+        return;
+      }
+
+      if (resourcesExprState.loadedExpr === resourcesExprState.pendingExpr) {
+        return;
+      }
+
+      resourcesExprState.inflight = true;
+      var endpoint = table.dataset.resourcesByLabelExpressionUrl || "getResourcesByLabelExpression";
+      var url = endpoint + "?expr=" + encodeURIComponent(resourcesExprState.pendingExpr);
+
+      fetch(url, { headers: { "Accept": "application/json" } })
+        .then(function (rsp) {
+          if (rsp.ok) return rsp.json();
+          return rsp.text().then(function (t) {
+            throw new Error(t || ("HTTP " + rsp.status));
+          });
+        })
+        .then(function (data) {
+          var set = new Set();
+          (data.items || []).forEach(function (it) {
+            if (it && it.name) set.add(it.name);
+          });
+          resourcesExprState.allowedNames = set;
+          resourcesExprState.loadedExpr = resourcesExprState.pendingExpr;
+          if (typeof afterReload === "function") afterReload();
+        })
+        .catch(function (err) {
+          if (typeof notificationBar !== "undefined" && notificationBar && notificationBar.show) {
+            notificationBar.show(
+              "Failed to apply label expression filter: " + (err && err.message ? err.message : err),
+              notificationBar.ERROR);
+          }
+        })
+        .finally(function () {
+          resourcesExprState.inflight = false;
+          if (resourcesExprState.loadedExpr !== resourcesExprState.pendingExpr) {
+            scheduleResourcesExpressionReload(table, resourcesExprState.pendingExpr, afterReload);
+          }
+        });
+    }, 250);
+  }
+
+  function applyResourcesFilters(table) {
+    var quickInput = document.getElementById("lr-filter-quick");
+    var statusSelect = document.getElementById("lr-filter-status");
+    var heldByInput = document.getElementById("lr-filter-held-by");
+    var labelInput = document.getElementById("lr-filter-label");
+    var labelExprInput = document.getElementById("lr-filter-label-expression");
+
+    var nameVal = quickInput ? quickInput.value.trim().toLowerCase() : "";
+    var statusVal = statusSelect ? statusSelect.value : "";
+    var heldByVal = heldByInput ? heldByInput.value.trim().toLowerCase() : "";
+    var labelVal = labelInput ? labelInput.value.trim().toLowerCase() : "";
+    var labelExprVal = labelExprInput ? labelExprInput.value.trim() : "";
+
+    scheduleResourcesExpressionReload(table, labelExprVal, function () {
+      applyResourcesFilters(table);
+    });
+
+    var allowedSet = null;
+    if (labelExprVal && resourcesExprState.loadedExpr === labelExprVal) {
+      allowedSet = resourcesExprState.allowedNames;
+    }
+
+    var tbody = table.querySelector("tbody");
+    if (!tbody) return;
+
+    Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+      var resourceName = row.dataset.resourceName || "";
+      var exprOk = !labelExprVal || !allowedSet || allowedSet.has(resourceName);
+      var show = exprOk
+        && (!nameVal || resourceName.toLowerCase().indexOf(nameVal) !== -1)
+        && (!statusVal || (row.dataset.resourceStatus || "") === statusVal)
+        && (!heldByVal || (row.dataset.resourceOwner || "").toLowerCase().indexOf(heldByVal) !== -1)
+        && (!labelVal || (row.dataset.resourceLabels || "").toLowerCase().indexOf(labelVal) !== -1);
+      row.classList.toggle("lr-col-filtered-out", !show);
+    });
+    table.dispatchEvent(new CustomEvent("lr-filter-changed"));
+  }
+
   // Resources tab filters
   initColumnFilters({
     storageKey: "lockable-resources-col-filters",
     tableId: "lockable-resources",
     filterClass: "lr-col-filter",
     applyFn: function (table) {
-      var quickInput = document.getElementById("lr-filter-quick");
-      var statusSelect = document.getElementById("lr-filter-status");
-      var heldByInput = document.getElementById("lr-filter-held-by");
-      var labelInput = document.getElementById("lr-filter-label");
-      var nameVal = quickInput ? quickInput.value.trim().toLowerCase() : "";
-      var statusVal = statusSelect ? statusSelect.value : "";
-      var heldByVal = heldByInput ? heldByInput.value.trim().toLowerCase() : "";
-      var labelVal = labelInput ? labelInput.value.trim().toLowerCase() : "";
-      var tbody = table.querySelector("tbody");
-      if (!tbody) return;
-      Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
-        var show = (!nameVal || (row.dataset.resourceName || "").toLowerCase().indexOf(nameVal) !== -1)
-          && (!statusVal || (row.dataset.resourceStatus || "") === statusVal)
-          && (!heldByVal || (row.dataset.resourceOwner || "").toLowerCase().indexOf(heldByVal) !== -1)
-          && (!labelVal || (row.dataset.resourceLabels || "").toLowerCase().indexOf(labelVal) !== -1);
-        row.classList.toggle("lr-col-filtered-out", !show);
-      });
-      table.dispatchEvent(new CustomEvent("lr-filter-changed"));
+      applyResourcesFilters(table);
     }
   });
 
@@ -986,6 +1121,7 @@ function initColumnVisibility(config) {
       var assignedVal = assignedInput ? assignedInput.value.trim() : "";
       var tbody = table.querySelector("tbody");
       if (!tbody) return;
+
       Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
         var show = (!nameVal || (row.dataset.labelName || "").toLowerCase().indexOf(nameVal) !== -1)
           && (!assignedVal || (row.dataset.labelAssigned || "") === assignedVal);
