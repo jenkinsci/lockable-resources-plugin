@@ -49,8 +49,7 @@ class ResourceEventListenerTest {
 
     @Test
     void extensionPointIsRegistered(JenkinsRule j) {
-        ExtensionList<ResourceEventListener> listeners =
-                ExtensionList.lookup(ResourceEventListener.class);
+        ExtensionList<ResourceEventListener> listeners = ExtensionList.lookup(ResourceEventListener.class);
         assertTrue(listeners.size() > 0, "At least the test listener should be registered");
         boolean found = false;
         for (ResourceEventListener l : listeners) {
@@ -108,8 +107,7 @@ class ResourceEventListenerTest {
 
         assertTrue(lrm.steal(Arrays.asList(r1), "thief"));
 
-        List<TestResourceEventListener.EventRecord> events =
-                TestResourceEventListener.getEvents(ResourceEvent.STOLEN);
+        List<TestResourceEventListener.EventRecord> events = TestResourceEventListener.getEvents(ResourceEvent.STOLEN);
         assertThat(events, hasSize(1));
         assertThat(events.get(0).resourceNames, is(Arrays.asList("r1")));
         assertThat(events.get(0).userName, is("thief"));
@@ -146,8 +144,7 @@ class ResourceEventListenerTest {
 
         lrm.reset(Arrays.asList(r1));
 
-        List<TestResourceEventListener.EventRecord> events =
-                TestResourceEventListener.getEvents(ResourceEvent.RESET);
+        List<TestResourceEventListener.EventRecord> events = TestResourceEventListener.getEvents(ResourceEvent.RESET);
         assertThat(events, hasSize(1));
         assertThat(events.get(0).resourceNames, is(Arrays.asList("r1")));
     }
@@ -158,19 +155,16 @@ class ResourceEventListenerTest {
         lrm.createResource("r1");
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                 lock('r1') {
                     echo 'inside lock'
                 }
-                """,
-                true));
+                """, true));
 
         WorkflowRun b = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatusSuccess(j.waitForCompletion(b));
 
-        List<TestResourceEventListener.EventRecord> locked =
-                TestResourceEventListener.getEvents(ResourceEvent.LOCKED);
+        List<TestResourceEventListener.EventRecord> locked = TestResourceEventListener.getEvents(ResourceEvent.LOCKED);
         assertThat("Expected exactly one LOCKED event", locked, hasSize(1));
         assertThat(locked.get(0).resourceNames, is(Arrays.asList("r1")));
         assertNotNull(locked.get(0).buildName, "LOCKED event should include build name");
@@ -274,7 +268,9 @@ class ResourceEventListenerTest {
         // configure a groovy callback that writes to a static field for verification
         String script =
                 "org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener.callbackResult = event + ':' + resource.name + ':' + (userName ?: 'null')";
-        ScriptApproval.get().approveSignature("staticField org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener callbackResult");
+        ScriptApproval.get()
+                .approveSignature(
+                        "staticField org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener callbackResult");
         SecureGroovyScript groovyScript =
                 new SecureGroovyScript(script, true, null).configuring(ApprovalContext.create());
         lrm.setOnResourceEventScript(groovyScript);
@@ -299,7 +295,9 @@ class ResourceEventListenerTest {
 
         String script =
                 "org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener.callbackResult = event + ':' + resource.name";
-        ScriptApproval.get().approveSignature("staticField org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener callbackResult");
+        ScriptApproval.get()
+                .approveSignature(
+                        "staticField org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener callbackResult");
         SecureGroovyScript groovyScript =
                 new SecureGroovyScript(script, true, null).configuring(ApprovalContext.create());
         lrm.setOnResourceEventScript(groovyScript);
@@ -328,20 +326,20 @@ class ResourceEventListenerTest {
 
         String script =
                 "if (event == 'LOCKED') { org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener.callbackResult = 'build=' + (buildName ?: 'null') }";
-        ScriptApproval.get().approveSignature("staticField org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener callbackResult");
+        ScriptApproval.get()
+                .approveSignature(
+                        "staticField org.jenkins.plugins.lockableresources.listeners.TestResourceEventListener callbackResult");
         SecureGroovyScript groovyScript =
                 new SecureGroovyScript(script, true, null).configuring(ApprovalContext.create());
         lrm.setOnResourceEventScript(groovyScript);
         lrm.setEventCallbackAsync(false);
 
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                """
+        p.setDefinition(new CpsFlowDefinition("""
                 lock('r1') {
                     echo 'locked'
                 }
-                """,
-                true));
+                """, true));
 
         WorkflowRun b = p.scheduleBuild2(0).waitForStart();
         j.assertBuildStatusSuccess(j.waitForCompletion(b));

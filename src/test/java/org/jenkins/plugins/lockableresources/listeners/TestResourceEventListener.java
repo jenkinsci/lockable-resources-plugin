@@ -28,8 +28,7 @@ public class TestResourceEventListener extends ResourceEventListener {
         public final String buildName;
         public final String userName;
 
-        EventRecord(
-                ResourceEvent event, List<String> resourceNames, String buildName, String userName) {
+        EventRecord(ResourceEvent event, List<String> resourceNames, String buildName, String userName) {
             this.event = event;
             this.resourceNames = resourceNames;
             this.buildName = buildName;
@@ -54,8 +53,7 @@ public class TestResourceEventListener extends ResourceEventListener {
         for (LockableResource r : resources) {
             names.add(r.getName());
         }
-        EVENTS.add(new EventRecord(
-                event, names, build != null ? build.getFullDisplayName() : null, userName));
+        EVENTS.add(new EventRecord(event, names, build != null ? build.getFullDisplayName() : null, userName));
     }
 
     /** Returns all recorded events. */

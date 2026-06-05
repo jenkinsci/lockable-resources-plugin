@@ -36,13 +36,12 @@ public class GroovyCallbackListener extends ResourceEventListener {
 
     private static final Logger LOGGER = Logger.getLogger(GroovyCallbackListener.class.getName());
 
-    private static final ExecutorService CALLBACK_EXECUTOR =
-            Executors.newCachedThreadPool(r -> {
-                Thread t = new Thread(r);
-                t.setName("lockable-resources-event-callback");
-                t.setDaemon(true);
-                return t;
-            });
+    private static final ExecutorService CALLBACK_EXECUTOR = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r);
+        t.setName("lockable-resources-event-callback");
+        t.setDaemon(true);
+        return t;
+    });
 
     @Override
     public void onEvent(
