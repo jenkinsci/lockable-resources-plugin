@@ -1,11 +1,9 @@
 package org.jenkins.plugins.lockableresources;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.common.base.Joiner;
 import hudson.model.Executor;
-import hudson.model.Result;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
