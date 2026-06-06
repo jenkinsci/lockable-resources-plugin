@@ -10,3 +10,6 @@ declaredResources:
 - description: "Description_C"
   labels: "Label_C"
   name: "Resource_C"
+eventCallbackAsync: true
+eventCallbackIgnoreExceptions: true
+eventCallbackTimeoutSec: 30
