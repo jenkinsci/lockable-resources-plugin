@@ -12,6 +12,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.GlobalConfiguration;
+import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
@@ -29,8 +31,19 @@ public final class BackwardCompatibility {
 
     @Initializer(after = InitMilestone.JOB_LOADED)
     public static void compatibilityMigration() {
-        LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (lrm.syncResources) {
+        Jenkins jenkins = Jenkins.getInstanceOrNull();
+        if (jenkins == null) {
+            return;
+        }
+        LockableResourcesManager lrm = GlobalConfiguration.all().get(LockableResourcesManager.class);
+        if (lrm == null) {
+            lrm = jenkins.getDescriptorByType(LockableResourcesManager.class);
+        }
+        if (lrm == null) {
+            LOG.fine("Skipping queuedContexts migration because LockableResourcesManager is not registered yet");
+            return;
+        }
+        synchronized (LockableResourcesManager.syncResources) {
             List<LockableResource> resources = lrm.getResources();
             LOG.log(
                     Level.FINE,
@@ -43,14 +56,13 @@ public final class BackwardCompatibility {
                         List<String> resourcesNames = new ArrayList<>();
                         resourcesNames.add(resource.getName());
                         LockableResourcesStruct resourceHolder = new LockableResourcesStruct(resourcesNames, "", 0);
-                        LockableResourcesManager.get()
-                                .queueContext(
-                                        queuedContext,
-                                        Collections.singletonList(resourceHolder),
-                                        resource.getName(),
-                                        null,
-                                        false,
-                                        0);
+                        lrm.queueContext(
+                                queuedContext,
+                                Collections.singletonList(resourceHolder),
+                                resource.getName(),
+                                null,
+                                false,
+                                0);
                     }
                     queuedContexts.clear();
                 }

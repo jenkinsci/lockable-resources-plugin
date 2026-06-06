@@ -183,7 +183,7 @@ public class LockableResourcesRootAction implements RootAction {
                     oldestBuildUrl = (run != null) ? run.getUrl() : null;
                 }
                 for (LockableResource r : rs.required) {
-                    resourceDemand.merge(r.getName(), 1, Integer::sum);
+                    resourceDemand.merge(r.getName(), 1, (a, b) -> a + b);
                 }
             }
         }
@@ -1253,7 +1253,7 @@ public class LockableResourcesRootAction implements RootAction {
             resource.setDescription(description);
         }
         if (labels != null) {
-            resource.setLabels(labels);
+            resource.setLabelsFromString(labels);
         }
         if (!properties.isEmpty()) {
             resource.setProperties(properties);
@@ -1300,7 +1300,7 @@ public class LockableResourcesRootAction implements RootAction {
             }
 
             resource.setDescription(Util.fixEmptyAndTrim(json.optString("description", null)));
-            resource.setLabels(Util.fixEmptyAndTrim(json.optString("labels", null)));
+            resource.setLabelsFromString(Util.fixEmptyAndTrim(json.optString("labels", null)));
             resource.setProperties(parsePropertiesFromJson(json));
 
             manager.save();

@@ -48,7 +48,7 @@ public class NodesMirror extends ComputerListener {
 
         LOGGER.info("lockable-resources-plugin: start nodes mirroring");
         lrm = LockableResourcesManager.get();
-        synchronized (lrm.syncResources) {
+        synchronized (LockableResourcesManager.syncResources) {
             for (Node n : Jenkins.get().getNodes()) {
                 mirrorNode(n);
             }
@@ -95,7 +95,7 @@ public class NodesMirror extends ComputerListener {
         } else {
             LOGGER.fine("lockable-resources-plugin: Node-resource '" + nodeResource.getName() + "' will be updated.");
         }
-        nodeResource.setLabels(
+        nodeResource.setLabelsFromString(
                 node.getAssignedLabels().stream().map(Object::toString).collect(Collectors.joining(" ")));
         nodeResource.setNodeResource(true);
         nodeResource.setEphemeral(false);

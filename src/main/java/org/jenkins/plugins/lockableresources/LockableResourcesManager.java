@@ -194,7 +194,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 if (locked != null) {
                     // Merge already locked lock.
                     locked.setDescription(r.getDescription());
-                    locked.setLabels(r.getLabels());
+                    locked.setLabelsFromString(r.getLabelsAsString());
                     locked.setEphemeral(false);
                     locked.setNote(r.getNote());
                     mergedResources.add(locked);
@@ -206,7 +206,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             for (LockableResource r : lockedResources.values()) {
                 // Removed locks became ephemeral.
                 r.setDescription("");
-                r.setLabels("");
+                r.setLabelsFromString("");
                 r.setNote("");
                 r.setEphemeral(true);
                 mergedResources.add(r);
@@ -977,7 +977,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         name = Util.fixEmptyAndTrim(name);
         label = Util.fixEmptyAndTrim(label);
         LockableResource resource = new LockableResource(name);
-        resource.setLabels(label);
+        resource.setLabelsFromString(label);
 
         return this.addResource(resource, /*doSave*/ true);
     }
@@ -992,7 +992,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         name = Util.fixEmptyAndTrim(name);
         label = Util.fixEmptyAndTrim(label);
         LockableResource resource = new LockableResource(name);
-        resource.setLabels(label);
+        resource.setLabelsFromString(label);
         resource.setProperties(properties.entrySet().stream()
                 .map(e -> {
                     LockableResourceProperty p = new LockableResourceProperty();
@@ -1592,7 +1592,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public static LockableResourcesManager get() {
-        LockableResourcesManager mgr = Jenkins.get().getDescriptorByType(LockableResourcesManager.class);
+        LockableResourcesManager mgr = GlobalConfiguration.all().get(LockableResourcesManager.class);
+        if (mgr == null) {
+            mgr = Jenkins.get().getDescriptorByType(LockableResourcesManager.class);
+        }
         if (mgr == null) {
             throw new IllegalStateException("LockableResourcesManager is not registered");
         }

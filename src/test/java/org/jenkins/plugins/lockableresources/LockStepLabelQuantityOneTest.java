@@ -188,9 +188,9 @@ class LockStepLabelQuantityOneTest extends LockStepTestBase {
         j.assertBuildStatusSuccess(j.waitForCompletion(b3));
 
         // Each build must have locked exactly one resource
-        String log1 = j.getLog(b1);
-        String log2 = j.getLog(b2);
-        String log3 = j.getLog(b3);
+        String log1 = JenkinsRule.getLog(b1);
+        String log2 = JenkinsRule.getLog(b2);
+        String log3 = JenkinsRule.getLog(b3);
 
         // Verify each build actually got a Board_* resource
         assertNotNull(extractLockedResource(log1, "Board_"), "b1 should lock a Board resource");

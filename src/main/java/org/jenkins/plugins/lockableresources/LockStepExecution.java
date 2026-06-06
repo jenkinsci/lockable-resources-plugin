@@ -7,7 +7,6 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,7 +25,7 @@ import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
-public class LockStepExecution extends AbstractStepExecutionImpl implements Serializable {
+public class LockStepExecution extends AbstractStepExecutionImpl {
 
     private static final long serialVersionUID = 1391734561272059623L;
 
