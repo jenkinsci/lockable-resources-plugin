@@ -567,31 +567,51 @@ function initPagination() {
     // Place pagination in the toolbar (right of the eye icon) if available
     const controls = document.createElement("div");
     controls.className = "lr-pagination";
+    const countBadge = document.createElement("span");
+    countBadge.className = "lr-table-count";
     const tabPane = table.closest(".lr-tab-pane");
     const toolbar = tabPane ? tabPane.querySelector(".lr-toolbar__actions") : null;
     if (toolbar) {
+      toolbar.appendChild(countBadge);
       toolbar.appendChild(controls);
     } else {
+      scrollWrapper.parentNode.insertBefore(countBadge, scrollWrapper.nextSibling);
       scrollWrapper.parentNode.insertBefore(controls, scrollWrapper.nextSibling);
     }
 
-    function getRows() {
+    function getAllRows() {
       const tbody = table.querySelector("tbody");
       return tbody
         ? Array.from(tbody.children).filter(function (row) {
-            return row.matches("tr")
-              && !row.classList.contains("lr-filtered-out")
-              && !row.classList.contains("lr-col-filtered-out");
+            return row.matches("tr");
           })
         : [];
+    }
+
+    function isRowFilteredOut(row) {
+      return row.classList.contains("lr-filtered-out")
+        || row.classList.contains("lr-col-filtered-out")
+        || row.classList.contains("lr-global-search-hidden");
+    }
+
+    function getRows() {
+      return getAllRows().filter(function (row) {
+        return !isRowFilteredOut(row);
+      });
     }
 
     function render() {
       const rows = getRows();
       const total = rows.length;
+      const totalRows = getAllRows().length;
       const totalPages = pageSize === 0 ? 1 : Math.ceil(total / pageSize);
       if (currentPage > totalPages) currentPage = totalPages;
       if (currentPage < 1) currentPage = 1;
+
+      // Show filtered/total row count, e.g. 12/57 when filters are active.
+      if (countBadge) {
+        countBadge.textContent = total === totalRows ? String(totalRows) : (total + "/" + totalRows);
+      }
 
       // Show/hide rows
       rows.forEach(function (row, i) {
