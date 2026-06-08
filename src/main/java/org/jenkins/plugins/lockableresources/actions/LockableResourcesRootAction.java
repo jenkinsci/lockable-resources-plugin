@@ -999,6 +999,7 @@ public class LockableResourcesRootAction implements RootAction {
     // ---------------------------------------------------------------------------
     /** Returns a page of queue items as JSON for server-side pagination. */
     @Restricted(NoExternalUse.class)
+    @RequirePOST
     public void doGetQueuePage(final StaplerRequest2 req, final StaplerResponse2 rsp)
             throws IOException, ServletException {
         Jenkins.get().checkPermission(VIEW);
