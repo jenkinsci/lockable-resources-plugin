@@ -190,6 +190,18 @@ function deleteResource(button) {
 function resource_action(button, action) {
   const resourceName = button.closest('tr').getAttribute('data-resource-name');
 
+  function allowEmptyReasonInPrompt() {
+    setTimeout(function () {
+      const input = document.querySelector("dialog.jenkins-dialog input, dialog.jenkins-dialog textarea");
+      if (!input) return;
+      input.required = false;
+      input.removeAttribute("required");
+      if (!input.value) {
+        input.value = " ";
+      }
+    }, 0);
+  }
+
   if (action === "reserve" || action === "steal") {
     dialog
       .prompt(i18n(action + "-title", resourceName), {
@@ -209,6 +221,9 @@ function resource_action(button, action) {
           });
         }
       );
+    if (action === "reserve") {
+      allowEmptyReasonInPrompt();
+    }
     return;
   }
 
@@ -713,6 +728,18 @@ window.updateFilterMode = function (tabId) {
   });
 
   function bulkResourceAction(action, resources) {
+    function allowEmptyReasonInPrompt() {
+      setTimeout(function () {
+        const input = document.querySelector("dialog.jenkins-dialog input, dialog.jenkins-dialog textarea");
+        if (!input) return;
+        input.required = false;
+        input.removeAttribute("required");
+        if (!input.value) {
+          input.value = " ";
+        }
+      }, 0);
+    }
+
     if (action === "reserve" || action === "steal" || action === "reassign") {
       dialog
         .prompt(i18n(action + "-title", resources.join(", ")), {
@@ -723,6 +750,9 @@ window.updateFilterMode = function (tabId) {
         .then(function (reason) {
           executeBulk(action, resources, reason || "");
         });
+      if (action === "reserve") {
+        allowEmptyReasonInPrompt();
+      }
       return;
     }
     executeBulk(action, resources, null);

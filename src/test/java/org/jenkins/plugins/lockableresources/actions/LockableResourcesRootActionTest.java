@@ -258,6 +258,13 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         action.doReserve(req, rsp);
         assertTrue(resource.isReserved(), "resource should be reserved");
         assertTrue(resource.getLockReason().isEmpty(), "empty reason should be empty string");
+
+        // Reserve without reason (whitespace-only input from UI)
+        action.doUnreserve(req, rsp);
+        when(req.getParameter("reason")).thenReturn("   ");
+        action.doReserve(req, rsp);
+        assertTrue(resource.isReserved(), "resource should be reserved");
+        assertTrue(resource.getLockReason().isEmpty(), "whitespace-only reason should be treated as empty");
     }
 
     // ---------------------------------------------------------------------------
