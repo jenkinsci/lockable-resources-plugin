@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.GlobalConfiguration;
+import jenkins.model.Jenkins;
 
 /**
  * Sometimes after re-starts (jenkins crashed or what ever) are resources still locked by build, but
@@ -24,10 +26,20 @@ public final class FreeDeadJobs {
 
     @Initializer(after = InitMilestone.JOB_LOADED)
     public static void freePostMortemResources() {
-
-        LockableResourcesManager lrm = LockableResourcesManager.get();
+        Jenkins jenkins = Jenkins.getInstanceOrNull();
+        if (jenkins == null) {
+            return;
+        }
+        LockableResourcesManager lrm = GlobalConfiguration.all().get(LockableResourcesManager.class);
+        if (lrm == null) {
+            lrm = jenkins.getDescriptorByType(LockableResourcesManager.class);
+        }
+        if (lrm == null) {
+            LOG.fine("Skipping post mortem resource cleanup because LockableResourcesManager is not registered yet");
+            return;
+        }
         boolean freedAny = false;
-        synchronized (lrm.syncResources) {
+        synchronized (LockableResourcesManager.syncResources) {
             List<LockableResource> orphan = new ArrayList<>();
             LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
             for (LockableResource resource : lrm.getResources()) {

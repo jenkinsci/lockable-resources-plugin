@@ -186,7 +186,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         // todo check if the name contains only valid characters (no spaces, new lines ...)
         this.name = name;
         this.setDescription(description);
-        this.setLabels(labels);
+        this.setLabelsFromString(labels);
         this.setReservedBy(reservedBy);
         this.setNote(note);
     }
@@ -215,7 +215,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         }
 
         LOGGER.fine("Repair labels for resource " + this);
-        this.setLabels(this.labels);
+        this.setLabelsFromString(this.labels);
         this.labels = null;
     }
 
@@ -298,6 +298,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @Deprecated
     @Exported
     public String getLabels() {
+        return getLabelsAsString();
+    }
+
+    /**
+     * Returns the labels as a single space-separated string.
+     *
+     * <p>This is the non-deprecated replacement for {@link #getLabels()}.
+     */
+    @Restricted(NoExternalUse.class)
+    public String getLabelsAsString() {
         if (this.labelsAsList == null) {
             return "";
         }
@@ -313,6 +323,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     // @Deprecated can not be used, because of JCaC
     @DataBoundSetter
     public void setLabels(@Nullable String labels) {
+        setLabelsFromString(labels);
+    }
+
+    /**
+     * Sets labels from a space-separated string.
+     *
+     * <p>This is the non-deprecated replacement for {@link #setLabels(String)}.
+     */
+    @Restricted(NoExternalUse.class)
+    public void setLabelsFromString(@Nullable String labels) {
         labels = Util.fixNull(labels);
         // todo use label parser from Jenkins.Label to allow the same syntax
         this.labelsAsList = new ArrayList<>();

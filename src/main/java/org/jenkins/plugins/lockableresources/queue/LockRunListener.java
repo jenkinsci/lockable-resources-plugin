@@ -41,7 +41,7 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
         if (build instanceof AbstractBuild) {
             AbstractBuild<?, ?> abstractBuild = (AbstractBuild<?, ?>) build;
             LockableResourcesManager lrm = LockableResourcesManager.get();
-            synchronized (lrm.syncResources) {
+            synchronized (LockableResourcesManager.syncResources) {
                 Job<?, ?> proj = Utils.getProject(build);
                 List<LockableResource> required = new ArrayList<>();
 

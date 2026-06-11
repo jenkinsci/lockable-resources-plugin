@@ -18,7 +18,7 @@ class LockableResourceTest {
     void testGetters() {
         assertEquals("r1", instance.getName());
         assertEquals("", instance.getDescription());
-        assertEquals("", instance.getLabels());
+        assertEquals("", instance.getLabelsAsString());
         assertEquals("", instance.getNote());
         assertNull(instance.getReservedBy());
         assertNull(instance.getReservedTimestamp());

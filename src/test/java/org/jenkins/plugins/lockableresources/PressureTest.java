@@ -197,7 +197,7 @@ class PressureTest extends LockStepTestBase {
 
         // wait until all parallel jobs has been stopped
         for (WorkflowRun b2 : otherBuilds) {
-            LOGGER.info("Wait for build " + b2.getAbsoluteUrl());
+            LOGGER.info("Wait for build " + j.getURL().toURI().resolve(b2.getUrl()));
             j.assertBuildStatusSuccess(j.waitForCompletion(b2));
             LOGGER.info("build " + b2.getUrl() + ": done");
         }
