@@ -77,7 +77,7 @@ class ResourceManagementTest {
     private JSONObject getQueuePage(JenkinsRule j, JenkinsRule.WebClient wc, String query) throws Exception {
         String path = "lockable-resources/getQueuePage" + (query == null || query.isEmpty() ? "" : "?" + query);
         URL url = url(j, path);
-        WebRequest req = new WebRequest(url, HttpMethod.GET);
+        WebRequest req = new WebRequest(url, HttpMethod.POST);
         return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
     }
 
