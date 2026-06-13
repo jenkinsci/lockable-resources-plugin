@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -428,7 +429,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     public boolean scriptMatches(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
             throws ExecutionException {
         if (SCRIPT_CACHE_TTL_MS > 0) {
-            String cacheKey = script.getScript();
+            String cacheKey = buildScriptCacheKey(script.getScript(), params);
             ConcurrentHashMap<String, CachedResult> cache = getScriptCache();
             CachedResult cached = cache.get(cacheKey);
             if (cached != null && !cached.isExpired(SCRIPT_CACHE_TTL_MS)) {
@@ -439,6 +440,32 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             return result;
         }
         return evaluateScript(script, params);
+    }
+
+    /**
+     * Builds the per-resource script-cache key.
+     *
+     * <p>The cached match result depends not only on the script text but also on the build
+     * parameters bound into the script's execution (for example a {@code TARGET_ENVIRONMENT}
+     * parameter referenced by the script). Different jobs commonly share an identical match script
+     * and differ only by their parameters, so the parameters must form part of the key. Keying on
+     * the script text alone causes the first build's result to be reused for every other build,
+     * making them all resolve to the same resource and serialise behind it.
+     *
+     * @param scriptText the Groovy match script text
+     * @param params the parameter bindings supplied to the script (may be {@code null})
+     * @return a key combining the script text with a deterministic encoding of the parameters
+     */
+    private static String buildScriptCacheKey(String scriptText, @CheckForNull Map<String, Object> params) {
+        if (params == null || params.isEmpty()) {
+            return scriptText;
+        }
+        // Sort by key for a deterministic, order-independent encoding.
+        StringBuilder sb = new StringBuilder(scriptText);
+        for (Map.Entry<String, Object> entry : new TreeMap<>(params).entrySet()) {
+            sb.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
+        }
+        return sb.toString();
     }
 
     private boolean evaluateScript(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)

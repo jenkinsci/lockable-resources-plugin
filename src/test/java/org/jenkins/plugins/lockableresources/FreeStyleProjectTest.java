@@ -26,8 +26,10 @@ import hudson.util.OneShotEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesQueueTaskDispatcher;
@@ -51,6 +53,151 @@ class FreeStyleProjectTest {
     void setUp() {
         // to speed up the test
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
+    }
+
+    /**
+     * Reproduction test for https://github.com/jenkinsci/lockable-resources-plugin/issues/1052.
+     *
+     * N freestyle jobs each need a distinct, immediately-available resource (by name). When they
+     * are all submitted to the queue together the plugin's {@code canRun()} is evaluated for each
+     * item. All resources are free, so all N should pass and start in quick succession.
+     *
+     * This is the named-resource control case: it exercises the simple {@code required}-list path
+     * rather than the Groovy candidate-selection path.
+     */
+    @Test
+    @Issue("1052")
+    void parallelFreestyleDispatchWithAvailableResources(JenkinsRule j) throws Exception {
+        final int N = 3;
+        j.jenkins.setNumExecutors(N * 2);
+
+        // N distinct resources, all immediately available (no holder builds).
+        for (int i = 0; i < N; i++) {
+            LockableResourcesManager.get().createResource("slot-" + i);
+        }
+
+        // Submit N builds simultaneously, each needing one distinct resource.
+        // All resources are free, so all N should be dispatched in quick succession.
+        List<FreeStyleProject> projects = new ArrayList<>();
+        List<QueueTaskFuture<FreeStyleBuild>> futures = new ArrayList<>();
+        for (int i = 0; i < N; i++) {
+            FreeStyleProject p = j.createFreeStyleProject("job-" + i);
+            p.addProperty(new RequiredResourcesProperty("slot-" + i, null, null, null, null));
+            projects.add(p);
+        }
+        for (int i = 0; i < N; i++) {
+            futures.add(projects.get(i).scheduleBuild2(0));
+        }
+
+        // All N builds must complete successfully.
+        long deadline = System.currentTimeMillis() + 30_000;
+        for (int i = 0; i < N; i++) {
+            long remaining = deadline - System.currentTimeMillis();
+            assertTrue(remaining > 0, "Build " + i + " did not complete within 30s");
+            j.assertBuildStatus(Result.SUCCESS, futures.get(i).get(remaining, TimeUnit.MILLISECONDS));
+        }
+
+        // All builds should have started close together, not serialised one per maintenance cycle.
+        long firstStart = Long.MAX_VALUE;
+        long lastStart = Long.MIN_VALUE;
+        for (int i = 0; i < N; i++) {
+            long t = futures.get(i).get().getStartTimeInMillis();
+            firstStart = Math.min(firstStart, t);
+            lastStart = Math.max(lastStart, t);
+        }
+        long spreadMs = lastStart - firstStart;
+        assertTrue(spreadMs < 10_000, "Builds should start within 10s of each other; spread was " + spreadMs + "ms");
+    }
+
+    /**
+     * Reproduction of the issue #1052 serialisation using the Groovy-script candidate-selection
+     * path with a parameter-driven match script:
+     *
+     * <ul>
+     *   <li>The match script is run in the Groovy <em>sandbox</em> ({@code sandbox=true}).</li>
+     *   <li>The script reads per-build parameters:
+     *       {@code return LOCK_ENVIRONMENT && resourceName == TARGET_ENVIRONMENT}.</li>
+     *   <li>Each job has distinct parameter values so it matches exactly one distinct, free
+     *       resource.</li>
+     * </ul>
+     *
+     * All jobs share the identical script <em>text</em> and differ only by parameter values — a
+     * common pattern where the resource to lock is selected by a build parameter. The symptom is
+     * that, although each job needs a distinct and immediately-available resource, only one job
+     * runs at a time — the next dispatches only after the previous build completes. A
+     * start-time-spread assertion cannot detect this when builds are instantaneous, so each build
+     * blocks on a shared latch and records peak concurrency:
+     *
+     * <ul>
+     *   <li>Parallel dispatch: all N builds enter {@code perform()} together, peak concurrency N.</li>
+     *   <li>Serialised dispatch: only the first build starts and blocks; the remaining N-1 never
+     *       dispatch while the latch is held, so peak concurrency stays at 1.</li>
+     * </ul>
+     *
+     * There are {@code N * 2} executors, so executor availability is never the constraint.
+     */
+    @Test
+    @Issue("1052")
+    void scriptResourceJobsRunConcurrently(JenkinsRule j) throws Exception {
+        final int N = 12;
+        j.jenkins.setNumExecutors(N * 2);
+
+        for (int i = 0; i < N; i++) {
+            LockableResourcesManager.get().createResource("env-slot-" + i);
+        }
+
+        final AtomicInteger concurrent = new AtomicInteger(0);
+        final AtomicInteger maxConcurrent = new AtomicInteger(0);
+        final CountDownLatch allStarted = new CountDownLatch(N);
+        final CountDownLatch release = new CountDownLatch(1);
+
+        // Match script shared by all jobs, run sandboxed and driven by build parameters.
+        final String script = "return LOCK_ENVIRONMENT && resourceName == TARGET_ENVIRONMENT";
+
+        List<FreeStyleProject> projects = new ArrayList<>();
+        List<QueueTaskFuture<FreeStyleBuild>> futures = new ArrayList<>();
+        for (int i = 0; i < N; i++) {
+            FreeStyleProject p = j.createFreeStyleProject("env-job-" + i);
+            SecureGroovyScript groovyScript = new SecureGroovyScript(script, true, null);
+            p.addProperty(new RequiredResourcesProperty(null, null, null, null, groovyScript));
+            p.addProperty(new ParametersDefinitionProperty(
+                    new StringParameterDefinition("LOCK_ENVIRONMENT", "true", ""),
+                    new StringParameterDefinition("TARGET_ENVIRONMENT", "env-slot-" + i, "")));
+            p.getBuildersList().add(new TestBuilder() {
+                @Override
+                public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+                        throws InterruptedException {
+                    int c = concurrent.incrementAndGet();
+                    maxConcurrent.accumulateAndGet(c, Math::max);
+                    allStarted.countDown();
+                    // Hold the build open so a serialised dispatcher cannot "complete then dispatch next".
+                    release.await(30, TimeUnit.SECONDS);
+                    concurrent.decrementAndGet();
+                    return true;
+                }
+            });
+            projects.add(p);
+        }
+        for (int i = 0; i < N; i++) {
+            futures.add(projects.get(i).scheduleBuild2(0));
+        }
+
+        // Wait (bounded) for all N builds to be running at once. If the bug serialises dispatch,
+        // this times out with only one build ever having started.
+        boolean allRunningTogether = allStarted.await(20, TimeUnit.SECONDS);
+        int peak = maxConcurrent.get();
+
+        // Let the builds finish regardless of outcome.
+        release.countDown();
+        for (int i = 0; i < N; i++) {
+            j.assertBuildStatus(Result.SUCCESS, futures.get(i).get(30, TimeUnit.SECONDS));
+        }
+
+        assertTrue(
+                allRunningTogether && peak == N,
+                "Expected all " + N + " script-resource jobs to run concurrently, but peak concurrency "
+                        + "was " + peak + " (allStarted=" + allRunningTogether + "). Peak of 1 reproduces "
+                        + "the issue #1052 serialisation: only one job runs at a time.");
     }
 
     @Test
