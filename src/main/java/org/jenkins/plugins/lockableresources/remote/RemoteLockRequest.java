@@ -25,21 +25,31 @@ public final class RemoteLockRequest {
 
     @CheckForNull
     private final String resource;
+
     @CheckForNull
     private final String label;
+
     private final int quantity;
+
     @CheckForNull
     private final String variable;
+
     private final boolean inversePrecedence;
+
     @NonNull
     private final String resourceSelectStrategy;
+
     private final boolean skipIfLocked;
+
     @CheckForNull
     private final List<ExtraResource> extra;
+
     private final int priority;
     private final long timeoutForAllocateResource;
+
     @NonNull
     private final String timeoutUnit;
+
     @CheckForNull
     private final String reason;
 
@@ -158,14 +168,13 @@ public final class RemoteLockRequest {
     public static final class ExtraResource {
         @CheckForNull
         private final String resource;
+
         @CheckForNull
         private final String label;
+
         private final int quantity;
 
-        public ExtraResource(
-                @CheckForNull String resource,
-                @CheckForNull String label,
-                int quantity) {
+        public ExtraResource(@CheckForNull String resource, @CheckForNull String label, int quantity) {
             this.resource = resource;
             this.label = label;
             this.quantity = quantity;

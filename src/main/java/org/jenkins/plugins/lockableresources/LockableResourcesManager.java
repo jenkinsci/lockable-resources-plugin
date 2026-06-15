@@ -1007,8 +1007,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         // Process the higher-priority entry first; equal priority favours local (arrived earlier)
-        boolean pickRemote = nextRemote != null
-                && (nextLocal == null || nextRemote.getPriority() > nextLocal.getPriority());
+        boolean pickRemote =
+                nextRemote != null && (nextLocal == null || nextRemote.getPriority() > nextLocal.getPriority());
 
         if (pickRemote) {
             return proceedRemoteEntry(nextRemote);
@@ -1065,8 +1065,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // onAcquired marks the record ACQUIRED and builds lockEnvVars (incl. resource properties),
         // using the shared LockStepExecution.buildLockEnvVars - same as local lock().
         entry.onAcquired(resources);
-        LOGGER.fine("Remote queued->acquired: lockId=" + entry.getLockId()
-                + " resources=" + getResourcesNames(resources));
+        LOGGER.fine(
+                "Remote queued->acquired: lockId=" + entry.getLockId() + " resources=" + getResourcesNames(resources));
         return true;
     }
 
@@ -1909,8 +1909,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
             }
             list.add(insertAt, entry);
-            LOGGER.fine("Remote acquire queued: lockId=" + entry.getLockId()
-                    + " priority=" + entry.getPriority() + " position=" + insertAt);
+            LOGGER.fine("Remote acquire queued: lockId=" + entry.getLockId() + " priority=" + entry.getPriority()
+                    + " position=" + insertAt);
         }
     }
 

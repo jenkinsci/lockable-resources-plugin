@@ -45,7 +45,8 @@ public final class RemoteLockRouting {
     public static String effectiveServerId(LockStep step, LockableResourcesManager lrm, PrintStream logger) {
         String forced = lrm.getForcedServerId();
         if (forced != null && !forced.trim().isEmpty()) {
-            if (step.serverId != null && !step.serverId.trim().isEmpty()
+            if (step.serverId != null
+                    && !step.serverId.trim().isEmpty()
                     && !step.serverId.trim().equals(forced.trim())) {
                 LockableResourcesManager.printLogs(
                         "forcedServerId '" + forced + "' overrides DSL serverId '" + step.serverId + "'",

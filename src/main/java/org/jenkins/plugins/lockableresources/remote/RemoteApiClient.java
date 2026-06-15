@@ -143,7 +143,7 @@ public class RemoteApiClient {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(resolve(remote, path))
                 .header("Accept", "application/json")
                 .timeout(requestTimeout)
-            .GET();
+                .GET();
 
         applyAuthorizationHeader(requestBuilder, authorizationHeader);
         HttpRequest request = requestBuilder.build();
@@ -170,7 +170,8 @@ public class RemoteApiClient {
     /**
      * POST /lease/{lockId}/heartbeat.
      */
-    public void heartbeatLease(@NonNull RemoteConnection remote, @NonNull String authorizationHeader, @NonNull String lockId)
+    public void heartbeatLease(
+            @NonNull RemoteConnection remote, @NonNull String authorizationHeader, @NonNull String lockId)
             throws RemoteApiException {
         String encodedLockId = URLEncoder.encode(lockId, StandardCharsets.UTF_8);
         String path = "/lease/" + encodedLockId + "/heartbeat";
@@ -187,7 +188,8 @@ public class RemoteApiClient {
     /**
      * POST /lease/{lockId}/release.
      */
-    public void releaseLease(@NonNull RemoteConnection remote, @NonNull String authorizationHeader, @NonNull String lockId)
+    public void releaseLease(
+            @NonNull RemoteConnection remote, @NonNull String authorizationHeader, @NonNull String lockId)
             throws RemoteApiException {
         String encodedLockId = URLEncoder.encode(lockId, StandardCharsets.UTF_8);
         String path = "/lease/" + encodedLockId + "/release";
@@ -217,10 +219,7 @@ public class RemoteApiClient {
                     "Remote JSON parse failure: serverId={0}, method={1}, path={2}, status={3}, bodyPreview={4}",
                     new Object[] {serverId, method, path, status, abbreviateForLog(body)});
             throw new RemoteApiException(
-                    "Remote response is not valid JSON for " + method + " " + path,
-                    status,
-                    serverId,
-                    "INVALID_JSON");
+                    "Remote response is not valid JSON for " + method + " " + path, status, serverId, "INVALID_JSON");
         }
     }
 
@@ -260,10 +259,7 @@ public class RemoteApiClient {
                     Level.WARNING,
                     "Remote API communication failure (fail-closed): serverId={0}, method={1}, path={2}, message={3}",
                     new Object[] {serverId, method, path, ex.getMessage()});
-            throw new RemoteApiException(
-                    "Remote API communication failure: " + method + " " + path,
-                    ex,
-                    serverId);
+            throw new RemoteApiException("Remote API communication failure: " + method + " " + path, ex, serverId);
         }
     }
 

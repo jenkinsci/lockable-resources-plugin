@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cloudbees.plugins.credentials.CredentialsScope;
 import com.cloudbees.plugins.credentials.SystemCredentialsProvider;
-import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -40,15 +39,13 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setClientId("client-jenkins-a");
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a', variable: 'LOCK_NAME') {
                         echo "inside ${env.LOCK_NAME}"
                         semaphore 'remote-body'
                     }
                     echo 'remote-finish'
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("remote-body/1", run);
@@ -58,14 +55,16 @@ class LockStepRemoteTest extends LockStepTestBase {
             assertEquals("remote-resource", remote.lastAcquireBody.get());
             assertTrue(remote.lastAcquireRawBody.get().contains("\"clientId\":\"client-jenkins-a\""));
             assertEquals(0, remote.releaseRequests.get());
-            j.assertLogContains("Remote lock acquired on [Resource: remote-resource] (serverId=server-a, lockId=lock-1)", run);
+            j.assertLogContains(
+                    "Remote lock acquired on [Resource: remote-resource] (serverId=server-a, lockId=lock-1)", run);
             j.assertLogContains("inside remote-resource", run);
 
             SemaphoreStep.success("remote-body/1", null);
             j.assertBuildStatusSuccess(j.waitForCompletion(run));
 
             assertEquals(1, remote.releaseRequests.get());
-            j.assertLogContains("Remote lock released on [Resource: remote-resource] (serverId=server-a, lockId=lock-1)", run);
+            j.assertLogContains(
+                    "Remote lock released on [Resource: remote-resource] (serverId=server-a, lockId=lock-1)", run);
             j.assertLogContains("remote-finish", run);
             isPaused(run, 1, 0);
         } finally {
@@ -83,15 +82,13 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.createResource("local-resource");
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "local-lock");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'local-resource', variable: 'LOCK_NAME') {
                         echo "local ${env.LOCK_NAME}"
                         semaphore 'local-body'
                     }
                     echo 'local-finish'
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("local-body/1", run);
@@ -119,13 +116,11 @@ class LockStepRemoteTest extends LockStepTestBase {
     @Test
     void lockFailsWhenServerIdIsUnknown(JenkinsRule j) throws Exception {
         WorkflowJob job = j.createProject(WorkflowJob.class, "missing-remote-lock");
-        job.setDefinition(new CpsFlowDefinition(
-                """
+        job.setDefinition(new CpsFlowDefinition("""
                 lock(resource: 'remote-resource', serverId: 'missing-server') {
                     echo 'should-not-run'
                 }
-                """,
-                true));
+                """, true));
 
         WorkflowRun run = job.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(hudson.model.Result.FAILURE, j.waitForCompletion(run));
@@ -138,20 +133,19 @@ class LockStepRemoteTest extends LockStepTestBase {
     @Test
     void lockFailsWhenRemoteAcquireStatusIsFailed(JenkinsRule j) throws Exception {
         RemoteServerFixture remote = new RemoteServerFixture();
-        remote.setAcquireStatusResponse("{\"lockId\":\"lock-1\",\"state\":\"FAILED\",\"errorCode\":\"REMOTE_DENIED\",\"message\":\"not granted\"}");
+        remote.setAcquireStatusResponse(
+                "{\"lockId\":\"lock-1\",\"state\":\"FAILED\",\"errorCode\":\"REMOTE_DENIED\",\"message\":\"not granted\"}");
         remote.start();
         try {
             LockableResourcesManager manager = LockableResourcesManager.get();
             manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-failed");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a') {
                         echo 'should-not-run'
                     }
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             j.assertBuildStatus(hudson.model.Result.FAILURE, j.waitForCompletion(run));
@@ -172,20 +166,19 @@ class LockStepRemoteTest extends LockStepTestBase {
     @Test
     void lockFailsWhenRemoteAcquireStatusIsExpired(JenkinsRule j) throws Exception {
         RemoteServerFixture remote = new RemoteServerFixture();
-        remote.setAcquireStatusResponse("{\"lockId\":\"lock-1\",\"state\":\"EXPIRED\",\"errorCode\":\"LOCK_TIMEOUT\",\"message\":\"lease expired\"}");
+        remote.setAcquireStatusResponse(
+                "{\"lockId\":\"lock-1\",\"state\":\"EXPIRED\",\"errorCode\":\"LOCK_TIMEOUT\",\"message\":\"lease expired\"}");
         remote.start();
         try {
             LockableResourcesManager manager = LockableResourcesManager.get();
             manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-expired");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a') {
                         echo 'should-not-run'
                     }
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             j.assertBuildStatus(hudson.model.Result.FAILURE, j.waitForCompletion(run));
@@ -211,13 +204,11 @@ class LockStepRemoteTest extends LockStepTestBase {
         manager.setRemotes(List.of(new RemoteConnection("server-a", "http://127.0.0.1:" + unusedPort, "")));
 
         WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-communication-failed");
-        job.setDefinition(new CpsFlowDefinition(
-                """
+        job.setDefinition(new CpsFlowDefinition("""
                 lock(resource: 'remote-resource', serverId: 'server-a') {
                     echo 'should-not-run'
                 }
-                """,
-                true));
+                """, true));
 
         WorkflowRun run = job.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(hudson.model.Result.FAILURE, j.waitForCompletion(run));
@@ -237,13 +228,11 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-forbidden");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a') {
                         echo 'should-not-run'
                     }
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             j.assertBuildStatus(hudson.model.Result.FAILURE, j.waitForCompletion(run));
@@ -270,13 +259,11 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "remote-creds")));
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-auth");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a') {
                         semaphore 'remote-auth-body'
                     }
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("remote-auth-body/1", run);
@@ -299,13 +286,11 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "missing-creds")));
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-missing-creds");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a') {
                         echo 'should-not-run'
                     }
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             j.assertBuildStatus(hudson.model.Result.FAILURE, j.waitForCompletion(run));
@@ -328,14 +313,12 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "remote-label-lock");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(label: 'board', quantity: 1, serverId: 'server-a') {
                         semaphore 'label-body'
                     }
                     echo 'label-finish'
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("label-body/1", run);
@@ -364,21 +347,20 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setForcedServerId("server-forced");
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "delegated-lock");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource') {
                         semaphore 'forced-body'
                     }
                     echo 'forced-finish'
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("forced-body/1", run);
 
             assertEquals(1, remote.acquireRequests.get());
             assertEquals(0, remote.releaseRequests.get());
-            j.assertLogContains("Remote lock acquired on [Resource: remote-resource] (serverId=server-forced, lockId=lock-1)", run);
+            j.assertLogContains(
+                    "Remote lock acquired on [Resource: remote-resource] (serverId=server-forced, lockId=lock-1)", run);
 
             SemaphoreStep.success("forced-body/1", null);
             j.assertBuildStatusSuccess(j.waitForCompletion(run));
@@ -401,21 +383,20 @@ class LockStepRemoteTest extends LockStepTestBase {
             manager.setForcedServerId("server-forced");
 
             WorkflowJob job = j.createProject(WorkflowJob.class, "forced-override-lock");
-            job.setDefinition(new CpsFlowDefinition(
-                    """
+            job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-other') {
                         semaphore 'override-body'
                     }
                     echo 'override-finish'
-                    """,
-                    true));
+                    """, true));
 
             WorkflowRun run = job.scheduleBuild2(0).waitForStart();
             SemaphoreStep.waitForStart("override-body/1", run);
 
             assertEquals(1, remote.acquireRequests.get());
             j.assertLogContains("forcedServerId 'server-forced' overrides DSL serverId 'server-other'", run);
-            j.assertLogContains("Remote lock acquired on [Resource: remote-resource] (serverId=server-forced, lockId=lock-1)", run);
+            j.assertLogContains(
+                    "Remote lock acquired on [Resource: remote-resource] (serverId=server-forced, lockId=lock-1)", run);
 
             SemaphoreStep.success("override-body/1", null);
             j.assertBuildStatusSuccess(j.waitForCompletion(run));
@@ -462,8 +443,10 @@ class LockStepRemoteTest extends LockStepTestBase {
             server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             server.createContext("/lockable-resources/remote/v1/acquire", new AcquireHandler());
             server.createContext("/lockable-resources/remote/v1/acquire/lock-1", new AcquireStatusHandler());
-            server.createContext("/lockable-resources/remote/v1/lease/lock-1/release", new NoContentHandler(releaseRequests));
-            server.createContext("/lockable-resources/remote/v1/lease/lock-1/heartbeat", new NoContentHandler(new AtomicInteger()));
+            server.createContext(
+                    "/lockable-resources/remote/v1/lease/lock-1/release", new NoContentHandler(releaseRequests));
+            server.createContext(
+                    "/lockable-resources/remote/v1/lease/lock-1/heartbeat", new NoContentHandler(new AtomicInteger()));
             server.start();
         }
 
@@ -488,8 +471,7 @@ class LockStepRemoteTest extends LockStepTestBase {
                 lastAcquireBody.set(resource);
                 // Auto-generate lockEnvVars in status response when variable is specified
                 String variable = extractVariable(body);
-                if (variable != null && resource != null
-                        && acquireStatusResponse.contains("\"state\":\"ACQUIRED\"")) {
+                if (variable != null && resource != null && acquireStatusResponse.contains("\"state\":\"ACQUIRED\"")) {
                     acquireStatusResponse = "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\","
                             + "\"lockEnvVars\":{"
                             + "\"" + variable + "\":\"" + resource + "\","

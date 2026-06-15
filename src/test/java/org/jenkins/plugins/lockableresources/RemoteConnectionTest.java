@@ -67,7 +67,8 @@ class RemoteConnectionTest {
 
     @Test
     void testValidateAcceptsHttpsUrl() {
-        RemoteConnection connection = new RemoteConnection("server1", "https://jenkins1.example.com/jenkins", "creds-1");
+        RemoteConnection connection =
+                new RemoteConnection("server1", "https://jenkins1.example.com/jenkins", "creds-1");
 
         connection.validate();
     }

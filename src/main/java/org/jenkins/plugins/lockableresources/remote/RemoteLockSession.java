@@ -187,8 +187,10 @@ public final class RemoteLockSession implements Serializable {
                         return;
                     }
                     if (statusLockId == null || statusLockId.isEmpty()) {
-                        finishFailure(host, new AbortException(
-                                "Remote acquire returned ACQUIRED without lockId for serverId=" + serverId));
+                        finishFailure(
+                                host,
+                                new AbortException(
+                                        "Remote acquire returned ACQUIRED without lockId for serverId=" + serverId));
                         return;
                     }
                     lockId = statusLockId;
@@ -202,7 +204,10 @@ public final class RemoteLockSession implements Serializable {
                     completionSignaled.set(true);
                     PauseAction.endCurrentPause(host.context().get(FlowNode.class));
                     LockedResourcesBuildAction.addLog(
-                            run, Collections.singletonList(remoteResource), "skipped", host.step().toString());
+                            run,
+                            Collections.singletonList(remoteResource),
+                            "skipped",
+                            host.step().toString());
                     host.context().onSuccess(null);
                     return;
                 case FAILED:
@@ -212,8 +217,10 @@ public final class RemoteLockSession implements Serializable {
                     return;
                 case CANCELLED:
                     // Keep handling CANCELLED for compatibility with remote-side/admin cancellation.
-                    finishFailure(host, new InterruptedException(
-                            "Remote acquire was cancelled (serverId=" + serverId + ", lockId=" + lockId + ")"));
+                    finishFailure(
+                            host,
+                            new InterruptedException(
+                                    "Remote acquire was cancelled (serverId=" + serverId + ", lockId=" + lockId + ")"));
                     return;
                 default:
                     finishFailure(host, new AbortException(buildFailureMessage(status)));
@@ -224,28 +231,34 @@ public final class RemoteLockSession implements Serializable {
             if (ex instanceof RemoteApiException) {
                 int httpStatus = ((RemoteApiException) ex).getHttpStatus();
                 if (httpStatus == 404 || httpStatus == 410) {
-                    LOGGER.log(Level.WARNING,
+                    LOGGER.log(
+                            Level.WARNING,
                             "Remote lock not found on server (HTTP {0}); server may have restarted. "
-                            + "serverId={1}, lockId={2}",
+                                    + "serverId={1}, lockId={2}",
                             new Object[] {httpStatus, serverId, lockId});
-                    finishFailure(host, new AbortException(
-                            "Remote lock not found (HTTP " + httpStatus + "), server may have restarted. "
-                            + "serverId=" + serverId + ", lockId=" + lockId));
+                    finishFailure(
+                            host,
+                            new AbortException(
+                                    "Remote lock not found (HTTP " + httpStatus + "), server may have restarted. "
+                                            + "serverId=" + serverId + ", lockId=" + lockId));
                     return;
                 }
             }
             // Transient failure - retry up to threshold before failing the job
             consecutivePollFailures++;
             if (consecutivePollFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
-                LOGGER.log(Level.WARNING,
+                LOGGER.log(
+                        Level.WARNING,
                         "Remote poll failed {0} consecutive times; giving up. serverId={1}, lockId={2}",
                         new Object[] {consecutivePollFailures, serverId, lockId});
                 finishFailure(host, ex);
             } else {
-                LOGGER.log(Level.WARNING,
+                LOGGER.log(
+                        Level.WARNING,
                         "Remote poll failure ({0}/{1}); retrying. serverId={2}, lockId={3}: {4}",
-                        new Object[] {consecutivePollFailures, MAX_CONSECUTIVE_POLL_FAILURES,
-                                serverId, lockId, ex.getMessage()});
+                        new Object[] {
+                            consecutivePollFailures, MAX_CONSECUTIVE_POLL_FAILURES, serverId, lockId, ex.getMessage()
+                        });
             }
         }
     }
@@ -266,9 +279,10 @@ public final class RemoteLockSession implements Serializable {
                                 client.heartbeatLease(remote, authorizationHeader, currentLockId);
                             } catch (Exception ex) {
                                 // fail-close: server retains the lock; job continues
-                                LOGGER.log(Level.WARNING,
+                                LOGGER.log(
+                                        Level.WARNING,
                                         "Remote heartbeat failed (continuing job; server retains lock): "
-                                        + "serverId={0}, lockId={1}: {2}",
+                                                + "serverId={0}, lockId={1}: {2}",
                                         new Object[] {serverId, currentLockId, ex.getMessage()});
                             }
                         },
@@ -291,9 +305,8 @@ public final class RemoteLockSession implements Serializable {
             String authorizationHeader = RemoteCredentials.basicAuthHeader(remote, run);
             new RemoteApiClient().releaseLease(remote, authorizationHeader, currentLockId);
             LOGGER.log(
-                    Level.FINE,
-                    "Remote lock released: serverId={0}, lockId={1}",
-                    new Object[] {serverId, currentLockId});
+                    Level.FINE, "Remote lock released: serverId={0}, lockId={1}", new Object[] {serverId, currentLockId
+                    });
         } catch (Exception ex) {
             LOGGER.log(
                     Level.WARNING,
@@ -339,16 +352,17 @@ public final class RemoteLockSession implements Serializable {
         if (bodyStarted) {
             // Body was executing when Jenkins restarted. The body is interrupted by Jenkins; we
             // best-effort release the remote lock so the server doesn't hold it indefinitely.
-            LOGGER.log(Level.WARNING,
+            LOGGER.log(
+                    Level.WARNING,
                     "Jenkins restarted during remote lock body execution. "
-                    + "Releasing remote lock best-effort. serverId={0}, lockId={1}",
+                            + "Releasing remote lock best-effort. serverId={0}, lockId={1}",
                     new Object[] {serverId, lockId});
             releaseBestEffort(host);
             try {
-                host.context().onFailure(new AbortException(
-                        "Jenkins restarted during remote lock body execution "
-                        + "(serverId=" + serverId + ", lockId=" + lockId + "). "
-                        + "Remote lock released best-effort."));
+                host.context()
+                        .onFailure(new AbortException("Jenkins restarted during remote lock body execution "
+                                + "(serverId=" + serverId + ", lockId=" + lockId + "). "
+                                + "Remote lock released best-effort."));
             } catch (Exception ex) {
                 LOGGER.log(Level.WARNING, "Failed to signal remote body failure after restart", ex);
             }
@@ -365,7 +379,8 @@ public final class RemoteLockSession implements Serializable {
             // Restart is not a poll failure: start the post-restart retry budget fresh so a
             // long pre-restart QUEUED period does not shrink it.
             consecutivePollFailures = 0;
-            LOGGER.log(Level.INFO,
+            LOGGER.log(
+                    Level.INFO,
                     "Resuming remote lock polling after restart: serverId={0}, lockId={1}",
                     new Object[] {serverId, lockId});
             startPolling(host, remote, authorizationHeader, client, run, displayTarget);

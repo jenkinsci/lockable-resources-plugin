@@ -32,15 +32,18 @@ class RemoteLockManagerTest {
     }
 
     private static RemoteLockRequest reqWithVar(String resource, String variable) {
-        return new RemoteLockRequest(resource, null, 0, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
+        return new RemoteLockRequest(
+                resource, null, 0, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
     }
 
     private static RemoteLockRequest labelReq(String label, int quantity, boolean skipIfLocked) {
-        return new RemoteLockRequest(null, label, quantity, null, false, "SEQUENTIAL", skipIfLocked, null, 0, 0, "MINUTES", null);
+        return new RemoteLockRequest(
+                null, label, quantity, null, false, "SEQUENTIAL", skipIfLocked, null, 0, 0, "MINUTES", null);
     }
 
     private static RemoteLockRequest labelReqWithVar(String label, int quantity, String variable) {
-        return new RemoteLockRequest(null, label, quantity, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
+        return new RemoteLockRequest(
+                null, label, quantity, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
     }
 
     @Test
@@ -95,7 +98,8 @@ class RemoteLockManagerTest {
         RemoteLockRecord first = RemoteLockManager.get().enqueue(req("res-c"), null);
         assertEquals(RemoteLockState.ACQUIRED, first.getState());
 
-        RemoteLockRequest skipReq = new RemoteLockRequest("res-c", null, 0, null, false, "SEQUENTIAL", true, null, 0, 0, "MINUTES", null);
+        RemoteLockRequest skipReq =
+                new RemoteLockRequest("res-c", null, 0, null, false, "SEQUENTIAL", true, null, 0, 0, "MINUTES", null);
         RemoteLockRecord second = RemoteLockManager.get().enqueue(skipReq, null);
         assertEquals(RemoteLockState.SKIPPED, second.getState());
     }
@@ -270,8 +274,7 @@ class RemoteLockManagerTest {
         manager.createResourceWithLabel("board-1", "hw");
         manager.createResourceWithLabel("board-2", "hw");
 
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource("board-2", null, 0));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource("board-2", null, 0));
         RemoteLockRequest req = new RemoteLockRequest(
                 "board-1", null, 0, "RES", false, "SEQUENTIAL", false, extra, 0, 0, "MINUTES", null);
 
@@ -307,8 +310,7 @@ class RemoteLockManagerTest {
         assertEquals(RemoteLockState.ACQUIRED, first.getState());
 
         // Request board-1 + board-2 atomically — should stay QUEUED (board-2 busy)
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource("board-2", null, 0));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource("board-2", null, 0));
         RemoteLockRequest req = new RemoteLockRequest(
                 "board-1", null, 0, null, false, "SEQUENTIAL", false, extra, 0, 0, "MINUTES", null);
         RemoteLockRecord second = RemoteLockManager.get().enqueue(req, null);
@@ -436,8 +438,7 @@ class RemoteLockManagerTest {
         manager.createResourceWithLabel("gpu-1", "gpu remote-ok");
 
         // lock(resource: 'board-1', extra: [[label: 'gpu', quantity: 1]])
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 1));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 1));
         RemoteLockRecord record = RemoteLockManager.get().enqueue(reqWithExtra("board-1", null, 0, null, extra), null);
 
         assertEquals(RemoteLockState.ACQUIRED, record.getState());
@@ -461,8 +462,7 @@ class RemoteLockManagerTest {
         RemoteLockRecord first = RemoteLockManager.get().enqueue(labelReq("gpu", 1, false), null);
         assertEquals(RemoteLockState.ACQUIRED, first.getState());
 
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 1));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 1));
         RemoteLockRecord second = RemoteLockManager.get().enqueue(reqWithExtra("board-1", null, 0, null, extra), null);
 
         // Atomicity: nothing is partially locked while the extra label is unavailable
@@ -507,8 +507,7 @@ class RemoteLockManagerTest {
         RemoteLockRecord first = RemoteLockManager.get().enqueue(labelReq("gpu", 1, false), null);
         assertEquals(RemoteLockState.ACQUIRED, first.getState());
 
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 1));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 1));
         RemoteLockRecord second = RemoteLockManager.get().enqueue(reqWithExtra("board-1", null, 0, null, extra), null);
         assertEquals(RemoteLockState.QUEUED, second.getState());
 
@@ -531,8 +530,7 @@ class RemoteLockManagerTest {
         manager.createResourceWithLabel("board-1", "remote-ok");
 
         // lock(extra: [[resource: 'board-1']]) — no main resource/label
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource("board-1", null, 0));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource("board-1", null, 0));
         RemoteLockRecord record = RemoteLockManager.get().enqueue(reqWithExtra(null, null, 0, null, extra), null);
 
         assertEquals(RemoteLockState.ACQUIRED, record.getState());
@@ -627,8 +625,7 @@ class RemoteLockManagerTest {
         manager.createResourceWithLabel("gpu-2", "gpu remote-ok");
 
         // main resource + extra [label gpu, quantity 0] → lock main + ALL gpu
-        List<RemoteLockRequest.ExtraResource> extra =
-                List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 0));
+        List<RemoteLockRequest.ExtraResource> extra = List.of(new RemoteLockRequest.ExtraResource(null, "gpu", 0));
         RemoteLockRecord record = RemoteLockManager.get().enqueue(reqWithExtra("main-1", null, 0, null, extra), null);
 
         assertEquals(RemoteLockState.ACQUIRED, record.getState());
@@ -727,8 +724,12 @@ class RemoteLockManagerTest {
         manager.createResourceWithLabel("other-1", "other");
 
         // carries one of the exposeLabels → exposed and acquired
-        assertEquals(RemoteLockState.ACQUIRED, RemoteLockManager.get().enqueue(req("gpu-1"), null).getState());
-        assertEquals(RemoteLockState.ACQUIRED, RemoteLockManager.get().enqueue(req("lic-1"), null).getState());
+        assertEquals(
+                RemoteLockState.ACQUIRED,
+                RemoteLockManager.get().enqueue(req("gpu-1"), null).getState());
+        assertEquals(
+                RemoteLockState.ACQUIRED,
+                RemoteLockManager.get().enqueue(req("lic-1"), null).getState());
 
         // carries none of the exposeLabels → rejected
         RemoteLockRecord other = RemoteLockManager.get().enqueue(req("other-1"), null);

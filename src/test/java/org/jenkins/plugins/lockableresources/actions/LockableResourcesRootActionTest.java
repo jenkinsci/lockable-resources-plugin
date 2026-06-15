@@ -517,9 +517,22 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         LockableResourcesManager.get().setExposeLabel("remote-ok");
         LockableResourcesManager.get().createResourceWithLabel("remote-unknown-client", "remote-ok");
         LockableResource resource = LockableResourcesManager.get().fromName("remote-unknown-client");
-        RemoteLockManager.get().enqueue(
-                new RemoteLockRequest(resource.getName(), null, 0, null, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null),
-                null);
+        RemoteLockManager.get()
+                .enqueue(
+                        new RemoteLockRequest(
+                                resource.getName(),
+                                null,
+                                0,
+                                null,
+                                false,
+                                "SEQUENTIAL",
+                                false,
+                                null,
+                                0,
+                                0,
+                                "MINUTES",
+                                null),
+                        null);
 
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.login(this.ADMIN);
@@ -535,9 +548,22 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         LockableResourcesManager.get().setExposeLabel("remote-ok");
         LockableResourcesManager.get().createResourceWithLabel("remote-known-client", "remote-ok");
         LockableResource resource = LockableResourcesManager.get().fromName("remote-known-client");
-        RemoteLockManager.get().enqueue(
-                new RemoteLockRequest(resource.getName(), null, 0, null, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null),
-                "client-jenkins-a");
+        RemoteLockManager.get()
+                .enqueue(
+                        new RemoteLockRequest(
+                                resource.getName(),
+                                null,
+                                0,
+                                null,
+                                false,
+                                "SEQUENTIAL",
+                                false,
+                                null,
+                                0,
+                                0,
+                                "MINUTES",
+                                null),
+                        "client-jenkins-a");
 
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.login(this.ADMIN);

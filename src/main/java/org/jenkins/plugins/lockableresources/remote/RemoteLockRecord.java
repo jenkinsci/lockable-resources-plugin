@@ -25,28 +25,30 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 public final class RemoteLockRecord {
 
     private final String lockId;
+
     @NonNull
     private final RemoteLockRequest lockRequest;
     /** Caller-supplied client identifier (e.g. the A-side Jenkins root URL). May be null if not provided. */
     @CheckForNull
     private final String clientId;
+
     private volatile RemoteLockState state;
     private final long enqueuedAt;
     private volatile long acquiredAt;
     private volatile long lastHeartbeatAt;
     /** Last time the client polled GET /acquire/{lockId}; liveness signal while QUEUED. */
     private volatile long lastPolledAt;
+
     @CheckForNull
     private volatile String errorCode;
+
     @CheckForNull
     private volatile List<String> acquiredResourceNames;
+
     @CheckForNull
     private volatile Map<String, String> lockEnvVars;
 
-    RemoteLockRecord(
-            @NonNull String lockId,
-            @NonNull RemoteLockRequest lockRequest,
-            @CheckForNull String clientId) {
+    RemoteLockRecord(@NonNull String lockId, @NonNull RemoteLockRequest lockRequest, @CheckForNull String clientId) {
         this.lockId = lockId;
         this.lockRequest = lockRequest;
         this.clientId = clientId;

@@ -46,8 +46,8 @@ public class RemoteLockManager extends PeriodicWork {
      * Time after which an ACQUIRED record with no heartbeat is marked STALE.
      * = max(heartbeatInterval x 6, 60) seconds.
      */
-    static final long STALE_THRESHOLD_MS = TimeUnit.SECONDS.toMillis(
-            Math.max(RemoteClientDefaults.DEFAULT_HEARTBEAT_INTERVAL_SECONDS * 6, 60));
+    static final long STALE_THRESHOLD_MS =
+            TimeUnit.SECONDS.toMillis(Math.max(RemoteClientDefaults.DEFAULT_HEARTBEAT_INTERVAL_SECONDS * 6, 60));
 
     /** Terminal records (SKIPPED/FAILED) are removed from the map after this TTL. */
     private static final long TERMINAL_TTL_MS = TimeUnit.SECONDS.toMillis(120);
@@ -66,8 +66,7 @@ public class RemoteLockManager extends PeriodicWork {
     /** Testable override: -Dorg.jenkins...RemoteLockManager.queuePollExpiryMs=<millis> */
     static long getQueuePollExpiryMs() {
         return jenkins.util.SystemProperties.getLong(
-                RemoteLockManager.class.getName() + ".queuePollExpiryMs",
-                DEFAULT_QUEUE_POLL_EXPIRY_MS);
+                RemoteLockManager.class.getName() + ".queuePollExpiryMs", DEFAULT_QUEUE_POLL_EXPIRY_MS);
     }
 
     private final ConcurrentHashMap<String, RemoteLockRecord> records = new ConcurrentHashMap<>();
@@ -148,8 +147,8 @@ public class RemoteLockManager extends PeriodicWork {
         }
 
         records.put(lockId, record);
-        LOGGER.fine("Remote acquire enqueued: lockId=" + lockId
-                + " state=" + record.getState() + " clientId=" + clientId);
+        LOGGER.fine(
+                "Remote acquire enqueued: lockId=" + lockId + " state=" + record.getState() + " clientId=" + clientId);
         return record;
     }
 
@@ -249,10 +248,12 @@ public class RemoteLockManager extends PeriodicWork {
             if (state == RemoteLockState.ACQUIRED) {
                 if (now - record.getLastHeartbeatAt() > STALE_THRESHOLD_MS) {
                     record.markStale();
-                    LOGGER.log(Level.WARNING,
+                    LOGGER.log(
+                            Level.WARNING,
                             "Remote lock STALE: lockId={0} resources={1} lastHeartbeatAge={2}ms",
-                            new Object[]{record.getLockId(), record.getAcquiredResourceNames(),
-                                    now - record.getLastHeartbeatAt()});
+                            new Object[] {
+                                record.getLockId(), record.getAcquiredResourceNames(), now - record.getLastHeartbeatAt()
+                            });
                 }
             } else if (state == RemoteLockState.QUEUED) {
                 if (now - record.getLastPolledAt() > queuePollExpiryMs) {
@@ -262,9 +263,10 @@ public class RemoteLockManager extends PeriodicWork {
                         if (record.getState() == RemoteLockState.QUEUED) {
                             record.markFailed("QUEUE_EXPIRED");
                             LockableResourcesManager.get().unqueueRemote(record.getLockId());
-                            LOGGER.log(Level.WARNING,
+                            LOGGER.log(
+                                    Level.WARNING,
                                     "Remote queue entry expired (client stopped polling): lockId={0} lastPollAge={1}ms",
-                                    new Object[]{record.getLockId(), now - record.getLastPolledAt()});
+                                    new Object[] {record.getLockId(), now - record.getLastPolledAt()});
                         }
                     }
                 }
