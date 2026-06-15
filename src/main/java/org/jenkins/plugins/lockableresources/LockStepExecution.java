@@ -8,15 +8,19 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockRouting;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockSession;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
@@ -25,13 +29,16 @@ import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
-public class LockStepExecution extends AbstractStepExecutionImpl {
+public class LockStepExecution extends AbstractStepExecutionImpl implements RemoteLockSession.Host {
 
     private static final long serialVersionUID = 1391734561272059623L;
 
     private static final Logger LOGGER = Logger.getLogger(LockStepExecution.class.getName());
 
     private final LockStep step;
+
+    /** Non-null once a remote {@code lock()} flow has started; owns the acquire/poll/heartbeat/release machine. */
+    private RemoteLockSession remoteSession;
 
     public LockStepExecution(LockStep step, StepContext context) {
         super(context);
@@ -54,9 +61,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         List<LockableResource> available;
         LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        synchronized (LockableResourcesManager.syncResources) {
-            step.validate(lrm.isAllowEmptyOrNullValues());
 
+        if (RemoteLockRouting.isRemoteRequest(step, lrm)) {
+            remoteSession = new RemoteLockSession();
+            return remoteSession.start(this);
+        }
+        step.validate(lrm.isAllowEmptyOrNullValues());
+
+        synchronized (LockableResourcesManager.syncResources) {
             LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
             getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
@@ -107,6 +119,62 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         }
 
         return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    // RemoteLockSession.Host - the remote acquire/poll/heartbeat/release machine lives in RemoteLockSession;
+    // these are the thin step-side hooks it calls back into (expose the step context, run the lock body).
+
+    @Override
+    public StepContext context() {
+        return getContext();
+    }
+
+    @Override
+    public LockStep step() {
+        return step;
+    }
+
+    @Override
+    public void runBody(
+            String displayTarget,
+            @edu.umd.cs.findbugs.annotations.CheckForNull Map<String, String> lockEnvVars,
+            String lockId) {
+        try {
+            Run<?, ?> build = getContext().get(Run.class);
+            FlowNode node = getContext().get(FlowNode.class);
+            PrintStream logger = getContext().get(TaskListener.class).getLogger();
+            LockableResourcesManager.printLogs(
+                    "Remote lock acquired on ["
+                            + step
+                            + "] (serverId="
+                            + remoteSession.getServerId()
+                            + ", lockId="
+                            + lockId
+                            + ")",
+                    Level.FINE,
+                    LOGGER,
+                    logger);
+            LockedResourcesBuildAction.addLog(build, Collections.singletonList(displayTarget), "acquired", step.toString());
+            PauseAction.endCurrentPause(node);
+
+            BodyInvoker bodyInvoker = getContext().newBodyInvoker().withCallback(new RemoteCallback(displayTarget));
+            if (lockEnvVars != null && !lockEnvVars.isEmpty()) {
+                final Map<String, String> envVars = lockEnvVars;
+                bodyInvoker.withContext(EnvironmentExpander.merge(
+                        getContext().get(EnvironmentExpander.class), new EnvironmentExpander() {
+                            private static final long serialVersionUID = -6921365277116143418L;
+
+                            @Override
+                            public void expand(@NonNull EnvVars env) {
+                                env.overrideAll(envVars);
+                            }
+                        }));
+            }
+            bodyInvoker.start();
+        } catch (Exception ex) {
+            remoteSession.fail(this, ex);
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -203,7 +271,6 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
         try {
             List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
-            final String resourceNamesAsString = String.join(",", lockedResources.keySet());
             LockedResourcesBuildAction.addLog(build, resourceNames, "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
             BodyInvoker bodyInvoker =
@@ -216,19 +283,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
 
                             @Override
                             public void expand(@NonNull EnvVars env) {
-                                final LinkedHashMap<String, String> variables = new LinkedHashMap<>();
-                                variables.put(variable, resourceNamesAsString);
-                                int index = 0;
-                                for (Entry<String, List<LockableResourceProperty>> lockResourceEntry :
-                                        lockedResources.entrySet()) {
-                                    String lockEnvName = variable + index;
-                                    variables.put(lockEnvName, lockResourceEntry.getKey());
-                                    for (LockableResourceProperty lockProperty : lockResourceEntry.getValue()) {
-                                        String propEnvName = lockEnvName + "_" + lockProperty.getName();
-                                        variables.put(propEnvName, lockProperty.getValue());
-                                    }
-                                    ++index;
-                                }
+                                Map<String, String> variables = buildLockEnvVars(variable, lockedResources);
                                 LOGGER.finest("Setting "
                                         + variables.entrySet().stream()
                                                 .map(e -> e.getKey() + "=" + e.getValue())
@@ -243,6 +298,37 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
             LOGGER.warning("proceed done with failure " + resourceDescription);
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Builds the {@code lockEnvVars} map injected for the duration of a {@code lock()} block, following
+     * local semantics exactly: {@code variable="X"} with locked resources {@code r1, r2} yields
+     * {@code X="r1,r2"}, {@code X0="r1"}, {@code X0_<prop>=<value>}, {@code X1="r2"}, ... Property env vars
+     * are included. Returns {@code null} when {@code variable} is null/empty.
+     *
+     * <p>Shared by the local flow ({@link #proceed}) and the remote bridge so the two never drift. All
+     * inputs (resource names and property name/value strings) are serializable, so the remote server can
+     * generate the same map and bridge it to the client.
+     */
+    @edu.umd.cs.findbugs.annotations.CheckForNull
+    public static Map<String, String> buildLockEnvVars(
+            @edu.umd.cs.findbugs.annotations.CheckForNull String variable,
+            @NonNull LinkedHashMap<String, List<LockableResourceProperty>> lockedResources) {
+        if (variable == null || variable.isEmpty()) {
+            return null;
+        }
+        LinkedHashMap<String, String> variables = new LinkedHashMap<>();
+        variables.put(variable, String.join(",", lockedResources.keySet()));
+        int index = 0;
+        for (Entry<String, List<LockableResourceProperty>> lockResourceEntry : lockedResources.entrySet()) {
+            String lockEnvName = variable + index;
+            variables.put(lockEnvName, lockResourceEntry.getKey());
+            for (LockableResourceProperty lockProperty : lockResourceEntry.getValue()) {
+                variables.put(lockEnvName + "_" + lockProperty.getName(), lockProperty.getValue());
+            }
+            ++index;
+        }
+        return variables;
     }
 
     private static final class Callback extends BodyExecutionCallback.TailCall {
@@ -269,8 +355,48 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
         }
     }
 
+    private final class RemoteCallback extends BodyExecutionCallback.TailCall {
+
+        private static final long serialVersionUID = -6771337682719425678L;
+
+        private final String remoteResource;
+
+        private RemoteCallback(String remoteResource) {
+            this.remoteResource = remoteResource;
+        }
+
+        @Override
+        protected void finished(StepContext context) {
+            remoteSession.onBodyFinished(LockStepExecution.this);
+
+            Run<?, ?> build;
+            try {
+                build = context.get(Run.class);
+                LockedResourcesBuildAction.addLog(build, Collections.singletonList(remoteResource), "released", step.toString());
+                LockableResourcesManager.printLogs(
+                        "Remote lock released on ["
+                                + step
+                                + "] (serverId="
+                                + remoteSession.getServerId()
+                        + ", lockId="
+                        + remoteSession.getLockId()
+                                + ")",
+                        Level.FINE,
+                        LOGGER,
+                        context.get(TaskListener.class).getLogger());
+            } catch (Exception ex) {
+                LOGGER.log(Level.WARNING, "Failed to write remote release log", ex);
+            }
+        }
+    }
+
     @Override
     public void stop(@NonNull Throwable cause) {
+        if (remoteSession != null) {
+            remoteSession.stop(this, cause);
+            return;
+        }
+
         boolean cleaned = LockableResourcesManager.get().unqueueContext(getContext());
         if (!cleaned) {
             LOGGER.log(
@@ -278,5 +404,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl {
                     "Cannot remove context from lockable resource waiting list. The context is not in the waiting list.");
         }
         getContext().onFailure(cause);
+    }
+
+    @Override
+    public void onResume() {
+        if (remoteSession != null) {
+            remoteSession.onResume(this);
+        }
     }
 }

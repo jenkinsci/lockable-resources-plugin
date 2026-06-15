@@ -118,10 +118,26 @@ THE SOFTWARE.
 
             <td class="jenkins-!-${cssClass}-color">
               <j:choose>
-                <j:when test="${resource.reservedBy != null}">${%resource.status.reserved}</j:when>
-                <j:when test="${resource.locked}">${%resource.status.locked}</j:when>
-                <j:when test="${resource.queued}">${%resource.status.queued}</j:when>
-                <j:otherwise>${%resource.status.free}</j:otherwise>
+                <!-- Reserved by user, config or API -->
+                <j:when test="${resource.reservedBy != null}">
+                  ${%resource.status.reserved}
+                </j:when>
+                <!-- Locked via remote REST API -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  ${%resource.status.remoteLockedBy(resource.remoteLockClientId != null ? resource.remoteLockClientId : '(unknown)')}
+                </j:when>
+                <!-- Locked by job -->
+                <j:when test="${resource.locked}">
+                  ${%resource.status.locked}
+                </j:when>
+                <!-- Queued -->
+                <j:when test="${resource.queued}">
+                  ${%resource.status.queued}
+                </j:when>
+                <!-- Free -->
+                <j:otherwise>
+                  ${%resource.status.free}
+                </j:otherwise>
               </j:choose>
             </td>
 
@@ -210,6 +226,18 @@ THE SOFTWARE.
             <td>
               <div class="jenkins-table__cell__button-wrapper">
               <j:choose>
+                <!-- Remote-locked resource: show force-release button (admin override for STALE/orphaned locks) -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  <l:hasPermission permission="${it.UNLOCK}">
+                    <button
+                      data-action="releaseRemoteLock"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                      tooltip="${%btn.releaseRemoteLock}"
+                    >
+                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                    </button>
+                  </l:hasPermission>
+                </j:when>
                 <j:when test="${resource.locked}">
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button

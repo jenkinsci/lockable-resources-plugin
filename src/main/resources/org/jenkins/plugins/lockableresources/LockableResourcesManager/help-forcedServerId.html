@@ -1,0 +1,17 @@
+<div>
+  <p>
+    When set, every <code>lock()</code> step on this controller is transparently delegated to
+    the remote server identified by this ID (<em>delegated mode</em>), regardless of whether
+    the pipeline DSL specifies a <code>serverId</code> parameter or not.
+  </p>
+  <p>
+    If the DSL also specifies a <code>serverId</code> that differs from this value, the forced
+    server ID takes precedence and an INFO log message is written to the build log.
+  </p>
+  <p>
+    The value must match the <strong>Server ID</strong> of one of the configured remote servers
+    listed below.  Leave blank to disable delegated mode (default: peer mode only).
+  </p>
+  <p><strong>Example:</strong> set to <code>prod-controller</code> to route all locks to the
+    remote server whose Server ID is <code>prod-controller</code>.</p>
+</div>

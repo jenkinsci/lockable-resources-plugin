@@ -18,6 +18,7 @@ import hudson.console.ModelHyperlinkNote;
 import hudson.init.Terminator;
 import hudson.model.Descriptor;
 import hudson.model.Run;
+import hudson.util.FormValidation;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -45,12 +47,15 @@ import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
+import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
 
 @Extension
@@ -60,6 +65,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public static final Object syncResources = new Object();
 
     private List<LockableResource> resources;
+
+    /**
+     * Remote connections are persisted as a list for GlobalConfiguration/XStream compatibility.
+     */
+    private List<RemoteConnection> remotes;
+
     private final transient Cache<Long, List<LockableResource>> cachedCandidates =
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
@@ -79,8 +90,37 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
 
+    /**
+     * Remote acquire requests waiting for resources. Transient: does not survive Jenkins restart
+     * (remote locks are expected to be released before restart per operator runbook).
+     * All access must be under {@link #syncResources}.
+     */
+    private transient List<RemoteQueueEntry> remoteQueueEntries;
+
     // cache to enable / disable saving lockable-resources state
     private int enableSave = -1;
+
+    /** When true the remote lock REST API (/remote/v1/*) is active on this server. */
+    private boolean remoteApiEnabled = false;
+
+    /**
+     * Only resources that carry this label are exposed via the remote API.
+     * When empty or null, no resources are exposed (opt-in: must explicitly set a label).
+     */
+    private String exposeLabel = "";
+
+    /**
+     * Client identifier sent to remote servers in POST /acquire.
+     * When empty the Jenkins root URL is used as a fallback.
+     */
+    private String clientId = "";
+
+    /**
+     * When non-empty, every {@code lock()} step on this controller is transparently delegated
+     * to the remote server identified by this serverId (delegated mode).  Explicit
+     * {@code serverId} in the DSL is overridden by this setting (an INFO log is emitted).
+     */
+    private String forcedServerId = "";
 
     private static final int enabledBlockedCount =
             SystemProperties.getInteger(Constants.SYSTEM_PROPERTY_PRINT_BLOCKED_RESOURCE, 2);
@@ -136,13 +176,170 @@ public class LockableResourcesManager extends GlobalConfiguration {
             justification = "Common Jenkins pattern to call method that can be overridden")
     public LockableResourcesManager() {
         resources = new ArrayList<>();
+        remotes = new ArrayList<>();
         load();
+    }
+
+    /**
+     * Called by XStream after deserialization to restore defaults for newly added fields.
+     */
+    private Object readResolve() {
+        if (remotes == null) {
+            remotes = new ArrayList<>();
+        }
+        if (exposeLabel == null) {
+            exposeLabel = "";
+        }
+        if (clientId == null) {
+            clientId = "";
+        }
+        if (forcedServerId == null) {
+            forcedServerId = "";
+        }
+        return this;
+    }
+
+    @DataBoundSetter
+    public void setRemoteApiEnabled(boolean remoteApiEnabled) {
+        this.remoteApiEnabled = remoteApiEnabled;
+    }
+
+    public boolean isRemoteApiEnabled() {
+        return remoteApiEnabled;
+    }
+
+    @DataBoundSetter
+    public void setExposeLabel(String exposeLabel) {
+        this.exposeLabel = exposeLabel != null ? exposeLabel : "";
+    }
+
+    public String getExposeLabel() {
+        return exposeLabel;
+    }
+
+    /**
+     * The configured {@code exposeLabel}(s) as a set. {@code exposeLabel} is a whitespace-separated list of
+     * labels (same convention as {@link LockableResource#getLabelsAsList()}); a resource is exposed to remote
+     * clients if it carries <em>any</em> of them (OR). An empty/blank value exposes nothing (opt-in). A single
+     * label is simply a one-element set, so existing single-label configurations behave unchanged.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public Set<String> getExposeLabels() {
+        if (exposeLabel == null || exposeLabel.isBlank()) {
+            return Collections.emptySet();
+        }
+        Set<String> labels = new HashSet<>();
+        for (String l : exposeLabel.split("\\s+")) {
+            if (!l.isEmpty()) {
+                labels.add(l);
+            }
+        }
+        return labels;
+    }
+
+    @DataBoundSetter
+    public void setClientId(String clientId) {
+        this.clientId = clientId != null ? clientId.trim() : "";
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    @DataBoundSetter
+    public void setForcedServerId(String forcedServerId) {
+        this.forcedServerId = forcedServerId != null ? forcedServerId.trim() : "";
+    }
+
+    public String getForcedServerId() {
+        return forcedServerId;
+    }
+
+    /**
+     * Form validation for {@code forcedServerId}: warns when the value does not match
+     * any configured remote connection (delegated mode would fail at lock() time).
+     */
+    public FormValidation doCheckForcedServerId(@QueryParameter String value) {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        String trimmed = Util.fixEmptyAndTrim(value);
+        if (trimmed == null) {
+            return FormValidation.ok();
+        }
+        if (!getRemotesAsMap().containsKey(trimmed)) {
+            return FormValidation.warning(Messages.warning_forcedServerIdNotConfigured(trimmed));
+        }
+        return FormValidation.ok();
+    }
+
+    /**
+     * Returns the effective client identifier to send to remote servers.
+     * Uses the configured clientId if non-empty; otherwise falls back
+     * to Jenkins.getRootUrl() (which may be null if not configured).
+     */
+    @edu.umd.cs.findbugs.annotations.CheckForNull
+    public String getEffectiveClientId() {
+        if (clientId != null && !clientId.isEmpty()) {
+            return clientId;
+        }
+        return Jenkins.get().getRootUrl();
     }
 
     // ---------------------------------------------------------------------------
     /** Get all resources Includes declared, ephemeral and node resources */
     public List<LockableResource> getResources() {
         return this.resources;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Returns a defensive copy of configured remote connections. */
+    public List<RemoteConnection> getRemotes() {
+        return remotes != null ? new ArrayList<>(remotes) : new ArrayList<>();
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Returns remote connections as a map keyed by serverId.
+     *
+     * <p>Duplicate serverIds are resolved as last-entry-wins to match form submission order.
+     */
+    public Map<String, RemoteConnection> getRemotesAsMap() {
+        LinkedHashMap<String, RemoteConnection> remotesByServerId = new LinkedHashMap<>();
+        for (RemoteConnection remote : getRemotes()) {
+            if (remote == null) {
+                continue;
+            }
+            String serverId = remote.getServerId();
+            if (serverId == null || serverId.isEmpty()) {
+                continue;
+            }
+            remotesByServerId.put(serverId, remote);
+        }
+        return Collections.unmodifiableMap(remotesByServerId);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Set all remote connections. */
+    @DataBoundSetter
+    public void setRemotes(List<RemoteConnection> remotes) {
+        ArrayList<RemoteConnection> validatedRemotes = new ArrayList<>();
+        if (remotes != null) {
+            HashSet<String> seenServerIds = new HashSet<>();
+            for (RemoteConnection remote : remotes) {
+                if (remote == null) {
+                    throw new IllegalArgumentException("remote connection entry must not be null");
+                }
+                remote.validate();
+
+                String serverId = remote.getServerId();
+                if (!seenServerIds.add(serverId)) {
+                    LOGGER.warning("Duplicate remote serverId detected: " + serverId + ". Last entry wins.");
+                }
+                validatedRemotes.add(remote);
+            }
+        }
+        this.remotes = validatedRemotes;
+        save();
     }
 
     // ---------------------------------------------------------------------------
@@ -801,50 +998,75 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     private boolean proceedNextContext() {
-        QueuedContextStruct nextContext = this.getNextQueuedContext();
-        LOGGER.finest("nextContext: " + nextContext);
-        // no context is queued which can be started once these resources are free'd.
-        if (nextContext == null) {
+        QueuedContextStruct nextLocal = this.getNextQueuedContext();
+        RemoteQueueEntry nextRemote = this.getNextRemoteEntry();
+
+        if (nextLocal == null && nextRemote == null) {
             LOGGER.fine("No context is queued which can be started once these resources are free'd.");
             return false;
         }
+
+        // Process the higher-priority entry first; equal priority favours local (arrived earlier)
+        boolean pickRemote = nextRemote != null
+                && (nextLocal == null || nextRemote.getPriority() > nextLocal.getPriority());
+
+        if (pickRemote) {
+            return proceedRemoteEntry(nextRemote);
+        } else {
+            return proceedLocalEntry(nextLocal);
+        }
+    }
+
+    private boolean proceedLocalEntry(@NonNull QueuedContextStruct nextContext) {
         LOGGER.finest("nextContext candidates: " + nextContext.candidates);
         List<LockableResource> requiredResourceForNextContext =
                 this.fromNames(nextContext.candidates, /*create un-existent resources */ true);
         LOGGER.finest("nextContext real candidates: " + requiredResourceForNextContext);
-        // remove context from queue and process it
 
         Run<?, ?> build = nextContext.getBuild();
         if (build == null) {
-            // this shall never happen
-            // skip this context, as the build cannot be retrieved (maybe it was deleted while
-            // running?)
+            // this shall never happen - skip context (build deleted while running?)
             LOGGER.warning("Skip this context, as the build cannot be retrieved");
             return true;
         }
         boolean locked = this.lock(requiredResourceForNextContext, build, nextContext.getReason());
         if (!locked) {
-            // defensive line, shall never happen
+            // defensive; shall never happen
             LOGGER.warning("Can not lock resources: " + requiredResourceForNextContext);
-            // to eliminate possible endless loop
             return false;
         }
 
-        // build env vars
         LinkedHashMap<String, List<LockableResourceProperty>> resourcesToLock = new LinkedHashMap<>();
-        for (LockableResource requiredResource : requiredResourceForNextContext) {
-            resourcesToLock.put(requiredResource.getName(), requiredResource.getProperties());
+        for (LockableResource r : requiredResourceForNextContext) {
+            resourcesToLock.put(r.getName(), r.getProperties());
         }
-
         this.unqueueContext(nextContext.getContext());
-
-        // continue with next context
         LOGGER.fine("Continue with next context: " + nextContext);
         LockStepExecution.proceed(
                 resourcesToLock,
                 nextContext.getContext(),
                 nextContext.getResourceDescription(),
                 nextContext.getVariableName());
+        return true;
+    }
+
+    private boolean proceedRemoteEntry(@NonNull RemoteQueueEntry entry) {
+        List<LockableResource> resources = entry.getResolved();
+        if (resources == null || resources.isEmpty()) {
+            LOGGER.warning("Remote queue entry has no resolved resources: " + entry.getLockId());
+            return false;
+        }
+        boolean locked = lockForRemote(resources, entry.getLockId());
+        if (!locked) {
+            LOGGER.warning("Cannot lock remote resources: " + entry.getLockId());
+            return false;
+        }
+        getRemoteQueueEntries().remove(entry);
+        // onAcquired marks the record ACQUIRED and builds lockEnvVars (incl. resource properties),
+        // using the shared LockStepExecution.buildLockEnvVars - same as local lock().
+        entry.onAcquired(resources);
+        LOGGER.fine("Remote queued->acquired: lockId=" + entry.getLockId()
+                + " resources=" + getResourcesNames(resources));
         return true;
     }
 
@@ -941,6 +1163,46 @@ public class LockableResourcesManager extends GlobalConfiguration {
         entry.candidates = getResourcesNames(candidates);
         LOGGER.fine("take this: " + entry);
         return entry;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Scans remote queue entries, removes invalid/timed-out ones, and returns the first entry
+     * (highest priority) whose resources are currently all available.
+     * Must be called under {@link #syncResources}.
+     */
+    @CheckForNull
+    private RemoteQueueEntry getNextRemoteEntry() {
+        List<RemoteQueueEntry> list = getRemoteQueueEntries();
+        List<RemoteQueueEntry> toRemove = new ArrayList<>();
+        RemoteQueueEntry result = null;
+
+        for (RemoteQueueEntry entry : list) {
+            if (!entry.isValid()) {
+                toRemove.add(entry);
+                continue;
+            }
+            if (entry.isTimedOut()) {
+                toRemove.add(entry);
+                LOGGER.info("Remote queue entry timed out waiting for resources: " + entry);
+                entry.onTimeout();
+                continue;
+            }
+            if (result == null) {
+                // Resolve via the canonical path (same as local), with the exposure policy as filter.
+                List<LockableResource> available =
+                        new RemoteResolver(this).availableForRemote(entry.getStructs(), entry.getLockRequest());
+                if (available != null) {
+                    entry.setResolved(available);
+                    result = entry;
+                }
+            }
+        }
+
+        if (!toRemove.isEmpty()) {
+            list.removeAll(toRemove);
+        }
+        return result;
     }
 
     // ---------------------------------------------------------------------------
@@ -1245,6 +1507,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 return false;
             }
         }
+        // Consistency check after binding completes (form field order makes a
+        // setter-time check unreliable: forcedServerId binds before remotes).
+        if (!forcedServerId.isEmpty() && !getRemotesAsMap().containsKey(forcedServerId)) {
+            LOGGER.warning(Messages.warning_forcedServerIdNotConfigured(forcedServerId));
+        }
         return true;
     }
 
@@ -1272,6 +1539,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
             final List<LockableResourcesStruct> requiredResourcesList,
             final @Nullable PrintStream logger,
             final @Nullable ResourceSelectStrategy selectStrategy) {
+        return getAvailableResources(requiredResourcesList, logger, selectStrategy, r -> true);
+    }
+
+    /**
+     * As {@link #getAvailableResources(List, PrintStream, ResourceSelectStrategy)} but restricts the
+     * candidate pool to resources accepted by {@code candidateFilter}. This is the seam the remote bridge
+     * uses to apply its {@code exposeLabel} visibility filter; local callers pass "accept all". The filter is
+     * a plain predicate (it knows nothing about exposeLabel), so the canonical resolver stays generic. It is
+     * applied to the candidate pool <em>before</em> count-based selection, so a label request with
+     * {@code amount<=0} ("all") means "all <em>visible</em> matching".
+     */
+    public List<LockableResource> getAvailableResources(
+            final List<LockableResourcesStruct> requiredResourcesList,
+            final @Nullable PrintStream logger,
+            final @Nullable ResourceSelectStrategy selectStrategy,
+            @NonNull final Predicate<LockableResource> candidateFilter) {
 
         LOGGER.finest("getAvailableResources, " + requiredResourcesList);
         List<LockableResource> candidates = new ArrayList<>();
@@ -1289,7 +1572,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
 
                 available = this.getFreeResourcesWithLabel(
-                        requiredResources.label, requiredAmount, selectStrategy, logger, candidates);
+                        requiredResources.label, requiredAmount, selectStrategy, logger, candidates, candidateFilter);
             } else if (requiredResources.required != null) {
                 // resource by name requested
 
@@ -1299,7 +1582,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 available = fromNames(
                         getResourcesNames(requiredResources.required), /*create un-existent resources */ true);
 
-                if (!this.areAllAvailable(available)) {
+                if (available == null
+                        || available.stream().anyMatch(r -> !candidateFilter.test(r))
+                        || !this.areAllAvailable(available)) {
+                    // not all available, or a requested resource is not visible to this caller
                     available = null;
                 }
             } else {
@@ -1362,11 +1648,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
             long amount,
             final @Nullable ResourceSelectStrategy selectStrategy,
             final @Nullable PrintStream logger,
-            final List<LockableResource> alreadySelected) {
+            final List<LockableResource> alreadySelected,
+            @NonNull final Predicate<LockableResource> candidateFilter) {
         List<LockableResource> found = new ArrayList<>();
 
         List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
         candidates.addAll(this.getResourcesWithLabel(label));
+        // Restrict to the visible candidate pool before count-based selection (e.g. remote exposure policy).
+        // Applied here so amount<=0 ("all") resolves to "all visible matching".
+        candidates.removeIf(r -> !candidateFilter.test(r));
 
         if (amount <= 0) {
             amount = candidates.size();
@@ -1588,6 +1878,97 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
         return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Remote queue support
+    // ---------------------------------------------------------------------------
+
+    /** Lazy init accessor - always call under {@link #syncResources}. */
+    private List<RemoteQueueEntry> getRemoteQueueEntries() {
+        if (remoteQueueEntries == null) {
+            remoteQueueEntries = new ArrayList<>();
+        }
+        return remoteQueueEntries;
+    }
+
+    /**
+     * Adds a remote queue entry in priority-descending order (highest priority at front,
+     * matching local pipeline queue ordering). Must be called under {@link #syncResources}.
+     */
+    @Restricted(NoExternalUse.class)
+    public void queueRemote(@NonNull RemoteQueueEntry entry) {
+        synchronized (syncResources) {
+            List<RemoteQueueEntry> list = getRemoteQueueEntries();
+            int insertAt = list.size();
+            for (int i = list.size() - 1; i >= 0; i--) {
+                if (list.get(i).getPriority() < entry.getPriority()) {
+                    insertAt = i;
+                } else {
+                    break;
+                }
+            }
+            list.add(insertAt, entry);
+            LOGGER.fine("Remote acquire queued: lockId=" + entry.getLockId()
+                    + " priority=" + entry.getPriority() + " position=" + insertAt);
+        }
+    }
+
+    /**
+     * Removes a remote queue entry by lockId (called when the client cancels a QUEUED request
+     * or when a release is received for a QUEUED record). Idempotent.
+     * Must be called under {@link #syncResources}.
+     */
+    @Restricted(NoExternalUse.class)
+    public void unqueueRemote(@NonNull String lockId) {
+        synchronized (syncResources) {
+            List<RemoteQueueEntry> list = getRemoteQueueEntries();
+            list.removeIf(e -> lockId.equals(e.getLockId()));
+        }
+    }
+
+    /**
+     * Marks {@code resources} as remotely locked by {@code lockId}.
+     * Equivalent to {@link #lock(List, Run, String)} but uses {@code setRemoteLockedBy()} instead
+     * of {@code setBuild()} so that resources do not require an active Jenkins build.
+     *
+     * @return false if any resource is not free (defensive; caller should have pre-checked)
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean lockForRemote(@NonNull List<LockableResource> resources, @NonNull String lockId) {
+        for (LockableResource r : resources) {
+            if (!r.isFree()) {
+                LOGGER.warning("lockForRemote: resource " + r.getName() + " is not free, lockId=" + lockId);
+                return false;
+            }
+        }
+        for (LockableResource r : resources) {
+            r.unqueue();
+            r.setRemoteLockedBy(lockId);
+        }
+        save();
+        return true;
+    }
+
+    /**
+     * Frees remotely locked resources and wakes any waiters (local or remote).
+     * Equivalent to {@link #unlockResources(List, Run)} but for remote locks.
+     */
+    @Restricted(NoExternalUse.class)
+    public void unlockRemoteResources(@NonNull List<String> resourceNames, @NonNull String lockId) {
+        synchronized (syncResources) {
+            for (String name : resourceNames) {
+                LockableResource r = fromName(name);
+                if (r != null && lockId.equals(r.getRemoteLockedBy())) {
+                    r.setRemoteLockedBy(null);
+                }
+            }
+            while (proceedNextContext()) {
+                // drain all newly satisfiable waiters
+            }
+            save();
+        }
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------

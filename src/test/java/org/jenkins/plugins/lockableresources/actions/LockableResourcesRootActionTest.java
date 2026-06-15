@@ -17,9 +17,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import jenkins.model.Jenkins;
+import org.htmlunit.html.HtmlPage;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -506,6 +509,42 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
                 getter.getLabelsAsString(),
                 "check labels from resource-C");
         assertEquals("resource-C", getter.getName(), "check resource name");
+    }
+
+    @Test
+    void testRemoteLockedResourceShowsUnknownClientInTable() throws Exception {
+        // M1D applies the exposure policy consistently, so the resource must be exposed to be lockable.
+        LockableResourcesManager.get().setExposeLabel("remote-ok");
+        LockableResourcesManager.get().createResourceWithLabel("remote-unknown-client", "remote-ok");
+        LockableResource resource = LockableResourcesManager.get().fromName("remote-unknown-client");
+        RemoteLockManager.get().enqueue(
+                new RemoteLockRequest(resource.getName(), null, 0, null, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null),
+                null);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+
+        HtmlPage page = wc.goTo("lockable-resources");
+        assertTrue(page.getWebResponse().getContentAsString().contains("Remote: (unknown)"));
+    }
+
+    @Test
+    void testRemoteLockedResourceShowsClientIdInTable() throws Exception {
+        // M1D applies the exposure policy consistently, so the resource must be exposed to be lockable.
+        LockableResourcesManager.get().setExposeLabel("remote-ok");
+        LockableResourcesManager.get().createResourceWithLabel("remote-known-client", "remote-ok");
+        LockableResource resource = LockableResourcesManager.get().fromName("remote-known-client");
+        RemoteLockManager.get().enqueue(
+                new RemoteLockRequest(resource.getName(), null, 0, null, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null),
+                "client-jenkins-a");
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+
+        HtmlPage page = wc.goTo("lockable-resources");
+        assertTrue(page.getWebResponse().getContentAsString().contains("Remote: client-jenkins-a"));
     }
 
     // ---------------------------------------------------------------------------
