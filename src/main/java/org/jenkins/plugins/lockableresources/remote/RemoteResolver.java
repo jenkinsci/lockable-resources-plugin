@@ -62,8 +62,9 @@ public final class RemoteResolver {
         if (main != null) {
             return main;
         }
-        if (req.getExtra() != null) {
-            for (RemoteLockRequest.ExtraResource e : req.getExtra()) {
+        List<RemoteLockRequest.ExtraResource> extra = req.getExtra();
+        if (extra != null) {
+            for (RemoteLockRequest.ExtraResource e : extra) {
                 String err = validateSelector(e.getResource(), e.getLabel(), exposeLabels);
                 if (err != null) {
                     return err;
@@ -115,8 +116,9 @@ public final class RemoteResolver {
     public List<LockableResourcesStruct> toRemoteStructs(@NonNull RemoteLockRequest req) {
         List<LockableResourcesStruct> structs = new ArrayList<>();
         addRemoteStruct(structs, req.getResource(), req.getLabel(), req.getQuantity());
-        if (req.getExtra() != null) {
-            for (RemoteLockRequest.ExtraResource e : req.getExtra()) {
+        List<RemoteLockRequest.ExtraResource> extra = req.getExtra();
+        if (extra != null) {
+            for (RemoteLockRequest.ExtraResource e : extra) {
                 addRemoteStruct(structs, e.getResource(), e.getLabel(), e.getQuantity());
             }
         }

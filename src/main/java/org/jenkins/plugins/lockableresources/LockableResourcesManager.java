@@ -1582,9 +1582,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 available = fromNames(
                         getResourcesNames(requiredResources.required), /*create un-existent resources */ true);
 
-                if (available == null
-                        || available.stream().anyMatch(r -> !candidateFilter.test(r))
-                        || !this.areAllAvailable(available)) {
+                if (available.stream().anyMatch(r -> !candidateFilter.test(r)) || !this.areAllAvailable(available)) {
                     // not all available, or a requested resource is not visible to this caller
                     available = null;
                 }

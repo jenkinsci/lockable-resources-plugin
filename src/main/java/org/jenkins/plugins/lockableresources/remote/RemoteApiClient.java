@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
@@ -107,9 +108,10 @@ public class RemoteApiClient {
         json.put("inversePrecedence", lr.isInversePrecedence());
         json.put("resourceSelectStrategy", lr.getResourceSelectStrategy());
         json.put("skipIfLocked", lr.isSkipIfLocked());
-        if (lr.getExtra() != null && !lr.getExtra().isEmpty()) {
+        List<RemoteLockRequest.ExtraResource> extra = lr.getExtra();
+        if (extra != null && !extra.isEmpty()) {
             JSONArray extraJson = new JSONArray();
-            for (RemoteLockRequest.ExtraResource r : lr.getExtra()) {
+            for (RemoteLockRequest.ExtraResource r : extra) {
                 JSONObject rJson = new JSONObject();
                 if (r.getResource() != null) rJson.put("resource", r.getResource());
                 if (r.getLabel() != null) rJson.put("label", r.getLabel());
