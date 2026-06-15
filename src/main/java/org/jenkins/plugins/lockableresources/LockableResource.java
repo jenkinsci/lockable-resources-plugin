@@ -41,6 +41,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockRecord;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -85,6 +87,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      * bookkeeping and UI button naming. Cleared when the resource is unReserve'd.
      */
     private boolean stolen = false;
+
+    /**
+     * lockId of the remote holder that has acquired this resource via the remote API,
+     * or {@code null} if no remote lock is held. Transient: not persisted, lost on restart.
+     */
+    private transient volatile String remoteLockedBy;
 
     /**
      * We can use arbitrary identifier in a temporary lock (e.g. a commit hash of built/tested
@@ -570,7 +578,28 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     @Exported
     public boolean isLocked() {
-        return getBuild() != null;
+        return getBuild() != null || remoteLockedBy != null;
+    }
+
+    public String getRemoteLockedBy() {
+        return remoteLockedBy;
+    }
+
+    /**
+     * Returns the clientId of the remote holder, or {@code null} if the record is
+     * not found (e.g. after a Jenkins restart) or the caller did not provide one.
+     */
+    @CheckForNull
+    public String getRemoteLockClientId() {
+        if (remoteLockedBy == null) {
+            return null;
+        }
+        RemoteLockRecord record = RemoteLockManager.get().find(remoteLockedBy);
+        return record != null ? record.getClientId() : null;
+    }
+
+    public void setRemoteLockedBy(String lockId) {
+        this.remoteLockedBy = lockId;
     }
 
     /**
@@ -611,9 +640,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
             Date since = this.getReservedTimestamp();
             final String timestamp = (since == null ? "<unknown>" : format.format(since));
-            return String.format(
-                    "The resource [%s] is locked by build %s since %s.",
-                    name, getBuild().getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(getBuild()), timestamp);
+            Run<?, ?> lockBuild = getBuild();
+            if (lockBuild != null) {
+                return String.format(
+                        "The resource [%s] is locked by build %s since %s.",
+                        name, lockBuild.getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(lockBuild), timestamp);
+            }
+            if (remoteLockedBy != null) {
+                return String.format(
+                        "The resource [%s] is locked by remote lockId %s since %s.", name, remoteLockedBy, timestamp);
+            }
         }
         return null;
     }

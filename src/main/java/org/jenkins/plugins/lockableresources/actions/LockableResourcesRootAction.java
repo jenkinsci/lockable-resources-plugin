@@ -34,6 +34,7 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -86,6 +87,18 @@ public class LockableResourcesRootAction implements RootAction {
             PERMISSIONS_GROUP,
             "Configure",
             Messages._LockableResourcesRootAction_ConfigurePermission_Description(),
+            Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
+    /**
+     * Gates the remote lock REST API ({@code /lockable-resources/remote/v1/}).
+     * Grant this to the machine users whose API tokens remote client controllers
+     * use as {@code credentialsId}; this makes remote clients auditable in the
+     * authorization matrix instead of being implied by plain READ.
+     */
+    public static final Permission REMOTE = new Permission(
+            PERMISSIONS_GROUP,
+            "RemoteUse",
+            Messages._LockableResourcesRootAction_RemoteUsePermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
 
@@ -765,6 +778,32 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     // ---------------------------------------------------------------------------
+    /**
+     * Force-releases a resource that is held by a remote lock (e.g. STALE lock with no active client).
+     * Called by the "Force Release Remote Lock" button in the resource table.
+     */
+    @RequirePOST
+    public void doReleaseRemoteLock(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(UNLOCK);
+
+        List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+        if (resources == null) {
+            return;
+        }
+
+        for (LockableResource resource : resources) {
+            String lockId = resource.getRemoteLockedBy();
+            if (lockId != null) {
+                LOGGER.info("doReleaseRemoteLock: force-releasing remote lock lockId=" + lockId
+                        + " resource=" + resource.getName());
+                RemoteLockManager.get().release(lockId);
+            }
+        }
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
     @RequirePOST
     public void doReserve(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(RESERVE);
@@ -1357,5 +1396,27 @@ public class LockableResourcesRootAction implements RootAction {
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         return resources;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Routes {@code /lockable-resources/remote/*} to the remote lock API.
+     */
+    public Object getDynamic(String token) {
+        if ("remote".equals(token)) {
+            return new RemoteRouterAction();
+        }
+        return null;
+    }
+
+    /** Routes {@code /lockable-resources/remote/v1/*} to {@link RemoteApiV1Action}. */
+    @Restricted(NoExternalUse.class)
+    public static final class RemoteRouterAction {
+        public Object getDynamic(String token) {
+            if ("v1".equals(token)) {
+                return new RemoteApiV1Action();
+            }
+            return null;
+        }
     }
 }
