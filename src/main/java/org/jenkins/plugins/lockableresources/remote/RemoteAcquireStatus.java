@@ -17,6 +17,7 @@ public class RemoteAcquireStatus {
     private final RemoteAcquireState state;
     private final String errorCode;
     private final String message;
+
     @CheckForNull
     private final Map<String, String> lockEnvVars;
 

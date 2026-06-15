@@ -7,8 +7,8 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.Extension;
 import hudson.Util;
-import hudson.model.Descriptor;
 import hudson.model.AbstractDescribableImpl;
+import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 import java.util.Locale;
 import java.util.Objects;

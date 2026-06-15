@@ -155,7 +155,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     Level.FINE,
                     LOGGER,
                     logger);
-            LockedResourcesBuildAction.addLog(build, Collections.singletonList(displayTarget), "acquired", step.toString());
+            LockedResourcesBuildAction.addLog(
+                    build, Collections.singletonList(displayTarget), "acquired", step.toString());
             PauseAction.endCurrentPause(node);
 
             BodyInvoker bodyInvoker = getContext().newBodyInvoker().withCallback(new RemoteCallback(displayTarget));
@@ -372,14 +373,15 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             Run<?, ?> build;
             try {
                 build = context.get(Run.class);
-                LockedResourcesBuildAction.addLog(build, Collections.singletonList(remoteResource), "released", step.toString());
+                LockedResourcesBuildAction.addLog(
+                        build, Collections.singletonList(remoteResource), "released", step.toString());
                 LockableResourcesManager.printLogs(
                         "Remote lock released on ["
                                 + step
                                 + "] (serverId="
                                 + remoteSession.getServerId()
-                        + ", lockId="
-                        + remoteSession.getLockId()
+                                + ", lockId="
+                                + remoteSession.getLockId()
                                 + ")",
                         Level.FINE,
                         LOGGER,

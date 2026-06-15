@@ -794,8 +794,8 @@ public class LockableResourcesRootAction implements RootAction {
         for (LockableResource resource : resources) {
             String lockId = resource.getRemoteLockedBy();
             if (lockId != null) {
-                LOGGER.info("doReleaseRemoteLock: force-releasing remote lock lockId=" + lockId
-                        + " resource=" + resource.getName());
+                LOGGER.info("doReleaseRemoteLock: force-releasing remote lock lockId=" + lockId + " resource="
+                        + resource.getName());
                 RemoteLockManager.get().release(lockId);
             }
         }

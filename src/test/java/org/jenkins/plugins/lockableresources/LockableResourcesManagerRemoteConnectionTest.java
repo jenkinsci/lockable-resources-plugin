@@ -105,7 +105,8 @@ class LockableResourcesManagerRemoteConnectionTest {
         Map<String, RemoteConnection> remotesMap = manager.getRemotesAsMap();
 
         assertEquals(1, remotesMap.size());
-        assertEquals("http://jenkins1-updated.example.com", remotesMap.get("server1").getUrl());
+        assertEquals(
+                "http://jenkins1-updated.example.com", remotesMap.get("server1").getUrl());
     }
 
     @Test

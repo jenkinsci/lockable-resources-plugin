@@ -84,7 +84,10 @@ public class RemoteApiV1Action {
                 body = parseJsonBody(req);
             } catch (PayloadTooLargeException e) {
                 // Bound the request body so an authenticated client cannot OOM the server.
-                sendJsonError(rsp, 413, "PAYLOAD_TOO_LARGE",
+                sendJsonError(
+                        rsp,
+                        413,
+                        "PAYLOAD_TOO_LARGE",
                         "Request body exceeds the maximum allowed size of " + MAX_BODY_CHARS + " characters");
                 return;
             } catch (Exception e) {
@@ -111,8 +114,8 @@ public class RemoteApiV1Action {
             JSONArray extraPeek = lockRequestJson.optJSONArray("extra");
             boolean hasExtra = extraPeek != null && !extraPeek.isEmpty();
             if (resource == null && label == null && !hasExtra) {
-                sendJsonError(rsp, 400, "MISSING_TARGET",
-                        "lockRequest must contain at least one of: resource, label, extra");
+                sendJsonError(
+                        rsp, 400, "MISSING_TARGET", "lockRequest must contain at least one of: resource, label, extra");
                 return;
             }
 
@@ -132,7 +135,10 @@ public class RemoteApiV1Action {
             try {
                 ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
             } catch (IllegalArgumentException e) {
-                sendJsonError(rsp, 400, "INVALID_SELECT_STRATEGY",
+                sendJsonError(
+                        rsp,
+                        400,
+                        "INVALID_SELECT_STRATEGY",
                         "resourceSelectStrategy must be one of " + Arrays.toString(ResourceSelectStrategy.values()));
                 return;
             }
@@ -156,7 +162,10 @@ public class RemoteApiV1Action {
                     if (extraLabel != null) extraLabel = extraLabel.trim();
                     if (extraLabel != null && extraLabel.isEmpty()) extraLabel = null;
                     if (extraResource == null && extraLabel == null) {
-                        sendJsonError(rsp, 400, "INVALID_EXTRA",
+                        sendJsonError(
+                                rsp,
+                                400,
+                                "INVALID_EXTRA",
                                 "extra[" + i + "] must contain at least one of: resource, label");
                         return;
                     }
@@ -181,13 +190,16 @@ public class RemoteApiV1Action {
                 try {
                     hbi = body.getInt("heartbeatIntervalSeconds");
                 } catch (Exception e) {
-                    sendJsonError(rsp, 400, "INVALID_HEARTBEAT_INTERVAL",
+                    sendJsonError(
+                            rsp,
+                            400,
+                            "INVALID_HEARTBEAT_INTERVAL",
                             "heartbeatIntervalSeconds must be a positive integer");
                     return;
                 }
                 if (hbi <= 0) {
-                    sendJsonError(rsp, 400, "INVALID_HEARTBEAT_INTERVAL",
-                            "heartbeatIntervalSeconds must be greater than 0");
+                    sendJsonError(
+                            rsp, 400, "INVALID_HEARTBEAT_INTERVAL", "heartbeatIntervalSeconds must be greater than 0");
                     return;
                 }
                 // issue #1025 phase 1: the server uses its own heartbeat/STALE constant; a valid
@@ -196,13 +208,23 @@ public class RemoteApiV1Action {
             }
 
             RemoteLockRequest lockRequest = new RemoteLockRequest(
-                    resource, label, quantity, variable, inversePrecedence, resourceSelectStrategy,
-                    skipIfLocked, extra, priority, timeoutForAllocateResource, timeoutUnit, reason);
+                    resource,
+                    label,
+                    quantity,
+                    variable,
+                    inversePrecedence,
+                    resourceSelectStrategy,
+                    skipIfLocked,
+                    extra,
+                    priority,
+                    timeoutForAllocateResource,
+                    timeoutUnit,
+                    reason);
 
             RemoteLockRecord record = RemoteLockManager.get().enqueue(lockRequest, clientId);
             String logTarget = resource != null ? resource : "label:" + label;
-            LOGGER.fine("POST /acquire target=" + logTarget + " lockId=" + record.getLockId()
-                    + " clientId=" + record.getClientId() + " state=" + record.getState());
+            LOGGER.fine("POST /acquire target=" + logTarget + " lockId=" + record.getLockId() + " clientId="
+                    + record.getClientId() + " state=" + record.getState());
 
             // Admission rejected the request - nothing this client can lock (unknown/unexposed).
             // Uniform 404 (errorCode distinguishes resource vs label); existence is not otherwise revealed.
@@ -213,8 +235,7 @@ public class RemoteApiV1Action {
                 if ("UNKNOWN_RESOURCE".equals(ec) || "UNKNOWN_LABEL".equals(ec)) {
                     sendJsonError(rsp, 404, ec, "No lockable resource matches the request");
                 } else {
-                    sendJsonError(rsp, 400, ec != null ? ec : "ACQUIRE_FAILED",
-                            "Remote acquire request was rejected");
+                    sendJsonError(rsp, 400, ec != null ? ec : "ACQUIRE_FAILED", "Remote acquire request was rejected");
                 }
                 return;
             }
@@ -328,7 +349,7 @@ public class RemoteApiV1Action {
                 return;
             }
 
-            RemoteLockManager.get().release(lockId);  // idempotent
+            RemoteLockManager.get().release(lockId); // idempotent
             rsp.setStatus(204);
         }
     }
@@ -362,8 +383,7 @@ public class RemoteApiV1Action {
         return JSONObject.fromObject(sb.toString());
     }
 
-    static void sendJsonError(StaplerResponse2 rsp, int status, String code, String message)
-            throws IOException {
+    static void sendJsonError(StaplerResponse2 rsp, int status, String code, String message) throws IOException {
         JSONObject err = new JSONObject();
         err.put("errorCode", code);
         err.put("message", message);

@@ -61,23 +61,24 @@ public final class RemoteCredentials {
                     new Object[] {remote.getServerId(), normalizedCredentialsId, ex.getMessage()});
         }
         if (credentials == null) {
-            credentials = SystemCredentialsProvider.getInstance()
-                    .getDomainCredentialsMap()
-                    .getOrDefault(Domain.global(), Collections.emptyList())
-                    .stream()
-                    .filter(StandardUsernamePasswordCredentials.class::isInstance)
-                    .map(StandardUsernamePasswordCredentials.class::cast)
-                    .filter(candidate -> normalizedCredentialsId.equals(candidate.getId()))
-                    .findFirst()
-                    .orElse(null);
+            credentials =
+                    SystemCredentialsProvider.getInstance()
+                            .getDomainCredentialsMap()
+                            .getOrDefault(Domain.global(), Collections.emptyList())
+                            .stream()
+                            .filter(StandardUsernamePasswordCredentials.class::isInstance)
+                            .map(StandardUsernamePasswordCredentials.class::cast)
+                            .filter(candidate -> normalizedCredentialsId.equals(candidate.getId()))
+                            .findFirst()
+                            .orElse(null);
         }
         if (credentials == null) {
-            throw new AbortException(
-                    "Remote credentials not found for serverId=" + remote.getServerId() + ", credentialsId="
-                            + normalizedCredentialsId);
+            throw new AbortException("Remote credentials not found for serverId=" + remote.getServerId()
+                    + ", credentialsId=" + normalizedCredentialsId);
         }
 
-        String basicToken = credentials.getUsername() + ':' + credentials.getPassword().getPlainText();
+        String basicToken =
+                credentials.getUsername() + ':' + credentials.getPassword().getPlainText();
         return "Basic " + Base64.getEncoder().encodeToString(basicToken.getBytes(StandardCharsets.UTF_8));
     }
 }
