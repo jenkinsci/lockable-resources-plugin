@@ -136,6 +136,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "REC_CATCH_EXCEPTION",
+            justification = "Fail-closed: any failure while starting the body must fail the session.")
     public void runBody(
             String displayTarget,
             @edu.umd.cs.findbugs.annotations.CheckForNull Map<String, String> lockEnvVars,
@@ -161,16 +164,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
 
             BodyInvoker bodyInvoker = getContext().newBodyInvoker().withCallback(new RemoteCallback(displayTarget));
             if (lockEnvVars != null && !lockEnvVars.isEmpty()) {
-                final Map<String, String> envVars = lockEnvVars;
                 bodyInvoker.withContext(EnvironmentExpander.merge(
-                        getContext().get(EnvironmentExpander.class), new EnvironmentExpander() {
-                            private static final long serialVersionUID = -6921365277116143418L;
-
-                            @Override
-                            public void expand(@NonNull EnvVars env) {
-                                env.overrideAll(envVars);
-                            }
-                        }));
+                        getContext().get(EnvironmentExpander.class), new EnvVarsExpander(lockEnvVars)));
             }
             bodyInvoker.start();
         } catch (Exception ex) {
@@ -285,6 +280,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                             @Override
                             public void expand(@NonNull EnvVars env) {
                                 Map<String, String> variables = buildLockEnvVars(variable, lockedResources);
+                                if (variables == null) {
+                                    return;
+                                }
                                 LOGGER.finest("Setting "
                                         + variables.entrySet().stream()
                                                 .map(e -> e.getKey() + "=" + e.getValue())
@@ -332,6 +330,22 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         return variables;
     }
 
+    /** Serializable {@link EnvironmentExpander} that injects a precomputed env-var map (named/static to avoid capturing the step). */
+    private static final class EnvVarsExpander extends EnvironmentExpander {
+
+        private static final long serialVersionUID = -6921365277116143418L;
+        private final Map<String, String> envVars;
+
+        EnvVarsExpander(Map<String, String> envVars) {
+            this.envVars = envVars;
+        }
+
+        @Override
+        public void expand(@NonNull EnvVars env) {
+            env.overrideAll(envVars);
+        }
+    }
+
     private static final class Callback extends BodyExecutionCallback.TailCall {
 
         private static final long serialVersionUID = -2024890670461847666L;
@@ -356,6 +370,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         }
     }
 
+    @SuppressFBWarnings(
+            value = {"REC_CATCH_EXCEPTION", "SE_INNER_CLASS"},
+            justification = "Best-effort release logging; the callback is serialized as part of the step execution.")
     private final class RemoteCallback extends BodyExecutionCallback.TailCall {
 
         private static final long serialVersionUID = -6771337682719425678L;

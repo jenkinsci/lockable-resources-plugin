@@ -153,7 +153,10 @@ public final class RemoteLockSession implements Serializable {
                         TimeUnit.SECONDS);
     }
 
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "Poll loop must not propagate any exception")
+    @SuppressFBWarnings(
+            value = {"REC_CATCH_EXCEPTION", "VO_VOLATILE_INCREMENT"},
+            justification = "Poll loop must not propagate any exception; consecutivePollFailures is mutated only"
+                    + " on the single-threaded poll executor (volatile is for visibility to onResume).")
     private void pollStatus(
             Host host,
             RemoteConnection remote,
@@ -344,6 +347,9 @@ public final class RemoteLockSession implements Serializable {
     }
 
     /** Resumes the session after a controller restart (rebuilds the poll loop or fails closed). */
+    @SuppressFBWarnings(
+            value = "REC_CATCH_EXCEPTION",
+            justification = "Resume is best-effort; any failure resuming the poll loop fails the step closed.")
     public void onResume(Host host) {
         if (lockId == null || lockId.isEmpty()) {
             // Nothing was enqueued before the restart - nothing to resume.
@@ -388,8 +394,8 @@ public final class RemoteLockSession implements Serializable {
             LOGGER.log(Level.WARNING, "Cannot resume remote polling after restart", ex);
             try {
                 host.context().onFailure(ex);
-            } catch (Exception ignored) {
-                // best-effort
+            } catch (Exception signalEx) {
+                LOGGER.log(Level.FINE, "Best-effort: could not signal resume failure to the step context", signalEx);
             }
         }
     }
