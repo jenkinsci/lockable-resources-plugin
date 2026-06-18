@@ -781,37 +781,38 @@ class LockStepTest extends LockStepTestBase {
         p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore('wait-inside') }", true));
 
         WorkflowRun prevBuild = null;
-        TestHelpers testHelpers = new TestHelpers();
-        for (int i = 0; i < 3; i++) {
-            WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
-            LOGGER.info("start build " + rNext);
-            if (prevBuild != null) {
-                LOGGER.info(rNext + " waits for locked by " + prevBuild);
-                j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
-                LOGGER.info("is paused " + rNext);
-                isPaused(rNext, 1, 1);
-                LOGGER.info("unlock resource1");
-                testHelpers.clickButton("unlock", "resource1");
+        try (TestHelpers testHelpers = new TestHelpers()) {
+            for (int i = 0; i < 3; i++) {
+                WorkflowRun rNext = p.scheduleBuild2(0).waitForStart();
+                LOGGER.info("start build " + rNext);
+                if (prevBuild != null) {
+                    LOGGER.info(rNext + " waits for locked by " + prevBuild);
+                    j.waitForMessage("[resource1] is locked by build " + prevBuild.getFullDisplayName(), rNext);
+                    LOGGER.info("is paused " + rNext);
+                    isPaused(rNext, 1, 1);
+                    LOGGER.info("unlock resource1");
+                    testHelpers.clickButton("unlock", "resource1");
+                }
+
+                LOGGER.info("wait for 1 " + rNext);
+                j.waitForMessage("Trying to acquire lock on [Resource: resource1]", rNext);
+
+                LOGGER.info("wait sem 1 " + rNext);
+                SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
+                LOGGER.info("is paused 1 " + rNext);
+                isPaused(rNext, 1, 0);
+
+                if (prevBuild != null) {
+                    LOGGER.info("wait sem 2" + rNext);
+                    SemaphoreStep.success("wait-inside/" + i, null);
+                    j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
+                }
+                prevBuild = rNext;
             }
-
-            LOGGER.info("wait for 1 " + rNext);
-            j.waitForMessage("Trying to acquire lock on [Resource: resource1]", rNext);
-
-            LOGGER.info("wait sem 1 " + rNext);
-            SemaphoreStep.waitForStart("wait-inside/" + (i + 1), rNext);
-            LOGGER.info("is paused 1 " + rNext);
-            isPaused(rNext, 1, 0);
-
-            if (prevBuild != null) {
-                LOGGER.info("wait sem 2" + rNext);
-                SemaphoreStep.success("wait-inside/" + i, null);
-                j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
-            }
-            prevBuild = rNext;
+            LOGGER.info("wait sem 3");
+            SemaphoreStep.success("wait-inside/3", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
         }
-        LOGGER.info("wait sem 3");
-        SemaphoreStep.success("wait-inside/3", null);
-        j.assertBuildStatusSuccess(j.waitForCompletion(prevBuild));
     }
 
     @Issue("JENKINS-40879")

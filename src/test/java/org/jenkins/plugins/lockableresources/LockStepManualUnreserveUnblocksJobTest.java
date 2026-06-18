@@ -23,35 +23,36 @@ class LockStepManualUnreserveUnblocksJobTest extends LockStepTestBase {
     void manualUnreserveUnblocksJob(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
 
-        TestHelpers testHelpers = new TestHelpers();
-        testHelpers.clickButton("reserve", "resource1");
-        LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
-        assertNotNull(resource1);
-        resource1.setReservedBy("someone");
-        assertEquals("someone", resource1.getReservedBy());
-        assertTrue(resource1.isReserved());
-        assertNotNull(resource1.getReservedTimestamp());
+        try (TestHelpers testHelpers = new TestHelpers()) {
+            testHelpers.clickButton("reserve", "resource1");
+            LockableResource resource1 = LockableResourcesManager.get().fromName("resource1");
+            assertNotNull(resource1);
+            resource1.setReservedBy("someone");
+            assertEquals("someone", resource1.getReservedBy());
+            assertTrue(resource1.isReserved());
+            assertNotNull(resource1.getReservedTimestamp());
 
-        JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
-        assertThat(apiRes, hasEntry("reserved", true));
-        assertThat(apiRes, hasEntry("reservedBy", "someone"));
+            JSONObject apiRes = TestHelpers.getResourceFromApi(j, "resource1", false);
+            assertThat(apiRes, hasEntry("reserved", true));
+            assertThat(apiRes, hasEntry("reservedBy", "someone"));
 
-        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition("""
-            timeout(time: 10000, unit: 'SECONDS'){
-                lock('resource1') {
-                    echo('I am inside')
+            WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition("""
+                timeout(time: 10000, unit: 'SECONDS'){
+                    lock('resource1') {
+                        echo('I am inside')
+                    }
                 }
-            }
-            """, true));
+                """, true));
 
-        WorkflowRun r = p.scheduleBuild2(0).waitForStart();
-        j.waitForMessage("The resource [resource1] is reserved by someone.", r);
-        j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r);
-        j.assertLogNotContains("I am inside", r);
-        testHelpers.clickButton("unreserve", "resource1");
-        j.waitForMessage("I am inside", r);
-        j.assertLogContains("I am inside", r);
-        j.assertBuildStatusSuccess(j.waitForCompletion(r));
+            WorkflowRun r = p.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("The resource [resource1] is reserved by someone.", r);
+            j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r);
+            j.assertLogNotContains("I am inside", r);
+            testHelpers.clickButton("unreserve", "resource1");
+            j.waitForMessage("I am inside", r);
+            j.assertLogContains("I am inside", r);
+            j.assertBuildStatusSuccess(j.waitForCompletion(r));
+        }
     }
 }

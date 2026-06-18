@@ -212,10 +212,10 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
 
         // try to reserve by label name
         resource = this.createResource("resource4");
-        when(req.getParameter("resource")).thenReturn(resource.getLabels());
+        when(req.getParameter("resource")).thenReturn(resource.getLabelsAsString());
         action.doReserve(req, rsp);
         // this is not supported at the moment, therefore expected == null
-        assertNull(resource.getReservedBy(), "check by label name :" + resource.getLabels());
+        assertNull(resource.getReservedBy(), "check by label name :" + resource.getLabelsAsString());
 
         // invalid params. Just check if it crash here
         when(req.getParameter("resource")).thenReturn("this-one-does-not-exists");
@@ -258,6 +258,13 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         action.doReserve(req, rsp);
         assertTrue(resource.isReserved(), "resource should be reserved");
         assertTrue(resource.getLockReason().isEmpty(), "empty reason should be empty string");
+
+        // Reserve without reason (whitespace-only input from UI)
+        action.doUnreserve(req, rsp);
+        when(req.getParameter("reason")).thenReturn("   ");
+        action.doReserve(req, rsp);
+        assertTrue(resource.isReserved(), "resource should be reserved");
+        assertTrue(resource.getLockReason().isEmpty(), "whitespace-only reason should be treated as empty");
     }
 
     // ---------------------------------------------------------------------------
@@ -496,7 +503,7 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         LockableResource getter = action.getResource("resource-C");
         assertEquals(
                 "resource-label-1 resource-label-2 resource-label-3",
-                getter.getLabels(),
+                getter.getLabelsAsString(),
                 "check labels from resource-C");
         assertEquals("resource-C", getter.getName(), "check resource name");
     }

@@ -35,11 +35,12 @@ class LockableResourceApiTest {
 
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.login("user");
-        TestHelpers testHelpers = new TestHelpers();
-        testHelpers.clickButton("reserve", "a1");
-        assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(true));
-        testHelpers.clickButton("unreserve", "a1");
-        assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(false));
+        try (TestHelpers testHelpers = new TestHelpers()) {
+            testHelpers.clickButton("reserve", "a1");
+            assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(true));
+            testHelpers.clickButton("unreserve", "a1");
+            assertThat(LockableResourcesManager.get().fromName("a1").isReserved(), is(false));
+        }
     }
 
     @Test

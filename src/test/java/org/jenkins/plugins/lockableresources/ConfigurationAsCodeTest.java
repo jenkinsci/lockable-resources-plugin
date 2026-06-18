@@ -47,7 +47,7 @@ class ConfigurationAsCodeTest {
         LockableResource declaredResource = declaredResources.get(0);
         assertEquals("Resource_A", declaredResource.getName());
         assertEquals("Description_A", declaredResource.getDescription());
-        assertEquals("Label_A", declaredResource.getLabels());
+        assertEquals("Label_A", declaredResource.getLabelsAsString());
         // not supported in JCaC
         assertNull(declaredResource.getReservedBy());
         assertEquals("", declaredResource.getNote());
@@ -58,7 +58,7 @@ class ConfigurationAsCodeTest {
         LockableResource resource = LRM.getFirst();
         assertEquals("Resource_A", resource.getName());
         assertEquals("Description_A", resource.getDescription());
-        assertEquals("Label_A", resource.getLabels());
+        assertEquals("Label_A", resource.getLabelsAsString());
         // not supported in JCaC
         assertNull(declaredResource.getReservedBy());
         assertEquals("", declaredResource.getNote());

@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +33,11 @@ import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 @WithJenkins
 class ResourceManagementTest {
+
+    private static URL url(JenkinsRule j, String path) throws Exception {
+        URI base = j.getURL().toURI();
+        return base.resolve(path).toURL();
+    }
 
     @BeforeEach
     void setUp() {
@@ -70,7 +76,7 @@ class ResourceManagementTest {
 
     private JSONObject getQueuePage(JenkinsRule j, JenkinsRule.WebClient wc, String query) throws Exception {
         String path = "lockable-resources/getQueuePage" + (query == null || query.isEmpty() ? "" : "?" + query);
-        URL url = new URL(j.getURL(), path);
+        URL url = url(j, path);
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
     }
@@ -79,7 +85,7 @@ class ResourceManagementTest {
             throws Exception {
         String query = expr == null ? "" : "expr=" + URLEncoder.encode(expr, StandardCharsets.UTF_8);
         String path = "lockable-resources/getResourcesByLabelExpression" + (query.isEmpty() ? "" : "?" + query);
-        URL url = new URL(j.getURL(), path);
+        URL url = url(j, path);
         WebRequest req = new WebRequest(url, HttpMethod.GET);
         return JSONObject.fromObject(wc.getPage(req).getWebResponse().getContentAsString());
     }
@@ -88,7 +94,7 @@ class ResourceManagementTest {
     void createResourceViaEndpoint(JenkinsRule j) throws Exception {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", "test-resource-1"));
@@ -101,16 +107,16 @@ class ResourceManagementTest {
         LockableResource resource = LockableResourcesManager.get().fromName("test-resource-1");
         assertThat("Resource should be created", resource, is(not(nullValue())));
         assertThat(resource.getDescription(), is("A test resource"));
-        assertThat(resource.getLabels(), is("label1 label2"));
+        assertThat(resource.getLabelsAsString(), is("label1 label2"));
     }
 
     @Test
     void createResourceWithNameOnly(JenkinsRule j) throws Exception {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
-        req.setAdditionalHeader("Referer", new URL(j.getURL(), "lockable-resources").toString());
+        req.setAdditionalHeader("Referer", url(j, "lockable-resources").toString());
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", "minimal-resource"));
         req.setRequestParameters(params);
@@ -128,7 +134,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", "existing-resource"));
@@ -143,7 +149,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", ""));
@@ -160,7 +166,7 @@ class ResourceManagementTest {
 
         JenkinsRule.WebClient wc = loginAsAdmin(j);
 
-        URL url = new URL(j.getURL(), "lockable-resources/deleteResource");
+        URL url = url(j, "lockable-resources/deleteResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("resource", "to-delete"));
@@ -176,7 +182,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/deleteResource");
+        URL url = url(j, "lockable-resources/deleteResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("resource", "no-such-resource"));
@@ -199,7 +205,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/deleteResource");
+        URL url = url(j, "lockable-resources/deleteResource");
         WebRequest req = new WebRequest(url, org.htmlunit.HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("resource", "reserved-resource"));
@@ -233,7 +239,7 @@ class ResourceManagementTest {
     void createResourceViaJsonBody(JenkinsRule j) throws Exception {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         req.setAdditionalHeader("Content-Type", "application/json");
         req.setRequestBody("{\"name\":\"json-resource\",\"description\":\"From JSON\",\"labels\":\"l1 l2\"}");
@@ -243,14 +249,14 @@ class ResourceManagementTest {
         LockableResource resource = LockableResourcesManager.get().fromName("json-resource");
         assertThat("Resource should be created via JSON", resource, is(not(nullValue())));
         assertThat(resource.getDescription(), is("From JSON"));
-        assertThat(resource.getLabels(), is("l1 l2"));
+        assertThat(resource.getLabelsAsString(), is("l1 l2"));
     }
 
     @Test
     void createResourceWithPropertiesViaJson(JenkinsRule j) throws Exception {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         req.setAdditionalHeader("Content-Type", "application/json");
         req.setRequestBody(
@@ -274,11 +280,11 @@ class ResourceManagementTest {
     void editResourceViaEndpoint(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("edit-me", "old-label");
         LockableResource before = LockableResourcesManager.get().fromName("edit-me");
-        assertThat(before.getLabels(), is("old-label"));
+        assertThat(before.getLabelsAsString(), is("old-label"));
 
         JenkinsRule.WebClient wc = loginAsAdmin(j);
 
-        URL url = new URL(j.getURL(), "lockable-resources/editResource");
+        URL url = url(j, "lockable-resources/editResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         req.setAdditionalHeader("Content-Type", "application/json");
         req.setRequestBody(
@@ -288,7 +294,7 @@ class ResourceManagementTest {
 
         LockableResource after = LockableResourcesManager.get().fromName("edit-me");
         assertThat(after.getDescription(), is("Updated desc"));
-        assertThat(after.getLabels(), is("new-label"));
+        assertThat(after.getLabelsAsString(), is("new-label"));
         assertThat(after.getProperties().size(), is(1));
         assertThat(after.getProperties().get(0).getName(), is("pk"));
     }
@@ -298,7 +304,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/editResource");
+        URL url = url(j, "lockable-resources/editResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         req.setAdditionalHeader("Content-Type", "application/json");
         req.setRequestBody("{\"name\":\"ghost\"}");
@@ -312,7 +318,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/editResource");
+        URL url = url(j, "lockable-resources/editResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         req.setAdditionalHeader("Content-Type", "application/json");
         req.setRequestBody("{\"description\":\"no name\"}");
@@ -326,7 +332,7 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/editResource");
+        URL url = url(j, "lockable-resources/editResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", "whatever"));
@@ -352,7 +358,7 @@ class ResourceManagementTest {
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
         wc.getOptions().setThrowExceptionOnScriptError(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/createResource");
+        URL url = url(j, "lockable-resources/createResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("name", "forbidden-resource"));
@@ -382,7 +388,7 @@ class ResourceManagementTest {
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
         wc.getOptions().setThrowExceptionOnScriptError(false);
 
-        URL url = new URL(j.getURL(), "lockable-resources/deleteResource");
+        URL url = url(j, "lockable-resources/deleteResource");
         WebRequest req = new WebRequest(url, HttpMethod.POST);
         List<NameValuePair> params = new ArrayList<>();
         params.add(new NameValuePair("resource", "protected-resource"));
