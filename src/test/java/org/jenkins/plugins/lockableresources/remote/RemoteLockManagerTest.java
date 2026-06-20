@@ -46,6 +46,10 @@ class RemoteLockManagerTest {
                 null, label, quantity, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
     }
 
+    private static RemoteLockRequest reqWithTimeout(String resource, long timeout, String unit) {
+        return new RemoteLockRequest(resource, null, 0, null, false, "SEQUENTIAL", false, null, 0, timeout, unit, null);
+    }
+
     @Test
     void enqueueRejectsUnknownResourceAndCreatesNothing(JenkinsRule j) {
         // M1E: a selector this client can't lock (unknown/unexposed) is rejected up front (→ 404), and the
@@ -342,64 +346,64 @@ class RemoteLockManagerTest {
     }
 
     @Test
-    void queuedRecordExpiresWhenClientStopsPolling(JenkinsRule j) throws Exception {
-        System.setProperty(RemoteLockManager.class.getName() + ".queuePollExpiryMs", "200");
-        try {
-            LockableResourcesManager manager = LockableResourcesManager.get();
-            manager.setRemoteApiEnabled(true);
-            manager.setExposeLabel("hw");
-            manager.createResourceWithLabel("board-1", "hw");
+    void queuedRecordExpiresViaQueueTimeout(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
 
-            RemoteLockRecord first = RemoteLockManager.get().enqueue(req("board-1"), null);
-            assertEquals(RemoteLockState.ACQUIRED, first.getState());
+        RemoteLockRecord first = RemoteLockManager.get().enqueue(req("board-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, first.getState());
 
-            RemoteLockRecord second = RemoteLockManager.get().enqueue(req("board-1"), null);
-            assertEquals(RemoteLockState.QUEUED, second.getState());
+        // QUEUED with a short allocate timeout. B2: expiry is owned entirely by the unified queue
+        // (RemoteQueueEntry deadline = timeoutForAllocateResource), not by client polling.
+        RemoteLockRecord second =
+                RemoteLockManager.get().enqueue(reqWithTimeout("board-1", 200L, "MILLISECONDS"), null);
+        assertEquals(RemoteLockState.QUEUED, second.getState());
 
-            // No polls arrive; after the expiry window the scan must fail the record
-            Thread.sleep(300);
-            RemoteLockManager.get().doRun();
+        // After the deadline, a queue maintenance pass (proceedNextContext -> getNextRemoteEntry)
+        // fails the entry on timeout — no polling is involved.
+        Thread.sleep(400);
+        manager.checkTimeouts();
 
-            assertEquals(RemoteLockState.FAILED, second.getState());
-            assertEquals("QUEUE_EXPIRED", second.getErrorCode());
+        assertEquals(RemoteLockState.FAILED, second.getState());
+        assertEquals("LOCK_WAIT_TIMEOUT", second.getErrorCode());
 
-            // The expired entry must NOT grab the resource once it frees up
-            RemoteLockManager.get().release(first.getLockId());
-            assertNull(manager.fromName("board-1").getRemoteLockedBy());
-        } finally {
-            System.clearProperty(RemoteLockManager.class.getName() + ".queuePollExpiryMs");
-        }
+        // The timed-out entry must NOT grab the resource once it frees up.
+        RemoteLockManager.get().release(first.getLockId());
+        assertNull(manager.fromName("board-1").getRemoteLockedBy());
     }
 
     @Test
-    void queuedRecordSurvivesWhileClientKeepsPolling(JenkinsRule j) throws Exception {
-        System.setProperty(RemoteLockManager.class.getName() + ".queuePollExpiryMs", "300");
-        try {
-            LockableResourcesManager manager = LockableResourcesManager.get();
-            manager.setRemoteApiEnabled(true);
-            manager.setExposeLabel("hw");
-            manager.createResourceWithLabel("board-1", "hw");
+    void queuedRecordWithoutTimeoutSurvivesWithoutPolling(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
 
-            RemoteLockRecord first = RemoteLockManager.get().enqueue(req("board-1"), null);
-            assertEquals(RemoteLockState.ACQUIRED, first.getState());
+        RemoteLockRecord first = RemoteLockManager.get().enqueue(req("board-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, first.getState());
 
-            RemoteLockRecord second = RemoteLockManager.get().enqueue(req("board-1"), null);
-            assertEquals(RemoteLockState.QUEUED, second.getState());
+        // No allocate timeout (req() => 0 = wait forever) and the client never polls.
+        RemoteLockRecord second = RemoteLockManager.get().enqueue(req("board-1"), null);
+        assertEquals(RemoteLockState.QUEUED, second.getState());
 
-            // Simulate a live client: poll twice within the expiry window
-            for (int i = 0; i < 2; i++) {
-                Thread.sleep(150);
-                RemoteLockManager.get().touchPoll(second.getLockId());
-                RemoteLockManager.get().doRun();
-            }
-            assertEquals(RemoteLockState.QUEUED, second.getState());
-
-            // Release while the client is alive — the entry must be promoted
-            RemoteLockManager.get().release(first.getLockId());
-            assertEquals(RemoteLockState.ACQUIRED, second.getState());
-        } finally {
-            System.clearProperty(RemoteLockManager.class.getName() + ".queuePollExpiryMs");
+        // B2: the GET poll no longer keeps the entry alive, so background scans must NOT
+        // expire an un-polled QUEUED record (the old poll-keepalive GC is gone).
+        for (int i = 0; i < 3; i++) {
+            Thread.sleep(50);
+            RemoteLockManager.get().doRun();
         }
+        assertEquals(RemoteLockState.QUEUED, second.getState());
+
+        // find() is the GET status path: a pure read that must not change state.
+        assertEquals(
+                RemoteLockState.QUEUED,
+                RemoteLockManager.get().find(second.getLockId()).getState());
+
+        // Promotion via the unified queue still works when the resource frees up.
+        RemoteLockManager.get().release(first.getLockId());
+        assertEquals(RemoteLockState.ACQUIRED, second.getState());
     }
 
     @Test

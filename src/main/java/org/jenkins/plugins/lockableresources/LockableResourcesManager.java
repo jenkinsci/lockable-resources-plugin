@@ -57,6 +57,7 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.verb.POST;
 
 @Extension
 public class LockableResourcesManager extends GlobalConfiguration {
@@ -260,6 +261,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * Form validation for {@code forcedServerId}: warns when the value does not match
      * any configured remote connection (delegated mode would fail at lock() time).
      */
+    @POST
     public FormValidation doCheckForcedServerId(@QueryParameter String value) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         String trimmed = Util.fixEmptyAndTrim(value);
