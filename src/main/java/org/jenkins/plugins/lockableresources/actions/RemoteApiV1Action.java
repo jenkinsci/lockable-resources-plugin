@@ -271,13 +271,14 @@ public class RemoteApiV1Action {
                 return;
             }
 
+            // Pure read: GET /acquire/{lockId} only observes state. QUEUED lifetime is owned entirely by
+            // the server-side unified queue (promotion via proceedNextContext, expiry via the
+            // RemoteQueueEntry timeout) - polling does not drive or keep alive the queue entry.
             RemoteLockRecord record = RemoteLockManager.get().find(lockId);
             if (record == null) {
                 sendJsonError(rsp, 404, "LOCK_NOT_FOUND", "Lock not found: " + lockId);
                 return;
             }
-            // Poll liveness: QUEUED records expire when the client stops polling
-            RemoteLockManager.get().touchPoll(lockId);
 
             JSONObject response = new JSONObject();
             response.put("lockId", record.getLockId());

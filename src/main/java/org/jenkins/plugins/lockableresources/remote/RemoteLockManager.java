@@ -52,23 +52,6 @@ public class RemoteLockManager extends PeriodicWork {
     /** Terminal records (SKIPPED/FAILED) are removed from the map after this TTL. */
     private static final long TERMINAL_TTL_MS = TimeUnit.SECONDS.toMillis(120);
 
-    /**
-     * Default expiry for QUEUED records whose client has stopped polling.
-     * GET /acquire/{lockId} is the liveness signal while QUEUED; without it the
-     * client is assumed gone and the queue position is released. Unlike STALE
-     * (which holds a resource and is never auto-released), expiring a QUEUED
-     * record is safe under fail-close: it holds no resource, only a queue slot.
-     * Matches the STALE threshold so "server gives up" never precedes
-     * "client gives up" (the client's poll retry budget is ~60s as well).
-     */
-    private static final long DEFAULT_QUEUE_POLL_EXPIRY_MS = STALE_THRESHOLD_MS;
-
-    /** Testable override: -Dorg.jenkins...RemoteLockManager.queuePollExpiryMs=<millis> */
-    static long getQueuePollExpiryMs() {
-        return jenkins.util.SystemProperties.getLong(
-                RemoteLockManager.class.getName() + ".queuePollExpiryMs", DEFAULT_QUEUE_POLL_EXPIRY_MS);
-    }
-
     private final ConcurrentHashMap<String, RemoteLockRecord> records = new ConcurrentHashMap<>();
 
     // -----------------------------------------------------------------------
@@ -163,19 +146,6 @@ public class RemoteLockManager extends PeriodicWork {
 
     // -----------------------------------------------------------------------
     /**
-     * Records client poll liveness. Called by {@code GET /acquire/{lockId}};
-     * QUEUED records whose client stops polling expire after
-     * {@link #getQueuePollExpiryMs()}.
-     */
-    public void touchPoll(String lockId) {
-        RemoteLockRecord record = records.get(lockId);
-        if (record != null) {
-            record.polled();
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    /**
      * Updates the heartbeat timestamp for an ACQUIRED lock.
      *
      * @return {@code false} if the lockId is unknown or not in ACQUIRED state.
@@ -237,12 +207,12 @@ public class RemoteLockManager extends PeriodicWork {
     // -----------------------------------------------------------------------
     /**
      * Marks ACQUIRED records STALE when heartbeat has been missing too long,
-     * expires QUEUED records whose client has stopped polling,
      * and cleans up terminal records (SKIPPED/FAILED) after their TTL.
+     * QUEUED records are expired by the unified queue's own timeout
+     * ({@code RemoteQueueEntry} deadline = {@code timeoutForAllocateResource}), not here.
      */
     private void maybeScanStale() {
         long now = System.currentTimeMillis();
-        long queuePollExpiryMs = getQueuePollExpiryMs();
         for (RemoteLockRecord record : records.values()) {
             RemoteLockState state = record.getState();
             if (state == RemoteLockState.ACQUIRED) {
@@ -254,21 +224,6 @@ public class RemoteLockManager extends PeriodicWork {
                             new Object[] {
                                 record.getLockId(), record.getAcquiredResourceNames(), now - record.getLastHeartbeatAt()
                             });
-                }
-            } else if (state == RemoteLockState.QUEUED) {
-                if (now - record.getLastPolledAt() > queuePollExpiryMs) {
-                    // Serialize against queue promotion (proceedNextContext holds
-                    // syncResources) so an entry cannot be promoted and expired at once.
-                    synchronized (LockableResourcesManager.syncResources) {
-                        if (record.getState() == RemoteLockState.QUEUED) {
-                            record.markFailed("QUEUE_EXPIRED");
-                            LockableResourcesManager.get().unqueueRemote(record.getLockId());
-                            LOGGER.log(
-                                    Level.WARNING,
-                                    "Remote queue entry expired (client stopped polling): lockId={0} lastPollAge={1}ms",
-                                    new Object[] {record.getLockId(), now - record.getLastPolledAt()});
-                        }
-                    }
                 }
             } else if (state == RemoteLockState.SKIPPED || state == RemoteLockState.FAILED) {
                 if (now - record.getEnqueuedAt() > TERMINAL_TTL_MS) {

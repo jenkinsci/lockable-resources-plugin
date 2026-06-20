@@ -36,8 +36,6 @@ public final class RemoteLockRecord {
     private final long enqueuedAt;
     private volatile long acquiredAt;
     private volatile long lastHeartbeatAt;
-    /** Last time the client polled GET /acquire/{lockId}; liveness signal while QUEUED. */
-    private volatile long lastPolledAt;
 
     @CheckForNull
     private volatile String errorCode;
@@ -56,7 +54,6 @@ public final class RemoteLockRecord {
         long now = System.currentTimeMillis();
         this.enqueuedAt = now;
         this.lastHeartbeatAt = now;
-        this.lastPolledAt = now;
     }
 
     public String getLockId() {
@@ -112,10 +109,6 @@ public final class RemoteLockRecord {
         return lastHeartbeatAt;
     }
 
-    public long getLastPolledAt() {
-        return lastPolledAt;
-    }
-
     @CheckForNull
     public String getErrorCode() {
         return errorCode;
@@ -145,9 +138,5 @@ public final class RemoteLockRecord {
 
     void heartbeat() {
         this.lastHeartbeatAt = System.currentTimeMillis();
-    }
-
-    void polled() {
-        this.lastPolledAt = System.currentTimeMillis();
     }
 }

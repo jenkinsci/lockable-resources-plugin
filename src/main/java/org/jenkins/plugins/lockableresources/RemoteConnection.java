@@ -12,8 +12,10 @@ import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 import java.util.Locale;
 import java.util.Objects;
+import jenkins.model.Jenkins;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.verb.POST;
 
 /**
  * Remote Jenkins connection settings.
@@ -94,7 +96,9 @@ public class RemoteConnection extends AbstractDescribableImpl<RemoteConnection> 
     public static class DescriptorImpl extends Descriptor<RemoteConnection> {
 
         /** Live validation that the remote base URL is an http(s) URL. */
+        @POST
         public FormValidation doCheckUrl(@QueryParameter String value) {
+            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             String trimmed = Util.fixEmptyAndTrim(value);
             if (trimmed == null) {
                 return FormValidation.error("URL must not be empty");

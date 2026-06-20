@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import hudson.util.FormValidation;
 import org.junit.jupiter.api.Test;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 class RemoteConnectionTest {
 
@@ -87,8 +89,10 @@ class RemoteConnectionTest {
                 () -> new RemoteConnection("server1", "jenkins1.example.com", "creds-1").validate());
     }
 
+    // doCheckUrl checks Jenkins.ADMINISTER (security hardening), so it needs a running Jenkins.
     @Test
-    void testDoCheckUrl() {
+    @WithJenkins
+    void testDoCheckUrl(JenkinsRule j) {
         RemoteConnection.DescriptorImpl descriptor = new RemoteConnection.DescriptorImpl();
 
         assertEquals(FormValidation.Kind.OK, descriptor.doCheckUrl("https://jenkins1.example.com").kind);
@@ -96,6 +100,25 @@ class RemoteConnectionTest {
         assertEquals(FormValidation.Kind.ERROR, descriptor.doCheckUrl("file:///etc/passwd").kind);
         assertEquals(FormValidation.Kind.ERROR, descriptor.doCheckUrl("").kind);
         assertEquals(FormValidation.Kind.ERROR, descriptor.doCheckUrl(null).kind);
+    }
+
+    // Security: doCheckUrl must require ADMINISTER (alerts 49/51). A non-admin user is rejected.
+    @Test
+    @WithJenkins
+    void testDoCheckUrlRequiresAdmin(JenkinsRule j) {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new org.jvnet.hudson.test.MockAuthorizationStrategy()
+                .grant(jenkins.model.Jenkins.READ)
+                .everywhere()
+                .to("reader"));
+
+        RemoteConnection.DescriptorImpl descriptor = new RemoteConnection.DescriptorImpl();
+        try (hudson.security.ACLContext ignored = hudson.security.ACL.as2(
+                hudson.model.User.getById("reader", true).impersonate2())) {
+            assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> descriptor.doCheckUrl("https://jenkins1.example.com"));
+        }
     }
 
     @Test
