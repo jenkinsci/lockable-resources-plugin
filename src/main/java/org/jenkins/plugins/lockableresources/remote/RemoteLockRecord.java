@@ -37,6 +37,14 @@ public final class RemoteLockRecord {
     private volatile long acquiredAt;
     private volatile long lastHeartbeatAt;
 
+    /**
+     * Timestamp when the record entered a terminal state (SKIPPED/FAILED); 0 while non-terminal.
+     * The terminal-record TTL cleanup measures retention from this instant, not from {@link #enqueuedAt},
+     * so a record that becomes terminal only after a long queue wait (e.g. timeoutForAllocateResource
+     * &gt; the TTL) is still retained for the full TTL and can be observed by a polling client.
+     */
+    private volatile long terminalAt;
+
     @CheckForNull
     private volatile String errorCode;
 
@@ -101,6 +109,11 @@ public final class RemoteLockRecord {
         return enqueuedAt;
     }
 
+    /** Instant the record became terminal (SKIPPED/FAILED), or 0 if still non-terminal. */
+    public long getTerminalAt() {
+        return terminalAt;
+    }
+
     public long getAcquiredAt() {
         return acquiredAt;
     }
@@ -124,11 +137,13 @@ public final class RemoteLockRecord {
     }
 
     void markSkipped() {
+        this.terminalAt = System.currentTimeMillis();
         this.state = RemoteLockState.SKIPPED;
     }
 
     void markFailed(String code) {
         this.errorCode = code;
+        this.terminalAt = System.currentTimeMillis();
         this.state = RemoteLockState.FAILED;
     }
 

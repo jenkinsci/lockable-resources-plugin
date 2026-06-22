@@ -226,7 +226,13 @@ public class RemoteLockManager extends PeriodicWork {
                             });
                 }
             } else if (state == RemoteLockState.SKIPPED || state == RemoteLockState.FAILED) {
-                if (now - record.getEnqueuedAt() > TERMINAL_TTL_MS) {
+                // Measure retention from when the record became terminal, NOT from enqueue: a record that
+                // times out after a long queue wait (timeoutForAllocateResource > TERMINAL_TTL_MS) only
+                // becomes FAILED at the deadline, so an enqueue-based TTL would already be exceeded at that
+                // instant and the record would be evicted before a polling client can read the terminal
+                // state - surfacing a legitimate LOCK_WAIT_TIMEOUT as a 404. Terminal-time TTL keeps the
+                // FAILED/SKIPPED record observable for the full TTL regardless of how long the wait was.
+                if (now - record.getTerminalAt() > TERMINAL_TTL_MS) {
                     records.remove(record.getLockId());
                 }
             }

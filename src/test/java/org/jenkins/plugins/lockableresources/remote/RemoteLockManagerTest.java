@@ -375,6 +375,39 @@ class RemoteLockManagerTest {
     }
 
     @Test
+    void timedOutRecordRecordsTerminalTimestampAndSurvivesMaintenance(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("board-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+
+        RemoteLockRecord waiter =
+                RemoteLockManager.get().enqueue(reqWithTimeout("board-1", 200L, "MILLISECONDS"), null);
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+        assertEquals(0L, waiter.getTerminalAt(), "non-terminal record has no terminal timestamp");
+
+        Thread.sleep(400);
+        manager.checkTimeouts();
+
+        assertEquals(RemoteLockState.FAILED, waiter.getState());
+        assertEquals("LOCK_WAIT_TIMEOUT", waiter.getErrorCode());
+        // Terminal-record TTL keys off when the record became terminal, not enqueue time. A record that
+        // times out after a wait records terminalAt at the deadline (>= enqueuedAt), so a long
+        // timeoutForAllocateResource cannot make the FAILED record look already-expired and be evicted
+        // before a polling client can read the terminal state (regression: queued-expiry-poll-404).
+        assertTrue(waiter.getTerminalAt() > 0L, "markFailed must record terminalAt");
+        assertTrue(waiter.getTerminalAt() >= waiter.getEnqueuedAt(), "terminalAt is at/after enqueue");
+        // A maintenance pass right after timing out must NOT evict the just-failed record.
+        RemoteLockManager.get().doRun();
+        assertNotNull(
+                RemoteLockManager.get().find(waiter.getLockId()),
+                "freshly-failed record must remain observable for the terminal TTL");
+    }
+
+    @Test
     void queuedRecordWithoutTimeoutSurvivesWithoutPolling(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.setRemoteApiEnabled(true);
