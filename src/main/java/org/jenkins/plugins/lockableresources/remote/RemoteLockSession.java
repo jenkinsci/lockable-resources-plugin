@@ -234,6 +234,24 @@ public final class RemoteLockSession implements Serializable {
             if (ex instanceof RemoteApiException) {
                 int httpStatus = ((RemoteApiException) ex).getHttpStatus();
                 if (httpStatus == 404 || httpStatus == 410) {
+                    if (!bodyStarted) {
+                        // Still acquiring: the QUEUED record is gone. We hold a lockId (admission passed at
+                        // POST) and skipIfLocked is resolved synchronously at POST (never polled), so a
+                        // never-acquired record vanishing means the server-side allocation wait timed out.
+                        // Normalize to LOCK_WAIT_TIMEOUT - the same outcome as observing a FAILED state -
+                        // instead of mislabeling a legitimate timeout as a transport/communication failure.
+                        LOGGER.log(
+                                Level.WARNING,
+                                "Remote acquire wait ended (HTTP {0}); treating as LOCK_WAIT_TIMEOUT. "
+                                        + "serverId={1}, lockId={2}",
+                                new Object[] {httpStatus, serverId, lockId});
+                        finishFailure(
+                                host,
+                                new AbortException("Remote acquire failed (serverId=" + serverId + ", lockId=" + lockId
+                                        + ", state=FAILED, errorCode=LOCK_WAIT_TIMEOUT)"));
+                        return;
+                    }
+                    // An already-ACQUIRED lease vanished (server restart / forced release): irrecoverable.
                     LOGGER.log(
                             Level.WARNING,
                             "Remote lock not found on server (HTTP {0}); server may have restarted. "
