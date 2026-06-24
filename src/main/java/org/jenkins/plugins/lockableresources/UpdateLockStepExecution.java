@@ -7,7 +7,6 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.model.TaskListener;
 import java.io.PrintStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,7 +20,7 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 /**
  * Execution logic for the {@link UpdateLockStep}.
  */
-public class UpdateLockStepExecution extends AbstractStepExecutionImpl implements Serializable {
+public class UpdateLockStepExecution extends AbstractStepExecutionImpl {
 
     private static final long serialVersionUID = 1583205294263267002L;
     private static final Logger LOGGER = Logger.getLogger(UpdateLockStepExecution.class.getName());
@@ -147,7 +146,7 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl implement
         if (step.getSetLabels() != null) {
             // setLabels replaces all existing labels
             List<String> newLabels = parseLabels(step.getSetLabels());
-            resource.setLabels(String.join(" ", newLabels));
+            resource.setLabelsFromString(String.join(" ", newLabels));
             LockableResourcesManager.printLogs(
                     "Resource [" + resourceName + "] labels set to: " + newLabels, Level.FINE, LOGGER, logger);
         } else if (step.getAddLabels() != null || step.getRemoveLabels() != null) {
@@ -175,7 +174,7 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl implement
                         logger);
             }
 
-            resource.setLabels(currentLabels.stream().collect(Collectors.joining(" ")));
+            resource.setLabelsFromString(currentLabels.stream().collect(Collectors.joining(" ")));
         }
     }
 

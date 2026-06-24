@@ -190,6 +190,18 @@ function deleteResource(button) {
 function resource_action(button, action) {
   const resourceName = button.closest('tr').getAttribute('data-resource-name');
 
+  function allowEmptyReasonInPrompt() {
+    setTimeout(function () {
+      const input = document.querySelector("dialog.jenkins-dialog input, dialog.jenkins-dialog textarea");
+      if (!input) return;
+      input.required = false;
+      input.removeAttribute("required");
+      if (!input.value) {
+        input.value = " ";
+      }
+    }, 0);
+  }
+
   if (action === "reserve" || action === "steal") {
     dialog
       .prompt(i18n(action + "-title", resourceName), {
@@ -209,6 +221,9 @@ function resource_action(button, action) {
           });
         }
       );
+    if (action === "reserve") {
+      allowEmptyReasonInPrompt();
+    }
     return;
   }
 
@@ -567,31 +582,51 @@ function initPagination() {
     // Place pagination in the toolbar (right of the eye icon) if available
     const controls = document.createElement("div");
     controls.className = "lr-pagination";
+    const countBadge = document.createElement("span");
+    countBadge.className = "lr-table-count";
     const tabPane = table.closest(".lr-tab-pane");
     const toolbar = tabPane ? tabPane.querySelector(".lr-toolbar__actions") : null;
     if (toolbar) {
+      toolbar.appendChild(countBadge);
       toolbar.appendChild(controls);
     } else {
+      scrollWrapper.parentNode.insertBefore(countBadge, scrollWrapper.nextSibling);
       scrollWrapper.parentNode.insertBefore(controls, scrollWrapper.nextSibling);
     }
 
-    function getRows() {
+    function getAllRows() {
       const tbody = table.querySelector("tbody");
       return tbody
         ? Array.from(tbody.children).filter(function (row) {
-            return row.matches("tr")
-              && !row.classList.contains("lr-filtered-out")
-              && !row.classList.contains("lr-col-filtered-out");
+            return row.matches("tr");
           })
         : [];
+    }
+
+    function isRowFilteredOut(row) {
+      return row.classList.contains("lr-filtered-out")
+        || row.classList.contains("lr-col-filtered-out")
+        || row.classList.contains("lr-global-search-hidden");
+    }
+
+    function getRows() {
+      return getAllRows().filter(function (row) {
+        return !isRowFilteredOut(row);
+      });
     }
 
     function render() {
       const rows = getRows();
       const total = rows.length;
+      const totalRows = getAllRows().length;
       const totalPages = pageSize === 0 ? 1 : Math.ceil(total / pageSize);
       if (currentPage > totalPages) currentPage = totalPages;
       if (currentPage < 1) currentPage = 1;
+
+      // Show filtered/total row count, e.g. 12/57 when filters are active.
+      if (countBadge) {
+        countBadge.textContent = total === totalRows ? String(totalRows) : (total + "/" + totalRows);
+      }
 
       // Show/hide rows
       rows.forEach(function (row, i) {
@@ -713,6 +748,18 @@ window.updateFilterMode = function (tabId) {
   });
 
   function bulkResourceAction(action, resources) {
+    function allowEmptyReasonInPrompt() {
+      setTimeout(function () {
+        const input = document.querySelector("dialog.jenkins-dialog input, dialog.jenkins-dialog textarea");
+        if (!input) return;
+        input.required = false;
+        input.removeAttribute("required");
+        if (!input.value) {
+          input.value = " ";
+        }
+      }, 0);
+    }
+
     if (action === "reserve" || action === "steal" || action === "reassign") {
       dialog
         .prompt(i18n(action + "-title", resources.join(", ")), {
@@ -723,6 +770,9 @@ window.updateFilterMode = function (tabId) {
         .then(function (reason) {
           executeBulk(action, resources, reason || "");
         });
+      if (action === "reserve") {
+        allowEmptyReasonInPrompt();
+      }
       return;
     }
     executeBulk(action, resources, null);
@@ -1496,7 +1546,7 @@ function initColumnVisibility(config) {
     var url = endpointUrl + "?" + params.toString();
     tbody.innerHTML = "<tr><td colspan=\"9\" class=\"lr-queue-loading\">Loading...</td></tr>";
 
-    fetch(url, { headers: crumb.wrap({}) })
+    fetch(url, { method: "POST", headers: crumb.wrap({}) })
       .then(function (rsp) {
         if (!rsp.ok) throw new Error("HTTP " + rsp.status);
         return rsp.json();

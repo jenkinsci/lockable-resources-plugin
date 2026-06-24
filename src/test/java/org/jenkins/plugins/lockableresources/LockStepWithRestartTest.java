@@ -189,8 +189,9 @@ class LockStepWithRestartTest extends LockStepTestBase {
             JenkinsRule.WebClient wc = j.createWebClient();
             wc.login("user");
 
-            TestHelpers testHelpers = new TestHelpers();
-            testHelpers.clickButton("unreserve", "resource1");
+            try (TestHelpers testHelpers = new TestHelpers()) {
+                testHelpers.clickButton("unreserve", "resource1");
+            }
 
             lrm.unreserve(Collections.singletonList(lrm.fromName("resource1")));
 

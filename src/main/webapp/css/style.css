@@ -45,6 +45,20 @@
   gap: 0.25rem;
 }
 
+.lr-table-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: var(--jenkins-border--subtle);
+  color: var(--text-color-secondary, #666);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
 tr.lr-filtered-out,
 tr.lr-col-filtered-out,
 tr.lr-global-search-hidden {

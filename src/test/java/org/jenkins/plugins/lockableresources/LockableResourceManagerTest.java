@@ -27,7 +27,7 @@ class LockableResourceManagerTest {
         RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
         LockableResourcesManager.get().createResource("resource1");
         LockableResource r = LockableResourcesManager.get().getFirst();
-        r.setLabels("some-label");
+        r.setLabelsFromString("some-label");
 
         assertEquals(
                 "Only resource label, groovy expression, or resource names can be defined, not more than one.",

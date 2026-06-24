@@ -24,7 +24,7 @@ import org.kohsuke.stapler.StaplerResponse2;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public final class TestHelpers {
+public final class TestHelpers implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(TestHelpers.class.getName());
 
@@ -109,5 +109,10 @@ public final class TestHelpers {
                 break;
             }
         }
+    }
+
+    @Override
+    public void close() throws Exception {
+        mocks.close();
     }
 }
