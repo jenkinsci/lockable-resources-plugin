@@ -28,5 +28,36 @@
         <a href="${rootURL}/lockable-resources/">${%entry.moved.link}</a>
       </div>
     </f:entry>
+
+    <f:section title="${%remote.server.section.title}">
+      <f:entry field="remoteApiEnabled" title="${%remote.server.remoteApiEnabled.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help-remoteApiEnabled">
+        <f:checkbox/>
+      </f:entry>
+      <f:entry field="exposeLabel" title="${%remote.server.exposeLabel.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help-exposeLabel">
+        <f:textbox value="${instance.exposeLabel}" clazz="setting-input"/>
+      </f:entry>
+    </f:section>
+
+    <f:section title="${%remote.client.section.title}">
+      <f:entry title="${%remote.clientId.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help-clientId">
+        <f:textbox field="clientId" value="${instance.clientId}" clazz="setting-input"/>
+      </f:entry>
+
+      <f:entry title="${%remote.forcedServerId.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help-forcedServerId">
+        <f:textbox field="forcedServerId" value="${instance.forcedServerId}" clazz="setting-input" checkMethod="post"/>
+      </f:entry>
+
+      <f:entry title="${%remote.remotes.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help-remotes">
+        <f:repeatable field="remotes" header="${%remote.remotes.header}" minimum="0" add="${%remote.remotes.add}">
+          <table width="100%">
+            <st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.RemoteConnection"/>
+            <f:entry title="">
+              <div align="right"><f:repeatableDeleteButton/></div>
+            </f:entry>
+          </table>
+        </f:repeatable>
+      </f:entry>
+    </f:section>
+
   </f:section>
 </j:jelly>

@@ -66,6 +66,10 @@ public class LockStep extends Step implements Serializable {
 
     @CheckForNull
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public String serverId = null;
+
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public List<LockStepResource> extra = null;
 
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
@@ -124,6 +128,16 @@ public class LockStep extends Step implements Serializable {
     @DataBoundSetter
     public void setSkipIfLocked(boolean skipIfLocked) {
         this.skipIfLocked = skipIfLocked;
+    }
+
+    @DataBoundSetter
+    public void setServerId(String serverId) {
+        if (serverId != null && !serverId.trim().isEmpty()) {
+            if (!serverId.equals(serverId.trim())) {
+                LOG.warning("The provided 'serverId' should not start or end with spaces.");
+            }
+            this.serverId = serverId.trim();
+        }
     }
 
     @DataBoundSetter
