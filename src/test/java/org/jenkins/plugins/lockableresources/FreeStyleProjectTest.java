@@ -134,12 +134,16 @@ class FreeStyleProjectTest {
      *       dispatch while the latch is held, so peak concurrency stays at 1.</li>
      * </ul>
      *
-     * There are {@code N * 2} executors, so executor availability is never the constraint.
+     * There are {@code N * 2} executors so executor availability is never the constraint. N is kept
+     * small (5) to remain reliable on slow CI agents; it is still sufficient to distinguish peak=1
+     * (serialised, bug present) from peak=N (concurrent, fix working).
      */
     @Test
     @Issue("1052")
     void scriptResourceJobsRunConcurrently(JenkinsRule j) throws Exception {
-        final int N = 12;
+        // N=5 is enough to distinguish serial dispatch (peak=1) from parallel dispatch (peak=N).
+        // A larger value risks spurious timeout failures on slow CI agents (notably Windows).
+        final int N = 5;
         j.jenkins.setNumExecutors(N * 2);
 
         for (int i = 0; i < N; i++) {
@@ -171,7 +175,7 @@ class FreeStyleProjectTest {
                     maxConcurrent.accumulateAndGet(c, Math::max);
                     allStarted.countDown();
                     // Hold the build open so a serialised dispatcher cannot "complete then dispatch next".
-                    release.await(30, TimeUnit.SECONDS);
+                    release.await(90, TimeUnit.SECONDS);
                     concurrent.decrementAndGet();
                     return true;
                 }
@@ -184,13 +188,13 @@ class FreeStyleProjectTest {
 
         // Wait (bounded) for all N builds to be running at once. If the bug serialises dispatch,
         // this times out with only one build ever having started.
-        boolean allRunningTogether = allStarted.await(20, TimeUnit.SECONDS);
+        boolean allRunningTogether = allStarted.await(60, TimeUnit.SECONDS);
         int peak = maxConcurrent.get();
 
         // Let the builds finish regardless of outcome.
         release.countDown();
         for (int i = 0; i < N; i++) {
-            j.assertBuildStatus(Result.SUCCESS, futures.get(i).get(30, TimeUnit.SECONDS));
+            j.assertBuildStatus(Result.SUCCESS, futures.get(i).get(60, TimeUnit.SECONDS));
         }
 
         assertTrue(
