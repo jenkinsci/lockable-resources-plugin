@@ -5,11 +5,17 @@
  */
 package org.jenkins.plugins.lockableresources;
 
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.security.ACL;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import java.util.Locale;
 import java.util.Objects;
 import jenkins.model.Jenkins;
@@ -94,6 +100,27 @@ public class RemoteConnection extends AbstractDescribableImpl<RemoteConnection> 
 
     @Extension
     public static class DescriptorImpl extends Descriptor<RemoteConnection> {
+
+        /**
+         * Credentials dropdown for remote API auth (username + API token in password field).
+         */
+        @POST
+        public ListBoxModel doFillCredentialsIdItems(@QueryParameter String credentialsId, @QueryParameter String url) {
+            if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
+                return new StandardListBoxModel().includeCurrentValue(credentialsId);
+            }
+
+            return new StandardListBoxModel()
+                    .includeEmptyValue()
+                    .includeMatchingAs(
+                            ACL.SYSTEM2,
+                            Jenkins.get(),
+                            StandardUsernamePasswordCredentials.class,
+                            URIRequirementBuilder.fromUri(Util.fixEmptyAndTrim(url))
+                                    .build(),
+                            CredentialsMatchers.always())
+                    .includeCurrentValue(credentialsId);
+        }
 
         /** Live validation that the remote base URL is an http(s) URL. */
         @POST

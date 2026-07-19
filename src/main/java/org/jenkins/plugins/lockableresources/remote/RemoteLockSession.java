@@ -108,7 +108,13 @@ public final class RemoteLockSession implements Serializable {
         RemoteLockRequest lockRequest = RemoteLockRequest.from(step);
 
         LockableResourcesManager.printLogs(
-                "Trying to acquire remote lock on [" + step + "] (serverId=" + remote.getServerId() + ")",
+                "Trying to acquire remote lock on ["
+                        + step
+                        + "] (serverId="
+                        + remote.getServerId()
+                        + ", serverUrl="
+                        + remote.getUrl()
+                        + ")",
                 Level.FINE,
                 LOGGER,
                 logger);
@@ -126,12 +132,24 @@ public final class RemoteLockSession implements Serializable {
             this.serverId = remote.getServerId();
             this.lockId = acquiredLockId;
             LockableResourcesManager.printLogs(
-                    "Remote acquire enqueued (serverId=" + remote.getServerId() + ", lockId=" + acquiredLockId + ")",
+                    "Remote acquire enqueued (serverId="
+                            + remote.getServerId()
+                            + ", serverUrl="
+                            + remote.getUrl()
+                            + ", lockId="
+                            + acquiredLockId
+                            + ")",
                     Level.FINE,
                     LOGGER,
                     logger);
             startPolling(host, remote, authorizationHeader, client, run, displayTarget);
         } catch (RemoteApiException ex) {
+            logger.println("Remote lock request failed (serverId="
+                    + remote.getServerId()
+                    + ", serverUrl="
+                    + remote.getUrl()
+                    + "): "
+                    + ex.getMessage());
             finishFailure(host, ex);
         }
         return false;

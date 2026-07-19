@@ -625,6 +625,19 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return record != null ? record.getClientId() : null;
     }
 
+    /**
+     * Returns the full {@link RemoteLockRecord} for the active remote lock, or {@code null}
+     * if the resource is not remotely locked or the record is no longer available.
+     * Used by the Jelly table to display lock details in the heldBy column.
+     */
+    @CheckForNull
+    public RemoteLockRecord getRemoteLockRecord() {
+        if (remoteLockedBy == null) {
+            return null;
+        }
+        return RemoteLockManager.get().find(remoteLockedBy);
+    }
+
     public void setRemoteLockedBy(String lockId) {
         this.remoteLockedBy = lockId;
     }
