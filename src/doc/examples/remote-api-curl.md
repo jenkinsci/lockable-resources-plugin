@@ -159,6 +159,51 @@ If not acquired within 5 minutes the state becomes `FAILED` with `errorCode: LOC
 
 ---
 
+### Queue ordering: `priority` and `inversePrecedence`
+
+Current remote API behavior:
+
+- `priority` is applied. Larger number wins queue position.
+- `inversePrecedence` is accepted in the payload, but is not currently applied to remote queue ordering.
+
+For now, use `priority` if you need ordering control for remote waiters.
+
+Priority example:
+
+```bash
+curl -s -u "${USER}:${TOKEN}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lockRequest": {
+      "label": "gpu",
+      "quantity": 1,
+      "priority": 50
+    },
+    "clientId": "batch-high-priority"
+  }' \
+  "${JENKINS}/lockable-resources/remote/v1/acquire/"
+```
+
+Inverse precedence payload example (currently informational for remote queueing):
+
+```bash
+curl -s -u "${USER}:${TOKEN}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lockRequest": {
+      "label": "gpu",
+      "quantity": 1,
+      "inversePrecedence": true
+    },
+    "clientId": "batch-lifo"
+  }' \
+  "${JENKINS}/lockable-resources/remote/v1/acquire/"
+```
+
+---
+
 ### API reference
 
 #### `POST /lockable-resources/remote/v1/acquire/`
@@ -173,7 +218,8 @@ Request body (JSON):
 | `lockRequest.skipIfLocked` | bool | no | return SKIPPED instead of queuing |
 | `lockRequest.timeoutForAllocateResource` | long | no | max wait time (default: unlimited) |
 | `lockRequest.timeoutUnit` | string | no | `MINUTES` (default), `SECONDS`, `HOURS` |
-| `lockRequest.priority` | int | no | higher number = higher priority in queue |
+| `lockRequest.priority` | int | no | higher number = higher queue priority |
+| `lockRequest.inversePrecedence` | bool | no | accepted field; currently not applied to remote queue ordering |
 | `lockRequest.variable` | string | no | env var name for acquired resource name |
 | `lockRequest.reason` | string | no | human-readable lock reason |
 | `lockRequest.extra` | array | no | additional resources to lock atomically |
