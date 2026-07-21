@@ -42,6 +42,7 @@ class LockStepRemoteTest extends LockStepTestBase {
             job.setDefinition(new CpsFlowDefinition("""
                     lock(resource: 'remote-resource', serverId: 'server-a', variable: 'LOCK_NAME') {
                         echo "inside ${env.LOCK_NAME}"
+                        echo "server=${env.LOCK_NAME_SERVER_ID} lockId=${env.LOCK_NAME_LOCK_ID}"
                         semaphore 'remote-body'
                     }
                     echo 'remote-finish'
@@ -58,6 +59,7 @@ class LockStepRemoteTest extends LockStepTestBase {
             j.assertLogContains(
                     "Remote lock acquired on [Resource: remote-resource] (serverId=server-a, lockId=lock-1)", run);
             j.assertLogContains("inside remote-resource", run);
+            j.assertLogContains("server=server-a lockId=lock-1", run);
 
             SemaphoreStep.success("remote-body/1", null);
             j.assertBuildStatusSuccess(j.waitForCompletion(run));
@@ -67,6 +69,47 @@ class LockStepRemoteTest extends LockStepTestBase {
                     "Remote lock released on [Resource: remote-resource] (serverId=server-a, lockId=lock-1)", run);
             j.assertLogContains("remote-finish", run);
             isPaused(run, 1, 0);
+        } finally {
+            remote.stop();
+        }
+    }
+
+    @Test
+    void lockWithLabelPropagatesMultipleResourcePropertiesAndRemoteMetadataEnvVars(JenkinsRule j) throws Exception {
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.setAcquireStatusResponse(
+                "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\",\"lockEnvVars\":{"
+                        + "\"PLC\":\"plc-a,plc-b\","
+                        + "\"PLC0\":\"plc-a\",\"PLC0_ip\":\"10.0.0.11\","
+                        + "\"PLC1\":\"plc-b\",\"PLC1_ip\":\"10.0.0.12\""
+                        + "}}"
+        );
+        remote.start();
+        try {
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
+
+            WorkflowJob job = j.createProject(WorkflowJob.class, "remote-plc-lock");
+            job.setDefinition(new CpsFlowDefinition("""
+                    lock(label: 'plc', quantity: 2, serverId: 'server-a', variable: 'PLC') {
+                        echo "plcs=${env.PLC}"
+                        echo "p0=${env.PLC0} ip0=${env.PLC0_ip}"
+                        echo "p1=${env.PLC1} ip1=${env.PLC1_ip}"
+                        echo "server=${env.PLC_SERVER_ID} lockId=${env.PLC_LOCK_ID}"
+                        semaphore 'plc-body'
+                    }
+                    """, true));
+
+            WorkflowRun run = job.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("plc-body/1", run);
+
+            j.assertLogContains("plcs=plc-a,plc-b", run);
+            j.assertLogContains("p0=plc-a ip0=10.0.0.11", run);
+            j.assertLogContains("p1=plc-b ip1=10.0.0.12", run);
+            j.assertLogContains("server=server-a lockId=lock-1", run);
+
+            SemaphoreStep.success("plc-body/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(run));
         } finally {
             remote.stop();
         }

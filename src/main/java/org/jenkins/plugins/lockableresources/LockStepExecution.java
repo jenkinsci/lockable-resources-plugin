@@ -164,8 +164,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
 
             BodyInvoker bodyInvoker = getContext().newBodyInvoker().withCallback(new RemoteCallback(displayTarget));
             if (lockEnvVars != null && !lockEnvVars.isEmpty()) {
+                Map<String, String> envWithRemoteMetadata =
+                        withRemoteMetadata(lockEnvVars, step.variable, remoteSession, lockId);
                 bodyInvoker.withContext(EnvironmentExpander.merge(
-                        getContext().get(EnvironmentExpander.class), new EnvVarsExpander(lockEnvVars)));
+                        getContext().get(EnvironmentExpander.class), new EnvVarsExpander(envWithRemoteMetadata)));
             }
             bodyInvoker.start();
         } catch (Exception ex) {
@@ -328,6 +330,29 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             ++index;
         }
         return variables;
+    }
+
+    /**
+     * Adds remote metadata env vars for remote lock blocks while preserving local env semantics.
+     * For variable "X" this appends: X_SERVER_ID and X_LOCK_ID.
+     */
+    @NonNull
+    private static Map<String, String> withRemoteMetadata(
+            @NonNull Map<String, String> lockEnvVars,
+            @edu.umd.cs.findbugs.annotations.CheckForNull String variable,
+            @edu.umd.cs.findbugs.annotations.CheckForNull RemoteLockSession remoteSession,
+            @NonNull String lockId) {
+        LinkedHashMap<String, String> merged = new LinkedHashMap<>(lockEnvVars);
+        if (variable == null || variable.isEmpty() || remoteSession == null) {
+            return merged;
+        }
+
+        String serverId = remoteSession.getServerId();
+        if (serverId != null && !serverId.isEmpty()) {
+            merged.put(variable + "_SERVER_ID", serverId);
+        }
+        merged.put(variable + "_LOCK_ID", lockId);
+        return merged;
     }
 
     /** Serializable {@link EnvironmentExpander} that injects a precomputed env-var map (named/static to avoid capturing the step). */

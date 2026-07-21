@@ -1893,6 +1893,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     /**
+     * Returns a read-only snapshot of current remote queue entries.
+     * Used by the management UI to show remote API waiters alongside local queue entries.
+     */
+    @Restricted(NoExternalUse.class)
+    public List<RemoteQueueEntry> getCurrentRemoteQueueEntries() {
+        synchronized (syncResources) {
+            return Collections.unmodifiableList(new ArrayList<>(getRemoteQueueEntries()));
+        }
+    }
+
+    /**
      * Adds a remote queue entry in priority-descending order (highest priority at front,
      * matching local pipeline queue ordering). Must be called under {@link #syncResources}.
      */

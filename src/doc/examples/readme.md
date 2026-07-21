@@ -16,3 +16,4 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Dynamic resource pool expansion](dynamic-resource-pool-expansion.md)
 - [Lock with allocation timeout](lock-with-timeout.md)
 - [Remote Lock REST API (curl examples)](remote-api-curl.md)
+- [Remote lock from Jenkins Pipeline (local gate + remote lock)](remote-lock-pipeline-pattern.md)
