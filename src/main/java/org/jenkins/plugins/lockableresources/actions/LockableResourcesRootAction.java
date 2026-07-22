@@ -629,11 +629,11 @@ public class LockableResourcesRootAction implements RootAction {
             int priority = 0;
             String id = null;
             Run<?, ?> build;
-                boolean remote = false;
-                String requestedBy;
-                String requestedByUrl;
-                String remoteReason;
-                String remoteRequest;
+            boolean remote = false;
+            String requestedBy;
+            String requestedByUrl;
+            String remoteReason;
+            String remoteRequest;
 
             public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context)
                     throws Descriptor.FormException {

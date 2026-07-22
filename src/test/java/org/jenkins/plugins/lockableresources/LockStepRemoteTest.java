@@ -77,13 +77,11 @@ class LockStepRemoteTest extends LockStepTestBase {
     @Test
     void lockWithLabelPropagatesMultipleResourcePropertiesAndRemoteMetadataEnvVars(JenkinsRule j) throws Exception {
         RemoteServerFixture remote = new RemoteServerFixture();
-        remote.setAcquireStatusResponse(
-                "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\",\"lockEnvVars\":{"
-                        + "\"PLC\":\"plc-a,plc-b\","
-                        + "\"PLC0\":\"plc-a\",\"PLC0_ip\":\"10.0.0.11\","
-                        + "\"PLC1\":\"plc-b\",\"PLC1_ip\":\"10.0.0.12\""
-                        + "}}"
-        );
+        remote.setAcquireStatusResponse("{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\",\"lockEnvVars\":{"
+                + "\"PLC\":\"plc-a,plc-b\","
+                + "\"PLC0\":\"plc-a\",\"PLC0_ip\":\"10.0.0.11\","
+                + "\"PLC1\":\"plc-b\",\"PLC1_ip\":\"10.0.0.12\""
+                + "}}");
         remote.start();
         try {
             LockableResourcesManager manager = LockableResourcesManager.get();
