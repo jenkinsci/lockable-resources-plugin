@@ -491,7 +491,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         // Sort by key for a deterministic, order-independent encoding.
         StringBuilder sb = new StringBuilder(scriptText);
         for (Map.Entry<String, Object> entry : new TreeMap<>(params).entrySet()) {
-            sb.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
+            sb.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
         }
         return sb.toString();
     }
