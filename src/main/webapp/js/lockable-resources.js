@@ -187,31 +187,79 @@ function deleteResource(button) {
     });
 }
 
+function isAllowEmptyReasonEnabled() {
+  var pageData = document.getElementById("lr-page-data");
+  return pageData && pageData.dataset.allowEmptyReason === "true";
+}
+
+function showReserveWithOptionalReasonDialog(title, message, onSubmit) {
+  var wrapper = document.createElement("div");
+  wrapper.className = "app-parameters-dialog";
+
+  var msgEl = document.createElement("p");
+  msgEl.textContent = message;
+  wrapper.appendChild(msgEl);
+
+  var input = document.createElement("input");
+  input.type = "text";
+  input.className = "jenkins-input";
+  wrapper.appendChild(input);
+
+  dialog.modal(wrapper, { title: title, maxWidth: "600px", minWidth: "450px" });
+
+  setTimeout(function () {
+    var dlg = document.querySelector("dialog.jenkins-dialog");
+    if (!dlg) return;
+
+    var footer = document.createElement("div");
+    footer.className = "jenkins-buttons-row jenkins-buttons-row--equal-width";
+    footer.style.marginTop = "1rem";
+
+    var reserveBtn = document.createElement("button");
+    reserveBtn.type = "button";
+    reserveBtn.className = "jenkins-button jenkins-button--primary";
+    reserveBtn.textContent = i18n("reserve-btn-reserve");
+
+    var noReasonBtn = document.createElement("button");
+    noReasonBtn.type = "button";
+    noReasonBtn.className = "jenkins-button";
+    noReasonBtn.textContent = i18n("reserve-btn-no-reason");
+
+    footer.appendChild(reserveBtn);
+    footer.appendChild(noReasonBtn);
+    wrapper.appendChild(footer);
+
+    input.focus();
+
+    function submit(reason) {
+      dlg.dispatchEvent(new Event("cancel"));
+      onSubmit(reason);
+    }
+
+    reserveBtn.addEventListener("click", function () {
+      submit(input.value.trim());
+    });
+
+    noReasonBtn.addEventListener("click", function () {
+      submit("");
+    });
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") submit(input.value.trim());
+    });
+  }, 50);
+}
+
 function resource_action(button, action) {
   const resourceName = button.closest('tr').getAttribute('data-resource-name');
 
-  function allowEmptyReasonInPrompt() {
-    setTimeout(function () {
-      const input = document.querySelector("dialog.jenkins-dialog input, dialog.jenkins-dialog textarea");
-      if (!input) return;
-      input.required = false;
-      input.removeAttribute("required");
-      if (!input.value) {
-        input.value = " ";
-      }
-    }, 0);
-  }
-
   if (action === "reserve" || action === "steal") {
-    dialog
-      .prompt(i18n(action + "-title", resourceName), {
-        message: i18n(action + "-message", resourceName),
-        minWidth: "450px",
-        maxWidth: "600px"
-      })
-      .then(
-        (reason) => {
-          const url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || "");
+    if (action === "reserve" && isAllowEmptyReasonEnabled()) {
+      showReserveWithOptionalReasonDialog(
+        i18n(action + "-title", resourceName),
+        i18n("reserve-dialog-message-optional"),
+        function (reason) {
+          const url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason);
           fetch(url, {
             method: "post",
             headers: crumb.wrap({}),
@@ -221,9 +269,27 @@ function resource_action(button, action) {
           });
         }
       );
-    if (action === "reserve") {
-      allowEmptyReasonInPrompt();
+      return;
     }
+
+    dialog
+      .prompt(i18n(action + "-title", resourceName), {
+        message: i18n(action + "-message", resourceName),
+        minWidth: "450px",
+        maxWidth: "600px"
+      })
+      .then(
+        (reason) => {
+          const url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent((reason || "").trim());
+          fetch(url, {
+            method: "post",
+            headers: crumb.wrap({}),
+          }).then((rsp) => {
+            showResponse(rsp, i18n("action-on-success", action, resourceName), i18n("action-on-fail", action, resourceName));
+            if (!rsp.ok) window.location.reload();
+          });
+        }
+      );
     return;
   }
 
@@ -748,19 +814,18 @@ window.updateFilterMode = function (tabId) {
   });
 
   function bulkResourceAction(action, resources) {
-    function allowEmptyReasonInPrompt() {
-      setTimeout(function () {
-        const input = document.querySelector("dialog.jenkins-dialog input, dialog.jenkins-dialog textarea");
-        if (!input) return;
-        input.required = false;
-        input.removeAttribute("required");
-        if (!input.value) {
-          input.value = " ";
-        }
-      }, 0);
-    }
-
     if (action === "reserve" || action === "steal" || action === "reassign") {
+      if (action === "reserve" && isAllowEmptyReasonEnabled()) {
+        showReserveWithOptionalReasonDialog(
+          i18n(action + "-title", resources.join(", ")),
+          i18n("reserve-dialog-message-optional"),
+          function (reason) {
+            executeBulk(action, resources, reason);
+          }
+        );
+        return;
+      }
+
       dialog
         .prompt(i18n(action + "-title", resources.join(", ")), {
           message: i18n(action + "-message", resources.join(", ")),
@@ -768,11 +833,8 @@ window.updateFilterMode = function (tabId) {
           maxWidth: "600px"
         })
         .then(function (reason) {
-          executeBulk(action, resources, reason || "");
+          executeBulk(action, resources, (reason || "").trim());
         });
-      if (action === "reserve") {
-        allowEmptyReasonInPrompt();
-      }
       return;
     }
     executeBulk(action, resources, null);

@@ -67,6 +67,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private boolean allowEmptyOrNullValues;
 
     /**
+     * When enabled, users can reserve a resource without providing a reason.
+     * When disabled (default), a non-empty reason is required.
+     */
+    private boolean allowEmptyReasonForReservation;
+
+    /**
      * Controls whether ephemeral resources can be created automatically.
      * When enabled (default), locking a non-existent resource creates it dynamically.
      * When disabled, locking a non-existent resource will block until it is manually created.
@@ -108,6 +114,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     public boolean isAllowEmptyOrNullValues() {
         return allowEmptyOrNullValues;
+    }
+
+    @DataBoundSetter
+    public void setAllowEmptyReasonForReservation(boolean allowEmptyReasonForReservation) {
+        this.allowEmptyReasonForReservation = allowEmptyReasonForReservation;
+    }
+
+    public boolean isAllowEmptyReasonForReservation() {
+        return allowEmptyReasonForReservation;
     }
 
     /**

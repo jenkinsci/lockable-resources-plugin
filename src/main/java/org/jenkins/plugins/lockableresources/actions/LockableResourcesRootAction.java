@@ -116,6 +116,10 @@ public class LockableResourcesRootAction implements RootAction {
         return LockableResource.getUserName();
     }
 
+    public boolean isAllowEmptyReasonForReservation() {
+        return LockableResourcesManager.get().isAllowEmptyReasonForReservation();
+    }
+
     @CheckForNull
     @Override
     public String getDisplayName() {

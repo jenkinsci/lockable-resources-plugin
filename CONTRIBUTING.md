@@ -19,7 +19,12 @@ mvn hpi:run
 ```
 
 allows you to spin up a test Jenkins instance on [localhost] to test your
-local changes before committing.
+local changes before committing. To use a different port in PowerShell, pass
+the Jetty port property with argument passthrough, for example:
+
+```powershell
+mvn --% hpi:run -Djetty.port=8091
+```
 
 [Apache Maven]: https://maven.apache.org/
 [Jenkins Plugin Tutorial]: https://jenkins.io/doc/developer/tutorial/prepare/
