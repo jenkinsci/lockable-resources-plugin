@@ -138,6 +138,35 @@ class RemoteApiClientTest {
         throw new AssertionError("Expected RemoteApiException");
     }
 
+    @Test
+    void testHttp404PreservesRemoteDetailsWithoutCommunicationFailureWrap() throws Exception {
+        HttpServer server = startServer(
+                "/lockable-resources/remote/v1/acquire",
+                404,
+                "{\"errorCode\":\"UNKNOWN_RESOURCE\",\"message\":\"No lockable resource matches the request\"}");
+        try {
+            RemoteApiClient client = new RemoteApiClient(Duration.ofSeconds(2));
+            RemoteConnection remote = new RemoteConnection("server-a", baseUrl(server), "cred-1");
+
+            try {
+                RemoteLockRequest lockRequest = new RemoteLockRequest(
+                        "resource-1", null, 0, null, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
+                client.enqueueAcquire(remote, "Basic abc", lockRequest, 10, null);
+            } catch (RemoteApiException ex) {
+                assertEquals(404, ex.getHttpStatus());
+                assertEquals("UNKNOWN_RESOURCE", ex.getRemoteCode());
+                assertTrue(ex.getMessage().contains("errorCode=UNKNOWN_RESOURCE"));
+                assertTrue(ex.getMessage().contains("No lockable resource matches the request"));
+                assertTrue(ex.getMessage().contains("exposeLabel"));
+                assertTrue(!ex.getMessage().contains("communication failure"));
+                return;
+            }
+            throw new AssertionError("Expected RemoteApiException");
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private static HttpServer startServer(String path, int status, String body) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext(path, new FixedResponseHandler(status, body));

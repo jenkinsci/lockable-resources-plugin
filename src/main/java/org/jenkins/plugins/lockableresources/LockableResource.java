@@ -491,7 +491,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         // Sort by key for a deterministic, order-independent encoding.
         StringBuilder sb = new StringBuilder(scriptText);
         for (Map.Entry<String, Object> entry : new TreeMap<>(params).entrySet()) {
-            sb.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
+            sb.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
         }
         return sb.toString();
     }
@@ -623,6 +623,19 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         }
         RemoteLockRecord record = RemoteLockManager.get().find(remoteLockedBy);
         return record != null ? record.getClientId() : null;
+    }
+
+    /**
+     * Returns the full {@link RemoteLockRecord} for the active remote lock, or {@code null}
+     * if the resource is not remotely locked or the record is no longer available.
+     * Used by the Jelly table to display lock details in the heldBy column.
+     */
+    @CheckForNull
+    public RemoteLockRecord getRemoteLockRecord() {
+        if (remoteLockedBy == null) {
+            return null;
+        }
+        return RemoteLockManager.get().find(remoteLockedBy);
     }
 
     public void setRemoteLockedBy(String lockId) {

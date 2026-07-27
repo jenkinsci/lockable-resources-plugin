@@ -50,6 +50,7 @@ import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
 import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.jenkins.plugins.lockableresources.util.Constants;
+import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.kohsuke.accmod.Restricted;
@@ -60,6 +61,7 @@ import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.verb.POST;
 
 @Extension
+@Symbol("lockableResourcesManager")
 public class LockableResourcesManager extends GlobalConfiguration {
 
     /** Object to synchronized operations over LRM */
@@ -1893,6 +1895,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     /**
+     * Returns a read-only snapshot of current remote queue entries.
+     * Used by the management UI to show remote API waiters alongside local queue entries.
+     */
+    @Restricted(NoExternalUse.class)
+    public List<RemoteQueueEntry> getCurrentRemoteQueueEntries() {
+        synchronized (syncResources) {
+            return Collections.unmodifiableList(new ArrayList<>(getRemoteQueueEntries()));
+        }
+    }
+
+    /**
      * Adds a remote queue entry in priority-descending order (highest priority at front,
      * matching local pipeline queue ordering). Must be called under {@link #syncResources}.
      */
@@ -2152,7 +2165,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
      */
     @Terminator
     public static void flushPendingSave() {
-        LockableResourcesManager lrm = LockableResourcesManager.get();
+        LockableResourcesManager lrm = GlobalConfiguration.all().get(LockableResourcesManager.class);
+        if (lrm == null) {
+            return;
+        }
         ScheduledExecutorService se = lrm.saveExecutor;
         if (se != null) {
             se.shutdownNow();

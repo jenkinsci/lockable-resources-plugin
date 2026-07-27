@@ -149,6 +149,26 @@ THE SOFTWARE.
                 <j:when test="${resource.reservedBy != null}">
                   <a class="jenkins-table__link" href="${rootURL}/user/${resource.reservedBy}">${resource.reservedBy}</a>
                 </j:when>
+                <!-- Remote lock: show clientId (requesting controller) and lock request details -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  <j:set var="remoteLockRecord" value="${resource.remoteLockRecord}"/>
+                  <j:choose>
+                    <j:when test="${remoteLockRecord != null and remoteLockRecord.clientId != null}">
+                      <span class="jenkins-table__cell__text">
+                        <strong>${remoteLockRecord.clientId}</strong>
+                        <j:if test="${remoteLockRecord.lockRequest.resource != null}">
+                          <br/><span class="jenkins-!-color-secondary">${remoteLockRecord.lockRequest.resource}</span>
+                        </j:if>
+                        <j:if test="${remoteLockRecord.lockRequest.label != null}">
+                          <br/><span class="jenkins-!-color-secondary">label:${remoteLockRecord.lockRequest.label}</span>
+                        </j:if>
+                      </span>
+                    </j:when>
+                    <j:otherwise>
+                      <span class="jenkins-!-color-secondary">${%resource.heldBy.remoteUnknown}</span>
+                    </j:otherwise>
+                  </j:choose>
+                </j:when>
                 <j:when test="${resource.locked}">
                   <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>
                 </j:when>

@@ -1482,6 +1482,10 @@ function initColumnVisibility(config) {
       html += "<td>Label</td>";
       html += "<td><a class=\"jenkins-table__link model-link\" href=\"" + rootUrl + "/label/" + encodeURIComponent(item.request) + "\">" + escapeHtml(item.request) + "</a></td>";
       html += "<td>" + escapeHtml(item.reason) + "</td>";
+    } else if (item.type === "remote") {
+      html += "<td>Remote API</td>";
+      html += "<td>" + escapeHtml(item.request || "") + "</td>";
+      html += "<td>" + escapeHtml(item.reason || "") + "</td>";
     } else {
       html += "<td>Groovy expression</td>";
       html += "<td>" + escapeHtml(item.request) + "</td>";

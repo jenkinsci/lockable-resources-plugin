@@ -105,4 +105,39 @@ class ConfigurationAsCodeTest {
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(1, declaredResources.size());
     }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-remote.yml")
+    void should_support_remote_server_side_config_via_casc(JenkinsConfiguredWithCodeRule r) {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertTrue(LRM.isRemoteApiEnabled());
+        assertEquals("remote-enabled", LRM.getExposeLabel());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-remote.yml")
+    void should_support_remote_client_side_config_via_casc(JenkinsConfiguredWithCodeRule r) {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertEquals("jenkins-client-1", LRM.getClientId());
+        assertEquals("", LRM.getForcedServerId());
+        List<RemoteConnection> remotes = LRM.getRemotes();
+        assertEquals(2, remotes.size());
+        assertEquals("server-a", remotes.get(0).getServerId());
+        assertEquals("http://jenkins-server-a:8080/jenkins", remotes.get(0).getUrl());
+        assertEquals("server-a-token", remotes.get(0).getCredentialsId());
+        assertEquals("server-b", remotes.get(1).getServerId());
+        assertEquals("https://jenkins-server-b.example.com/", remotes.get(1).getUrl());
+        assertEquals("server-b-token", remotes.get(1).getCredentialsId());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-remote.yml")
+    void should_support_remote_resources_via_casc(JenkinsConfiguredWithCodeRule r) {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        List<LockableResource> declared = LRM.getDeclaredResources();
+        assertEquals(2, declared.size());
+        assertEquals("plc-01", declared.get(0).getName());
+        assertEquals("plc remote-enabled", declared.get(0).getLabelsAsString());
+        assertEquals("plc-02", declared.get(1).getName());
+    }
 }

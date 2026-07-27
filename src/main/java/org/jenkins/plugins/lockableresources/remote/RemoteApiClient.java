@@ -246,13 +246,32 @@ public class RemoteApiClient {
             int status = response.statusCode();
             if (status >= 400) {
                 String remoteCode = extractRemoteCode(response.body());
-                throw new RemoteApiException(
-                        "Remote API request failed: " + method + " " + path + " returned HTTP " + status,
-                        status,
-                        serverId,
-                        remoteCode);
+                String remoteMessage = extractRemoteMessage(response.body());
+                StringBuilder message = new StringBuilder();
+                message.append("Remote API request failed: ")
+                        .append(method)
+                        .append(" ")
+                        .append(path)
+                        .append(" returned HTTP ")
+                        .append(status)
+                        .append(" (serverId=")
+                        .append(serverId);
+                if (remoteCode != null && !remoteCode.isEmpty()) {
+                    message.append(", errorCode=").append(remoteCode);
+                }
+                if (remoteMessage != null && !remoteMessage.isEmpty()) {
+                    message.append(", message=").append(remoteMessage);
+                }
+                message.append(")");
+                if (status == 404) {
+                    message.append(
+                            ". Verify the remote base URL/context path and that the target resource or label exists and is exposed by exposeLabel.");
+                }
+                throw new RemoteApiException(message.toString(), status, serverId, remoteCode);
             }
             return response;
+        } catch (RemoteApiException ex) {
+            throw ex;
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new RemoteApiException("Remote API request interrupted: " + method + " " + path, ex, serverId);
@@ -262,6 +281,22 @@ public class RemoteApiClient {
                     "Remote API communication failure (fail-closed): serverId={0}, method={1}, path={2}, message={3}",
                     new Object[] {serverId, method, path, ex.getMessage()});
             throw new RemoteApiException("Remote API communication failure: " + method + " " + path, ex, serverId);
+        }
+    }
+
+    private String extractRemoteMessage(String responseBody) {
+        if (responseBody == null || responseBody.isEmpty()) {
+            return null;
+        }
+        try {
+            JSONObject json = JSONObject.fromObject(responseBody);
+            String message = json.optString("message", null);
+            if (message == null || message.isEmpty()) {
+                return null;
+            }
+            return abbreviateForLog(message);
+        } catch (RuntimeException ex) {
+            return null;
         }
     }
 
