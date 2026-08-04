@@ -118,10 +118,26 @@ THE SOFTWARE.
 
             <td class="jenkins-!-${cssClass}-color">
               <j:choose>
-                <j:when test="${resource.reservedBy != null}">${%resource.status.reserved}</j:when>
-                <j:when test="${resource.locked}">${%resource.status.locked}</j:when>
-                <j:when test="${resource.queued}">${%resource.status.queued}</j:when>
-                <j:otherwise>${%resource.status.free}</j:otherwise>
+                <!-- Reserved by user, config or API -->
+                <j:when test="${resource.reservedBy != null}">
+                  ${%resource.status.reserved}
+                </j:when>
+                <!-- Locked via remote REST API -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  ${%resource.status.remoteLockedBy(resource.remoteLockClientId != null ? resource.remoteLockClientId : '(unknown)')}
+                </j:when>
+                <!-- Locked by job -->
+                <j:when test="${resource.locked}">
+                  ${%resource.status.locked}
+                </j:when>
+                <!-- Queued -->
+                <j:when test="${resource.queued}">
+                  ${%resource.status.queued}
+                </j:when>
+                <!-- Free -->
+                <j:otherwise>
+                  ${%resource.status.free}
+                </j:otherwise>
               </j:choose>
             </td>
 
@@ -132,6 +148,26 @@ THE SOFTWARE.
               <j:choose>
                 <j:when test="${resource.reservedBy != null}">
                   <a class="jenkins-table__link" href="${rootURL}/user/${resource.reservedBy}">${resource.reservedBy}</a>
+                </j:when>
+                <!-- Remote lock: show clientId (requesting controller) and lock request details -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  <j:set var="remoteLockRecord" value="${resource.remoteLockRecord}"/>
+                  <j:choose>
+                    <j:when test="${remoteLockRecord != null and remoteLockRecord.clientId != null}">
+                      <span class="jenkins-table__cell__text">
+                        <strong>${remoteLockRecord.clientId}</strong>
+                        <j:if test="${remoteLockRecord.lockRequest.resource != null}">
+                          <br/><span class="jenkins-!-color-secondary">${remoteLockRecord.lockRequest.resource}</span>
+                        </j:if>
+                        <j:if test="${remoteLockRecord.lockRequest.label != null}">
+                          <br/><span class="jenkins-!-color-secondary">label:${remoteLockRecord.lockRequest.label}</span>
+                        </j:if>
+                      </span>
+                    </j:when>
+                    <j:otherwise>
+                      <span class="jenkins-!-color-secondary">${%resource.heldBy.remoteUnknown}</span>
+                    </j:otherwise>
+                  </j:choose>
                 </j:when>
                 <j:when test="${resource.locked}">
                   <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>
@@ -210,6 +246,18 @@ THE SOFTWARE.
             <td>
               <div class="jenkins-table__cell__button-wrapper">
               <j:choose>
+                <!-- Remote-locked resource: show force-release button (admin override for STALE/orphaned locks) -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  <l:hasPermission permission="${it.UNLOCK}">
+                    <button
+                      data-action="releaseRemoteLock"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                      tooltip="${%btn.releaseRemoteLock}"
+                    >
+                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                    </button>
+                  </l:hasPermission>
+                </j:when>
                 <j:when test="${resource.locked}">
                   <l:hasPermission permission="${it.UNLOCK}">
                     <button

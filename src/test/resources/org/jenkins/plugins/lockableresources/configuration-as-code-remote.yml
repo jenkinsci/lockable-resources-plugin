@@ -1,0 +1,27 @@
+---
+# JCasC config covering remote lock (server + client) settings
+jenkins:
+  systemMessage: "Remote lock JCasC test"
+unclassified:
+  lockableResourcesManager:
+    # ── Server-side (this Jenkins exposes resources) ──────────────────────────
+    remoteApiEnabled: true
+    exposeLabel: "remote-enabled"
+    # ── Client-side (this Jenkins contacts remote servers) ────────────────────
+    clientId: "jenkins-client-1"
+    forcedServerId: ""
+    remotes:
+      - serverId: "server-a"
+        url: "http://jenkins-server-a:8080/jenkins"
+        credentialsId: "server-a-token"
+      - serverId: "server-b"
+        url: "https://jenkins-server-b.example.com/"
+        credentialsId: "server-b-token"
+    # ── Resources (optional - may be defined separately) ─────────────────────
+    declaredResources:
+      - name: "plc-01"
+        labels: "plc remote-enabled"
+        description: "PLC 01"
+      - name: "plc-02"
+        labels: "plc remote-enabled"
+        description: "PLC 02"
