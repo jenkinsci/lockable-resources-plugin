@@ -20,9 +20,6 @@
       <f:entry field="allowEphemeralResources">
         <f:checkbox title="${%configuration.allowEphemeralResources.title}"/>
       </f:entry>
-      <f:entry field="allowEmptyReasonForReservation">
-        <f:checkbox title="${%configuration.allowEmptyReasonForReservation.title}"/>
-      </f:entry>
     </f:entry>
 
     <f:entry title="${%entry.title}">

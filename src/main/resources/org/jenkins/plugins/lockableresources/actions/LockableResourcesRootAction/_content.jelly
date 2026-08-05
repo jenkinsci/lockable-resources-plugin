@@ -15,7 +15,7 @@
   xmlns:t="/lib/hudson"
 >
       <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
-      <div id="lr-page-data" data-current-user="${it.userName}" data-allow-empty-reason="${it.allowEmptyReasonForReservation}" style="display:none;"></div>
+      <div id="lr-page-data" data-current-user="${it.userName}" style="display:none;"></div>
       <l:app-bar title="${%header.resources}">
         <j:if test="${it.resources.size() > 0}">
           <div class="app-build-tabs lr-tab-bar" role="tablist">
@@ -93,9 +93,6 @@
                   data-edit-resource-btn-save="${%edit.resource.btn.save}"
                   data-edit-resource-on-success="${%edit.resource.on.success}"
                   data-edit-resource-on-fail="${%edit.resource.on.fail}"
-                  data-reserve-btn-reserve="${%reserve.btn.reserve}"
-                  data-reserve-btn-no-reason="${%reserve.btn.no-reason}"
-                  data-reserve-dialog-message-optional="${%reserve.dialog.message.optional}"
       />
 
       <j:choose>
