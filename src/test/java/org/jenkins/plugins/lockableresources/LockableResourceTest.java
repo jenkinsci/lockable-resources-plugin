@@ -1,10 +1,12 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Date;
 import org.junit.jupiter.api.Test;
@@ -100,5 +102,16 @@ class LockableResourceTest {
     @Test
     void testEquals() {
         assertNotEquals(null, instance);
+    }
+
+    @Test
+    void testGetLockCauseDetailWithRemoteLockAndNoBuildDoesNotThrow() {
+        instance.setRemoteLockedBy("remote-lock-1");
+        instance.setReservedTimestamp(new Date(0));
+
+        String detail = assertDoesNotThrow(instance::getLockCauseDetail);
+
+        assertNotNull(detail);
+        assertTrue(detail.contains("remote-lock-1"));
     }
 }

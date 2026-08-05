@@ -34,6 +34,9 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
+import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -86,6 +89,18 @@ public class LockableResourcesRootAction implements RootAction {
             PERMISSIONS_GROUP,
             "Configure",
             Messages._LockableResourcesRootAction_ConfigurePermission_Description(),
+            Jenkins.ADMINISTER,
+            PermissionScope.JENKINS);
+    /**
+     * Gates the remote lock REST API ({@code /lockable-resources/remote/v1/}).
+     * Grant this to the machine users whose API tokens remote client controllers
+     * use as {@code credentialsId}; this makes remote clients auditable in the
+     * authorization matrix instead of being implied by plain READ.
+     */
+    public static final Permission REMOTE = new Permission(
+            PERMISSIONS_GROUP,
+            "RemoteUse",
+            Messages._LockableResourcesRootAction_RemoteUsePermission_Description(),
             Jenkins.ADMINISTER,
             PermissionScope.JENKINS);
 
@@ -544,6 +559,10 @@ public class LockableResourcesRootAction implements RootAction {
             }
         }
 
+        for (RemoteQueueEntry remoteEntry : LockableResourcesManager.get().getCurrentRemoteQueueEntries()) {
+            queue.add(remoteEntry);
+        }
+
         return queue;
     }
 
@@ -575,6 +594,18 @@ public class LockableResourcesRootAction implements RootAction {
             }
         }
 
+        @Restricted(NoExternalUse.class) // used by jelly
+        public void add(final RemoteQueueEntry remoteEntry) {
+            QueueStruct queueStruct = new QueueStruct(remoteEntry);
+            queue.add(queueStruct);
+            if (queueStruct.getQueuedAt() == 0) {
+                return;
+            }
+            if (oldest == null || oldest.getQueuedAt() > queueStruct.getQueuedAt()) {
+                oldest = queueStruct;
+            }
+        }
+
         // -------------------------------------------------------------------------
         @Restricted(NoExternalUse.class) // used by jelly
         public List<QueueStruct> getAll() {
@@ -598,6 +629,11 @@ public class LockableResourcesRootAction implements RootAction {
             int priority = 0;
             String id = null;
             Run<?, ?> build;
+            boolean remote = false;
+            String requestedBy;
+            String requestedByUrl;
+            String remoteReason;
+            String remoteRequest;
 
             public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context)
                     throws Descriptor.FormException {
@@ -608,11 +644,28 @@ public class LockableResourcesRootAction implements RootAction {
                 this.build = context.getBuild();
                 this.priority = context.getPriority();
                 this.id = context.getId();
+                this.requestedBy = build != null ? build.getFullDisplayName() : "";
+                this.requestedByUrl = build != null ? build.getUrl() : "";
 
                 final SecureGroovyScript systemGroovyScript = resourceStruct.getResourceMatchScript();
                 if (systemGroovyScript != null) {
                     this.groovyScript = systemGroovyScript.getScript();
                 }
+            }
+
+            public QueueStruct(@NonNull final RemoteQueueEntry remoteEntry) {
+                this.queuedAt = remoteEntry.getRecord().getEnqueuedAt();
+                this.priority = remoteEntry.getPriority();
+                this.id = remoteEntry.getLockId();
+                this.remote = true;
+
+                RemoteLockRequest lr = remoteEntry.getLockRequest();
+                this.remoteReason = Util.fixEmptyAndTrim(lr.getReason());
+                this.remoteRequest = buildRemoteRequestText(lr);
+
+                String cid = Util.fixEmptyAndTrim(remoteEntry.getRecord().getClientId());
+                this.requestedBy = cid != null ? cid : "Remote API";
+                this.requestedByUrl = "";
             }
 
             // -----------------------------------------------------------------------
@@ -700,6 +753,31 @@ public class LockableResourcesRootAction implements RootAction {
                 return this.id;
             }
 
+            @Restricted(NoExternalUse.class)
+            public boolean isRemote() {
+                return this.remote;
+            }
+
+            @Restricted(NoExternalUse.class)
+            public String getRequestedBy() {
+                return this.requestedBy == null ? "" : this.requestedBy;
+            }
+
+            @Restricted(NoExternalUse.class)
+            public String getRequestedByUrl() {
+                return this.requestedByUrl == null ? "" : this.requestedByUrl;
+            }
+
+            @Restricted(NoExternalUse.class)
+            public String getRemoteReason() {
+                return this.remoteReason == null ? "" : this.remoteReason;
+            }
+
+            @Restricted(NoExternalUse.class)
+            public String getRemoteRequest() {
+                return this.remoteRequest == null ? "" : this.remoteRequest;
+            }
+
             @Restricted(NoExternalUse.class) // used by jelly
             public boolean resourcesMatch() {
                 return (requiredResources != null && requiredResources.size() > 0);
@@ -715,6 +793,27 @@ public class LockableResourcesRootAction implements RootAction {
             @Restricted(NoExternalUse.class) // used by jelly
             public boolean scriptMatch() {
                 return (groovyScript != null && !groovyScript.isEmpty());
+            }
+
+            private static String buildRemoteRequestText(@NonNull RemoteLockRequest lr) {
+                List<String> parts = new ArrayList<>();
+                if (Util.fixEmptyAndTrim(lr.getResource()) != null) {
+                    parts.add("resource=" + lr.getResource());
+                }
+                if (Util.fixEmptyAndTrim(lr.getLabel()) != null) {
+                    parts.add("label=" + lr.getLabel());
+                    if (lr.getQuantity() > 0) {
+                        parts.add("quantity=" + lr.getQuantity());
+                    }
+                }
+                List<RemoteLockRequest.ExtraResource> extra = lr.getExtra();
+                if (extra != null && !extra.isEmpty()) {
+                    parts.add("extra=" + extra.size());
+                }
+                if (parts.isEmpty()) {
+                    return "remote request";
+                }
+                return String.join(", ", parts);
             }
         }
     }
@@ -760,6 +859,32 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         LockableResourcesManager.get().unlockResources(resources);
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Force-releases a resource that is held by a remote lock (e.g. STALE lock with no active client).
+     * Called by the "Force Release Remote Lock" button in the resource table.
+     */
+    @RequirePOST
+    public void doReleaseRemoteLock(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(UNLOCK);
+
+        List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+        if (resources == null) {
+            return;
+        }
+
+        for (LockableResource resource : resources) {
+            String lockId = resource.getRemoteLockedBy();
+            if (lockId != null) {
+                LOGGER.info("doReleaseRemoteLock: force-releasing remote lock lockId=" + lockId + " resource="
+                        + resource.getName());
+                RemoteLockManager.get().release(lockId);
+            }
+        }
 
         rsp.forwardToPreviousPage(req);
     }
@@ -1054,9 +1179,7 @@ public class LockableResourcesRootAction implements RootAction {
                             return false;
                         }
                         if (lowerRequestedByFilter != null) {
-                            Run<?, ?> requestedByBuild = item.getBuild();
-                            String requestedByText =
-                                    requestedByBuild != null ? requestedByBuild.getFullDisplayName() : "";
+                            String requestedByText = item.getRequestedBy();
                             if (!requestedByText.toLowerCase(Locale.ENGLISH).contains(lowerRequestedByFilter)) {
                                 return false;
                             }
@@ -1117,16 +1240,14 @@ public class LockableResourcesRootAction implements RootAction {
                             ? Util.getTimeSpanString(System.currentTimeMillis() - item.getQueuedAt())
                             : "");
 
-            Run<?, ?> build = item.getBuild();
-            if (build != null) {
-                obj.put("requestedBy", build.getFullDisplayName());
-                obj.put("requestedByUrl", build.getUrl());
-            } else {
-                obj.put("requestedBy", "");
-                obj.put("requestedByUrl", "");
-            }
+            obj.put("requestedBy", item.getRequestedBy());
+            obj.put("requestedByUrl", item.getRequestedByUrl());
 
-            if (item.resourcesMatch()) {
+            if (item.isRemote()) {
+                obj.put("type", "remote");
+                obj.put("request", item.getRemoteRequest());
+                obj.put("reason", item.getRemoteReason());
+            } else if (item.resourcesMatch()) {
                 obj.put("type", "resources");
                 net.sf.json.JSONArray resources = new net.sf.json.JSONArray();
                 for (LockableResource r : item.getRequiredResources()) {
@@ -1166,6 +1287,9 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     private String getQueueItemType(final Queue.QueueStruct item) {
+        if (item.isRemote()) {
+            return "remote";
+        }
         if (item.resourcesMatch()) {
             return "resources";
         }
@@ -1176,6 +1300,9 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     private String getQueueItemRequestText(final Queue.QueueStruct item) {
+        if (item.isRemote()) {
+            return item.getRemoteRequest();
+        }
         if (item.resourcesMatch()) {
             return item.getRequiredResources().stream()
                     .map(LockableResource::getName)
@@ -1357,5 +1484,27 @@ public class LockableResourcesRootAction implements RootAction {
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         return resources;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Routes {@code /lockable-resources/remote/*} to the remote lock API.
+     */
+    public Object getDynamic(String token) {
+        if ("remote".equals(token)) {
+            return new RemoteRouterAction();
+        }
+        return null;
+    }
+
+    /** Routes {@code /lockable-resources/remote/v1/*} to {@link RemoteApiV1Action}. */
+    @Restricted(NoExternalUse.class)
+    public static final class RemoteRouterAction {
+        public Object getDynamic(String token) {
+            if ("v1".equals(token)) {
+                return new RemoteApiV1Action();
+            }
+            return null;
+        }
     }
 }
