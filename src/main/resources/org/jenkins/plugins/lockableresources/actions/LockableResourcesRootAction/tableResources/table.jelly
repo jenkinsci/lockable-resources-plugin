@@ -38,7 +38,7 @@ THE SOFTWARE.
     >
       <thead>
         <tr>
-          <th data-sort-disable="true"><input type="checkbox" class="lr-select-all" aria-label="Select all" /></th>
+          <th data-sort-disable="true"><input type="checkbox" class="lr-select-all" aria-label="${%resource.editor.selectAll}" /></th>
           <th>${%resources.table.column.index}</th>
           <th>${%resources.table.column.resource}</th>
           <th>${%resources.table.column.status}</th>
@@ -59,7 +59,7 @@ THE SOFTWARE.
               data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : 'free'))}"
               data-resource-owner="${resource.reservedBy != null ? resource.reservedBy : (resource.buildName != null ? resource.buildName : '')}">
             <!-- Checkbox -->
-            <td><input type="checkbox" class="lr-select-resource" data-resource-name="${resource.name}" aria-label="Select ${resource.name}" /></td>
+            <td><input type="checkbox" class="lr-select-resource" data-resource-name="${resource.name}" aria-label="${%resource.editor.selectOne(resource.name)}" /></td>
             <!-- **************************************************************
                  Index
             -->
@@ -160,7 +160,7 @@ THE SOFTWARE.
                           <br/><span class="jenkins-!-color-secondary">${remoteLockRecord.lockRequest.resource}</span>
                         </j:if>
                         <j:if test="${remoteLockRecord.lockRequest.label != null}">
-                          <br/><span class="jenkins-!-color-secondary">label:${remoteLockRecord.lockRequest.label}</span>
+                          <br/><span class="jenkins-!-color-secondary">${%resource.editor.label.prefix(remoteLockRecord.lockRequest.label)}</span>
                         </j:if>
                       </span>
                     </j:when>
