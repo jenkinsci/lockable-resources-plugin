@@ -20,12 +20,15 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 public class LockedResourcesBuildAction implements Action {
 
     @GuardedBy("logs")
-    private final List<LogEntry> logs = new ArrayList<>();
+    private List<LogEntry> logs;
 
     @GuardedBy("resourcesInUse")
-    private final List<String> resourcesInUse = new ArrayList<>();
+    private List<String> resourcesInUse;
 
-    public LockedResourcesBuildAction() {}
+    public LockedResourcesBuildAction() {
+        this.logs = new ArrayList<>();
+        this.resourcesInUse = new ArrayList<>();
+    }
 
     // -------------------------------------------------------------------------
     @Override
@@ -46,16 +49,23 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public List<String> getCurrentUsedResourceNames() {
-        return resourcesInUse;
+        synchronized (this) {
+            if (resourcesInUse == null) {
+                resourcesInUse = new ArrayList<>();
+            }
+            return resourcesInUse;
+        }
     }
 
     public void addUsedResources(List<String> resourceNames) {
+        ensureListsInitialized();
         synchronized (this.resourcesInUse) {
             resourcesInUse.addAll(resourceNames);
         }
     }
 
     public void removeUsedResources(List<String> resourceNames) {
+        ensureListsInitialized();
         synchronized (this.resourcesInUse) {
             resourcesInUse.removeAll(resourceNames);
         }
@@ -97,6 +107,7 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addLog(final String resourceName, final String step, final String action) {
+        ensureListsInitialized();
         synchronized (this.logs) {
             this.logs.add(new LogEntry(step, action, resourceName));
         }
@@ -104,6 +115,7 @@ public class LockedResourcesBuildAction implements Action {
 
     @Restricted(NoExternalUse.class)
     public List<LogEntry> getReadOnlyLogs() {
+        ensureListsInitialized();
         synchronized (this.logs) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.logs));
         }
@@ -111,6 +123,7 @@ public class LockedResourcesBuildAction implements Action {
 
     @Restricted(NoExternalUse.class)
     public List<String> getReadOnlyResourcesInUse() {
+        ensureListsInitialized();
         synchronized (this.resourcesInUse) {
             return new ArrayList<>(Collections.unmodifiableCollection(this.resourcesInUse));
         }
@@ -118,11 +131,32 @@ public class LockedResourcesBuildAction implements Action {
 
     /** Copy constructor, primarily for {@link #writeReplace} */
     private LockedResourcesBuildAction(LockedResourcesBuildAction other) {
-        synchronized (other.logs) {
-            synchronized (other.resourcesInUse) {
-                this.logs.addAll(other.getReadOnlyLogs());
-                this.resourcesInUse.addAll(other.getReadOnlyResourcesInUse());
+        this();
+        if (other == null) {
+            return;
+        }
+
+        // Defensive for old/corrupted deserialized state where fields may be null.
+        synchronized (other) {
+            if (other.logs != null) {
+                synchronized (other.logs) {
+                    this.logs.addAll(other.logs);
+                }
             }
+            if (other.resourcesInUse != null) {
+                synchronized (other.resourcesInUse) {
+                    this.resourcesInUse.addAll(other.resourcesInUse);
+                }
+            }
+        }
+    }
+
+    private synchronized void ensureListsInitialized() {
+        if (logs == null) {
+            logs = new ArrayList<>();
+        }
+        if (resourcesInUse == null) {
+            resourcesInUse = new ArrayList<>();
         }
     }
     /**
