@@ -252,34 +252,23 @@ public final class RemoteLockSession implements Serializable {
             if (ex instanceof RemoteApiException) {
                 int httpStatus = ((RemoteApiException) ex).getHttpStatus();
                 if (httpStatus == 404 || httpStatus == 410) {
-                    if (!bodyStarted) {
-                        // Still acquiring: the QUEUED record is gone. We hold a lockId (admission passed at
-                        // POST) and skipIfLocked is resolved synchronously at POST (never polled), so a
-                        // never-acquired record vanishing means the server-side allocation wait timed out.
-                        // Normalize to LOCK_WAIT_TIMEOUT - the same outcome as observing a FAILED state -
-                        // instead of mislabeling a legitimate timeout as a transport/communication failure.
-                        LOGGER.log(
-                                Level.WARNING,
-                                "Remote acquire wait ended (HTTP {0}); treating as LOCK_WAIT_TIMEOUT. "
-                                        + "serverId={1}, lockId={2}",
-                                new Object[] {httpStatus, serverId, lockId});
-                        finishFailure(
-                                host,
-                                new AbortException("Remote acquire failed (serverId=" + serverId + ", lockId=" + lockId
-                                        + ", state=FAILED, errorCode=LOCK_WAIT_TIMEOUT)"));
-                        return;
-                    }
-                    // An already-ACQUIRED lease vanished (server restart / forced release): irrecoverable.
+                    // The server has no record of this lock. This used to be split on bodyStarted, with the
+                    // still-acquiring side reported as LOCK_WAIT_TIMEOUT - but polling stops the instant the
+                    // lock is acquired, so the bodyStarted side is unreachable, and a legitimate allocation
+                    // timeout arrives as a terminal FAILED state rather than a 404 (the record now lives for
+                    // its terminal TTL, and so does a released queued request). Reaching here therefore means
+                    // the record is genuinely gone: the server restarted, the record outlived its TTL, or the
+                    // lock id is not one this server issued. Reporting that as a timeout would mislabel it.
                     LOGGER.log(
                             Level.WARNING,
-                            "Remote lock not found on server (HTTP {0}); server may have restarted. "
-                                    + "serverId={1}, lockId={2}",
+                            "Remote lock record not found (HTTP {0}); server may have restarted or the record "
+                                    + "expired. serverId={1}, lockId={2}",
                             new Object[] {httpStatus, serverId, lockId});
                     finishFailure(
                             host,
-                            new AbortException(
-                                    "Remote lock not found (HTTP " + httpStatus + "), server may have restarted. "
-                                            + "serverId=" + serverId + ", lockId=" + lockId));
+                            new AbortException("Remote lock record not found (HTTP " + httpStatus
+                                    + "), server may have restarted or the record expired. " + "serverId=" + serverId
+                                    + ", lockId=" + lockId));
                     return;
                 }
             }
