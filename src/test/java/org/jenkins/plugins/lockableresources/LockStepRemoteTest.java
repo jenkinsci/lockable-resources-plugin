@@ -145,6 +145,38 @@ class LockStepRemoteTest extends LockStepTestBase {
     }
 
     @Test
+    void acquireWaitsWhileTheRemoteIsPausedForMaintenance(JenkinsRule j) throws Exception {
+        // 503 means "come back later", not "give up": failing the build here would defeat the purpose of
+        // the server-side maintenance switch.
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.pauseNextAcquires(2);
+        remote.start();
+        try {
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
+
+            WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-paused");
+            job.setDefinition(new CpsFlowDefinition("""
+                    lock(resource: 'paused-resource', serverId: 'server-a') {
+                        semaphore 'paused-body'
+                    }
+                    """, true));
+
+            WorkflowRun run = job.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("not accepting new acquire requests right now", run);
+
+            // The retries eventually get through and the body runs.
+            SemaphoreStep.waitForStart("paused-body/1", run);
+            assertTrue(remote.acquireRequests.get() >= 3, "expected retries, saw " + remote.acquireRequests.get());
+
+            SemaphoreStep.success("paused-body/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(run));
+        } finally {
+            remote.stop();
+        }
+    }
+
+    @Test
     void lockWithoutServerIdKeepsUsingLocalFlow(JenkinsRule j) throws Exception {
         RemoteServerFixture remote = new RemoteServerFixture();
         remote.start();
@@ -497,6 +529,7 @@ class LockStepRemoteTest extends LockStepTestBase {
         private final AtomicReference<String> lastAcquireBody = new AtomicReference<>();
         private final AtomicReference<String> lastAcquireRawBody = new AtomicReference<>();
         private final AtomicReference<String> lastAuthorizationHeader = new AtomicReference<>();
+        private final AtomicInteger pausedAcquires = new AtomicInteger();
         private int acquireResponseStatus = 202;
         private String acquireResponseBody = "{\"lockId\":\"lock-1\"}";
         private String acquireStatusResponse = "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\"}";
@@ -505,6 +538,11 @@ class LockStepRemoteTest extends LockStepTestBase {
         private void setAcquireResponse(int status, String body) {
             this.acquireResponseStatus = status;
             this.acquireResponseBody = body;
+        }
+
+        /** Answers the next {@code n} acquire calls with the maintenance switch's 503. */
+        private void pauseNextAcquires(int n) {
+            pausedAcquires.set(n);
         }
 
         private void setAcquireStatusResponse(String acquireStatusResponse) {
@@ -537,6 +575,13 @@ class LockStepRemoteTest extends LockStepTestBase {
             public void handle(HttpExchange exchange) throws IOException {
                 acquireRequests.incrementAndGet();
                 lastAuthorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
+                if (pausedAcquires.getAndUpdate(n -> n > 0 ? n - 1 : 0) > 0) {
+                    sendJson(
+                            exchange,
+                            503,
+                            "{\"errorCode\":\"ACQUIRES_PAUSED\",\"message\":\"not accepting new acquires\"}");
+                    return;
+                }
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 lastAcquireRawBody.set(body);
                 String resource = extractResource(body);

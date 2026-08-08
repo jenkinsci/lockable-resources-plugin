@@ -107,6 +107,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private boolean remoteApiEnabled = false;
 
     /**
+     * Maintenance switch. While false the remote API keeps serving every endpoint except
+     * {@code POST /acquire}, so leases already held can heartbeat and release undisturbed while no new
+     * ones are handed out. Requests already queued keep their place and are still promoted.
+     */
+    private boolean acceptNewAcquires = true;
+
+    /**
      * Only resources that carry this label are exposed via the remote API.
      * When empty or null, no resources are exposed (opt-in: must explicitly set a label).
      */
@@ -209,6 +216,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     public boolean isRemoteApiEnabled() {
         return remoteApiEnabled;
+    }
+
+    @DataBoundSetter
+    public void setAcceptNewAcquires(boolean acceptNewAcquires) {
+        this.acceptNewAcquires = acceptNewAcquires;
+    }
+
+    public boolean isAcceptNewAcquires() {
+        return acceptNewAcquires;
     }
 
     @DataBoundSetter

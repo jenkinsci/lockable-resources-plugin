@@ -845,6 +845,26 @@ class RemoteLockManagerTest {
     }
 
     @Test
+    void pausingNewAcquiresDoesNotStopTheQueueFromDraining(JenkinsRule j) {
+        // The switch gates the REST boundary only. Requests that were already accepted keep their place
+        // and are still promoted, so an administrator can drain the server instead of stranding clients.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("drain-1", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("drain-1"), null);
+        RemoteLockRecord waiter = RemoteLockManager.get().enqueue(req("drain-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+
+        manager.setAcceptNewAcquires(false);
+        RemoteLockManager.get().release(holder.getLockId());
+
+        assertEquals(RemoteLockState.ACQUIRED, waiter.getState(), "a queued request still gets promoted");
+    }
+
+    @Test
     void releasedRecordStaysObservableUntilItsTtl(JenkinsRule j) {
         // A released record used to be dropped from the map at once, so the very next status poll got a
         // 404 - indistinguishable from "the server restarted and lost the lock".

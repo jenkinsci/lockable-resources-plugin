@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -112,6 +113,7 @@ class ConfigurationAsCodeTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         assertTrue(LRM.isRemoteApiEnabled());
         assertEquals("remote-enabled", LRM.getExposeLabel());
+        assertFalse(LRM.isAcceptNewAcquires());
     }
 
     @Test

@@ -324,6 +324,38 @@ class RemoteApiV1ActionTest {
     }
 
     @Test
+    void pausedServerRefusesNewAcquiresButKeepsLeasesWorking(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        manager.createResourceWithLabel("board-2", "hw");
+
+        ResponseCapture acquired = invokeAcquire(new RemoteApiV1Action(), jsonBody("resource", "board-1"));
+        assertEquals(202, acquired.status.get());
+        String lockId =
+                net.sf.json.JSONObject.fromObject(acquired.body.toString()).getString("lockId");
+
+        manager.setAcceptNewAcquires(false);
+
+        // New acquires are refused with a "come back later", not an error the client should give up on.
+        assertJsonError(
+                invokeAcquire(new RemoteApiV1Action(), jsonBody("resource", "board-2")), 503, "ACQUIRES_PAUSED");
+
+        // Everything the lease in flight needs keeps working.
+        assertEquals(200, invokeAcquireStatus(lockId).status.get());
+        assertEquals(204, invokeHeartbeat(lockId).status.get());
+        assertEquals(204, invokeRelease(lockId).status.get());
+
+        manager.setAcceptNewAcquires(true);
+        assertEquals(
+                202,
+                invokeAcquire(new RemoteApiV1Action(), jsonBody("resource", "board-2"))
+                        .status
+                        .get());
+    }
+
+    @Test
     void acquireWithOversizedBodyReturns413(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.setRemoteApiEnabled(true);

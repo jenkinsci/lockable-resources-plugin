@@ -79,6 +79,14 @@ public class RemoteApiV1Action {
                 sendJsonError(rsp, 403, "REMOTE_API_DISABLED", "Remote API is not enabled on this server");
                 return;
             }
+            if (!lrm.isAcceptNewAcquires()) {
+                // Maintenance switch: only new acquires are refused. Status, heartbeat and release stay
+                // available so leases in flight are undisturbed, and 503 tells the client to come back
+                // rather than to give up.
+                sendJsonError(
+                        rsp, 503, "ACQUIRES_PAUSED", "This server is not accepting new acquire requests right now");
+                return;
+            }
 
             JSONObject body;
             try {

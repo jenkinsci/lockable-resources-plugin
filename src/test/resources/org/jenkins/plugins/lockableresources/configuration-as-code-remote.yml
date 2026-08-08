@@ -7,6 +7,7 @@ unclassified:
     # ── Server-side (this Jenkins exposes resources) ──────────────────────────
     remoteApiEnabled: true
     exposeLabel: "remote-enabled"
+    acceptNewAcquires: false   # maintenance switch; default is true
     # ── Client-side (this Jenkins contacts remote servers) ────────────────────
     clientId: "jenkins-client-1"
     forcedServerId: ""
