@@ -89,6 +89,19 @@ public final class RemoteResolver {
     }
 
     /** A resource is exposed to remote clients iff it carries at least one configured exposeLabel (OR). */
+    /** Exposed resources, in declaration order, for the discovery endpoint. */
+    @NonNull
+    public List<LockableResource> exposedResources() {
+        Set<String> exposeLabels = lrm.getExposeLabels();
+        List<LockableResource> exposed = new ArrayList<>();
+        for (LockableResource r : lrm.getResources()) {
+            if (isExposed(r, exposeLabels)) {
+                exposed.add(r);
+            }
+        }
+        return exposed;
+    }
+
     private static boolean isExposed(@NonNull LockableResource r, @NonNull Set<String> exposeLabels) {
         return !exposeLabels.isEmpty() && !Collections.disjoint(r.getLabelsAsList(), exposeLabels);
     }

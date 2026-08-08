@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources.actions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -15,6 +16,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
@@ -356,6 +358,77 @@ class RemoteApiV1ActionTest {
     }
 
     @Test
+    void resourcesListsExposedResourcesWithTheirState(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        manager.createResourceWithLabel("board-2", "hw");
+        manager.createResourceWithLabel("internal-1", "secret");
+
+        ResponseCapture acquire = invokeAcquire(new RemoteApiV1Action(), jsonBody("resource", "board-1"));
+        assertEquals(202, acquire.status.get());
+
+        ResponseCapture result = invokeResources();
+        assertEquals(200, result.status.get());
+        net.sf.json.JSONObject payload = net.sf.json.JSONObject.fromObject(result.body.toString());
+        assertTrue(payload.getBoolean("acceptNewAcquires"));
+
+        net.sf.json.JSONArray resources = payload.getJSONArray("resources");
+        assertEquals(2, resources.size(), "only exposed resources are listed");
+
+        net.sf.json.JSONObject held = resources.getJSONObject(0);
+        assertEquals("board-1", held.getString("name"));
+        assertEquals("LOCKED", held.getString("state"));
+        assertEquals("REMOTE_CLIENT", held.getString("heldByKind"));
+
+        assertEquals("FREE", resources.getJSONObject(1).getString("state"));
+    }
+
+    @Test
+    void resourcesDoesNotLeakHolderDetails(JenkinsRule j) throws Exception {
+        // The server's admin exposed resources, not the names of the builds using them, and this list is
+        // rendered on a controller whose viewers may have no account here.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+
+        LockableResource resource = manager.fromName("board-1");
+        resource.setNote("internal note");
+        resource.setLockReason("because of ticket 1234");
+        manager.reserve(java.util.List.of(resource), "operator-a");
+
+        String body = invokeResources().body.toString();
+        assertFalse(body.contains("internal note"), body);
+        assertFalse(body.contains("ticket 1234"), body);
+        assertFalse(body.contains("operator-a"), body);
+        assertTrue(body.contains("\"heldByKind\":\"ADMIN\""), body);
+    }
+
+    @Test
+    void resourcesReportsThePausedServerWhileStatesStayTruthful(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        manager.setAcceptNewAcquires(false);
+
+        net.sf.json.JSONObject payload =
+                net.sf.json.JSONObject.fromObject(invokeResources().body.toString());
+        assertFalse(payload.getBoolean("acceptNewAcquires"));
+        // A free resource is still reported as free: "you cannot take it right now" is the page's job.
+        assertEquals("FREE", payload.getJSONArray("resources").getJSONObject(0).getString("state"));
+    }
+
+    @Test
+    void resourcesIsRefusedWhileTheRemoteApiIsDisabled(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().setRemoteApiEnabled(false);
+
+        assertJsonError(invokeResources(), 403, "REMOTE_API_DISABLED");
+    }
+
+    @Test
     void acquireWithOversizedBodyReturns413(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.setRemoteApiEnabled(true);
@@ -488,6 +561,12 @@ class RemoteApiV1ActionTest {
         StaplerRequest2 req = mockJsonRequest(body);
         ResponseCapture response = new ResponseCapture();
         new RemoteApiV1Action.AcquireRouter().doIndex(req, response.response());
+        return response;
+    }
+
+    private static ResponseCapture invokeResources() throws Exception {
+        ResponseCapture response = new ResponseCapture();
+        new RemoteApiV1Action.ResourcesResource().doIndex(mock(StaplerRequest2.class), response.response());
         return response;
     }
 

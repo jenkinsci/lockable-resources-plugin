@@ -8,6 +8,7 @@ package org.jenkins.plugins.lockableresources.actions;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -16,11 +17,13 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRecord;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockState;
+import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest2;
@@ -60,6 +63,8 @@ public class RemoteApiV1Action {
                 return new AcquireRouter();
             case "lease":
                 return new LeaseRouter();
+            case "resources":
+                return new ResourcesResource();
             default:
                 return null;
         }
@@ -355,6 +360,85 @@ public class RemoteApiV1Action {
 
             RemoteLockManager.get().release(lockId); // idempotent
             rsp.setStatus(204);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Serves GET /resources
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lists what this server exposes, plus whether it is currently accepting new acquires.
+     *
+     * <p>The two travel together on purpose: split across endpoints, two client-side caches could
+     * disagree and the page would claim a resource is free while the server has stopped handing out
+     * leases. Resource state stays truthful while paused - saying "you cannot take this right now" is
+     * the client page's job.
+     *
+     * <p>Holder details stop at the kind. The server's admin published resources, not the names of the
+     * builds using them, and this list is rendered on a controller whose viewers may have no account
+     * here at all.
+     */
+    public static final class ResourcesResource {
+
+        public void doIndex(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException {
+            Jenkins.get().checkPermission(LockableResourcesRootAction.REMOTE);
+
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            if (!lrm.isRemoteApiEnabled()) {
+                sendJsonError(rsp, 403, "REMOTE_API_DISABLED", "Remote API is not enabled");
+                return;
+            }
+
+            JSONArray resources = new JSONArray();
+            synchronized (LockableResourcesManager.syncResources) {
+                for (LockableResource r : new RemoteResolver(lrm).exposedResources()) {
+                    resources.add(describe(r));
+                }
+            }
+
+            JSONObject response = new JSONObject();
+            response.put("acceptNewAcquires", lrm.isAcceptNewAcquires());
+            response.put("resources", resources);
+
+            rsp.setStatus(200);
+            rsp.setContentType("application/json;charset=UTF-8");
+            rsp.getWriter().write(response.toString());
+        }
+
+        private static JSONObject describe(LockableResource r) {
+            JSONObject json = new JSONObject();
+            json.put("name", r.getName());
+            json.put("labels", JSONArray.fromObject(r.getLabelsAsList()));
+            json.put("description", r.getDescription() == null ? "" : r.getDescription());
+
+            if (r.getReservedBy() != null) {
+                json.put("state", "RESERVED");
+                json.put("heldByKind", "ADMIN");
+                Date since = r.getReservedTimestamp();
+                if (since != null) {
+                    json.put("since", since.getTime());
+                }
+            } else if (r.isLocked()) {
+                json.put("state", "LOCKED");
+                RemoteLockRecord record = r.getRemoteLockRecord();
+                if (r.getRemoteLockedBy() != null) {
+                    json.put("heldByKind", "REMOTE_CLIENT");
+                    if (record != null && record.getClientId() != null) {
+                        json.put("heldByClientId", record.getClientId());
+                    }
+                    if (record != null && record.getAcquiredAt() > 0) {
+                        json.put("since", record.getAcquiredAt());
+                    }
+                } else {
+                    json.put("heldByKind", "LOCAL_BUILD");
+                }
+            } else if (r.isQueued()) {
+                json.put("state", "QUEUED");
+            } else {
+                json.put("state", "FREE");
+            }
+            return json;
         }
     }
 
