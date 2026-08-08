@@ -486,6 +486,67 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
 
     // ---------------------------------------------------------------------------
     @Test
+    void testQueueMergesRemoteEntriesByPriority() throws Exception {
+        // The queue used to be rendered as "all local entries, then all remote ones", which contradicts
+        // promotion: proceedNextContext compares the heads by priority and only favours local on a tie.
+        LockableResourcesManager.get().setRemoteApiEnabled(true);
+        LockableResourcesManager.get().setExposeLabel("remote-ok");
+        LockableResourcesManager.get().createResourceWithLabel("merge-res", "remote-ok");
+
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        // Hold the resource so everything that follows has to wait.
+        WorkflowJob holder = j.jenkins.createProject(WorkflowJob.class, "merge-holder");
+        holder.setDefinition(new CpsFlowDefinition("""
+                lock('merge-res') {
+                    semaphore 'merge-hold'
+                }
+                """, true));
+        WorkflowRun holderRun = holder.scheduleBuild2(0).waitForStart();
+        org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep.waitForStart("merge-hold/1", holderRun);
+
+        // A local waiter at the default priority.
+        WorkflowJob waiter = j.jenkins.createProject(WorkflowJob.class, "merge-waiter");
+        waiter.setDefinition(new CpsFlowDefinition("""
+                lock('merge-res') {
+                    echo('local waiter')
+                }
+                """, true));
+        WorkflowRun waiterRun = waiter.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[Resource: merge-res] is not free, waiting for execution ...", waiterRun);
+
+        // A remote waiter that outranks it, and one that ties with it.
+        String highId = RemoteLockManager.get()
+                .enqueue(remoteRequest("merge-res", 10), "client-high")
+                .getLockId();
+        String tieId = RemoteLockManager.get()
+                .enqueue(remoteRequest("merge-res", 0), "client-tie")
+                .getLockId();
+
+        List<LockableResourcesRootAction.Queue.QueueStruct> queueItems =
+                action.getQueue().getAll();
+        assertEquals(3, queueItems.size(), "queue size");
+
+        assertEquals(highId, queueItems.get(0).getId(), "the higher priority remote entry comes first");
+        assertFalse(queueItems.get(1).isRemote(), "on a tie the local entry keeps its place");
+        assertEquals(tieId, queueItems.get(2).getId(), "the tying remote entry follows the local one");
+
+        // Drain everything before leaving: the remote entries have no client to release them, so the
+        // local waiter would never be promoted and both builds would still be running at teardown.
+        RemoteLockManager.get().release(highId);
+        RemoteLockManager.get().release(tieId);
+        org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep.success("merge-hold/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(holderRun));
+        j.assertBuildStatusSuccess(j.waitForCompletion(waiterRun));
+    }
+
+    private static RemoteLockRequest remoteRequest(String resource, int priority) {
+        return new RemoteLockRequest(
+                resource, null, 0, null, false, "SEQUENTIAL", false, null, priority, 0, "MINUTES", null);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
     void testGetAllLabels() {
         when(req.getMethod()).thenReturn("POST");
         LockableResourcesRootAction action = new LockableResourcesRootAction();

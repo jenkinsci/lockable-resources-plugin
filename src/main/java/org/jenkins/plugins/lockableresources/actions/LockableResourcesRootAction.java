@@ -17,6 +17,7 @@ import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -563,6 +564,7 @@ public class LockableResourcesRootAction implements RootAction {
             queue.add(remoteEntry);
         }
 
+        queue.sortByPromotionOrder();
         return queue;
     }
 
@@ -604,6 +606,21 @@ public class LockableResourcesRootAction implements RootAction {
             if (oldest == null || oldest.getQueuedAt() > queueStruct.getQueuedAt()) {
                 oldest = queueStruct;
             }
+        }
+
+        // -------------------------------------------------------------------------
+        /**
+         * Orders the merged local and remote entries the way they will actually be promoted.
+         *
+         * <p>Local and remote entries arrive as two separately ordered lists, so simply concatenating
+         * them showed every remote entry behind every local one no matter its priority. Promotion
+         * ({@code LockableResourcesManager#proceedNextContext}) compares the heads of both queues and
+         * takes the higher priority, favouring local on a tie - which is exactly a stable sort by
+         * descending priority over "locals first, then remotes".
+         */
+        @Restricted(NoExternalUse.class)
+        public void sortByPromotionOrder() {
+            this.queue.sort(Comparator.comparingInt(QueueStruct::getPriority).reversed());
         }
 
         // -------------------------------------------------------------------------
@@ -1205,6 +1222,16 @@ public class LockableResourcesRootAction implements RootAction {
                                 && b.getFullDisplayName()
                                         .toLowerCase(Locale.ENGLISH)
                                         .contains(lowerFilter)) {
+                            return true;
+                        }
+                        // Remote rows have no resource list, no label and no build, so without these two
+                        // the free-text filter could only ever match their lock id.
+                        if (getQueueItemRequestText(item)
+                                .toLowerCase(Locale.ENGLISH)
+                                .contains(lowerFilter)) {
+                            return true;
+                        }
+                        if (item.getRequestedBy().toLowerCase(Locale.ENGLISH).contains(lowerFilter)) {
                             return true;
                         }
                         return item.getId().toLowerCase(Locale.ENGLISH).contains(lowerFilter);
