@@ -165,9 +165,14 @@ public class RemoteLockManager extends PeriodicWork {
     // -----------------------------------------------------------------------
     /**
      * Releases a lock, freeing the underlying resource(s). Idempotent.
+     *
+     * <p>The record is kept as a terminal {@code FAILED}/{@code RELEASED} entry until its TTL rather
+     * than being dropped here, so a {@code GET /acquire/{lockId}} right after the release reports what
+     * happened instead of a 404 that cannot be told apart from "the server restarted". The sweep in
+     * {@link #maybeScanStale()} owns removal.
      */
     public void release(String lockId) {
-        RemoteLockRecord record = records.remove(lockId);
+        RemoteLockRecord record = records.get(lockId);
         if (record == null) {
             return;
         }
@@ -186,10 +191,15 @@ public class RemoteLockManager extends PeriodicWork {
                 if (names != null && !names.isEmpty()) {
                     namesToUnlock = names;
                 }
+                record.markFailed("RELEASED");
             } else if (state == RemoteLockState.QUEUED) {
                 // Terminal-mark before unqueue so a not-yet-run promotion is excluded.
                 record.markFailed("RELEASED");
                 lrm.unqueueRemote(lockId);
+            } else {
+                // Already terminal - a repeated release. The first call freed whatever was held, so
+                // there is nothing left to do; the record waits out its TTL.
+                return;
             }
         }
 

@@ -776,6 +776,82 @@ class RemoteLockManagerTest {
     }
 
     @Test
+    void releasedRecordStaysObservableUntilItsTtl(JenkinsRule j) {
+        // A released record used to be dropped from the map at once, so the very next status poll got a
+        // 404 - indistinguishable from "the server restarted and lost the lock".
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("rel-1", "remote-ok");
+
+        RemoteLockRecord record = RemoteLockManager.get().enqueue(req("rel-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, record.getState());
+
+        RemoteLockManager.get().release(record.getLockId());
+
+        RemoteLockRecord afterRelease = RemoteLockManager.get().find(record.getLockId());
+        assertNotNull(afterRelease, "a released record must stay observable for the terminal TTL");
+        assertEquals(RemoteLockState.FAILED, afterRelease.getState());
+        assertEquals("RELEASED", afterRelease.getErrorCode());
+        assertTrue(afterRelease.getTerminalAt() > 0L, "markFailed must record terminalAt");
+        assertNull(manager.fromName("rel-1").getRemoteLockedBy(), "the resource is still freed");
+
+        // A maintenance pass right after the release must not evict it either.
+        RemoteLockManager.get().doRun();
+        assertNotNull(RemoteLockManager.get().find(record.getLockId()));
+    }
+
+    @Test
+    void releasingAQueuedRequestReportsItAsReleased(JenkinsRule j) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("rel-2", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("rel-2"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+        RemoteLockRecord waiter = RemoteLockManager.get().enqueue(req("rel-2"), null);
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+
+        RemoteLockManager.get().release(waiter.getLockId());
+
+        RemoteLockRecord afterRelease = RemoteLockManager.get().find(waiter.getLockId());
+        assertNotNull(afterRelease, "a released queued request must stay observable, not vanish");
+        assertEquals(RemoteLockState.FAILED, afterRelease.getState());
+        assertEquals("RELEASED", afterRelease.getErrorCode());
+
+        // It left the queue: freeing the resource must not hand it to the released request.
+        RemoteLockManager.get().release(holder.getLockId());
+        assertEquals(RemoteLockState.FAILED, afterRelease.getState());
+        assertNull(manager.fromName("rel-2").getRemoteLockedBy());
+    }
+
+    @Test
+    void releasingTwiceDoesNotFreeSomebodyElsesLock(JenkinsRule j) {
+        // Now that the record survives the first release, a repeated (or late) release must be a no-op
+        // rather than unlocking whatever holds the resource by then.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("rel-3", "remote-ok");
+
+        RemoteLockRecord first = RemoteLockManager.get().enqueue(req("rel-3"), null);
+        assertEquals(RemoteLockState.ACQUIRED, first.getState());
+        RemoteLockManager.get().release(first.getLockId());
+
+        RemoteLockRecord second = RemoteLockManager.get().enqueue(req("rel-3"), null);
+        assertEquals(RemoteLockState.ACQUIRED, second.getState());
+
+        RemoteLockManager.get().release(first.getLockId()); // repeated release of the old lock
+
+        assertEquals(RemoteLockState.ACQUIRED, second.getState());
+        assertEquals(
+                second.getLockId(),
+                manager.fromName("rel-3").getRemoteLockedBy(),
+                "the second holder must keep the resource");
+    }
+
+    @Test
     void lockCauseNamesTheRemoteHolder(JenkinsRule j) {
         // A remote lock has no build and no reservedTimestamp, so the generic branches used to render
         // "locked by null at <unknown>" - in the REST API and in the console of a locally waiting job.
