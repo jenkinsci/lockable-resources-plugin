@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -45,6 +46,20 @@ class RemoteLockManagerTest {
     private static RemoteLockRequest labelReqWithVar(String label, int quantity, String variable) {
         return new RemoteLockRequest(
                 null, label, quantity, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
+    }
+
+    private static RemoteLockRequest inverseReq(String resource) {
+        return new RemoteLockRequest(resource, null, 0, null, true, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
+    }
+
+    private static RemoteLockRequest inverseReqWithPriority(String resource, int priority) {
+        return new RemoteLockRequest(
+                resource, null, 0, null, true, "SEQUENTIAL", false, null, priority, 0, "MINUTES", null);
+    }
+
+    private static RemoteLockRequest priorityReq(String resource, int priority) {
+        return new RemoteLockRequest(
+                resource, null, 0, null, false, "SEQUENTIAL", false, null, priority, 0, "MINUTES", null);
     }
 
     private static RemoteLockRequest reqWithTimeout(String resource, long timeout, String unit) {
@@ -809,6 +824,55 @@ class RemoteLockManagerTest {
         RemoteLockRecord other = RemoteLockManager.get().enqueue(req("other-1"), null);
         assertEquals(RemoteLockState.FAILED, other.getState());
         assertEquals("UNKNOWN_RESOURCE", other.getErrorCode());
+    }
+
+    @Test
+    void inversePrecedenceTakesTheFirstPositionInTheRemoteQueue(JenkinsRule j) {
+        // inversePrecedence is carried on the wire and kept on the request, but the remote queue only
+        // looked at priority - so the parameter that makes a local lock() jump the queue did nothing here.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("inv-1", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("inv-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+
+        RemoteLockRecord first = RemoteLockManager.get().enqueue(req("inv-1"), null);
+        RemoteLockRecord jumper = RemoteLockManager.get().enqueue(inverseReq("inv-1"), null);
+        assertEquals(RemoteLockState.QUEUED, first.getState());
+        assertEquals(RemoteLockState.QUEUED, jumper.getState());
+
+        List<String> queued = manager.getCurrentRemoteQueueEntries().stream()
+                .map(RemoteQueueEntry::getLockId)
+                .collect(Collectors.toList());
+        assertEquals(List.of(jumper.getLockId(), first.getLockId()), queued, "inversePrecedence goes first");
+
+        // And the order is the one that actually gets promoted, not just the one that is displayed.
+        RemoteLockManager.get().release(holder.getLockId());
+        assertEquals(RemoteLockState.ACQUIRED, jumper.getState());
+        assertEquals(RemoteLockState.QUEUED, first.getState());
+    }
+
+    @Test
+    void inversePrecedenceWithAPriorityKeepsTheSortedPosition(JenkinsRule j) {
+        // Local queueContext() only jumps the queue when the priority is the default, so the bridge must
+        // fall back to the ordinary priority insert in the same case.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("inv-2", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("inv-2"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+
+        RemoteLockRecord high = RemoteLockManager.get().enqueue(priorityReq("inv-2", 10), null);
+        RemoteLockRecord inverseLow = RemoteLockManager.get().enqueue(inverseReqWithPriority("inv-2", 5), null);
+
+        List<String> queued = manager.getCurrentRemoteQueueEntries().stream()
+                .map(RemoteQueueEntry::getLockId)
+                .collect(Collectors.toList());
+        assertEquals(List.of(high.getLockId(), inverseLow.getLockId()), queued, "priority still wins");
     }
 
     @Test

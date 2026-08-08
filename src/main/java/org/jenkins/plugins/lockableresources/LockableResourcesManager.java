@@ -1940,12 +1940,21 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public void queueRemote(@NonNull RemoteQueueEntry entry) {
         synchronized (syncResources) {
             List<RemoteQueueEntry> list = getRemoteQueueEntries();
-            int insertAt = list.size();
-            for (int i = list.size() - 1; i >= 0; i--) {
-                if (list.get(i).getPriority() < entry.getPriority()) {
-                    insertAt = i;
-                } else {
-                    break;
+            int insertAt;
+            if (entry.getLockRequest().isInversePrecedence() && entry.getPriority() == 0) {
+                // Same rule as queueContext(): with the default priority, inversePrecedence means "take the
+                // first position". The flag travels on the wire and is kept on the request, but this queue
+                // used to ignore it, so the very parameter that makes a local lock() jump the queue did
+                // nothing once the request arrived over the bridge.
+                insertAt = 0;
+            } else {
+                insertAt = list.size();
+                for (int i = list.size() - 1; i >= 0; i--) {
+                    if (list.get(i).getPriority() < entry.getPriority()) {
+                        insertAt = i;
+                    } else {
+                        break;
+                    }
                 }
             }
             list.add(insertAt, entry);
