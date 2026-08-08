@@ -8,7 +8,6 @@ package org.jenkins.plugins.lockableresources.actions;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -18,7 +17,6 @@ import net.sf.json.JSONArray;
 import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
-import org.jenkins.plugins.lockableresources.ResourceSelectStrategy;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRecord;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
@@ -107,16 +105,10 @@ public class RemoteApiV1Action {
             String resource = stringField(lockRequestJson, "resource");
             String label = stringField(lockRequestJson, "label");
 
-            // extra-only requests are valid (local lock() allows them when extra is present),
-            // so only reject when there is no main target AND no extra.
-            JSONArray extraPeek = lockRequestJson.optJSONArray("extra");
-            boolean hasExtra = extraPeek != null && !extraPeek.isEmpty();
-            if (resource == null && label == null && !hasExtra) {
-                sendJsonError(
-                        rsp, 400, "MISSING_TARGET", "lockRequest must contain at least one of: resource, label, extra");
-                return;
-            }
-
+            // Whether a request without any target is acceptable depends on allowEmptyOrNullValues, and
+            // whether the parameters make sense together is lock() semantics - both are canonical rules,
+            // checked inside enqueue() rather than re-implemented here (see LockStepResource.validate).
+            //
             // Exposure/existence is enforced by the admission check inside enqueue (validateRemoteSelectors):
             // a selector referencing something this client can't lock (unknown/unexposed) comes back
             // as a terminal UNKNOWN_* record, which we map to HTTP 404 below. This endpoint only parses the
@@ -142,16 +134,6 @@ public class RemoteApiV1Action {
             boolean inversePrecedence = lockRequestJson.optBoolean("inversePrecedence", false);
             String resourceSelectStrategy = stringField(lockRequestJson, "resourceSelectStrategy");
             if (resourceSelectStrategy == null) resourceSelectStrategy = "SEQUENTIAL";
-            try {
-                ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
-            } catch (IllegalArgumentException e) {
-                sendJsonError(
-                        rsp,
-                        400,
-                        "INVALID_SELECT_STRATEGY",
-                        "resourceSelectStrategy must be one of " + Arrays.toString(ResourceSelectStrategy.values()));
-                return;
-            }
             String reason = stringField(lockRequestJson, "reason");
 
             // Parse extra resources (optional - additional resources to lock atomically)
@@ -223,7 +205,17 @@ public class RemoteApiV1Action {
                     timeoutUnit,
                     reason);
 
-            RemoteLockRecord record = RemoteLockManager.get().enqueue(lockRequest, clientId);
+            RemoteLockRecord record;
+            try {
+                record = RemoteLockManager.get().enqueue(lockRequest, clientId);
+            } catch (IllegalArgumentException ex) {
+                // The canonical validator rejected the request (lock() semantics: no target while
+                // allowEmptyOrNullValues is off, resource and label together, priority with
+                // inversePrecedence, an unknown select strategy). Its message is the same one a local
+                // lock() would print, so pass it through rather than inventing a remote-only wording.
+                sendJsonError(rsp, 400, "INVALID_REQUEST", ex.getMessage());
+                return;
+            }
             String logTarget = resource != null ? resource : "label:" + label;
             LOGGER.fine("POST /acquire target=" + logTarget + " lockId=" + record.getLockId() + " clientId="
                     + record.getClientId() + " state=" + record.getState());
@@ -231,7 +223,7 @@ public class RemoteApiV1Action {
             // Admission rejected the request - nothing this client can lock (unknown/unexposed).
             // Uniform 404 (errorCode distinguishes resource vs label); existence is not otherwise revealed.
             // Any other terminal FAILED from enqueue must map to a 4xx, never fall through to a
-            // 202 success (defensive - MISSING_TARGET is already rejected at the boundary above).
+            // 202 success (defensive - malformed requests are already rejected as INVALID_REQUEST).
             if (record.getState() == RemoteLockState.FAILED) {
                 String ec = record.getErrorCode();
                 if ("UNKNOWN_RESOURCE".equals(ec) || "UNKNOWN_LABEL".equals(ec)) {

@@ -9,6 +9,7 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.PeriodicWork;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,13 +101,29 @@ public class RemoteLockManager extends PeriodicWork {
                 LOGGER.fine("Remote acquire rejected: lockId=" + lockId + " errorCode=" + errorCode);
                 return record;
             }
+            // Whether the parameters make sense together is lock() semantics, so ask the canonical
+            // validator rather than re-implementing its rules at the REST boundary. It runs after
+            // admission on purpose: it also rejects labels that do not exist, and answering that with a
+            // 400 while an existing-but-unexposed label answers 404 would tell a client which names are
+            // real. Admission has already reduced both to a uniform 404 by the time we get here.
+            // Throws IllegalArgumentException, which the endpoint maps to 400 INVALID_REQUEST.
+            RemoteResolver.validateAsLocalStep(lockRequest, lrm.isAllowEmptyOrNullValues());
+
             // Resolve through the SAME canonical path local lock() uses (no re-implementation of lock()
             // semantics), with the exposeLabel set as candidate filter. extra / label / quantity(0=all) /
             // resourceSelectStrategy / property env vars all come from the canonical path. A request whose
             // (exposed, existing) targets are merely busy stays QUEUED, exactly like local.
             List<LockableResourcesStruct> structs = resolver.toRemoteStructs(lockRequest);
             if (structs.isEmpty()) {
-                record.markFailed("MISSING_TARGET");
+                if (lrm.isAllowEmptyOrNullValues()) {
+                    // Local lock() with nothing to lock runs the body holding nothing when the instance
+                    // allows empty values; the bridge grants the same no-op lease instead of failing.
+                    record.markAcquired(Collections.emptyList(), Collections.emptyMap());
+                } else {
+                    // Unreachable: the canonical validator above rejects a target-less request in this
+                    // configuration. Kept so a future change cannot fall through to a 202 with no lease.
+                    record.markFailed("MISSING_TARGET");
+                }
             } else {
                 List<LockableResource> available = resolver.availableForRemote(structs, lockRequest);
                 if (available != null && !available.isEmpty()) {

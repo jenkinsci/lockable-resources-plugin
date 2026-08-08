@@ -83,8 +83,51 @@ class RemoteApiV1ActionTest {
     @Test
     void acquireReturns400WhenBothResourceAndLabelAreAbsent(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().setRemoteApiEnabled(true);
+        LockableResourcesManager.get().setAllowEmptyOrNullValues(false);
 
-        assertJsonError(invokeAcquire(new RemoteApiV1Action(), "{\"lockRequest\":{}}"), 400, "MISSING_TARGET");
+        assertJsonError(invokeAcquire(new RemoteApiV1Action(), "{\"lockRequest\":{}}"), 400, "INVALID_REQUEST");
+    }
+
+    @Test
+    void acquireAcceptsAnEmptyRequestWhenEmptyValuesAreAllowed(JenkinsRule j) throws Exception {
+        // The boundary used to reject a target-less request unconditionally, while a local lock() honours
+        // allowEmptyOrNullValues - so the same call behaved differently over the bridge.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setAllowEmptyOrNullValues(true);
+
+        ResponseCapture result = invokeAcquire(new RemoteApiV1Action(), "{\"lockRequest\":{}}");
+        assertEquals(202, result.status.get());
+    }
+
+    @Test
+    void acquireRejectsResourceAndLabelTogether(JenkinsRule j) throws Exception {
+        // Canonical lock() refuses this combination; the bridge used to accept it (M1E-2).
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+
+        assertJsonError(
+                invokeAcquire(new RemoteApiV1Action(), "{\"lockRequest\":{\"resource\":\"board-1\",\"label\":\"hw\"}}"),
+                400,
+                "INVALID_REQUEST");
+    }
+
+    @Test
+    void acquireRejectsPriorityCombinedWithInversePrecedence(JenkinsRule j) throws Exception {
+        // Canonical lock() refuses this combination too; the bridge used to accept it silently.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+
+        assertJsonError(
+                invokeAcquire(
+                        new RemoteApiV1Action(),
+                        "{\"lockRequest\":{\"resource\":\"board-1\",\"priority\":5,\"inversePrecedence\":true}}"),
+                400,
+                "INVALID_REQUEST");
     }
 
     @Test
@@ -168,7 +211,7 @@ class RemoteApiV1ActionTest {
                         new RemoteApiV1Action(),
                         "{\"lockRequest\":{\"resource\":\"board-1\",\"resourceSelectStrategy\":\"BOGUS\"}}"),
                 400,
-                "INVALID_SELECT_STRATEGY");
+                "INVALID_REQUEST");
     }
 
     @Test
@@ -268,7 +311,7 @@ class RemoteApiV1ActionTest {
         // A null selector is no selector. json-lib hands back the string "null" for a JSON null, so
         // this used to go looking for a resource actually named "null" and report it missing - an
         // answer that sends the caller hunting for the wrong problem.
-        assertJsonError(invokeAcquire(action, "{\"lockRequest\":{\"resource\":null}}"), 400, "MISSING_TARGET");
+        assertJsonError(invokeAcquire(action, "{\"lockRequest\":{\"resource\":null}}"), 400, "INVALID_REQUEST");
 
         // Same for variable: an unset one must not export an environment variable called "null".
         manager.createResourceWithLabel("board-6", "hw");
