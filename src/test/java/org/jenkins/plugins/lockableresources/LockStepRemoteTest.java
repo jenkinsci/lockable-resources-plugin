@@ -114,6 +114,37 @@ class LockStepRemoteTest extends LockStepTestBase {
     }
 
     @Test
+    void remoteMetadataEnvVarsAreSetEvenWithoutLockEnvVars(JenkinsRule j) throws Exception {
+        // The bridge metadata used to be gated on a non-empty lockEnvVars, so a server that returned
+        // none (nothing to name, or an older server) left X_SERVER_ID / X_LOCK_ID unset.
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.setAcquireStatusResponse("{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\"}");
+        remote.start();
+        try {
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
+
+            WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-no-envvars");
+            job.setDefinition(new CpsFlowDefinition("""
+                    lock(resource: 'plc-a', serverId: 'server-a', variable: 'PLC') {
+                        echo "server=${env.PLC_SERVER_ID} lockId=${env.PLC_LOCK_ID}"
+                        semaphore 'no-envvars-body'
+                    }
+                    """, true));
+
+            WorkflowRun run = job.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("no-envvars-body/1", run);
+
+            j.assertLogContains("server=server-a lockId=lock-1", run);
+
+            SemaphoreStep.success("no-envvars-body/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(run));
+        } finally {
+            remote.stop();
+        }
+    }
+
+    @Test
     void lockWithoutServerIdKeepsUsingLocalFlow(JenkinsRule j) throws Exception {
         RemoteServerFixture remote = new RemoteServerFixture();
         remote.start();
