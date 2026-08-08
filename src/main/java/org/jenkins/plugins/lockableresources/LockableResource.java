@@ -618,10 +618,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     @CheckForNull
     public String getRemoteLockClientId() {
-        if (remoteLockedBy == null) {
-            return null;
-        }
-        RemoteLockRecord record = RemoteLockManager.get().find(remoteLockedBy);
+        RemoteLockRecord record = getRemoteLockRecord();
         return record != null ? record.getClientId() : null;
     }
 
@@ -632,7 +629,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     @CheckForNull
     public RemoteLockRecord getRemoteLockRecord() {
-        if (remoteLockedBy == null) {
+        // The lock cause is also rendered outside a running Jenkins (plain unit tests, deserialized
+        // resources), so resolve the manager defensively rather than through Jenkins.get().
+        if (remoteLockedBy == null || Jenkins.getInstanceOrNull() == null) {
             return null;
         }
         return RemoteLockManager.get().find(remoteLockedBy);
@@ -655,10 +654,29 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         if (isReserved()) {
             return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
         }
+        if (remoteLockedBy != null) {
+            // A remote lock has no build and no reservedTimestamp; both live on the remote lock record.
+            RemoteLockRecord record = getRemoteLockRecord();
+            return String.format("[%s] is locked by %s at %s", name, remoteHolder(record), remoteSince(record, format));
+        }
         if (isLocked()) {
             return String.format("[%s] is locked by %s at %s", name, buildExternalizableId, timestamp);
         }
         return null;
+    }
+
+    /** Holder of the current remote lock: the client id when known, otherwise the lock id. */
+    @NonNull
+    private String remoteHolder(@CheckForNull RemoteLockRecord record) {
+        String clientId = record == null ? null : record.getClientId();
+        return clientId != null ? "remote client " + clientId : "remote lockId " + remoteLockedBy;
+    }
+
+    /** When the current remote lock was acquired, or {@code <unknown>} if the record is gone. */
+    @NonNull
+    private static String remoteSince(@CheckForNull RemoteLockRecord record, @NonNull DateFormat format) {
+        long acquiredAt = record == null ? 0L : record.getAcquiredAt();
+        return acquiredAt <= 0 ? "<unknown>" : format.format(new Date(acquiredAt));
     }
 
     /**
@@ -687,8 +705,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
                         name, lockBuild.getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(lockBuild), timestamp);
             }
             if (remoteLockedBy != null) {
+                // Shown to a locally waiting job, so name the holder rather than the opaque lock id.
+                // The lock id is kept as well: it is what correlates this wait with the remote server's logs.
+                RemoteLockRecord record = getRemoteLockRecord();
                 return String.format(
-                        "The resource [%s] is locked by remote lockId %s since %s.", name, remoteLockedBy, timestamp);
+                        "The resource [%s] is locked by %s (lockId %s) since %s.",
+                        name, remoteHolder(record), remoteLockedBy, remoteSince(record, format));
             }
         }
         return null;

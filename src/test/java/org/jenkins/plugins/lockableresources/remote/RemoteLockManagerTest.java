@@ -6,6 +6,7 @@
 package org.jenkins.plugins.lockableresources.remote;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -772,5 +773,52 @@ class RemoteLockManagerTest {
         RemoteLockRecord other = RemoteLockManager.get().enqueue(req("other-1"), null);
         assertEquals(RemoteLockState.FAILED, other.getState());
         assertEquals("UNKNOWN_RESOURCE", other.getErrorCode());
+    }
+
+    @Test
+    void lockCauseNamesTheRemoteHolder(JenkinsRule j) {
+        // A remote lock has no build and no reservedTimestamp, so the generic branches used to render
+        // "locked by null at <unknown>" - in the REST API and in the console of a locally waiting job.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("cause-1", "remote-ok");
+
+        RemoteLockRecord record = RemoteLockManager.get().enqueue(req("cause-1"), "jenkins-a");
+        assertEquals(RemoteLockState.ACQUIRED, record.getState());
+
+        LockableResource resource = manager.fromName("cause-1");
+        assertNotNull(resource);
+
+        String cause = resource.getLockCause();
+        assertNotNull(cause);
+        assertTrue(cause.contains("remote client jenkins-a"), cause);
+        assertFalse(cause.contains("null"), cause);
+        assertFalse(cause.contains("<unknown>"), cause);
+
+        String detail = resource.getLockCauseDetail();
+        assertNotNull(detail);
+        assertTrue(detail.contains("remote client jenkins-a"), detail);
+        assertTrue(detail.contains(record.getLockId()), detail);
+        assertFalse(detail.contains("<unknown>"), detail);
+    }
+
+    @Test
+    void lockCauseFallsBackToTheLockIdWhenTheRecordIsGone(JenkinsRule j) {
+        // The record is transient: after a restart a still-locked resource has a lock id and nothing else.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.createResource("orphan-1");
+        LockableResource resource = manager.fromName("orphan-1");
+        assertNotNull(resource);
+        resource.setRemoteLockedBy("lost-lock-id");
+
+        String cause = resource.getLockCause();
+        assertNotNull(cause);
+        assertTrue(cause.contains("remote lockId lost-lock-id"), cause);
+        assertTrue(cause.contains("<unknown>"), cause);
+
+        String detail = resource.getLockCauseDetail();
+        assertNotNull(detail);
+        assertTrue(detail.contains("remote lockId lost-lock-id"), detail);
     }
 }
