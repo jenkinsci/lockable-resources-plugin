@@ -133,6 +133,17 @@
                   data-edit-resource-on-fail="${%edit.resource.on.fail}"
       />
 
+      <j:if test="${it.delegatedMode}">
+        <div class="lr-delegated-badge jenkins-!-margin-bottom-2">
+          <l:icon src="symbol-git-network-outline plugin-ionicons-api" />
+          <span>
+            <strong>${%delegated.badge.title}</strong>
+            ${%delegated.badge.routedTo(it.forcedServerId, it.forcedServerUrl)}
+            <br/>
+            <span class="jenkins-!-color-secondary">${%delegated.badge.localNote}</span>
+          </span>
+        </div>
+      </j:if>
       <j:choose>
         <j:when test="${it.resources.size() == 0 and !it.remoteConfigured}">
           <l:notice title="${%resources.not_configured}" icon="symbol-lock-closed">

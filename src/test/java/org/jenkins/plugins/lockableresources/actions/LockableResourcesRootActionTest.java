@@ -586,6 +586,42 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
 
     // ---------------------------------------------------------------------------
     @Test
+    void testDelegatedModeShowsABadgeAndKeepsLocalResourcesVisible() throws Exception {
+        // Roles are per relation: a controller that delegates its own lock() calls can still be the
+        // server other controllers lock against, so its resources must stay on the page.
+        this.createResource("local-1");
+        LockableResourcesManager.get()
+                .setRemotes(java.util.List.of(new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "")));
+        LockableResourcesManager.get().setForcedServerId("server-a");
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertTrue(page.contains("Delegated mode"), "the badge explains the changed resolution");
+        assertTrue(page.contains("server-a"), "the badge names the target");
+        assertTrue(page.contains("local-1"), "local resources are not hidden");
+        assertTrue(
+                page.contains("remain lockable by other controllers"), "and the page says why they are still listed");
+
+        LockableResourcesManager.get().setForcedServerId("");
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testNoDelegatedBadgeWithoutForcedServerId() throws Exception {
+        this.createResource("local-2");
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertFalse(page.contains("Delegated mode"));
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
     void testGetAllLabels() {
         when(req.getMethod()).thenReturn("POST");
         LockableResourcesRootAction action = new LockableResourcesRootAction();

@@ -47,6 +47,7 @@ import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteCatalogCache;
 import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
 import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -394,6 +395,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         this.remotes = validatedRemotes;
         save();
+        // The catalog snapshots belong to the previous configuration; a changed URL, credential or
+        // enabled flag makes them meaningless.
+        RemoteCatalogCache.get().invalidateAll();
     }
 
     // ---------------------------------------------------------------------------

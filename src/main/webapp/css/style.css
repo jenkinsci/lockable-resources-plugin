@@ -746,6 +746,24 @@ span.lr-static-label {
   flex-shrink: 0;
 }
 
+/* Delegated mode — where this controller's lock() calls actually go */
+.lr-delegated-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--jenkins-border--subtle);
+  border-radius: var(--form-input-border-radius, 6px);
+  background: var(--card-background);
+}
+
+.lr-delegated-badge svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
 @media (max-width: 768px) {
   .lr-tab-bar {
     position: static;

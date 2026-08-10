@@ -10,6 +10,64 @@
   xmlns:st="jelly:stapler">
 
   <j:set var="remoteLocks" value="${it.remoteLocks}" />
+  <j:set var="catalog" value="${it.delegatedCatalog}" />
+
+  <j:if test="${it.delegatedMode}">
+    <h2 class="jenkins-!-margin-top-2">${%remote.catalog.heading(it.forcedServerId)}</h2>
+    <j:choose>
+      <j:when test="${catalog == null}">
+        <p class="jenkins-!-color-secondary">${%remote.catalog.notFetched}</p>
+      </j:when>
+      <j:otherwise>
+        <p class="jenkins-!-color-secondary">
+          ${%remote.catalog.age(it.getElapsedSince(catalog.fetchedAt))}
+          <j:if test="${catalog.error != null}"> &#8212; ${%remote.catalog.stale(catalog.error)}</j:if>
+          <j:if test="${!catalog.acceptNewAcquires}"> &#8212; <strong>${%remote.catalog.paused}</strong></j:if>
+        </p>
+        <div class="table-responsive">
+          <table class="jenkins-table sortable" id="lockable-resources-remote-catalog">
+            <thead>
+              <tr>
+                <th>${%remote.catalog.column.resource}</th>
+                <th>${%remote.catalog.column.status}</th>
+                <th>${%remote.catalog.column.heldBy}</th>
+                <th>${%remote.catalog.column.labels}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <j:forEach var="r" items="${catalog.resources}">
+                <tr>
+                  <td>
+                    <strong>${r.name}</strong>
+                    <j:if test="${r.description != ''}">
+                      <div class="jenkins-!-color-secondary">${r.description}</div>
+                    </j:if>
+                  </td>
+                  <td>${r.state}</td>
+                  <td>
+                    <j:choose>
+                      <j:when test="${r.heldByClientId != ''}">${%remote.catalog.heldBy.client(r.heldByClientId)}</j:when>
+                      <j:when test="${r.heldByKind == 'LOCAL_BUILD'}">${%remote.catalog.heldBy.localBuild}</j:when>
+                      <j:when test="${r.heldByKind == 'ADMIN'}">${%remote.catalog.heldBy.admin}</j:when>
+                      <j:otherwise/>
+                    </j:choose>
+                    <j:if test="${r.since > 0}">
+                      <span class="jenkins-!-color-secondary">&#160;(${it.getElapsedSince(r.since)})</span>
+                    </j:if>
+                  </td>
+                  <td>
+                    <j:forEach var="l" items="${r.labels}" varStatus="loop"><j:if test="${!loop.first}">, </j:if>${l}</j:forEach>
+                  </td>
+                </tr>
+              </j:forEach>
+            </tbody>
+          </table>
+        </div>
+      </j:otherwise>
+    </j:choose>
+
+    <h2 class="jenkins-!-margin-top-2">${%remote.heading.ownLocks}</h2>
+  </j:if>
 
   <div class="lr-remote-note jenkins-!-margin-bottom-2">
     <l:icon src="symbol-information-circle-outline plugin-ionicons-api" />

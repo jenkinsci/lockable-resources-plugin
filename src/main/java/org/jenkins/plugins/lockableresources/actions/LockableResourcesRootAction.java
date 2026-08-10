@@ -36,6 +36,8 @@ import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.RemoteConnection;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteCatalog;
+import org.jenkins.plugins.lockableresources.remote.RemoteCatalogCache;
 import org.jenkins.plugins.lockableresources.remote.RemoteClientRegistry;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
@@ -561,6 +563,28 @@ public class LockableResourcesRootAction implements RootAction {
     public List<RemoteClientRegistry.Entry> getRemoteLocks() {
         Jenkins.get().checkPermission(VIEW);
         return RemoteClientRegistry.get().getAll();
+    }
+
+    /** True when this controller delegates every lock() to one remote server. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isDelegatedMode() {
+        String forced = getForcedServerId();
+        return forced != null && !forced.isEmpty();
+    }
+
+    /**
+     * What the delegated target publishes, as last observed, or {@code null} when nothing has been
+     * fetched yet. Never blocks: a stale snapshot is refreshed in the background.
+     */
+    @CheckForNull
+    @Restricted(NoExternalUse.class) // used by jelly
+    public RemoteCatalog getDelegatedCatalog() {
+        Jenkins.get().checkPermission(VIEW);
+        String forced = getForcedServerId();
+        if (forced == null || forced.isEmpty()) {
+            return null;
+        }
+        return RemoteCatalogCache.get().get(forced);
     }
 
     /** True when a connection exists for this serverId but has been switched off. */

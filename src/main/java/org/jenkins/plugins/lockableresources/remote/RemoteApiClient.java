@@ -181,6 +181,52 @@ public class RemoteApiClient {
     }
 
     /**
+     * GET /resources - what the remote publishes, plus whether it is accepting new acquires.
+     */
+    @NonNull
+    public RemoteCatalog listResources(@NonNull RemoteConnection remote, @NonNull String authorizationHeader)
+            throws RemoteApiException {
+        String path = "/resources/";
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(resolve(remote, path))
+                .header("Accept", "application/json")
+                .timeout(requestTimeout)
+                .GET();
+        applyAuthorizationHeader(requestBuilder, authorizationHeader);
+
+        DecodedJsonResponse decoded = sendAndDecodeJson(remote.getServerId(), "GET", path, requestBuilder.build());
+        JSONObject response = decoded.body;
+
+        List<RemoteCatalog.Resource> resources = new ArrayList<>();
+        net.sf.json.JSONArray array = response.optJSONArray("resources");
+        if (array != null) {
+            for (int i = 0; i < array.size(); i++) {
+                JSONObject r = array.getJSONObject(i);
+                List<String> labels = new ArrayList<>();
+                net.sf.json.JSONArray labelsJson = r.optJSONArray("labels");
+                if (labelsJson != null) {
+                    for (int k = 0; k < labelsJson.size(); k++) {
+                        labels.add(labelsJson.getString(k));
+                    }
+                }
+                resources.add(new RemoteCatalog.Resource(
+                        r.optString("name", ""),
+                        labels,
+                        r.optString("description", ""),
+                        r.optString("state", ""),
+                        r.optString("heldByKind", ""),
+                        r.optString("heldByClientId", ""),
+                        r.optLong("since", 0)));
+            }
+        }
+        return new RemoteCatalog(
+                remote.getServerId(),
+                resources,
+                response.optBoolean("acceptNewAcquires", true),
+                System.currentTimeMillis(),
+                null);
+    }
+
+    /**
      * POST /lease/{lockId}/heartbeat.
      */
     public void heartbeatLease(
