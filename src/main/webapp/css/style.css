@@ -730,6 +730,22 @@ span.lr-static-label {
 /* ====================================================================
    Responsive — mobile & narrow viewports
    ==================================================================== */
+/* Remote tab — the note that this table is a client-side view, not the server's own state.
+   Jenkins symbols carry an intrinsic 512px size, so an unsized container renders them full width. */
+.lr-remote-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-color-secondary);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.lr-remote-note svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
   .lr-tab-bar {
     position: static;

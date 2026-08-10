@@ -21,6 +21,8 @@ import org.htmlunit.html.HtmlPage;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.RemoteConnection;
+import org.jenkins.plugins.lockableresources.remote.RemoteClientRegistry;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -543,6 +545,43 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
     private static RemoteLockRequest remoteRequest(String resource, int priority) {
         return new RemoteLockRequest(
                 resource, null, 0, null, false, "SEQUENTIAL", false, null, priority, 0, "MINUTES", null);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testRemoteTabShowsWhatThisControllerHoldsRemotely() throws Exception {
+        // The client side of the page: these resources belong to another controller, so they cannot
+        // appear in the Resources tab, and until now they appeared nowhere at all.
+        LockableResourcesManager.get()
+                .setRemotes(java.util.List.of(new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "")));
+        RemoteClientRegistry.get().queued("lock-1", "server-a", "plc-01", null);
+        RemoteClientRegistry.get().acquired("lock-1", java.util.List.of("plc-01"));
+        RemoteClientRegistry.get().queued("lock-2", "server-a", "label:plc", null);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertTrue(page.contains("data-lr-tab=\"remote\""), "the Remote tab is offered");
+        assertTrue(page.contains("plc-01"), "a held remote lock is listed");
+        assertTrue(page.contains("label:plc"), "a waiting remote request is listed");
+        assertTrue(page.contains("source of truth"), "the view says it is a cached view");
+
+        RemoteClientRegistry.get().forget("lock-1");
+        RemoteClientRegistry.get().forget("lock-2");
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testRemoteTabIsHiddenWhenNoRemoteRelationIsConfigured() throws Exception {
+        // Nothing remote configured: the tab would only be an empty promise.
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertFalse(page.contains("data-lr-tab=\"remote\""));
     }
 
     // ---------------------------------------------------------------------------

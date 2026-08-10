@@ -1,0 +1,74 @@
+<?jelly escape-by-default='true'?>
+<!--
+  The MIT License
+
+  See the "LICENSE.txt" file for full copyright and license information.
+-->
+<j:jelly
+  xmlns:j="jelly:core"
+  xmlns:l="/lib/layout"
+  xmlns:st="jelly:stapler">
+
+  <j:set var="remoteLocks" value="${it.remoteLocks}" />
+
+  <div class="lr-remote-note jenkins-!-margin-bottom-2">
+    <l:icon src="symbol-information-circle-outline plugin-ionicons-api" />
+    <span>${%remote.cachedViewNote}</span>
+  </div>
+
+  <j:choose>
+    <j:when test="${remoteLocks.size() == 0}">
+      <p class="jenkins-!-color-secondary">${%remote.none}</p>
+    </j:when>
+    <j:otherwise>
+      <div class="table-responsive">
+        <table class="jenkins-table sortable" id="lockable-resources-remote">
+          <thead>
+            <tr>
+              <th>${%remote.table.column.server}</th>
+              <th>${%remote.table.column.request}</th>
+              <th>${%remote.table.column.status}</th>
+              <th>${%remote.table.column.resources}</th>
+              <th>${%remote.table.column.requestedBy}</th>
+              <th>${%remote.table.column.since}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <j:forEach var="entry" items="${remoteLocks}">
+              <tr>
+                <td>
+                  <strong>${entry.serverId}</strong>
+                  <j:if test="${it.isServerDisabled(entry.serverId)}">
+                    <br/><span class="jenkins-!-color-secondary">${%remote.server.disabled}</span>
+                  </j:if>
+                </td>
+                <td>${entry.request}</td>
+                <td class="jenkins-!-${entry.acquired ? 'warning' : 'success'}-color">
+                  <j:choose>
+                    <j:when test="${entry.acquired}"><strong>${%remote.status.acquired}</strong></j:when>
+                    <j:otherwise><strong>${%remote.status.queued}</strong></j:otherwise>
+                  </j:choose>
+                </td>
+                <td>
+                  <j:forEach var="name" items="${entry.resourceNames}" varStatus="loop">
+                    <j:if test="${!loop.first}">, </j:if>${name}
+                  </j:forEach>
+                </td>
+                <td>
+                  <j:choose>
+                    <j:when test="${entry.buildUrl != ''}">
+                      <a href="${rootURL}/${entry.buildUrl}">${entry.buildName}</a>
+                    </j:when>
+                    <j:when test="${entry.buildName != ''}">${entry.buildName}</j:when>
+                    <j:otherwise><span class="jenkins-!-color-secondary">${%remote.requestedBy.unknown}</span></j:otherwise>
+                  </j:choose>
+                </td>
+                <td>${it.getElapsedSince(entry.since)}</td>
+              </tr>
+            </j:forEach>
+          </tbody>
+        </table>
+      </div>
+    </j:otherwise>
+  </j:choose>
+</j:jelly>

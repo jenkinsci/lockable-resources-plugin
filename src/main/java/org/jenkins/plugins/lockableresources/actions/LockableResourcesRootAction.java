@@ -33,8 +33,10 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.jenkins.plugins.lockableresources.RemoteConnection;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteClientRegistry;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
@@ -545,6 +547,62 @@ public class LockableResourcesRootAction implements RootAction {
                 + method
                 + " has been deprecated due performance issues. When you see this message, please inform plugin developers:"
                 + buf);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Remote locks this controller currently holds or waits for on other controllers.
+     *
+     * <p>This is the client side of the picture: the resources listed elsewhere on this page belong to
+     * this controller, while these belong to someone else. The state shown here is what this controller
+     * last observed, not the remote's own record - the view says so.
+     */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public List<RemoteClientRegistry.Entry> getRemoteLocks() {
+        Jenkins.get().checkPermission(VIEW);
+        return RemoteClientRegistry.get().getAll();
+    }
+
+    /** True when a connection exists for this serverId but has been switched off. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isServerDisabled(String serverId) {
+        RemoteConnection remote =
+                LockableResourcesManager.get().getRemotesAsMap().get(serverId);
+        return remote != null && !remote.isEnabled();
+    }
+
+    /** Human-readable age of a timestamp, for the remote view. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String getElapsedSince(long timestampMillis) {
+        if (timestampMillis <= 0) {
+            return "";
+        }
+        return formatDuration(System.currentTimeMillis() - timestampMillis);
+    }
+
+    /** True when this controller has any remote relation at all - server side or client side. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isRemoteConfigured() {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        return lrm.isRemoteApiEnabled() || !lrm.getRemotes().isEmpty();
+    }
+
+    /** The serverId every lock() on this controller is routed to, or empty when not delegating. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String getForcedServerId() {
+        return LockableResourcesManager.get().getForcedServerId();
+    }
+
+    /** Base URL of the delegated target, for the badge; empty when not delegating or unknown. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String getForcedServerUrl() {
+        String forced = getForcedServerId();
+        if (forced == null || forced.isEmpty()) {
+            return "";
+        }
+        RemoteConnection remote =
+                LockableResourcesManager.get().getRemotesAsMap().get(forced);
+        return remote != null ? remote.getUrl() : "";
     }
 
     // ---------------------------------------------------------------------------
