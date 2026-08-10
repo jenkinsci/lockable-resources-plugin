@@ -294,6 +294,11 @@ public class RemoteApiV1Action {
             if (record.getErrorCode() != null) {
                 response.put("errorCode", record.getErrorCode());
             }
+            if (record.getAcquiredResourceNames() != null) {
+                // The client shows what it holds on its own lockable resources page, and this is the only
+                // place it can learn the names: lockEnvVars only carries them when a variable was asked for.
+                response.put("resources", JSONArray.fromObject(record.getAcquiredResourceNames()));
+            }
             if (record.getLockEnvVars() != null) {
                 JSONObject envVarsJson = new JSONObject();
                 envVarsJson.putAll(record.getLockEnvVars());

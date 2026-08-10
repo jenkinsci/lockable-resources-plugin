@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -161,12 +162,22 @@ public class RemoteApiClient {
             }
             lockEnvVars = Collections.unmodifiableMap(map);
         }
+        List<String> resourceNames = null;
+        net.sf.json.JSONArray resourcesJson = response.optJSONArray("resources");
+        if (resourcesJson != null) {
+            List<String> names = new ArrayList<>(resourcesJson.size());
+            for (int i = 0; i < resourcesJson.size(); i++) {
+                names.add(resourcesJson.getString(i));
+            }
+            resourceNames = Collections.unmodifiableList(names);
+        }
         return new RemoteAcquireStatus(
                 extractLockId(response, lockId),
                 RemoteAcquireState.fromString(response.optString("state", null)),
                 response.optString("errorCode", null),
                 response.optString("message", null),
-                lockEnvVars);
+                lockEnvVars,
+                resourceNames);
     }
 
     /**

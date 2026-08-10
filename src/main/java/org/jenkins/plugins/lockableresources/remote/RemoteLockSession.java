@@ -78,6 +78,9 @@ public final class RemoteLockSession implements Serializable {
 
     private volatile String serverId;
     private volatile String lockId;
+    /** What was asked for, kept so the page (and a resumed session) can still name it. */
+    private volatile String requestDescription;
+
     private volatile RemoteAcquireState lastState = RemoteAcquireState.UNKNOWN;
     private volatile boolean bodyStarted;
     private volatile int consecutivePollFailures;
@@ -177,6 +180,8 @@ public final class RemoteLockSession implements Serializable {
         this.serverId = remote.getServerId();
         this.lockId = acquiredLockId;
         this.acquirePaused = false;
+        this.requestDescription = displayTarget;
+        RemoteClientRegistry.get().queued(acquiredLockId, remote.getServerId(), displayTarget, run);
         LOGGER.log(Level.FINE, "Remote acquire enqueued: serverId={0}, serverUrl={1}, lockId={2}", new Object[] {
             remote.getServerId(), remote.getUrl(), acquiredLockId
         });
@@ -328,6 +333,7 @@ public final class RemoteLockSession implements Serializable {
                     }
                     lockId = statusLockId;
                     bodyStarted = true;
+                    RemoteClientRegistry.get().acquired(statusLockId, status.getResourceNames());
                     cancelPollTask();
                     startHeartbeat(remote, authorizationHeader, client);
                     host.runBody(remoteResource, status.getLockEnvVars(), statusLockId);
@@ -335,6 +341,7 @@ public final class RemoteLockSession implements Serializable {
                 case SKIPPED:
                     cancelPollTask();
                     completionSignaled.set(true);
+                    RemoteClientRegistry.get().forget(lockId);
                     PauseAction.endCurrentPause(host.context().get(FlowNode.class));
                     LockedResourcesBuildAction.addLog(
                             run,
@@ -459,6 +466,7 @@ public final class RemoteLockSession implements Serializable {
         if (!completionSignaled.compareAndSet(false, true)) {
             return;
         }
+        RemoteClientRegistry.get().forget(lockId);
         cancelPollTaskAndRetries();
         cancelHeartbeatTask();
         // Fail-closed: do not attempt release on communication/state failures.
@@ -469,12 +477,14 @@ public final class RemoteLockSession implements Serializable {
     /** Called by the step's body callback when the lock body finishes - cancel heartbeat and release the lease. */
     public void onBodyFinished(Host host) {
         completionSignaled.set(true);
+        RemoteClientRegistry.get().forget(lockId);
         cancelHeartbeatTask();
         releaseBestEffort(host);
     }
 
     /** Aborts an in-flight session (step stopped): cancel timers, best-effort release, fail the context. */
     public void stop(Host host, Throwable cause) {
+        RemoteClientRegistry.get().forget(lockId);
         cancelPollTaskAndRetries();
         cancelHeartbeatTask();
         // Unified remote lock cleanup: release if held (no-op when nothing acquired yet).
@@ -531,7 +541,14 @@ public final class RemoteLockSession implements Serializable {
             Run<?, ?> run = host.context().get(Run.class);
             String authorizationHeader = RemoteCredentials.basicAuthHeader(remote, run);
             RemoteApiClient client = new RemoteApiClient();
-            String displayTarget = lockId; // best-effort description post-restart
+            // Before the registry existed there was nothing to describe a resumed lock with, so the
+            // lock id stood in for the request. requestDescription survives the restart with the session.
+            String displayTarget = requestDescription != null ? requestDescription : lockId;
+            Run<?, ?> resumedBuild = host.context().get(Run.class);
+            RemoteClientRegistry.get().queued(lockId, serverId, displayTarget, resumedBuild);
+            if (bodyStarted) {
+                RemoteClientRegistry.get().acquired(lockId, null);
+            }
             // Restart is not a poll failure: start the post-restart retry budget fresh so a
             // long pre-restart QUEUED period does not shrink it.
             consecutivePollFailures = 0;
