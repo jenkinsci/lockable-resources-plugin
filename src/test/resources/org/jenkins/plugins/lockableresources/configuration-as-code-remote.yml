@@ -18,6 +18,7 @@ unclassified:
       - serverId: "server-b"
         url: "https://jenkins-server-b.example.com/"
         credentialsId: "server-b-token"
+        enabled: false          # borrower-side switch; default is true
     # ── Resources (optional - may be defined separately) ─────────────────────
     declaredResources:
       - name: "plc-01"

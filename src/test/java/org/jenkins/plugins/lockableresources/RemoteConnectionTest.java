@@ -6,10 +6,15 @@
 package org.jenkins.plugins.lockableresources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import hudson.AbortException;
 import hudson.util.FormValidation;
+import java.util.List;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockRouting;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
@@ -130,5 +135,57 @@ class RemoteConnectionTest {
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
         assertNotEquals(a, c);
+    }
+
+    @Test
+    void enabledDefaultsToTrueAndSurvivesConfigurationWithoutIt() {
+        // Existing configuration - JCasC yaml or config.xml written before this field existed - carries
+        // only the three connection fields, so the default has to come from the field itself.
+        RemoteConnection remote = new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "");
+        assertTrue(remote.isEnabled());
+
+        remote.setEnabled(false);
+        assertFalse(remote.isEnabled());
+    }
+
+    @Test
+    @WithJenkins
+    void disabledConnectionFailsTheStepInsteadOfFallingBackLocally(JenkinsRule j) throws Exception {
+        // Falling back to a local resource of the same name is exactly the accident delegated mode was
+        // made strict to avoid, so a disabled connection has to fail instead.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        RemoteConnection disabled = new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "");
+        disabled.setEnabled(false);
+        manager.setRemotes(List.of(disabled));
+
+        AbortException thrown =
+                assertThrows(AbortException.class, () -> RemoteLockRouting.findConnection(manager, "server-a"));
+        assertTrue(thrown.getMessage().contains("disabled"), thrown.getMessage());
+    }
+
+    @Test
+    @WithJenkins
+    void enabledConnectionResolvesNormally(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemotes(List.of(new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "")));
+
+        assertEquals(
+                "http://jenkins-b:8080/jenkins",
+                RemoteLockRouting.findConnection(manager, "server-a").getUrl());
+    }
+
+    @Test
+    @WithJenkins
+    void forcedServerIdWarnsWhenItsTargetIsDisabled(JenkinsRule j) {
+        // Delegated mode routes every lock() there, so a disabled target fails all of them silently
+        // until someone reads a build log.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        RemoteConnection disabled = new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "");
+        disabled.setEnabled(false);
+        manager.setRemotes(List.of(disabled));
+
+        FormValidation validation = manager.doCheckForcedServerId("server-a");
+        assertEquals(FormValidation.Kind.WARNING, validation.kind);
+        assertTrue(validation.getMessage().contains("disabled"), validation.getMessage());
     }
 }

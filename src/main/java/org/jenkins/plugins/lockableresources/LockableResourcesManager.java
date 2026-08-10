@@ -286,8 +286,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (trimmed == null) {
             return FormValidation.ok();
         }
-        if (!getRemotesAsMap().containsKey(trimmed)) {
+        RemoteConnection target = getRemotesAsMap().get(trimmed);
+        if (target == null) {
             return FormValidation.warning(Messages.warning_forcedServerIdNotConfigured(trimmed));
+        }
+        if (!target.isEnabled()) {
+            // Delegated mode routes every lock() here, so a disabled target fails all of them.
+            return FormValidation.warning(Messages.warning_forcedServerIdDisabled(trimmed));
         }
         return FormValidation.ok();
     }
