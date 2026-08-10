@@ -764,6 +764,24 @@ span.lr-static-label {
   color: var(--primary);
 }
 
+/* Maintenance — this server is not accepting new remote acquires */
+.lr-paused-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--orange);
+  border-radius: var(--form-input-border-radius, 6px);
+  background: var(--card-background);
+}
+
+.lr-paused-banner svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--orange);
+}
+
 @media (max-width: 768px) {
   .lr-tab-bar {
     position: static;

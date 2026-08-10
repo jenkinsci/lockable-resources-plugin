@@ -622,6 +622,35 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
 
     // ---------------------------------------------------------------------------
     @Test
+    void testPausedBannerAppearsOnlyWhileServingAndPaused() throws Exception {
+        // The switch is easy to leave on by accident, and its effect is invisible from this side -
+        // clients wait quietly rather than failing - so the page has to say it out loud.
+        this.createResource("served-1");
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setAcceptNewAcquires(false);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String paused = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+        assertTrue(paused.contains("acquire requests are paused"), "the banner explains the pause");
+
+        manager.setAcceptNewAcquires(true);
+        String running = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+        assertFalse(running.contains("acquire requests are paused"));
+
+        // Not serving at all: pausing acquires means nothing, so neither should the banner.
+        manager.setAcceptNewAcquires(false);
+        manager.setRemoteApiEnabled(false);
+        String notServing = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+        assertFalse(notServing.contains("acquire requests are paused"));
+
+        manager.setAcceptNewAcquires(true);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
     void testGetAllLabels() {
         when(req.getMethod()).thenReturn("POST");
         LockableResourcesRootAction action = new LockableResourcesRootAction();

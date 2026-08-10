@@ -133,6 +133,15 @@
                   data-edit-resource-on-fail="${%edit.resource.on.fail}"
       />
 
+      <j:if test="${it.remoteAcquiresPaused}">
+        <div class="lr-paused-banner jenkins-!-margin-bottom-2">
+          <l:icon src="symbol-pause-circle-outline plugin-ionicons-api" />
+          <span>
+            <strong>${%paused.banner.title}</strong>
+            ${%paused.banner.detail}
+          </span>
+        </div>
+      </j:if>
       <j:if test="${it.delegatedMode}">
         <div class="lr-delegated-badge jenkins-!-margin-bottom-2">
           <l:icon src="symbol-git-network-outline plugin-ionicons-api" />

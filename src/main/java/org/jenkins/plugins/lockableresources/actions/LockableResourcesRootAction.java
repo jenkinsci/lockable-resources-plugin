@@ -565,6 +565,18 @@ public class LockableResourcesRootAction implements RootAction {
         return RemoteClientRegistry.get().getAll();
     }
 
+    /**
+     * True when this controller serves resources remotely but has stopped handing out new locks.
+     *
+     * <p>Only interesting while the remote API is on: with it off, nothing is being served either way,
+     * and a banner about paused acquires would be noise.
+     */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isRemoteAcquiresPaused() {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        return lrm.isRemoteApiEnabled() && !lrm.isAcceptNewAcquires();
+    }
+
     /** True when this controller delegates every lock() to one remote server. */
     @Restricted(NoExternalUse.class) // used by jelly
     public boolean isDelegatedMode() {
