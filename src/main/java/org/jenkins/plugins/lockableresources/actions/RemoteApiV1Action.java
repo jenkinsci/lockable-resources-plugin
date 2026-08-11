@@ -11,9 +11,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
+import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.ResourceSelectStrategy;
@@ -102,13 +104,8 @@ public class RemoteApiV1Action {
                 return;
             }
 
-            String resource = lockRequestJson.optString("resource", null);
-            if (resource != null) resource = resource.trim();
-            if (resource != null && resource.isEmpty()) resource = null;
-
-            String label = lockRequestJson.optString("label", null);
-            if (label != null) label = label.trim();
-            if (label != null && label.isEmpty()) label = null;
+            String resource = stringField(lockRequestJson, "resource");
+            String label = stringField(lockRequestJson, "label");
 
             // extra-only requests are valid (local lock() allows them when extra is present),
             // so only reject when there is no main target AND no extra.
@@ -128,11 +125,23 @@ public class RemoteApiV1Action {
             boolean skipIfLocked = lockRequestJson.optBoolean("skipIfLocked", false);
             // quantity 0 (or absent) means "all matching" for label requests, matching local lock()
             // (LockableResourcesManager "0 means all"); must NOT default to 1.
-            int quantity = lockRequestJson.optInt("quantity", 0);
-            String variable = lockRequestJson.optString("variable", null);
-            if (variable != null && variable.isEmpty()) variable = null;
+            int quantity;
+            int priority;
+            long timeoutForAllocateResource;
+            String timeoutUnit;
+            try {
+                quantity = intField(lockRequestJson, "quantity", 0);
+                priority = intField(lockRequestJson, "priority", 0);
+                timeoutForAllocateResource = longField(lockRequestJson, "timeoutForAllocateResource", 0);
+                timeoutUnit = timeUnitField(lockRequestJson);
+            } catch (InvalidFieldException e) {
+                sendJsonError(rsp, 400, "INVALID_FIELD_VALUE", e.getMessage());
+                return;
+            }
+            String variable = stringField(lockRequestJson, "variable");
             boolean inversePrecedence = lockRequestJson.optBoolean("inversePrecedence", false);
-            String resourceSelectStrategy = lockRequestJson.optString("resourceSelectStrategy", "SEQUENTIAL");
+            String resourceSelectStrategy = stringField(lockRequestJson, "resourceSelectStrategy");
+            if (resourceSelectStrategy == null) resourceSelectStrategy = "SEQUENTIAL";
             try {
                 ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
             } catch (IllegalArgumentException e) {
@@ -143,11 +152,7 @@ public class RemoteApiV1Action {
                         "resourceSelectStrategy must be one of " + Arrays.toString(ResourceSelectStrategy.values()));
                 return;
             }
-            int priority = lockRequestJson.optInt("priority", 0);
-            long timeoutForAllocateResource = lockRequestJson.optLong("timeoutForAllocateResource", 0);
-            String timeoutUnit = lockRequestJson.optString("timeoutUnit", "MINUTES");
-            String reason = lockRequestJson.optString("reason", null);
-            if (reason != null && reason.isEmpty()) reason = null;
+            String reason = stringField(lockRequestJson, "reason");
 
             // Parse extra resources (optional - additional resources to lock atomically)
             List<RemoteLockRequest.ExtraResource> extra = null;
@@ -156,12 +161,8 @@ public class RemoteApiV1Action {
                 extra = new ArrayList<>(extraArray.size());
                 for (int i = 0; i < extraArray.size(); i++) {
                     JSONObject extraEntry = extraArray.getJSONObject(i);
-                    String extraResource = extraEntry.optString("resource", null);
-                    if (extraResource != null) extraResource = extraResource.trim();
-                    if (extraResource != null && extraResource.isEmpty()) extraResource = null;
-                    String extraLabel = extraEntry.optString("label", null);
-                    if (extraLabel != null) extraLabel = extraLabel.trim();
-                    if (extraLabel != null && extraLabel.isEmpty()) extraLabel = null;
+                    String extraResource = stringField(extraEntry, "resource");
+                    String extraLabel = stringField(extraEntry, "label");
                     if (extraResource == null && extraLabel == null) {
                         sendJsonError(
                                 rsp,
@@ -171,19 +172,19 @@ public class RemoteApiV1Action {
                         return;
                     }
                     // Exposure/existence of this extra selector is checked by admission in enqueue (see above).
-                    int extraQuantity = extraEntry.optInt("quantity", 0); // 0/absent = all (label)
+                    int extraQuantity; // 0/absent = all (label)
+                    try {
+                        extraQuantity = intField(extraEntry, "quantity", 0);
+                    } catch (InvalidFieldException e) {
+                        sendJsonError(rsp, 400, "INVALID_FIELD_VALUE", "extra[" + i + "]: " + e.getMessage());
+                        return;
+                    }
                     extra.add(new RemoteLockRequest.ExtraResource(extraResource, extraLabel, extraQuantity));
                 }
             }
 
             // clientId is optional - identifies the calling Jenkins instance (e.g. root URL)
-            String clientId = body.optString("clientId", null);
-            if (clientId != null) {
-                clientId = clientId.trim();
-                if (clientId.isEmpty()) {
-                    clientId = null;
-                }
-            }
+            String clientId = stringField(body, "clientId");
 
             // heartbeatIntervalSeconds is optional but must be a positive integer when present
             if (body.containsKey("heartbeatIntervalSeconds")) {
@@ -360,6 +361,103 @@ public class RemoteApiV1Action {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // Typed field parsing
+    //
+    // The lock() DSL gets its types from Java: a pipeline cannot pass "abc" where an int is declared,
+    // and LockStep#setTimeoutUnit rejects a unit that is not a TimeUnit. JSON has no such guarantee,
+    // and reading these fields with optInt/optLong/optString means an uninterpretable value silently
+    // becomes the default instead of being refused. That is not a smaller version of the same
+    // behaviour - it changes what the request means, in the direction of doing more:
+    //
+    //   * quantity that is not a number becomes 0, and 0 on a label means "every match", so a typo
+    //     asks for the whole pool rather than the one machine that was meant;
+    //   * timeoutForAllocateResource that is not a number becomes 0, and a timeoutUnit that is not a
+    //     TimeUnit disables the deadline outright, so a bounded wait silently becomes unbounded.
+    //
+    // Neither is reachable through a local lock(), so both arrived with this endpoint. Parse strictly
+    // instead, and let the caller hear about it.
+    //
+    // Strict does not mean brittle. A numeric string ("2") still parses, because json-lib accepts it
+    // and clients in the wild send it; an explicit null is treated as absent, because serialisers
+    // routinely emit null for an unset field and refusing those would break callers over nothing.
+    // -----------------------------------------------------------------------
+
+    /** Signals a field whose value cannot be interpreted as its type; mapped to HTTP 400. */
+    private static final class InvalidFieldException extends Exception {
+        private static final long serialVersionUID = 1L;
+
+        InvalidFieldException(String message) {
+            super(message);
+        }
+    }
+
+    /** True when the key is absent or explicitly null - both mean "not supplied". */
+    private static boolean isAbsent(JSONObject json, String key) {
+        return !json.containsKey(key) || JSONNull.getInstance().equals(json.get(key));
+    }
+
+    /**
+     * A string field, where absent, explicitly null, and blank all mean "not supplied".
+     *
+     * <p>The null case is why this exists rather than a bare optString: json-lib hands back the
+     * four-character string {@code "null"} for a JSON null, so {@code "resource": null} would ask for
+     * a resource actually named "null", and {@code "variable": null} would export an environment
+     * variable by that name.
+     */
+    @edu.umd.cs.findbugs.annotations.CheckForNull
+    private static String stringField(JSONObject json, String key) {
+        if (isAbsent(json, key)) {
+            return null;
+        }
+        String value = json.optString(key, null);
+        if (value == null) {
+            return null;
+        }
+        value = value.trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private static int intField(JSONObject json, String key, int defaultValue) throws InvalidFieldException {
+        if (isAbsent(json, key)) {
+            return defaultValue;
+        }
+        try {
+            return json.getInt(key);
+        } catch (RuntimeException e) {
+            throw new InvalidFieldException(key + " must be an integer, got: " + json.get(key));
+        }
+    }
+
+    private static long longField(JSONObject json, String key, long defaultValue) throws InvalidFieldException {
+        if (isAbsent(json, key)) {
+            return defaultValue;
+        }
+        try {
+            return json.getLong(key);
+        } catch (RuntimeException e) {
+            throw new InvalidFieldException(key + " must be a number, got: " + json.get(key));
+        }
+    }
+
+    /**
+     * Reads {@code timeoutUnit} the way {@link org.jenkins.plugins.lockableresources.LockStep#setTimeoutUnit}
+     * does: blank falls back to the default, anything else must name a {@link TimeUnit} and is upper-cased.
+     */
+    private static String timeUnitField(JSONObject json) throws InvalidFieldException {
+        String value = stringField(json, "timeoutUnit");
+        if (value == null) {
+            return "MINUTES";
+        }
+        String normalized = value.toUpperCase(Locale.ENGLISH);
+        try {
+            TimeUnit.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidFieldException("Invalid timeoutUnit: " + value);
+        }
+        return normalized;
+    }
 
     /** Cap on the POST body size (in characters) to avoid unbounded reads. */
     static final int MAX_BODY_CHARS = 1024 * 1024; // 1 MiB

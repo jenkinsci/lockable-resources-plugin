@@ -172,6 +172,115 @@ class RemoteApiV1ActionTest {
     }
 
     @Test
+    void acquireRejectsFieldValuesItCannotInterpret(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        RemoteApiV1Action action = new RemoteApiV1Action();
+
+        // A quantity that is not a number used to read as 0, and 0 on a label means "every match" -
+        // so a typo asked for the whole pool instead of the one machine that was meant.
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"label\":\"hw\",\"quantity\":\"abc\"}}"),
+                400,
+                "INVALID_FIELD_VALUE");
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"label\":\"hw\",\"quantity\":true}}"),
+                400,
+                "INVALID_FIELD_VALUE");
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"resource\":\"board-1\",\"priority\":\"high\"}}"),
+                400,
+                "INVALID_FIELD_VALUE");
+
+        // A timeout that cannot be read used to disable the deadline rather than be refused, which
+        // turned a bounded wait into an unbounded one with nothing to see from the caller's side.
+        assertJsonError(
+                invokeAcquire(
+                        action, "{\"lockRequest\":{\"resource\":\"board-1\",\"timeoutForAllocateResource\":\"soon\"}}"),
+                400,
+                "INVALID_FIELD_VALUE");
+        // MINUTE for MINUTES: the local step rejects this in setTimeoutUnit, and now so does the wire.
+        assertJsonError(
+                invokeAcquire(
+                        action,
+                        "{\"lockRequest\":{\"resource\":\"board-1\",\"timeoutForAllocateResource\":5,\"timeoutUnit\":\"MINUTE\"}}"),
+                400,
+                "INVALID_FIELD_VALUE");
+
+        // The same rule inside an extra entry, which is parsed separately.
+        assertJsonError(
+                invokeAcquire(
+                        action,
+                        "{\"lockRequest\":{\"resource\":\"board-1\",\"extra\":[{\"label\":\"hw\",\"quantity\":\"all\"}]}}"),
+                400,
+                "INVALID_FIELD_VALUE");
+    }
+
+    @Test
+    void acquireStillAcceptsTheLooseFormsClientsActuallySend(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        manager.createResourceWithLabel("board-2", "hw");
+        RemoteApiV1Action action = new RemoteApiV1Action();
+
+        // Strict parsing must not mean brittle parsing. json-lib reads a numeric string as a number
+        // and clients in the wild send one, so "1" has to keep working.
+        ResponseCapture numericString =
+                invokeAcquire(action, "{\"lockRequest\":{\"label\":\"hw\",\"quantity\":\"1\"}}");
+        assertEquals(202, numericString.status());
+        assertEquals("ACQUIRED", numericString.json().getString("state"));
+
+        // An explicit null is how serialisers spell "not set"; refusing it would break callers over
+        // nothing. It means the same as leaving the field out.
+        ResponseCapture explicitNulls = invokeAcquire(
+                action,
+                "{\"lockRequest\":{\"resource\":\"board-2\",\"quantity\":null,\"priority\":null,"
+                        + "\"timeoutForAllocateResource\":null,\"timeoutUnit\":null}}");
+        assertEquals(202, explicitNulls.status());
+        assertEquals("ACQUIRED", explicitNulls.json().getString("state"));
+
+        // A blank unit falls back to the default, as LockStep#setTimeoutUnit does; lower case is
+        // accepted and normalised, again matching the local step.
+        manager.createResourceWithLabel("board-3", "hw");
+        ResponseCapture blankUnit = invokeAcquire(
+                action,
+                "{\"lockRequest\":{\"resource\":\"board-3\",\"timeoutForAllocateResource\":5,\"timeoutUnit\":\"  \"}}");
+        assertEquals(202, blankUnit.status());
+
+        manager.createResourceWithLabel("board-4", "hw");
+        ResponseCapture lowerCaseUnit = invokeAcquire(
+                action,
+                "{\"lockRequest\":{\"resource\":\"board-4\",\"timeoutForAllocateResource\":5,\"timeoutUnit\":\"seconds\"}}");
+        assertEquals(202, lowerCaseUnit.status());
+
+        // Zero and negative keep their existing meanings. Both are expressible through a local
+        // lock() and mean "no limit" there, so this endpoint is not the place to start refusing them.
+        manager.createResourceWithLabel("board-5", "hw");
+        ResponseCapture negative = invokeAcquire(
+                action,
+                "{\"lockRequest\":{\"resource\":\"board-5\",\"quantity\":-1,\"timeoutForAllocateResource\":-5}}");
+        assertEquals(202, negative.status());
+
+        // A null selector is no selector. json-lib hands back the string "null" for a JSON null, so
+        // this used to go looking for a resource actually named "null" and report it missing - an
+        // answer that sends the caller hunting for the wrong problem.
+        assertJsonError(invokeAcquire(action, "{\"lockRequest\":{\"resource\":null}}"), 400, "MISSING_TARGET");
+
+        // Same for variable: an unset one must not export an environment variable called "null".
+        manager.createResourceWithLabel("board-6", "hw");
+        ResponseCapture nullVariable =
+                invokeAcquire(action, "{\"lockRequest\":{\"resource\":\"board-6\",\"variable\":null}}");
+        assertEquals(202, nullVariable.status());
+        JSONObject status =
+                invokeAcquireStatus(nullVariable.json().getString("lockId")).json();
+        assertFalse(status.containsKey("lockEnvVars"), "no variable was asked for, so none is exported");
+    }
+
+    @Test
     void acquireWithOversizedBodyReturns413(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.setRemoteApiEnabled(true);
