@@ -45,9 +45,9 @@ function showResponse(rsp, okText, errorText) {
 function createPropertyRow(container, name, value) {
   const row = document.createElement("div");
   row.className = "lr-property-row";
-  row.innerHTML = '<input type="text" class="jenkins-input lr-prop-name" placeholder="Name" />'
-    + '<input type="text" class="jenkins-input lr-prop-value" placeholder="Value" />'
-    + '<button type="button" class="jenkins-button jenkins-!-destructive-color lr-remove-property">\u00D7</button>';
+  row.innerHTML = '<input type="text" class="jenkins-input lr-prop-name" placeholder="' + i18n("resource-editor-property-name-placeholder") + '" />'
+    + '<input type="text" class="jenkins-input lr-prop-value" placeholder="' + i18n("resource-editor-property-value-placeholder") + '" />'
+    + '<button type="button" class="jenkins-button jenkins-!-destructive-color lr-remove-property" aria-label="' + i18n("resource-editor-property-remove-label") + '">\u00D7</button>';
   if (name) row.querySelector(".lr-prop-name").value = name;
   if (value) row.querySelector(".lr-prop-value").value = value;
   row.querySelector(".lr-remove-property").addEventListener("click", function () { row.remove(); });
@@ -233,7 +233,7 @@ function replaceNote(resourceName) {
   // Save original content for collapse
   d.dataset.noteOriginal = d.innerHTML;
   d.dataset.noteOpen = "true";
-  d.innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>loading...</div>";
+  d.innerHTML = "<div class='spinner-right' style='flex-grow: 1;'>" + i18n("resource-editor-loading") + "</div>";
   fetch("noteForm", {
     method: "post",
     headers: crumb.wrap({
@@ -626,7 +626,7 @@ function initPagination() {
 
       // Build controls HTML
       const opts = PAGE_SIZES.map(function (s) {
-        return '<option value="' + s + '"' + (s === pageSize ? ' selected' : '') + '>' + (s === 0 ? 'All' : s) + '</option>';
+        return '<option value="' + s + '"' + (s === pageSize ? ' selected' : '') + '>' + (s === 0 ? i18n("resource-editor-page-size-all") : s) + '</option>';
       }).join('');
       let html = '<div class="lr-pagination__nav">'
         + '<div class="jenkins-select lr-pagination__select-wrapper"><select class="jenkins-select__input lr-pagination__select">' + opts + '</select></div>';
@@ -892,14 +892,14 @@ function initColumnVisibility(config) {
     var selectAll = document.createElement("button");
     selectAll.type = "button";
     selectAll.className = "jenkins-button jenkins-button--tertiary";
-    selectAll.textContent = "All";
+    selectAll.textContent = i18n("resource-editor-colvis-all");
     selectAll.addEventListener("click", function () {
       toggleAll(true);
     });
     var deselectAll = document.createElement("button");
     deselectAll.type = "button";
     deselectAll.className = "jenkins-button jenkins-button--tertiary";
-    deselectAll.textContent = "None";
+    deselectAll.textContent = i18n("resource-editor-colvis-none");
     deselectAll.addEventListener("click", function () {
       toggleAll(false);
     });
@@ -1070,7 +1070,7 @@ function initColumnVisibility(config) {
         .catch(function (err) {
           if (typeof notificationBar !== "undefined" && notificationBar && notificationBar.show) {
             notificationBar.show(
-              "Failed to apply label expression filter: " + (err && err.message ? err.message : err),
+              i18n("resource-editor-label-expression-filter-error", err && err.message ? err.message : err),
               notificationBar.ERROR);
           }
         })
@@ -1172,15 +1172,15 @@ function initColumnVisibility(config) {
     toggleId: "lr-col-visibility-toggle",
     dataAttr: "col-key",
     columns: [
-      { idx: 1, key: "index", label: "#" },
-      { idx: 2, key: "name", label: "Resource" },
-      { idx: 3, key: "status", label: "Status" },
-      { idx: 4, key: "heldBy", label: "Held By" },
-      { idx: 5, key: "reason", label: "Reason" },
-      { idx: 6, key: "since", label: "Since" },
-      { idx: 7, key: "labels", label: "Labels" },
-      { idx: 8, key: "properties", label: "Properties" },
-      { idx: 9, key: "actions", label: "Actions" }
+      { idx: 1, key: "index", label: i18n("resource-editor-table-column-index") },
+      { idx: 2, key: "name", label: i18n("resource-editor-table-column-resource") },
+      { idx: 3, key: "status", label: i18n("resource-editor-table-column-status") },
+      { idx: 4, key: "heldBy", label: i18n("resource-editor-table-column-held-by") },
+      { idx: 5, key: "reason", label: i18n("resource-editor-table-column-reason") },
+      { idx: 6, key: "since", label: i18n("resource-editor-table-column-since") },
+      { idx: 7, key: "labels", label: i18n("resource-editor-table-column-labels") },
+      { idx: 8, key: "properties", label: i18n("resource-editor-table-column-properties") },
+      { idx: 9, key: "actions", label: i18n("resource-editor-table-column-actions") }
     ]
   });
 
@@ -1192,10 +1192,10 @@ function initColumnVisibility(config) {
     toggleId: "lr-labels-col-visibility-toggle",
     dataAttr: "labels-col-key",
     columns: [
-      { idx: 0, key: "labels", label: "Labels" },
-      { idx: 1, key: "assigned", label: "Assigned Resources" },
-      { idx: 2, key: "free", label: "Available" },
-      { idx: 3, key: "percentage", label: "Availability %" }
+      { idx: 0, key: "labels", label: i18n("resource-editor-labels-table-column-labels") },
+      { idx: 1, key: "assigned", label: i18n("resource-editor-labels-table-column-assigned") },
+      { idx: 2, key: "free", label: i18n("resource-editor-labels-table-column-free") },
+      { idx: 3, key: "percentage", label: i18n("resource-editor-labels-table-column-percentage") }
     ]
   });
 
@@ -1207,15 +1207,15 @@ function initColumnVisibility(config) {
     toggleId: "lr-queue-col-visibility-toggle",
     dataAttr: "queue-col-key",
     columns: [
-      { idx: 0, key: "position", label: "Position" },
-      { idx: 1, key: "action", label: "Reorder" },
-      { idx: 2, key: "type", label: "Type" },
-      { idx: 3, key: "request", label: "Resource(s)" },
-      { idx: 4, key: "reason", label: "Reason" },
-      { idx: 5, key: "requestedBy", label: "Requested By" },
-      { idx: 6, key: "requestedAt", label: "Queued At" },
-      { idx: 7, key: "priority", label: "Priority" },
-      { idx: 8, key: "queueId", label: "Queue ID" }
+      { idx: 0, key: "position", label: i18n("resource-editor-queue-table-column-position") },
+      { idx: 1, key: "action", label: i18n("resource-editor-queue-table-column-action") },
+      { idx: 2, key: "type", label: i18n("resource-editor-queue-table-column-type") },
+      { idx: 3, key: "request", label: i18n("resource-editor-queue-table-column-request") },
+      { idx: 4, key: "reason", label: i18n("resource-editor-queue-table-column-reason") },
+      { idx: 5, key: "requestedBy", label: i18n("resource-editor-queue-table-column-requested-by") },
+      { idx: 6, key: "requestedAt", label: i18n("resource-editor-queue-table-column-requested-at") },
+      { idx: 7, key: "priority", label: i18n("resource-editor-queue-table-column-priority") },
+      { idx: 8, key: "queueId", label: i18n("resource-editor-queue-table-column-queue-id") }
     ]
   });
 })();
@@ -1520,7 +1520,7 @@ function initColumnVisibility(config) {
     if (requestedByInput && requestedByInput.value.trim()) params.set("requestedBy", requestedByInput.value.trim());
 
     var url = endpointUrl + "?" + params.toString();
-    tbody.innerHTML = "<tr><td colspan=\"9\" class=\"lr-queue-loading\">Loading...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan=\"9\" class=\"lr-queue-loading\">" + i18n("resource-editor-queue-loading") + "</td></tr>";
 
     fetch(url, { method: "POST", headers: crumb.wrap({}) })
       .then(function (rsp) {
