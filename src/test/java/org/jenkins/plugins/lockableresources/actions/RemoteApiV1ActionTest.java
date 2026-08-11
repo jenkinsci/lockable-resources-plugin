@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -22,6 +23,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.StaplerResponse2;
+import org.kohsuke.stapler.verb.GET;
 
 @WithJenkins
 class RemoteApiV1ActionTest {
@@ -289,6 +291,13 @@ class RemoteApiV1ActionTest {
             assertEquals(202, acquire.status());
             assertEquals("ACQUIRED", acquire.json().getString("state"));
         }
+    }
+
+    @Test
+    void acquireStatusEndpointIsExplicitlyGetAnnotated() throws Exception {
+        Method doIndex = RemoteApiV1Action.AcquireStatusResource.class.getDeclaredMethod(
+                "doIndex", StaplerRequest2.class, StaplerResponse2.class);
+        assertNotNull(doIndex.getAnnotation(GET.class));
     }
 
     private static ResponseCapture invokeAcquire(RemoteApiV1Action action, String body) throws Exception {

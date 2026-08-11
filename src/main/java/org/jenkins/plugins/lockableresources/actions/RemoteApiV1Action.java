@@ -26,6 +26,7 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.StaplerResponse2;
 import org.kohsuke.stapler.interceptor.RequirePOST;
+import org.kohsuke.stapler.verb.GET;
 
 /**
  * Serves the remote lock REST API under {@code /lockable-resources/remote/v1/}.
@@ -263,6 +264,7 @@ public class RemoteApiV1Action {
             this.lockId = lockId;
         }
 
+        @GET
         public void doIndex(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException {
             Jenkins.get().checkPermission(LockableResourcesRootAction.REMOTE);
 
