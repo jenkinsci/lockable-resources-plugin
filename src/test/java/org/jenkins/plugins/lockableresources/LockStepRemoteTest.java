@@ -7,17 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.cloudbees.plugins.credentials.CredentialsScope;
 import com.cloudbees.plugins.credentials.SystemCredentialsProvider;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import org.jenkins.plugins.lockableresources.remote.RemoteServerFixture;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -520,138 +513,6 @@ class LockStepRemoteTest extends LockStepTestBase {
                 .add(new UsernamePasswordCredentialsImpl(
                         CredentialsScope.GLOBAL, credentialsId, "remote lock test credential", username, password));
         SystemCredentialsProvider.getInstance().save();
-    }
-
-    private static final class RemoteServerFixture {
-        private final AtomicInteger acquireRequests = new AtomicInteger();
-        private final AtomicInteger statusRequests = new AtomicInteger();
-        private final AtomicInteger releaseRequests = new AtomicInteger();
-        private final AtomicReference<String> lastAcquireBody = new AtomicReference<>();
-        private final AtomicReference<String> lastAcquireRawBody = new AtomicReference<>();
-        private final AtomicReference<String> lastAuthorizationHeader = new AtomicReference<>();
-        private final AtomicInteger pausedAcquires = new AtomicInteger();
-        private int acquireResponseStatus = 202;
-        private String acquireResponseBody = "{\"lockId\":\"lock-1\"}";
-        private String acquireStatusResponse = "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\"}";
-        private HttpServer server;
-
-        private void setAcquireResponse(int status, String body) {
-            this.acquireResponseStatus = status;
-            this.acquireResponseBody = body;
-        }
-
-        /** Answers the next {@code n} acquire calls with the maintenance switch's 503. */
-        private void pauseNextAcquires(int n) {
-            pausedAcquires.set(n);
-        }
-
-        private void setAcquireStatusResponse(String acquireStatusResponse) {
-            this.acquireStatusResponse = acquireStatusResponse;
-        }
-
-        private void start() throws IOException {
-            server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            server.createContext("/lockable-resources/remote/v1/acquire", new AcquireHandler());
-            server.createContext("/lockable-resources/remote/v1/acquire/lock-1", new AcquireStatusHandler());
-            server.createContext(
-                    "/lockable-resources/remote/v1/lease/lock-1/release", new NoContentHandler(releaseRequests));
-            server.createContext(
-                    "/lockable-resources/remote/v1/lease/lock-1/heartbeat", new NoContentHandler(new AtomicInteger()));
-            server.start();
-        }
-
-        private void stop() {
-            if (server != null) {
-                server.stop(0);
-            }
-        }
-
-        private String baseUrl() {
-            return "http://127.0.0.1:" + server.getAddress().getPort();
-        }
-
-        private final class AcquireHandler implements HttpHandler {
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                acquireRequests.incrementAndGet();
-                lastAuthorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
-                if (pausedAcquires.getAndUpdate(n -> n > 0 ? n - 1 : 0) > 0) {
-                    sendJson(
-                            exchange,
-                            503,
-                            "{\"errorCode\":\"ACQUIRES_PAUSED\",\"message\":\"not accepting new acquires\"}");
-                    return;
-                }
-                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                lastAcquireRawBody.set(body);
-                String resource = extractResource(body);
-                lastAcquireBody.set(resource);
-                // Auto-generate lockEnvVars in status response when variable is specified
-                String variable = extractVariable(body);
-                if (variable != null && resource != null && acquireStatusResponse.contains("\"state\":\"ACQUIRED\"")) {
-                    acquireStatusResponse = "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\","
-                            + "\"lockEnvVars\":{"
-                            + "\"" + variable + "\":\"" + resource + "\","
-                            + "\"" + variable + "0\":\"" + resource + "\""
-                            + "}}";
-                }
-                sendJson(exchange, acquireResponseStatus, acquireResponseBody);
-            }
-        }
-
-        private final class AcquireStatusHandler implements HttpHandler {
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                statusRequests.incrementAndGet();
-                sendJson(exchange, 200, acquireStatusResponse);
-            }
-        }
-
-        private static final class NoContentHandler implements HttpHandler {
-            private final AtomicInteger counter;
-
-            private NoContentHandler(AtomicInteger counter) {
-                this.counter = counter;
-            }
-
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                counter.incrementAndGet();
-                exchange.sendResponseHeaders(204, -1);
-                exchange.close();
-            }
-        }
-
-        private static String extractResource(String json) {
-            String marker = "\"resource\":\"";
-            int start = json.indexOf(marker);
-            if (start < 0) {
-                return null;
-            }
-            int valueStart = start + marker.length();
-            int valueEnd = json.indexOf('"', valueStart);
-            return valueEnd >= 0 ? json.substring(valueStart, valueEnd) : null;
-        }
-
-        private static String extractVariable(String json) {
-            String marker = "\"variable\":\"";
-            int start = json.indexOf(marker);
-            if (start < 0) {
-                return null;
-            }
-            int valueStart = start + marker.length();
-            int valueEnd = json.indexOf('"', valueStart);
-            return valueEnd >= 0 ? json.substring(valueStart, valueEnd) : null;
-        }
-
-        private static void sendJson(HttpExchange exchange, int status, String body) throws IOException {
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(status, bytes.length);
-            try (OutputStream outputStream = exchange.getResponseBody()) {
-                outputStream.write(bytes);
-            }
-        }
     }
 
     private static int findUnusedPort() throws IOException {
