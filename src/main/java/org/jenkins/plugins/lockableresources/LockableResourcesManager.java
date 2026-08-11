@@ -1151,10 +1151,37 @@ public class LockableResourcesManager extends GlobalConfiguration {
             this.queuedContexts.removeAll(toRemove);
         }
 
-        // reschedule for the next earliest deadline
+        // reschedule for the next earliest deadline, across both queues.
+        //
+        // There is one timeout task, and scheduleTimeoutAt() cancels whatever is pending before it
+        // schedules again. Computing the deadline from the local queue alone therefore does not just
+        // ignore remote entries - it cancels a wake-up a remote entry was relying on and never puts
+        // it back, so remote requests only ever time out when something else happens to run a
+        // maintenance pass.
+        earliestDeadline = Math.min(earliestDeadline, earliestRemoteDeadline());
         scheduleTimeoutAt(earliestDeadline);
 
         return nextEntry;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Earliest allocate-timeout deadline among the queued remote requests, or {@link Long#MAX_VALUE}
+     * when none of them is waiting against a deadline.
+     * Must be called under {@link #syncResources}.
+     */
+    private long earliestRemoteDeadline() {
+        long earliest = Long.MAX_VALUE;
+        for (RemoteQueueEntry entry : getRemoteQueueEntries()) {
+            if (!entry.isValid()) {
+                continue;
+            }
+            long deadline = entry.getTimeoutDeadlineMillis();
+            if (deadline > 0 && deadline < earliest) {
+                earliest = deadline;
+            }
+        }
+        return earliest;
     }
 
     // ---------------------------------------------------------------------------
@@ -1924,6 +1951,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
             list.add(insertAt, entry);
             LOGGER.fine("Remote acquire queued: lockId=" + entry.getLockId() + " priority=" + entry.getPriority()
                     + " position=" + insertAt);
+
+            // Same as queueContext(): if this entry has a timeout and its deadline is earlier than the
+            // currently scheduled one, (re)schedule so it fires on time. Without this a remote request
+            // computes a deadline that nothing ever wakes up to enforce, so timeoutForAllocateResource
+            // stops being an upper bound on the wait - it only takes effect when a maintenance pass
+            // happens to run for some other reason, such as the holder releasing.
+            long deadline = entry.getTimeoutDeadlineMillis();
+            if (deadline > 0 && (nextTimeoutDeadline == 0 || deadline < nextTimeoutDeadline)) {
+                scheduleTimeoutAt(deadline);
+            }
         }
     }
 

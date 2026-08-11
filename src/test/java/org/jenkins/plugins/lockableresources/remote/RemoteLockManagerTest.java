@@ -376,6 +376,42 @@ class RemoteLockManagerTest {
     }
 
     @Test
+    void queuedRequestTimesOutOnItsOwnDeadlineWithoutOutsideHelp(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("board-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+
+        RemoteLockRecord waiter =
+                RemoteLockManager.get().enqueue(reqWithTimeout("board-1", 500L, "MILLISECONDS"), null);
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+
+        // Deliberately no checkTimeouts() and no release: nothing here touches the queue after the
+        // request is made. The deadline has to be enforced by a wake-up the queue scheduled for
+        // itself, which is the whole point - a timeout that only fires when something else happens to
+        // run a maintenance pass is not an upper bound on the wait, and every other test in this file
+        // hides that by calling checkTimeouts() by hand.
+        long deadlineAt = System.currentTimeMillis() + 500L;
+        for (int i = 0; i < 100 && waiter.getState() == RemoteLockState.QUEUED; i++) {
+            Thread.sleep(100);
+        }
+
+        assertEquals(RemoteLockState.FAILED, waiter.getState(), "the queued request timed out on its own");
+        assertEquals("LOCK_WAIT_TIMEOUT", waiter.getErrorCode());
+        assertTrue(
+                waiter.getTerminalAt() >= deadlineAt,
+                "it timed out at its deadline, not before: terminalAt=" + waiter.getTerminalAt() + " deadline="
+                        + deadlineAt);
+
+        // The holder is still holding: nothing about this timeout depended on the resource freeing up.
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+        assertNotNull(manager.fromName("board-1").getRemoteLockedBy());
+    }
+
+    @Test
     void timedOutRecordRecordsTerminalTimestampAndSurvivesMaintenance(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.setRemoteApiEnabled(true);
