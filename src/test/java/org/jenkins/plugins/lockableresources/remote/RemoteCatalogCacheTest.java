@@ -55,6 +55,52 @@ class RemoteCatalogCacheTest {
     }
 
     @Test
+    void aFailedRefreshKeepsWhatWasLastKnown(JenkinsRule j) throws Exception {
+        // The case the fallback exists for, and the one the empty-cache test above cannot reach: a
+        // remote that answered once and then stopped. Blanking the page here would say "this server
+        // publishes nothing", which is a claim about the server rather than about the connection.
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.start();
+        RemoteConnection connection = new RemoteConnection("server-a", remote.baseUrl(), "");
+        LockableResourcesManager.get().setRemotes(List.of(connection));
+        remote.setResourcesResponse(
+                200, "{\"acceptNewAcquires\":true,\"resources\":[{\"name\":\"board-1\",\"state\":\"FREE\"}]}");
+
+        RemoteCatalog good = RemoteCatalogCache.get().fetch(connection);
+        assertEquals(1, good.getResources().size());
+        assertNull(good.getError());
+        long fetchedAt = good.getFetchedAt();
+
+        remote.stop();
+        RemoteCatalog afterOutage = RemoteCatalogCache.get().fetch(connection);
+
+        assertEquals(1, afterOutage.getResources().size(), "the last known resources are still there");
+        assertEquals("board-1", afterOutage.getResources().get(0).getName());
+        assertNotNull(afterOutage.getError(), "and the page can say the view is not current");
+        assertEquals(fetchedAt, afterOutage.getFetchedAt(), "aged from the last successful fetch, not from now");
+    }
+
+    @Test
+    void aFreshSnapshotIsServedWithoutAskingAgain(JenkinsRule j) throws Exception {
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.start();
+        try {
+            RemoteConnection connection = new RemoteConnection("server-a", remote.baseUrl(), "");
+            LockableResourcesManager.get().setRemotes(List.of(connection));
+            RemoteCatalogCache.get().invalidateAll();
+            RemoteCatalogCache.get().fetch(connection);
+            int fetchesSoFar = remote.resourcesRequests.get();
+
+            RemoteCatalog served = RemoteCatalogCache.get().get("server-a");
+
+            assertNotNull(served, "a snapshot inside its TTL is handed straight back");
+            assertEquals(fetchesSoFar, remote.resourcesRequests.get(), "rendering did not contact the remote");
+        } finally {
+            remote.stop();
+        }
+    }
+
+    @Test
     void invalidatingDropsEverySnapshot(JenkinsRule j) {
         LockableResourcesManager manager = LockableResourcesManager.get();
         RemoteConnection remote = new RemoteConnection("server-a", "http://127.0.0.1:1/jenkins", "");
