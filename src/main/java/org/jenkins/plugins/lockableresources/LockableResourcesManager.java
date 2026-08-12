@@ -78,6 +78,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
+    /**
+     * One line per resource state change, for working out who held what and when.
+     *
+     * <p>Separate from {@link #LOGGER} so it can be turned on by itself: switching the main logger to
+     * FINE to see holdings would bury them in unrelated debug output.
+     *
+     * <p>The line is written where the state actually changes, under the same lock that guards it, so
+     * the order of these lines is the order the resources really changed hands. That is the whole
+     * point of it: a client can only timestamp its own call to release, which returns after the server
+     * has already freed the resource and possibly handed it to someone else - so two clients' logs can
+     * appear to overlap on a resource that was never held twice. Reconstructing exclusion from the
+     * clients therefore cannot distinguish a real double-grant from a slow round trip, and this can.
+     *
+     * <p>Format: {@code LRA|<epochMs>|<LOCAL|REMOTE>|<ACQUIRED|RELEASED>|<resource>|<holder>}, where
+     * holder is the lock id for a remote hold and the build id for a local one.
+     */
+    private static final Logger AUDIT = Logger.getLogger("org.jenkins.plugins.lockableresources.audit");
+
+    /**
+     * Records a resource changing hands. Costs one level check when the logger is off, which is the
+     * normal case - a load test can afford the lines, ordinary use should not pay for them.
+     */
+    private static void audit(String kind, String event, String resourceName, String holder) {
+        if (AUDIT.isLoggable(Level.FINE)) {
+            AUDIT.fine(
+                    "LRA|" + System.currentTimeMillis() + "|" + kind + "|" + event + "|" + resourceName + "|" + holder);
+        }
+    }
+
     private boolean allowEmptyOrNullValues;
 
     /**
@@ -929,6 +958,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             if (reason != null && !reason.isEmpty()) {
                 r.setLockReason(reason);
             }
+            audit("LOCAL", "ACQUIRED", r.getName(), build.getExternalizableId());
         }
 
         LockedResourcesBuildAction.findAndInitAction(build).addUsedResources(getResourcesNames(resourcesToLock));
@@ -959,6 +989,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resource.unqueue();
             resource.setBuild(null);
             resource.setLockReason(null);
+            audit("LOCAL", "RELEASED", resource.getName(), build.getExternalizableId());
             uncacheIfFreeing(resource, true, false);
 
             if (resource.isEphemeral()) {
@@ -2025,6 +2056,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource r : resources) {
             r.unqueue();
             r.setRemoteLockedBy(lockId);
+            audit("REMOTE", "ACQUIRED", r.getName(), lockId);
         }
         save();
         return true;
@@ -2041,6 +2073,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 LockableResource r = fromName(name);
                 if (r != null && lockId.equals(r.getRemoteLockedBy())) {
                     r.setRemoteLockedBy(null);
+                    audit("REMOTE", "RELEASED", name, lockId);
                 }
             }
             while (proceedNextContext()) {
