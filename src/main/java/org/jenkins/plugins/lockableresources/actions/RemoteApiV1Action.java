@@ -386,6 +386,9 @@ public class RemoteApiV1Action {
      */
     public static final class ResourcesResource {
 
+        // Read-only: this lists what the server exposes and changes nothing. Annotated so Stapler
+        // refuses anything but GET, matching the acquire status endpoint (#1076).
+        @GET
         public void doIndex(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException {
             Jenkins.get().checkPermission(LockableResourcesRootAction.REMOTE);
 

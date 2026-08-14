@@ -557,6 +557,15 @@ class RemoteApiV1ActionTest {
         assertNotNull(doIndex.getAnnotation(GET.class));
     }
 
+    @Test
+    void resourcesEndpointIsExplicitlyGetAnnotated() throws Exception {
+        // Without a verb annotation Stapler routes any method here, which the Jenkins security scan
+        // reports as a CSRF risk. The endpoint is read-only, so GET is the honest restriction.
+        Method doIndex = RemoteApiV1Action.ResourcesResource.class.getDeclaredMethod(
+                "doIndex", StaplerRequest2.class, StaplerResponse2.class);
+        assertNotNull(doIndex.getAnnotation(GET.class));
+    }
+
     private static ResponseCapture invokeAcquire(RemoteApiV1Action action, String body) throws Exception {
         StaplerRequest2 req = mockJsonRequest(body);
         ResponseCapture response = new ResponseCapture();
