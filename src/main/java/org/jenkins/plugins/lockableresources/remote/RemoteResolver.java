@@ -121,8 +121,9 @@ public final class RemoteResolver {
 
     /**
      * Runs the canonical {@code lock()} parameter validation over a remote request, exactly as
-     * {@link LockStep#validate} does for a local step: no target while empty values are disallowed,
-     * {@code resource} and {@code label} together, {@code priority} combined with
+     * {@link org.jenkins.plugins.lockableresources.LockStep#validate} does for a local step: no
+     * target while empty values are disallowed, {@code resource} and {@code label} together,
+     * {@code priority} combined with
      * {@code inversePrecedence}, and an unknown {@code resourceSelectStrategy}. Each {@code extra}
      * entry is validated as well.
      *
