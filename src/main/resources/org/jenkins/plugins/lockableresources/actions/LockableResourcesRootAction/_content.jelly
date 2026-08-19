@@ -17,16 +17,20 @@
       <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
       <div id="lr-page-data" data-current-user="${it.userName}" style="display:none;"></div>
       <l:app-bar title="${%header.resources}">
-        <j:if test="${it.resources.size() > 0}">
+        <j:if test="${it.resources.size() > 0 or it.remoteConfigured}">
           <div class="app-build-tabs lr-tab-bar" role="tablist">
-            <a class="jenkins-button lr-tab-button lr-tab-button--active"
-              role="tab" aria-selected="true" data-lr-tab="overview">${%tab.overview}</a>
+            <a class="jenkins-button lr-tab-button ${it.resources.size() > 0 ? 'lr-tab-button--active' : ''}"
+              role="tab" aria-selected="${it.resources.size() > 0}" data-lr-tab="overview">${%tab.overview}</a>
             <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
               role="tab" aria-selected="false" data-lr-tab="resources">${%tab.resources}</a>
             <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
               role="tab" aria-selected="false" data-lr-tab="labels">${%tab.labels}</a>
             <a class="jenkins-button jenkins-button--tertiary lr-tab-button"
               role="tab" aria-selected="false" data-lr-tab="queue">${%tab.queue}</a>
+            <j:if test="${it.remoteConfigured}">
+              <a class="jenkins-button jenkins-button--tertiary lr-tab-button ${it.resources.size() == 0 ? 'lr-tab-button--active' : ''}"
+                role="tab" aria-selected="${it.resources.size() == 0}" data-lr-tab="remote">${%tab.remote}</a>
+            </j:if>
           </div>
         </j:if>
         <l:hasPermission permission="${it.CONFIGURE}">
@@ -129,8 +133,28 @@
                   data-edit-resource-on-fail="${%edit.resource.on.fail}"
       />
 
+      <j:if test="${it.remoteAcquiresPaused}">
+        <div class="lr-paused-banner jenkins-!-margin-bottom-2">
+          <l:icon src="symbol-pause-circle-outline plugin-ionicons-api" />
+          <span>
+            <strong>${%paused.banner.title}</strong>
+            ${%paused.banner.detail}
+          </span>
+        </div>
+      </j:if>
+      <j:if test="${it.delegatedMode}">
+        <div class="lr-delegated-badge jenkins-!-margin-bottom-2">
+          <l:icon src="symbol-git-network-outline plugin-ionicons-api" />
+          <span>
+            <strong>${%delegated.badge.title}</strong>
+            ${%delegated.badge.routedTo(it.forcedServerId, it.forcedServerUrl)}
+            <br/>
+            <span class="jenkins-!-color-secondary">${%delegated.badge.localNote}</span>
+          </span>
+        </div>
+      </j:if>
       <j:choose>
-        <j:when test="${it.resources.size() == 0}">
+        <j:when test="${it.resources.size() == 0 and !it.remoteConfigured}">
           <l:notice title="${%resources.not_configured}" icon="symbol-lock-closed">
             <l:hasPermission permission="${it.CONFIGURE}">
               <p>${%resources.empty.hint}</p>
@@ -140,7 +164,7 @@
         <j:otherwise>
         <div class="lr-tabs">
           <!-- Tab panes -->
-          <div class="lr-tab-pane lr-tab-pane--active" id="lr-tab-overview" role="tabpanel">
+          <div class="lr-tab-pane ${it.resources.size() > 0 ? 'lr-tab-pane--active' : ''}" id="lr-tab-overview" role="tabpanel">
             <j:set var="summary" value="${it.summary}" />
             <div class="lr-overview-grid">
               <!-- Quick Actions card (top, full width) -->
@@ -373,6 +397,11 @@
             </div>
             <st:include page="tableQueue/table"/>
           </div>
+          <j:if test="${it.remoteConfigured}">
+            <div class="lr-tab-pane ${it.resources.size() == 0 ? 'lr-tab-pane--active' : ''}" id="lr-tab-remote" role="tabpanel">
+              <st:include page="tableRemote/table"/>
+            </div>
+          </j:if>
         </div>
         </j:otherwise>
       </j:choose>

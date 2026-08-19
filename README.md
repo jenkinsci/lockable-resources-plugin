@@ -188,6 +188,10 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
 }
 ```
 
+> *Note:* The combined variable joins the names with commas, so splitting it is only safe while no
+resource name contains a comma. Resource names may contain one. Prefer the numbered variables
+(`LOCKED_RESOURCE0`, `LOCKED_RESOURCE1`, …) whenever a lock can resolve to more than one resource.
+
 #### Skip executing the block if there is a queue
 
 ```groovy
@@ -328,6 +332,71 @@ System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "
 
 ----
 
+## Remote lockable resources
+
+A resource can be locked from a *different* Jenkins controller. This is for hardware that only one
+controller owns but several need to use - a test rig, a licence dongle, a PLC - without duplicating
+the resource definition on every controller and hoping the duplicates never disagree.
+
+The controller that owns the resource is the **server**. Any controller that locks it is a **client**.
+A controller can be both. From the pipeline it is one extra argument:
+
+```groovy
+lock(resource: 'plc-01', serverId: 'server-a') {
+  echo 'This build holds plc-01, which lives on server-a'
+}
+```
+
+Everything else about `lock()` behaves as it does locally: `label`, `quantity`, `variable`, `extra`,
+`priority`, `skipIfLocked`, `inversePrecedence` and the allocate timeout all work the same way, and
+the queue on the server is shared between local and remote waiters. A remote lock **fails closed**:
+if the server cannot be reached, the step fails rather than running the block unlocked.
+
+### On the server (the controller that owns the resource)
+
+1. *Manage Jenkins* → *Configure System* → *Lockable Resources (Server)* → **Enable remote API**.
+2. Set **Expose label(s)** - one or more labels, separated by spaces. Only resources carrying one of
+   them can be seen or locked remotely. It is empty by default, which exposes nothing: an enabled
+   API on its own hands out no resources.
+3. Create a Jenkins user for the clients, give it the **Lockable Resources / RemoteUse** permission,
+   and generate an API token for it (*User* → *Security* → *API Token*).
+
+A client holding a lock heartbeats while it works. If the heartbeats stop for 60 seconds the server
+marks the lease `STALE` and says so on the lockable resources page, but it does **not** release it:
+a client that has gone quiet may still be driving the hardware, and handing the resource to someone
+else on that guess is the one outcome a lock exists to prevent. Releasing a stale lease is an
+administrator's decision, taken from that page.
+
+### On the client (the controller that locks it)
+
+Add the server under *Lockable Resources (Client)* → **Remote servers**: a **Server ID** (the name
+used in `serverId:`), the **Remote Jenkins URL**, and a **Credentials ID** - a username/password
+credential holding the server user's name and API token. Set **Client ID** to something that
+identifies this controller; it is what the server shows next to the lock.
+
+### Delegated mode
+
+Setting **Forced server ID** on a client sends *every* `lock()` on that controller to the named
+server, including locks that name no `serverId` at all. It also **overrides a `serverId` a pipeline
+did name**, which is the point of it - the administrator decides where locks go - but it does mean a
+pipeline cannot opt out. The override is logged in the build log.
+
+### Maintenance
+
+Turning off **Accept new acquire requests** on a server refuses new acquires while leaving locks
+already held alone: heartbeats and releases keep working, and waiting clients retry rather than
+fail. Use it to drain a server before taking it down.
+
+A remote can also be switched off from the client side (**Enabled** on the entry) without deleting
+its configuration.
+
+### Locking from something that is not Jenkins
+
+The same locks are reachable over REST, so scripts and non-Jenkins tools can take them too. See
+[remote-api-curl.md](src/doc/examples/remote-api-curl.md) for the endpoints and a worked example.
+
+----
+
 ## Improve performance
 
 To be safe thread over all jobs and resources, need to be all operations synchronized.
@@ -392,6 +461,39 @@ Properties *description*, *labels* and *properties* are optional.
 
 Fields like *reservedBy*, *reservedTimestamp* or *note* are not supported, they will be ignored.
 
+### Remote locking
+
+[Remote locking](#remote-lockable-resources) is configured under the same key. A controller may act
+as a server, as a client, or as both, so the two groups are independent:
+
+```yml
+unclassified:
+  lockableResourcesManager:
+    # Server side: this controller lets others lock its resources
+    remoteApiEnabled: true
+    exposeLabel: "remote-enabled"
+    acceptNewAcquires: true      # maintenance switch; default is true
+
+    # Client side: this controller locks resources on others
+    clientId: "jenkins-client-1"
+    forcedServerId: ""           # non-empty enables delegated mode
+    remotes:
+      - serverId: "server-a"
+        url: "http://jenkins-server-a:8080/jenkins"
+        credentialsId: "server-a-token"
+      - serverId: "server-b"
+        url: "https://jenkins-server-b.example.com/"
+        credentialsId: "server-b-token"
+        enabled: false           # configured but not used; default is true
+
+    declaredResources:
+      - name: "plc-01"
+        labels: "plc remote-enabled"
+```
+
+Only resources whose labels include one of the *exposeLabel* labels are reachable remotely, so
+`plc-01` above is, and a resource labelled only `plc` is not.
+
 ----
 
 ## lockable-resources overview
@@ -455,6 +557,7 @@ Unlock | Jenkins.ADMINISTER | Manually unlock a resource.
 Reserve | Jenkins.ADMINISTER | Reserve or unreserve a resource.
 Steal | Jenkins.ADMINISTER | Steal a lock from another build.
 Queue | Jenkins.ADMINISTER | Reorder the lock wait queue.
+RemoteUse | Jenkins.ADMINISTER | Acquire and release locks through the [remote lock REST API](#remote-lockable-resources). Grant it to the machine users whose API tokens remote client controllers use.
 
 All mutating permissions default to `ADMINISTER`, preserving existing behavior. Admins can delegate individual permissions to specific roles without granting full admin access.
 

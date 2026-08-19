@@ -13,6 +13,7 @@ import hudson.model.TaskListener;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -67,10 +68,19 @@ public final class RemoteLockSession implements Serializable {
     private final AtomicBoolean completionSignaled = new AtomicBoolean(false);
 
     private transient volatile ScheduledFuture<?> pollTask;
+    /** Set while the remote answers 503 ACQUIRES_PAUSED and we are waiting for it to reopen. */
+    private volatile boolean acquirePaused;
+    /** Wall-clock deadline for the acquire retries, or 0 when the request waits forever. */
+    private volatile long acquireDeadlineMillis;
+
+    private transient volatile ScheduledFuture<?> acquireRetryTask;
     private transient volatile ScheduledFuture<?> heartbeatTask;
 
     private volatile String serverId;
     private volatile String lockId;
+    /** What was asked for, kept so the page (and a resumed session) can still name it. */
+    private volatile String requestDescription;
+
     private volatile RemoteAcquireState lastState = RemoteAcquireState.UNKNOWN;
     private volatile boolean bodyStarted;
     private volatile int consecutivePollFailures;
@@ -120,30 +130,25 @@ public final class RemoteLockSession implements Serializable {
                 logger);
         context.get(FlowNode.class).addAction(new PauseAction("Lock"));
 
+        // Use configured clientId (or root URL as fallback) to identify this Jenkins to the remote server.
+        String clientId = lrm.getEffectiveClientId();
+        this.acquireDeadlineMillis = acquireDeadline(lockRequest);
         try {
-            // Use configured clientId (or root URL as fallback) to identify this Jenkins to the remote server.
-            String clientId = lrm.getEffectiveClientId();
-            String acquiredLockId = client.enqueueAcquire(
-                    remote,
-                    authorizationHeader,
-                    lockRequest,
-                    RemoteClientDefaults.DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
-                    clientId);
-            this.serverId = remote.getServerId();
-            this.lockId = acquiredLockId;
-            LockableResourcesManager.printLogs(
-                    "Remote acquire enqueued (serverId="
-                            + remote.getServerId()
-                            + ", serverUrl="
-                            + remote.getUrl()
-                            + ", lockId="
-                            + acquiredLockId
-                            + ")",
-                    Level.FINE,
-                    LOGGER,
-                    logger);
-            startPolling(host, remote, authorizationHeader, client, run, displayTarget);
+            enqueueAcquire(host, remote, authorizationHeader, client, run, displayTarget, lockRequest, clientId);
         } catch (RemoteApiException ex) {
+            if (ex.getHttpStatus() == 503) {
+                // The server is paused for maintenance, not broken. Failing the build here is exactly what
+                // the switch exists to avoid, so keep asking until this request's own allocation timeout.
+                acquirePaused = true;
+                logger.println("Remote server is not accepting new acquire requests right now (serverId="
+                        + remote.getServerId()
+                        + ", serverUrl="
+                        + remote.getUrl()
+                        + "); waiting for it to resume.");
+                scheduleAcquireRetry(
+                        host, remote, authorizationHeader, client, run, displayTarget, lockRequest, clientId);
+                return false;
+            }
             logger.println("Remote lock request failed (serverId="
                     + remote.getServerId()
                     + ", serverUrl="
@@ -153,6 +158,118 @@ public final class RemoteLockSession implements Serializable {
             finishFailure(host, ex);
         }
         return false;
+    }
+
+    /** Sends the acquire request and, on acceptance, starts polling for its outcome. */
+    private void enqueueAcquire(
+            Host host,
+            RemoteConnection remote,
+            String authorizationHeader,
+            RemoteApiClient client,
+            Run<?, ?> run,
+            String displayTarget,
+            RemoteLockRequest lockRequest,
+            String clientId)
+            throws RemoteApiException {
+        String acquiredLockId = client.enqueueAcquire(
+                remote,
+                authorizationHeader,
+                lockRequest,
+                RemoteClientDefaults.DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
+                clientId);
+        this.serverId = remote.getServerId();
+        this.lockId = acquiredLockId;
+        this.acquirePaused = false;
+        this.requestDescription = displayTarget;
+        RemoteClientRegistry.get().queued(acquiredLockId, remote.getServerId(), displayTarget, run);
+        LOGGER.log(Level.FINE, "Remote acquire enqueued: serverId={0}, serverUrl={1}, lockId={2}", new Object[] {
+            remote.getServerId(), remote.getUrl(), acquiredLockId
+        });
+        startPolling(host, remote, authorizationHeader, client, run, displayTarget);
+    }
+
+    /** Deadline for the acquire retries, mirroring the allocation timeout the request carries. */
+    private static long acquireDeadline(RemoteLockRequest lockRequest) {
+        long timeout = lockRequest.getTimeoutForAllocateResource();
+        if (timeout <= 0) {
+            return 0; // wait forever, like a local lock() without a timeout
+        }
+        try {
+            TimeUnit unit = TimeUnit.valueOf(lockRequest.getTimeoutUnit().toUpperCase(Locale.ENGLISH));
+            return System.currentTimeMillis() + unit.toMillis(timeout);
+        } catch (IllegalArgumentException e) {
+            return 0;
+        }
+    }
+
+    private void scheduleAcquireRetry(
+            Host host,
+            RemoteConnection remote,
+            String authorizationHeader,
+            RemoteApiClient client,
+            Run<?, ?> run,
+            String displayTarget,
+            RemoteLockRequest lockRequest,
+            String clientId) {
+        cancelAcquireRetryTask();
+        acquireRetryTask = jenkins.util.Timer.get()
+                .scheduleWithFixedDelay(
+                        () -> retryAcquire(
+                                host, remote, authorizationHeader, client, run, displayTarget, lockRequest, clientId),
+                        RemoteClientDefaults.DEFAULT_POLL_INTERVAL_SECONDS,
+                        RemoteClientDefaults.DEFAULT_POLL_INTERVAL_SECONDS,
+                        TimeUnit.SECONDS);
+    }
+
+    @SuppressFBWarnings(
+            value = "REC_CATCH_EXCEPTION",
+            justification = "The retry loop must not propagate anything to the executor.")
+    private void retryAcquire(
+            Host host,
+            RemoteConnection remote,
+            String authorizationHeader,
+            RemoteApiClient client,
+            Run<?, ?> run,
+            String displayTarget,
+            RemoteLockRequest lockRequest,
+            String clientId) {
+        if (completionSignaled.get()) {
+            cancelAcquireRetryTask();
+            return;
+        }
+        try {
+            enqueueAcquire(host, remote, authorizationHeader, client, run, displayTarget, lockRequest, clientId);
+            cancelAcquireRetryTask();
+        } catch (RemoteApiException ex) {
+            if (ex.getHttpStatus() == 503) {
+                if (acquireDeadlineMillis > 0 && System.currentTimeMillis() >= acquireDeadlineMillis) {
+                    cancelAcquireRetryTask();
+                    finishFailure(
+                            host,
+                            new AbortException("Remote acquire timed out while the server was not accepting new "
+                                    + "acquire requests (serverId=" + serverId(remote) + ", state=FAILED, "
+                                    + "errorCode=ACQUIRES_PAUSED)"));
+                }
+                return; // still paused and still within the budget - keep waiting
+            }
+            cancelAcquireRetryTask();
+            finishFailure(host, ex);
+        } catch (Exception ex) {
+            cancelAcquireRetryTask();
+            finishFailure(host, ex);
+        }
+    }
+
+    private String serverId(RemoteConnection remote) {
+        return serverId != null ? serverId : remote.getServerId();
+    }
+
+    private void cancelAcquireRetryTask() {
+        ScheduledFuture<?> task = acquireRetryTask;
+        if (task != null) {
+            task.cancel(false);
+            acquireRetryTask = null;
+        }
     }
 
     private void startPolling(
@@ -216,6 +333,7 @@ public final class RemoteLockSession implements Serializable {
                     }
                     lockId = statusLockId;
                     bodyStarted = true;
+                    RemoteClientRegistry.get().acquired(statusLockId, status.getResourceNames());
                     cancelPollTask();
                     startHeartbeat(remote, authorizationHeader, client);
                     host.runBody(remoteResource, status.getLockEnvVars(), statusLockId);
@@ -223,6 +341,7 @@ public final class RemoteLockSession implements Serializable {
                 case SKIPPED:
                     cancelPollTask();
                     completionSignaled.set(true);
+                    RemoteClientRegistry.get().forget(lockId);
                     PauseAction.endCurrentPause(host.context().get(FlowNode.class));
                     LockedResourcesBuildAction.addLog(
                             run,
@@ -252,34 +371,23 @@ public final class RemoteLockSession implements Serializable {
             if (ex instanceof RemoteApiException) {
                 int httpStatus = ((RemoteApiException) ex).getHttpStatus();
                 if (httpStatus == 404 || httpStatus == 410) {
-                    if (!bodyStarted) {
-                        // Still acquiring: the QUEUED record is gone. We hold a lockId (admission passed at
-                        // POST) and skipIfLocked is resolved synchronously at POST (never polled), so a
-                        // never-acquired record vanishing means the server-side allocation wait timed out.
-                        // Normalize to LOCK_WAIT_TIMEOUT - the same outcome as observing a FAILED state -
-                        // instead of mislabeling a legitimate timeout as a transport/communication failure.
-                        LOGGER.log(
-                                Level.WARNING,
-                                "Remote acquire wait ended (HTTP {0}); treating as LOCK_WAIT_TIMEOUT. "
-                                        + "serverId={1}, lockId={2}",
-                                new Object[] {httpStatus, serverId, lockId});
-                        finishFailure(
-                                host,
-                                new AbortException("Remote acquire failed (serverId=" + serverId + ", lockId=" + lockId
-                                        + ", state=FAILED, errorCode=LOCK_WAIT_TIMEOUT)"));
-                        return;
-                    }
-                    // An already-ACQUIRED lease vanished (server restart / forced release): irrecoverable.
+                    // The server has no record of this lock. This used to be split on bodyStarted, with the
+                    // still-acquiring side reported as LOCK_WAIT_TIMEOUT - but polling stops the instant the
+                    // lock is acquired, so the bodyStarted side is unreachable, and a legitimate allocation
+                    // timeout arrives as a terminal FAILED state rather than a 404 (the record now lives for
+                    // its terminal TTL, and so does a released queued request). Reaching here therefore means
+                    // the record is genuinely gone: the server restarted, the record outlived its TTL, or the
+                    // lock id is not one this server issued. Reporting that as a timeout would mislabel it.
                     LOGGER.log(
                             Level.WARNING,
-                            "Remote lock not found on server (HTTP {0}); server may have restarted. "
-                                    + "serverId={1}, lockId={2}",
+                            "Remote lock record not found (HTTP {0}); server may have restarted or the record "
+                                    + "expired. serverId={1}, lockId={2}",
                             new Object[] {httpStatus, serverId, lockId});
                     finishFailure(
                             host,
-                            new AbortException(
-                                    "Remote lock not found (HTTP " + httpStatus + "), server may have restarted. "
-                                            + "serverId=" + serverId + ", lockId=" + lockId));
+                            new AbortException("Remote lock record not found (HTTP " + httpStatus
+                                    + "), server may have restarted or the record expired. " + "serverId=" + serverId
+                                    + ", lockId=" + lockId));
                     return;
                 }
             }
@@ -358,7 +466,8 @@ public final class RemoteLockSession implements Serializable {
         if (!completionSignaled.compareAndSet(false, true)) {
             return;
         }
-        cancelPollTask();
+        RemoteClientRegistry.get().forget(lockId);
+        cancelPollTaskAndRetries();
         cancelHeartbeatTask();
         // Fail-closed: do not attempt release on communication/state failures.
         // Remote side should reclaim via heartbeat timeout.
@@ -368,13 +477,15 @@ public final class RemoteLockSession implements Serializable {
     /** Called by the step's body callback when the lock body finishes - cancel heartbeat and release the lease. */
     public void onBodyFinished(Host host) {
         completionSignaled.set(true);
+        RemoteClientRegistry.get().forget(lockId);
         cancelHeartbeatTask();
         releaseBestEffort(host);
     }
 
     /** Aborts an in-flight session (step stopped): cancel timers, best-effort release, fail the context. */
     public void stop(Host host, Throwable cause) {
-        cancelPollTask();
+        RemoteClientRegistry.get().forget(lockId);
+        cancelPollTaskAndRetries();
         cancelHeartbeatTask();
         // Unified remote lock cleanup: release if held (no-op when nothing acquired yet).
         releaseBestEffort(host);
@@ -388,6 +499,19 @@ public final class RemoteLockSession implements Serializable {
             justification = "Resume is best-effort; any failure resuming the poll loop fails the step closed.")
     public void onResume(Host host) {
         if (lockId == null || lockId.isEmpty()) {
+            if (acquirePaused) {
+                // We were still waiting for a paused server, so no lock exists anywhere: fail closed
+                // rather than leave the step waiting for a retry loop that did not survive the restart.
+                LOGGER.log(Level.WARNING, "Jenkins restarted while waiting for a paused remote server: {0}", serverId);
+                try {
+                    host.context()
+                            .onFailure(new AbortException("Jenkins restarted while waiting for the remote server to "
+                                    + "accept new acquire requests (serverId=" + serverId + ")"));
+                } catch (Exception ex) {
+                    LOGGER.log(Level.FINE, "Best-effort: could not signal the resume failure", ex);
+                }
+                return;
+            }
             // Nothing was enqueued before the restart - nothing to resume.
             return;
         }
@@ -417,7 +541,14 @@ public final class RemoteLockSession implements Serializable {
             Run<?, ?> run = host.context().get(Run.class);
             String authorizationHeader = RemoteCredentials.basicAuthHeader(remote, run);
             RemoteApiClient client = new RemoteApiClient();
-            String displayTarget = lockId; // best-effort description post-restart
+            // Before the registry existed there was nothing to describe a resumed lock with, so the
+            // lock id stood in for the request. requestDescription survives the restart with the session.
+            String displayTarget = requestDescription != null ? requestDescription : lockId;
+            Run<?, ?> resumedBuild = host.context().get(Run.class);
+            RemoteClientRegistry.get().queued(lockId, serverId, displayTarget, resumedBuild);
+            if (bodyStarted) {
+                RemoteClientRegistry.get().acquired(lockId, null);
+            }
             // Restart is not a poll failure: start the post-restart retry budget fresh so a
             // long pre-restart QUEUED period does not shrink it.
             consecutivePollFailures = 0;
@@ -434,6 +565,11 @@ public final class RemoteLockSession implements Serializable {
                 LOGGER.log(Level.FINE, "Best-effort: could not signal resume failure to the step context", signalEx);
             }
         }
+    }
+
+    private void cancelPollTaskAndRetries() {
+        cancelPollTask();
+        cancelAcquireRetryTask();
     }
 
     private void cancelPollTask() {

@@ -6,6 +6,7 @@
 package org.jenkins.plugins.lockableresources.remote;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,12 +22,26 @@ public class RemoteAcquireStatus {
     @CheckForNull
     private final Map<String, String> lockEnvVars;
 
+    @CheckForNull
+    private final List<String> resourceNames;
+
     public RemoteAcquireStatus(
             String lockId,
             RemoteAcquireState state,
             String errorCode,
             String message,
             @CheckForNull Map<String, String> lockEnvVars) {
+        this(lockId, state, errorCode, message, lockEnvVars, null);
+    }
+
+    public RemoteAcquireStatus(
+            String lockId,
+            RemoteAcquireState state,
+            String errorCode,
+            String message,
+            @CheckForNull Map<String, String> lockEnvVars,
+            @CheckForNull List<String> resourceNames) {
+        this.resourceNames = resourceNames;
         this.lockId = lockId;
         this.state = state != null ? state : RemoteAcquireState.UNKNOWN;
         this.errorCode = errorCode;
@@ -55,5 +70,11 @@ public class RemoteAcquireStatus {
     @CheckForNull
     public Map<String, String> getLockEnvVars() {
         return lockEnvVars;
+    }
+
+    /** Resources the remote handed over, when it reported them. */
+    @CheckForNull
+    public List<String> getResourceNames() {
+        return resourceNames;
     }
 }

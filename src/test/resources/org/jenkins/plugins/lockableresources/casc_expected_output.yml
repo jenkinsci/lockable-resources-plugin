@@ -1,3 +1,4 @@
+acceptNewAcquires: true
 allowEmptyOrNullValues: true
 allowEphemeralResources: true
 declaredResources:

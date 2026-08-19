@@ -3,12 +3,16 @@
 The Remote Lock REST API lets external applications or non-Jenkins scripts acquire a
 lockable resource on a Jenkins controller without a Pipeline step.
 
+Another Jenkins controller does not need any of this: it uses `lock(..., serverId: '…')`, described
+under [Remote lockable resources](../../../README.md#remote-lockable-resources) in the README. This
+page is for everything that is not a Jenkins controller.
+
 ### Prerequisites
 
 | Item | Where to configure |
 |---|---|
-| **Remote API enabled** | Manage Jenkins → Configure System → Lockable Resources → Enable Remote API |
-| **Resource exposed** | The resource must carry one of the labels listed in *Expose Label* |
+| **Remote API enabled** | Manage Jenkins → Configure System → Lockable Resources (Server) → *Enable remote API* |
+| **Resource exposed** | The resource must carry one of the labels listed in *Expose label(s)* |
 | **User with API token** | The user must have **Lockable Resources / RemoteUse** permission |
 | **API token** | User → Security → API Token |
 
@@ -69,7 +73,7 @@ while true; do
     ACQUIRED) echo "Lock acquired!"; break ;;
     QUEUED)   sleep "${POLL_INTERVAL}" ;;
     SKIPPED)  echo "Resource busy, skipIfLocked=true → skipping"; exit 0 ;;
-    FAILED|EXPIRED|CANCELLED|UNKNOWN)
+    FAILED)
       echo "ERROR: acquire failed with state=${STATE}" >&2
       echo "Response: ${STATUS}" >&2
       exit 1 ;;
@@ -161,12 +165,13 @@ If not acquired within 5 minutes the state becomes `FAILED` with `errorCode: LOC
 
 ### Queue ordering: `priority` and `inversePrecedence`
 
-Current remote API behavior:
+Remote waiters share one queue with local ones on the server, and both fields mean what they mean
+for a local `lock()`:
 
-- `priority` is applied. Larger number wins queue position.
-- `inversePrecedence` is accepted in the payload, but is not currently applied to remote queue ordering.
-
-For now, use `priority` if you need ordering control for remote waiters.
+- `priority` — larger number wins queue position.
+- `inversePrecedence` — the request jumps to the front of the queue, so the newest waiter is served
+  first. It applies only when `priority` is left at its default; giving both falls back to the
+  ordinary priority insert, exactly as a local lock does.
 
 Priority example:
 
@@ -185,7 +190,7 @@ curl -s -u "${USER}:${TOKEN}" \
   "${JENKINS}/lockable-resources/remote/v1/acquire/"
 ```
 
-Inverse precedence payload example (currently informational for remote queueing):
+Inverse precedence example (newest waiter first):
 
 ```bash
 curl -s -u "${USER}:${TOKEN}" \
@@ -219,12 +224,21 @@ Request body (JSON):
 | `lockRequest.timeoutForAllocateResource` | long | no | max wait time (default: unlimited) |
 | `lockRequest.timeoutUnit` | string | no | `MINUTES` (default), `SECONDS`, `HOURS` |
 | `lockRequest.priority` | int | no | higher number = higher queue priority |
-| `lockRequest.inversePrecedence` | bool | no | accepted field; currently not applied to remote queue ordering |
-| `lockRequest.variable` | string | no | env var name for acquired resource name |
+| `lockRequest.inversePrecedence` | bool | no | serve the newest waiter first; ignored when `priority` is also set |
+| `lockRequest.resourceSelectStrategy` | string | no | `SEQUENTIAL` (default) or `RANDOM` |
+| `lockRequest.variable` | string | no | env var name prefix for the acquired resource names |
 | `lockRequest.reason` | string | no | human-readable lock reason |
 | `lockRequest.extra` | array | no | additional resources to lock atomically |
 | `clientId` | string | no | identifier shown in server dashboard |
-| `heartbeatIntervalSeconds` | int | no | must be > 0 when provided |
+| `heartbeatIntervalSeconds` | int | no | must be > 0 when provided. Validated, then **ignored** — the server applies its own stale threshold (see heartbeat below) |
+
+`resource` and `label` are mutually exclusive, and so are `priority` and `inversePrecedence`; the
+canonical `lock()` refuses either combination and so does this endpoint. Whether a request with no
+target at all is legal follows the server's *Allow empty or null values* setting.
+
+Values that cannot be interpreted are rejected rather than quietly defaulted: a non-numeric
+`quantity` or an unknown `timeoutUnit` returns 400 `INVALID_FIELD_VALUE`. Numeric strings (`"2"`)
+are still accepted, and JSON `null` counts as absent.
 
 Response `202 Accepted`:
 ```json
@@ -235,11 +249,22 @@ Error responses:
 
 | HTTP | errorCode | Meaning |
 |---|---|---|
-| 400 | `MISSING_TARGET` | No resource/label/extra in request |
+| 400 | `INVALID_JSON` | Body is not valid JSON |
+| 400 | `MISSING_LOCK_REQUEST` | No `lockRequest` object in the body |
+| 400 | `INVALID_REQUEST` | The request is not a legal `lock()`: no target, `resource` with `label`, `priority` with `inversePrecedence` |
+| 400 | `INVALID_FIELD_VALUE` | A field's value cannot be interpreted (non-numeric `quantity`, unknown `timeoutUnit`, …) |
+| 400 | `INVALID_EXTRA` | An `extra[i]` entry names neither `resource` nor `label` |
+| 400 | `INVALID_HEARTBEAT_INTERVAL` | `heartbeatIntervalSeconds` is not a positive integer |
+| 400 | `ACQUIRE_FAILED` | The request was rejected for some other reason |
 | 403 | `REMOTE_API_DISABLED` | Remote API not enabled on server |
 | 403 | *(no body)* | Authentication failure or missing RemoteUse permission |
 | 404 | `UNKNOWN_RESOURCE` | Resource does not exist or is not exposed by exposeLabel |
 | 404 | `UNKNOWN_LABEL` | Label does not match any exposed resource |
+| 413 | `PAYLOAD_TOO_LARGE` | Request body is over 1 MiB |
+| 503 | `ACQUIRES_PAUSED` | The server is not accepting new acquires (maintenance). Retry later — locks already held are unaffected |
+
+`UNKNOWN_RESOURCE` and `UNKNOWN_LABEL` are both returned as a plain 404 whether the target is
+absent or merely not exposed, so the API does not reveal what exists on the server.
 
 ---
 
@@ -262,16 +287,28 @@ States:
 | `ACQUIRED` | Lock held — safe to do work and send heartbeats |
 | `SKIPPED` | `skipIfLocked` was true and resource was busy |
 | `FAILED` | Acquire rejected or timed out (see `errorCode`) |
-| `EXPIRED` | Allocation timeout elapsed |
+| `STALE` | Held, but the heartbeats stopped — see heartbeat below |
+
+A lock that reaches `SKIPPED` or `FAILED` stays readable for 120 seconds and is then forgotten;
+polling afterwards returns 404 `LOCK_NOT_FOUND`.
 
 ---
 
 #### `POST /lockable-resources/remote/v1/lease/{lockId}/heartbeat`
 
-Must be sent every `heartbeatIntervalSeconds` while holding the lock.
-If missed too many times the server marks the lock as `STALE` and an admin can force-release it.
+Send this while holding the lock. Every 10 seconds matches what the Jenkins client does, and is well
+inside the threshold below.
 
-Response: `204 No Content` on success, `410 Gone` if lock is not active.
+If nothing arrives for 60 seconds the server marks the lock `STALE`. It does **not** release it: a
+client that has gone quiet may still be using the resource, so handing it to the next waiter on that
+guess is exactly what a lock is for preventing. A stale lease is released by an administrator, from
+the lockable resources page.
+
+The threshold is the server's, not the client's — `heartbeatIntervalSeconds` in the acquire request
+is validated and then ignored in this version.
+
+Response: `204 No Content` on success, `410 Gone` if the lock is no longer active
+(`LOCK_STALE` once it has gone stale, `LOCK_NOT_FOUND` if it is already released or unknown).
 
 ---
 
@@ -280,6 +317,39 @@ Response: `204 No Content` on success, `410 Gone` if lock is not active.
 Releases the lock. Idempotent — safe to call even if already released.
 
 Response: `204 No Content`.
+
+---
+
+#### `GET /lockable-resources/remote/v1/resources/`
+
+Lists what this server exposes, so a client can discover names and labels instead of having them
+configured by hand on both sides.
+
+```bash
+curl -s -u "${USER}:${TOKEN}" \
+  "${JENKINS}/lockable-resources/remote/v1/resources/"
+```
+
+Response `200 OK`:
+```json
+{
+  "acceptNewAcquires": true,
+  "resources": [
+    { "name": "r1", "labels": ["gpu", "remote-enabled"], "description": "", "state": "FREE" },
+    { "name": "r2", "labels": ["gpu", "remote-enabled"], "description": "", "state": "LOCKED",
+      "heldByKind": "REMOTE_CLIENT", "heldByClientId": "my-script", "since": 1723526400000 }
+  ]
+}
+```
+
+Only resources carrying one of the server's *expose label(s)* appear. `state` is `FREE`, `QUEUED`,
+`LOCKED` or `RESERVED`; when it is held, `heldByKind` says by what — `LOCAL_BUILD`, `REMOTE_CLIENT`
+or `ADMIN` — and `since` is an epoch-milliseconds timestamp. The build name, its reason and the
+resource note are deliberately not included: which resources exist and whether they are busy is what
+a borrower needs, and nothing more is disclosed.
+
+`acceptNewAcquires` mirrors the maintenance switch, so a client can tell a paused server from an
+unreachable one before it tries to acquire.
 
 ---
 

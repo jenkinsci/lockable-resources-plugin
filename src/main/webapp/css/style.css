@@ -730,6 +730,58 @@ span.lr-static-label {
 /* ====================================================================
    Responsive — mobile & narrow viewports
    ==================================================================== */
+/* Remote tab — the note that this table is a client-side view, not the server's own state.
+   Jenkins symbols carry an intrinsic 512px size, so an unsized container renders them full width. */
+.lr-remote-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-color-secondary);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.lr-remote-note svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Delegated mode — where this controller's lock() calls actually go */
+.lr-delegated-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--jenkins-border--subtle);
+  border-radius: var(--form-input-border-radius, 6px);
+  background: var(--card-background);
+}
+
+.lr-delegated-badge svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+/* Maintenance — this server is not accepting new remote acquires */
+.lr-paused-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--orange);
+  border-radius: var(--form-input-border-radius, 6px);
+  background: var(--card-background);
+}
+
+.lr-paused-banner svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--orange);
+}
+
 @media (max-width: 768px) {
   .lr-tab-bar {
     position: static;

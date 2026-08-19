@@ -73,19 +73,6 @@ public final class RemoteLockRecord {
         return lockRequest;
     }
 
-    /**
-     * Returns the first acquired resource name, or the requested resource name if not yet acquired.
-     * Returns {@code null} for label-only requests that have not yet been acquired.
-     */
-    @CheckForNull
-    public String getResourceName() {
-        List<String> names = acquiredResourceNames;
-        if (names != null && !names.isEmpty()) {
-            return names.get(0);
-        }
-        return lockRequest.getResource();
-    }
-
     @CheckForNull
     public List<String> getAcquiredResourceNames() {
         return acquiredResourceNames;

@@ -36,6 +36,9 @@
       <f:entry field="exposeLabel" title="${%remote.server.exposeLabel.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help/exposeLabel">
         <f:textbox value="${instance.exposeLabel}" clazz="setting-input"/>
       </f:entry>
+      <f:entry field="acceptNewAcquires" title="${%remote.server.acceptNewAcquires.title}" help="/descriptor/org.jenkins.plugins.lockableresources.LockableResourcesManager/help/acceptNewAcquires">
+        <f:checkbox default="true"/>
+      </f:entry>
     </f:section>
 
     <f:section title="${%remote.client.section.title}">

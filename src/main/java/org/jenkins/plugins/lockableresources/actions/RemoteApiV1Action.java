@@ -8,19 +8,22 @@ package org.jenkins.plugins.lockableresources.actions;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
+import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
-import org.jenkins.plugins.lockableresources.ResourceSelectStrategy;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRecord;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockState;
+import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest2;
@@ -60,6 +63,8 @@ public class RemoteApiV1Action {
                 return new AcquireRouter();
             case "lease":
                 return new LeaseRouter();
+            case "resources":
+                return new ResourcesResource();
             default:
                 return null;
         }
@@ -77,6 +82,14 @@ public class RemoteApiV1Action {
             LockableResourcesManager lrm = LockableResourcesManager.get();
             if (!lrm.isRemoteApiEnabled()) {
                 sendJsonError(rsp, 403, "REMOTE_API_DISABLED", "Remote API is not enabled on this server");
+                return;
+            }
+            if (!lrm.isAcceptNewAcquires()) {
+                // Maintenance switch: only new acquires are refused. Status, heartbeat and release stay
+                // available so leases in flight are undisturbed, and 503 tells the client to come back
+                // rather than to give up.
+                sendJsonError(
+                        rsp, 503, "ACQUIRES_PAUSED", "This server is not accepting new acquire requests right now");
                 return;
             }
 
@@ -102,24 +115,13 @@ public class RemoteApiV1Action {
                 return;
             }
 
-            String resource = lockRequestJson.optString("resource", null);
-            if (resource != null) resource = resource.trim();
-            if (resource != null && resource.isEmpty()) resource = null;
+            String resource = stringField(lockRequestJson, "resource");
+            String label = stringField(lockRequestJson, "label");
 
-            String label = lockRequestJson.optString("label", null);
-            if (label != null) label = label.trim();
-            if (label != null && label.isEmpty()) label = null;
-
-            // extra-only requests are valid (local lock() allows them when extra is present),
-            // so only reject when there is no main target AND no extra.
-            JSONArray extraPeek = lockRequestJson.optJSONArray("extra");
-            boolean hasExtra = extraPeek != null && !extraPeek.isEmpty();
-            if (resource == null && label == null && !hasExtra) {
-                sendJsonError(
-                        rsp, 400, "MISSING_TARGET", "lockRequest must contain at least one of: resource, label, extra");
-                return;
-            }
-
+            // Whether a request without any target is acceptable depends on allowEmptyOrNullValues, and
+            // whether the parameters make sense together is lock() semantics - both are canonical rules,
+            // checked inside enqueue() rather than re-implemented here (see LockStepResource.validate).
+            //
             // Exposure/existence is enforced by the admission check inside enqueue (validateRemoteSelectors):
             // a selector referencing something this client can't lock (unknown/unexposed) comes back
             // as a terminal UNKNOWN_* record, which we map to HTTP 404 below. This endpoint only parses the
@@ -128,26 +130,24 @@ public class RemoteApiV1Action {
             boolean skipIfLocked = lockRequestJson.optBoolean("skipIfLocked", false);
             // quantity 0 (or absent) means "all matching" for label requests, matching local lock()
             // (LockableResourcesManager "0 means all"); must NOT default to 1.
-            int quantity = lockRequestJson.optInt("quantity", 0);
-            String variable = lockRequestJson.optString("variable", null);
-            if (variable != null && variable.isEmpty()) variable = null;
-            boolean inversePrecedence = lockRequestJson.optBoolean("inversePrecedence", false);
-            String resourceSelectStrategy = lockRequestJson.optString("resourceSelectStrategy", "SEQUENTIAL");
+            int quantity;
+            int priority;
+            long timeoutForAllocateResource;
+            String timeoutUnit;
             try {
-                ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
-            } catch (IllegalArgumentException e) {
-                sendJsonError(
-                        rsp,
-                        400,
-                        "INVALID_SELECT_STRATEGY",
-                        "resourceSelectStrategy must be one of " + Arrays.toString(ResourceSelectStrategy.values()));
+                quantity = intField(lockRequestJson, "quantity", 0);
+                priority = intField(lockRequestJson, "priority", 0);
+                timeoutForAllocateResource = longField(lockRequestJson, "timeoutForAllocateResource", 0);
+                timeoutUnit = timeUnitField(lockRequestJson);
+            } catch (InvalidFieldException e) {
+                sendJsonError(rsp, 400, "INVALID_FIELD_VALUE", e.getMessage());
                 return;
             }
-            int priority = lockRequestJson.optInt("priority", 0);
-            long timeoutForAllocateResource = lockRequestJson.optLong("timeoutForAllocateResource", 0);
-            String timeoutUnit = lockRequestJson.optString("timeoutUnit", "MINUTES");
-            String reason = lockRequestJson.optString("reason", null);
-            if (reason != null && reason.isEmpty()) reason = null;
+            String variable = stringField(lockRequestJson, "variable");
+            boolean inversePrecedence = lockRequestJson.optBoolean("inversePrecedence", false);
+            String resourceSelectStrategy = stringField(lockRequestJson, "resourceSelectStrategy");
+            if (resourceSelectStrategy == null) resourceSelectStrategy = "SEQUENTIAL";
+            String reason = stringField(lockRequestJson, "reason");
 
             // Parse extra resources (optional - additional resources to lock atomically)
             List<RemoteLockRequest.ExtraResource> extra = null;
@@ -156,12 +156,8 @@ public class RemoteApiV1Action {
                 extra = new ArrayList<>(extraArray.size());
                 for (int i = 0; i < extraArray.size(); i++) {
                     JSONObject extraEntry = extraArray.getJSONObject(i);
-                    String extraResource = extraEntry.optString("resource", null);
-                    if (extraResource != null) extraResource = extraResource.trim();
-                    if (extraResource != null && extraResource.isEmpty()) extraResource = null;
-                    String extraLabel = extraEntry.optString("label", null);
-                    if (extraLabel != null) extraLabel = extraLabel.trim();
-                    if (extraLabel != null && extraLabel.isEmpty()) extraLabel = null;
+                    String extraResource = stringField(extraEntry, "resource");
+                    String extraLabel = stringField(extraEntry, "label");
                     if (extraResource == null && extraLabel == null) {
                         sendJsonError(
                                 rsp,
@@ -171,19 +167,19 @@ public class RemoteApiV1Action {
                         return;
                     }
                     // Exposure/existence of this extra selector is checked by admission in enqueue (see above).
-                    int extraQuantity = extraEntry.optInt("quantity", 0); // 0/absent = all (label)
+                    int extraQuantity; // 0/absent = all (label)
+                    try {
+                        extraQuantity = intField(extraEntry, "quantity", 0);
+                    } catch (InvalidFieldException e) {
+                        sendJsonError(rsp, 400, "INVALID_FIELD_VALUE", "extra[" + i + "]: " + e.getMessage());
+                        return;
+                    }
                     extra.add(new RemoteLockRequest.ExtraResource(extraResource, extraLabel, extraQuantity));
                 }
             }
 
             // clientId is optional - identifies the calling Jenkins instance (e.g. root URL)
-            String clientId = body.optString("clientId", null);
-            if (clientId != null) {
-                clientId = clientId.trim();
-                if (clientId.isEmpty()) {
-                    clientId = null;
-                }
-            }
+            String clientId = stringField(body, "clientId");
 
             // heartbeatIntervalSeconds is optional but must be a positive integer when present
             if (body.containsKey("heartbeatIntervalSeconds")) {
@@ -222,7 +218,17 @@ public class RemoteApiV1Action {
                     timeoutUnit,
                     reason);
 
-            RemoteLockRecord record = RemoteLockManager.get().enqueue(lockRequest, clientId);
+            RemoteLockRecord record;
+            try {
+                record = RemoteLockManager.get().enqueue(lockRequest, clientId);
+            } catch (IllegalArgumentException ex) {
+                // The canonical validator rejected the request (lock() semantics: no target while
+                // allowEmptyOrNullValues is off, resource and label together, priority with
+                // inversePrecedence, an unknown select strategy). Its message is the same one a local
+                // lock() would print, so pass it through rather than inventing a remote-only wording.
+                sendJsonError(rsp, 400, "INVALID_REQUEST", ex.getMessage());
+                return;
+            }
             String logTarget = resource != null ? resource : "label:" + label;
             LOGGER.fine("POST /acquire target=" + logTarget + " lockId=" + record.getLockId() + " clientId="
                     + record.getClientId() + " state=" + record.getState());
@@ -230,7 +236,7 @@ public class RemoteApiV1Action {
             // Admission rejected the request - nothing this client can lock (unknown/unexposed).
             // Uniform 404 (errorCode distinguishes resource vs label); existence is not otherwise revealed.
             // Any other terminal FAILED from enqueue must map to a 4xx, never fall through to a
-            // 202 success (defensive - MISSING_TARGET is already rejected at the boundary above).
+            // 202 success (defensive - malformed requests are already rejected as INVALID_REQUEST).
             if (record.getState() == RemoteLockState.FAILED) {
                 String ec = record.getErrorCode();
                 if ("UNKNOWN_RESOURCE".equals(ec) || "UNKNOWN_LABEL".equals(ec)) {
@@ -287,6 +293,11 @@ public class RemoteApiV1Action {
             response.put("state", record.getState().name());
             if (record.getErrorCode() != null) {
                 response.put("errorCode", record.getErrorCode());
+            }
+            if (record.getAcquiredResourceNames() != null) {
+                // The client shows what it holds on its own lockable resources page, and this is the only
+                // place it can learn the names: lockEnvVars only carries them when a variable was asked for.
+                response.put("resources", JSONArray.fromObject(record.getAcquiredResourceNames()));
             }
             if (record.getLockEnvVars() != null) {
                 JSONObject envVarsJson = new JSONObject();
@@ -358,8 +369,187 @@ public class RemoteApiV1Action {
     }
 
     // -----------------------------------------------------------------------
+    // Serves GET /resources
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lists what this server exposes, plus whether it is currently accepting new acquires.
+     *
+     * <p>The two travel together on purpose: split across endpoints, two client-side caches could
+     * disagree and the page would claim a resource is free while the server has stopped handing out
+     * leases. Resource state stays truthful while paused - saying "you cannot take this right now" is
+     * the client page's job.
+     *
+     * <p>Holder details stop at the kind. The server's admin published resources, not the names of the
+     * builds using them, and this list is rendered on a controller whose viewers may have no account
+     * here at all.
+     */
+    public static final class ResourcesResource {
+
+        // Read-only: this lists what the server exposes and changes nothing. Annotated so Stapler
+        // refuses anything but GET, matching the acquire status endpoint (#1076).
+        @GET
+        public void doIndex(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException {
+            Jenkins.get().checkPermission(LockableResourcesRootAction.REMOTE);
+
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            if (!lrm.isRemoteApiEnabled()) {
+                sendJsonError(rsp, 403, "REMOTE_API_DISABLED", "Remote API is not enabled");
+                return;
+            }
+
+            JSONArray resources = new JSONArray();
+            synchronized (LockableResourcesManager.syncResources) {
+                for (LockableResource r : new RemoteResolver(lrm).exposedResources()) {
+                    resources.add(describe(r));
+                }
+            }
+
+            JSONObject response = new JSONObject();
+            response.put("acceptNewAcquires", lrm.isAcceptNewAcquires());
+            response.put("resources", resources);
+
+            rsp.setStatus(200);
+            rsp.setContentType("application/json;charset=UTF-8");
+            rsp.getWriter().write(response.toString());
+        }
+
+        private static JSONObject describe(LockableResource r) {
+            JSONObject json = new JSONObject();
+            json.put("name", r.getName());
+            json.put("labels", JSONArray.fromObject(r.getLabelsAsList()));
+            json.put("description", r.getDescription() == null ? "" : r.getDescription());
+
+            if (r.getReservedBy() != null) {
+                json.put("state", "RESERVED");
+                json.put("heldByKind", "ADMIN");
+                Date since = r.getReservedTimestamp();
+                if (since != null) {
+                    json.put("since", since.getTime());
+                }
+            } else if (r.isLocked()) {
+                json.put("state", "LOCKED");
+                RemoteLockRecord record = r.getRemoteLockRecord();
+                if (r.getRemoteLockedBy() != null) {
+                    json.put("heldByKind", "REMOTE_CLIENT");
+                    if (record != null && record.getClientId() != null) {
+                        json.put("heldByClientId", record.getClientId());
+                    }
+                    if (record != null && record.getAcquiredAt() > 0) {
+                        json.put("since", record.getAcquiredAt());
+                    }
+                } else {
+                    json.put("heldByKind", "LOCAL_BUILD");
+                }
+            } else if (r.isQueued()) {
+                json.put("state", "QUEUED");
+            } else {
+                json.put("state", "FREE");
+            }
+            return json;
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // Typed field parsing
+    //
+    // The lock() DSL gets its types from Java: a pipeline cannot pass "abc" where an int is declared,
+    // and LockStep#setTimeoutUnit rejects a unit that is not a TimeUnit. JSON has no such guarantee,
+    // and reading these fields with optInt/optLong/optString means an uninterpretable value silently
+    // becomes the default instead of being refused. That is not a smaller version of the same
+    // behaviour - it changes what the request means, in the direction of doing more:
+    //
+    //   * quantity that is not a number becomes 0, and 0 on a label means "every match", so a typo
+    //     asks for the whole pool rather than the one machine that was meant;
+    //   * timeoutForAllocateResource that is not a number becomes 0, and a timeoutUnit that is not a
+    //     TimeUnit disables the deadline outright, so a bounded wait silently becomes unbounded.
+    //
+    // Neither is reachable through a local lock(), so both arrived with this endpoint. Parse strictly
+    // instead, and let the caller hear about it.
+    //
+    // Strict does not mean brittle. A numeric string ("2") still parses, because json-lib accepts it
+    // and clients in the wild send it; an explicit null is treated as absent, because serialisers
+    // routinely emit null for an unset field and refusing those would break callers over nothing.
+    // -----------------------------------------------------------------------
+
+    /** Signals a field whose value cannot be interpreted as its type; mapped to HTTP 400. */
+    private static final class InvalidFieldException extends Exception {
+        private static final long serialVersionUID = 1L;
+
+        InvalidFieldException(String message) {
+            super(message);
+        }
+    }
+
+    /** True when the key is absent or explicitly null - both mean "not supplied". */
+    private static boolean isAbsent(JSONObject json, String key) {
+        return !json.containsKey(key) || JSONNull.getInstance().equals(json.get(key));
+    }
+
+    /**
+     * A string field, where absent, explicitly null, and blank all mean "not supplied".
+     *
+     * <p>The null case is why this exists rather than a bare optString: json-lib hands back the
+     * four-character string {@code "null"} for a JSON null, so {@code "resource": null} would ask for
+     * a resource actually named "null", and {@code "variable": null} would export an environment
+     * variable by that name.
+     */
+    @edu.umd.cs.findbugs.annotations.CheckForNull
+    private static String stringField(JSONObject json, String key) {
+        if (isAbsent(json, key)) {
+            return null;
+        }
+        String value = json.optString(key, null);
+        if (value == null) {
+            return null;
+        }
+        value = value.trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private static int intField(JSONObject json, String key, int defaultValue) throws InvalidFieldException {
+        if (isAbsent(json, key)) {
+            return defaultValue;
+        }
+        try {
+            return json.getInt(key);
+        } catch (RuntimeException e) {
+            throw new InvalidFieldException(key + " must be an integer, got: " + json.get(key));
+        }
+    }
+
+    private static long longField(JSONObject json, String key, long defaultValue) throws InvalidFieldException {
+        if (isAbsent(json, key)) {
+            return defaultValue;
+        }
+        try {
+            return json.getLong(key);
+        } catch (RuntimeException e) {
+            throw new InvalidFieldException(key + " must be a number, got: " + json.get(key));
+        }
+    }
+
+    /**
+     * Reads {@code timeoutUnit} the way {@link org.jenkins.plugins.lockableresources.LockStep#setTimeoutUnit}
+     * does: blank falls back to the default, anything else must name a {@link TimeUnit} and is upper-cased.
+     */
+    private static String timeUnitField(JSONObject json) throws InvalidFieldException {
+        String value = stringField(json, "timeoutUnit");
+        if (value == null) {
+            return "MINUTES";
+        }
+        String normalized = value.toUpperCase(Locale.ENGLISH);
+        try {
+            TimeUnit.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidFieldException("Invalid timeoutUnit: " + value);
+        }
+        return normalized;
+    }
 
     /** Cap on the POST body size (in characters) to avoid unbounded reads. */
     static final int MAX_BODY_CHARS = 1024 * 1024; // 1 MiB

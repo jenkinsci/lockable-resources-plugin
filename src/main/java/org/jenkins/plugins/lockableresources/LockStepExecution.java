@@ -163,9 +163,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             PauseAction.endCurrentPause(node);
 
             BodyInvoker bodyInvoker = getContext().newBodyInvoker().withCallback(new RemoteCallback(displayTarget));
-            if (lockEnvVars != null && !lockEnvVars.isEmpty()) {
-                Map<String, String> envWithRemoteMetadata =
-                        withRemoteMetadata(lockEnvVars, step.variable, remoteSession, lockId);
+            // The bridge metadata (X_SERVER_ID / X_LOCK_ID) does not depend on what the server returned:
+            // gating it on a non-empty lockEnvVars dropped it whenever the response carried none.
+            Map<String, String> envWithRemoteMetadata = withRemoteMetadata(
+                    lockEnvVars == null ? Collections.emptyMap() : lockEnvVars, step.variable, remoteSession, lockId);
+            if (!envWithRemoteMetadata.isEmpty()) {
                 bodyInvoker.withContext(EnvironmentExpander.merge(
                         getContext().get(EnvironmentExpander.class), new EnvVarsExpander(envWithRemoteMetadata)));
             }

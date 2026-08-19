@@ -15,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.jenkins.plugins.lockableresources.LockStepExecution;
+import org.jenkins.plugins.lockableresources.LockStepResource;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
@@ -88,6 +89,19 @@ public final class RemoteResolver {
     }
 
     /** A resource is exposed to remote clients iff it carries at least one configured exposeLabel (OR). */
+    /** Exposed resources, in declaration order, for the discovery endpoint. */
+    @NonNull
+    public List<LockableResource> exposedResources() {
+        Set<String> exposeLabels = lrm.getExposeLabels();
+        List<LockableResource> exposed = new ArrayList<>();
+        for (LockableResource r : lrm.getResources()) {
+            if (isExposed(r, exposeLabels)) {
+                exposed.add(r);
+            }
+        }
+        return exposed;
+    }
+
     private static boolean isExposed(@NonNull LockableResource r, @NonNull Set<String> exposeLabels) {
         return !exposeLabels.isEmpty() && !Collections.disjoint(r.getLabelsAsList(), exposeLabels);
     }
@@ -103,6 +117,42 @@ public final class RemoteResolver {
             }
         }
         return false;
+    }
+
+    /**
+     * Runs the canonical {@code lock()} parameter validation over a remote request, exactly as
+     * {@link org.jenkins.plugins.lockableresources.LockStep#validate} does for a local step: no
+     * target while empty values are disallowed, {@code resource} and {@code label} together,
+     * {@code priority} combined with
+     * {@code inversePrecedence}, and an unknown {@code resourceSelectStrategy}. Each {@code extra}
+     * entry is validated as well.
+     *
+     * <p>Keeping this on the canonical validator is what makes the bridge transparent: the rules stay
+     * in one place, and a request the local DSL would reject is rejected here with the same message.
+     *
+     * @throws IllegalArgumentException if the request is not a valid {@code lock()} request; the caller
+     *     maps it to HTTP 400.
+     */
+    @Restricted(NoExternalUse.class)
+    public static void validateAsLocalStep(@NonNull RemoteLockRequest req, boolean allowEmptyOrNullValues) {
+        List<LockStepResource> extra = new ArrayList<>();
+        List<RemoteLockRequest.ExtraResource> requested = req.getExtra();
+        if (requested != null) {
+            for (RemoteLockRequest.ExtraResource e : requested) {
+                LockStepResource resource = new LockStepResource(e.getResource());
+                resource.setLabel(e.getLabel());
+                resource.setQuantity(e.getQuantity());
+                extra.add(resource);
+            }
+        }
+        LockStepResource.validate(
+                req.getResource(),
+                req.getLabel(),
+                req.getResourceSelectStrategy(),
+                extra,
+                req.getPriority(),
+                req.isInversePrecedence(),
+                allowEmptyOrNullValues);
     }
 
     /**

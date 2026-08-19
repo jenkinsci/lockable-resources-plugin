@@ -3,6 +3,7 @@ package org.jenkins.plugins.lockableresources;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -112,6 +113,7 @@ class ConfigurationAsCodeTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         assertTrue(LRM.isRemoteApiEnabled());
         assertEquals("remote-enabled", LRM.getExposeLabel());
+        assertFalse(LRM.isAcceptNewAcquires());
     }
 
     @Test
@@ -123,6 +125,8 @@ class ConfigurationAsCodeTest {
         List<RemoteConnection> remotes = LRM.getRemotes();
         assertEquals(2, remotes.size());
         assertEquals("server-a", remotes.get(0).getServerId());
+        assertTrue(remotes.get(0).isEnabled(), "omitting enabled keeps the connection usable");
+        assertFalse(remotes.get(1).isEnabled(), "enabled: false round-trips");
         assertEquals("http://jenkins-server-a:8080/jenkins", remotes.get(0).getUrl());
         assertEquals("server-a-token", remotes.get(0).getCredentialsId());
         assertEquals("server-b", remotes.get(1).getServerId());

@@ -7,17 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.cloudbees.plugins.credentials.CredentialsScope;
 import com.cloudbees.plugins.credentials.SystemCredentialsProvider;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import org.jenkins.plugins.lockableresources.remote.RemoteServerFixture;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -107,6 +100,69 @@ class LockStepRemoteTest extends LockStepTestBase {
             j.assertLogContains("server=server-a lockId=lock-1", run);
 
             SemaphoreStep.success("plc-body/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(run));
+        } finally {
+            remote.stop();
+        }
+    }
+
+    @Test
+    void remoteMetadataEnvVarsAreSetEvenWithoutLockEnvVars(JenkinsRule j) throws Exception {
+        // The bridge metadata used to be gated on a non-empty lockEnvVars, so a server that returned
+        // none (nothing to name, or an older server) left X_SERVER_ID / X_LOCK_ID unset.
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.setAcquireStatusResponse("{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\"}");
+        remote.start();
+        try {
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
+
+            WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-no-envvars");
+            job.setDefinition(new CpsFlowDefinition("""
+                    lock(resource: 'plc-a', serverId: 'server-a', variable: 'PLC') {
+                        echo "server=${env.PLC_SERVER_ID} lockId=${env.PLC_LOCK_ID}"
+                        semaphore 'no-envvars-body'
+                    }
+                    """, true));
+
+            WorkflowRun run = job.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("no-envvars-body/1", run);
+
+            j.assertLogContains("server=server-a lockId=lock-1", run);
+
+            SemaphoreStep.success("no-envvars-body/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(run));
+        } finally {
+            remote.stop();
+        }
+    }
+
+    @Test
+    void acquireWaitsWhileTheRemoteIsPausedForMaintenance(JenkinsRule j) throws Exception {
+        // 503 means "come back later", not "give up": failing the build here would defeat the purpose of
+        // the server-side maintenance switch.
+        RemoteServerFixture remote = new RemoteServerFixture();
+        remote.pauseNextAcquires(2);
+        remote.start();
+        try {
+            LockableResourcesManager manager = LockableResourcesManager.get();
+            manager.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
+
+            WorkflowJob job = j.createProject(WorkflowJob.class, "remote-lock-paused");
+            job.setDefinition(new CpsFlowDefinition("""
+                    lock(resource: 'paused-resource', serverId: 'server-a') {
+                        semaphore 'paused-body'
+                    }
+                    """, true));
+
+            WorkflowRun run = job.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("not accepting new acquire requests right now", run);
+
+            // The retries eventually get through and the body runs.
+            SemaphoreStep.waitForStart("paused-body/1", run);
+            assertTrue(remote.acquireRequests.get() >= 3, "expected retries, saw " + remote.acquireRequests.get());
+
+            SemaphoreStep.success("paused-body/1", null);
             j.assertBuildStatusSuccess(j.waitForCompletion(run));
         } finally {
             remote.stop();
@@ -457,125 +513,6 @@ class LockStepRemoteTest extends LockStepTestBase {
                 .add(new UsernamePasswordCredentialsImpl(
                         CredentialsScope.GLOBAL, credentialsId, "remote lock test credential", username, password));
         SystemCredentialsProvider.getInstance().save();
-    }
-
-    private static final class RemoteServerFixture {
-        private final AtomicInteger acquireRequests = new AtomicInteger();
-        private final AtomicInteger statusRequests = new AtomicInteger();
-        private final AtomicInteger releaseRequests = new AtomicInteger();
-        private final AtomicReference<String> lastAcquireBody = new AtomicReference<>();
-        private final AtomicReference<String> lastAcquireRawBody = new AtomicReference<>();
-        private final AtomicReference<String> lastAuthorizationHeader = new AtomicReference<>();
-        private int acquireResponseStatus = 202;
-        private String acquireResponseBody = "{\"lockId\":\"lock-1\"}";
-        private String acquireStatusResponse = "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\"}";
-        private HttpServer server;
-
-        private void setAcquireResponse(int status, String body) {
-            this.acquireResponseStatus = status;
-            this.acquireResponseBody = body;
-        }
-
-        private void setAcquireStatusResponse(String acquireStatusResponse) {
-            this.acquireStatusResponse = acquireStatusResponse;
-        }
-
-        private void start() throws IOException {
-            server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            server.createContext("/lockable-resources/remote/v1/acquire", new AcquireHandler());
-            server.createContext("/lockable-resources/remote/v1/acquire/lock-1", new AcquireStatusHandler());
-            server.createContext(
-                    "/lockable-resources/remote/v1/lease/lock-1/release", new NoContentHandler(releaseRequests));
-            server.createContext(
-                    "/lockable-resources/remote/v1/lease/lock-1/heartbeat", new NoContentHandler(new AtomicInteger()));
-            server.start();
-        }
-
-        private void stop() {
-            if (server != null) {
-                server.stop(0);
-            }
-        }
-
-        private String baseUrl() {
-            return "http://127.0.0.1:" + server.getAddress().getPort();
-        }
-
-        private final class AcquireHandler implements HttpHandler {
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                acquireRequests.incrementAndGet();
-                lastAuthorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
-                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                lastAcquireRawBody.set(body);
-                String resource = extractResource(body);
-                lastAcquireBody.set(resource);
-                // Auto-generate lockEnvVars in status response when variable is specified
-                String variable = extractVariable(body);
-                if (variable != null && resource != null && acquireStatusResponse.contains("\"state\":\"ACQUIRED\"")) {
-                    acquireStatusResponse = "{\"lockId\":\"lock-1\",\"state\":\"ACQUIRED\","
-                            + "\"lockEnvVars\":{"
-                            + "\"" + variable + "\":\"" + resource + "\","
-                            + "\"" + variable + "0\":\"" + resource + "\""
-                            + "}}";
-                }
-                sendJson(exchange, acquireResponseStatus, acquireResponseBody);
-            }
-        }
-
-        private final class AcquireStatusHandler implements HttpHandler {
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                statusRequests.incrementAndGet();
-                sendJson(exchange, 200, acquireStatusResponse);
-            }
-        }
-
-        private static final class NoContentHandler implements HttpHandler {
-            private final AtomicInteger counter;
-
-            private NoContentHandler(AtomicInteger counter) {
-                this.counter = counter;
-            }
-
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                counter.incrementAndGet();
-                exchange.sendResponseHeaders(204, -1);
-                exchange.close();
-            }
-        }
-
-        private static String extractResource(String json) {
-            String marker = "\"resource\":\"";
-            int start = json.indexOf(marker);
-            if (start < 0) {
-                return null;
-            }
-            int valueStart = start + marker.length();
-            int valueEnd = json.indexOf('"', valueStart);
-            return valueEnd >= 0 ? json.substring(valueStart, valueEnd) : null;
-        }
-
-        private static String extractVariable(String json) {
-            String marker = "\"variable\":\"";
-            int start = json.indexOf(marker);
-            if (start < 0) {
-                return null;
-            }
-            int valueStart = start + marker.length();
-            int valueEnd = json.indexOf('"', valueStart);
-            return valueEnd >= 0 ? json.substring(valueStart, valueEnd) : null;
-        }
-
-        private static void sendJson(HttpExchange exchange, int status, String body) throws IOException {
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(status, bytes.length);
-            try (OutputStream outputStream = exchange.getResponseBody()) {
-                outputStream.write(bytes);
-            }
-        }
     }
 
     private static int findUnusedPort() throws IOException {
