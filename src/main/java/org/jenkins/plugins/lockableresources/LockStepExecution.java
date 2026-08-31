@@ -305,7 +305,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
      * Builds the {@code lockEnvVars} map injected for the duration of a {@code lock()} block, following
      * local semantics exactly: {@code variable="X"} with locked resources {@code r1, r2} yields
      * {@code X="r1,r2"}, {@code X0="r1"}, {@code X0_<prop>=<value>}, {@code X1="r2"}, ... Property env vars
-     * are included. Returns {@code null} when {@code variable} is null/empty.
+     * are included. The first (index {@code 0}) resource's properties are additionally exposed without the
+     * numeric index ({@code X_<prop>=<value>}) for the common single-resource lock (JENKINS-75943).
+     * Returns {@code null} when {@code variable} is null/empty.
      *
      * <p>Shared by the local flow ({@link #proceed}) and the remote bridge so the two never drift. All
      * inputs (resource names and property name/value strings) are serializable, so the remote server can
@@ -326,6 +328,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             variables.put(lockEnvName, lockResourceEntry.getKey());
             for (LockableResourceProperty lockProperty : lockResourceEntry.getValue()) {
                 variables.put(lockEnvName + "_" + lockProperty.getName(), lockProperty.getValue());
+                if (index == 0) {
+                    // JENKINS-75943: also expose the first resource's properties without the numeric
+                    // index, so ${variable}_<prop> resolves for the common single-resource lock.
+                    variables.put(variable + "_" + lockProperty.getName(), lockProperty.getValue());
+                }
             }
             ++index;
         }

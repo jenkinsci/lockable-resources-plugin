@@ -87,6 +87,13 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
                                 for (LockableResourceProperty lockProperty : lr.getProperties()) {
                                     String propEnvName = lockEnvName + "_" + lockProperty.getName();
                                     envsToSet.add(new StringParameterValue(propEnvName, lockProperty.getValue()));
+                                    if (index == 0) {
+                                        // JENKINS-75943: also expose the first resource's properties without
+                                        // the numeric index for the common single-resource lock.
+                                        envsToSet.add(new StringParameterValue(
+                                                resources.requiredVar + "_" + lockProperty.getName(),
+                                                lockProperty.getValue()));
+                                    }
                                 }
                                 ++index;
                             }

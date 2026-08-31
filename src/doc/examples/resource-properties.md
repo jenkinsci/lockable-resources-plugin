@@ -32,10 +32,16 @@ parameter is specified** in the `lock()` step.
 | Variable | Value |
 |----------|-------|
 | `{variable}` | Comma-separated list of all locked resource names |
+| `{variable}_{PROPERTY_NAME}` | Value of the **first** locked resource's property — un-indexed convenience alias, always present |
 | `{variable}0` | Name of the first locked resource |
 | `{variable}0_{PROPERTY_NAME}` | Value of that resource's property |
 | `{variable}1` | Name of the second locked resource (if any) |
 | `{variable}1_{PROPERTY_NAME}` | Value of the second resource's property |
+
+The properties of the first acquired resource are exposed both with the `0` index
+(`{variable}0_{PROPERTY_NAME}`) and without it (`{variable}_{PROPERTY_NAME}`). The un-indexed form
+is a convenience alias for the first acquired resource and is always present, even when multiple
+resources are locked.
 
 ### Example: Read properties after locking by name
 
@@ -51,6 +57,9 @@ pipeline {
         echo "Resource: ${env.LOCKED0}"          // staging-server
         echo "Host: ${env.LOCKED0_HOST}"         // 192.168.1.10
         echo "Port: ${env.LOCKED0_PORT}"         // 8080
+        // un-indexed aliases — same values, refer to the first locked resource
+        echo "Host: ${env.LOCKED_HOST}"          // 192.168.1.10
+        echo "Port: ${env.LOCKED_PORT}"          // 8080
       }
     }
   }
@@ -70,6 +79,7 @@ pipeline {
       steps {
         echo "Got: ${env.GPU0}"
         echo "GPU model: ${env.GPU0_MODEL}"
+        echo "GPU model: ${env.GPU_MODEL}"   // un-indexed alias, same value
       }
     }
   }

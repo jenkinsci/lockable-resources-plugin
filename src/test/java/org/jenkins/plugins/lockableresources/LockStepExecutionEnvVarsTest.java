@@ -33,8 +33,36 @@ class LockStepExecutionEnvVarsTest {
         assertEquals("plc-a,plc-b", env.get("PLC"));
         assertEquals("plc-a", env.get("PLC0"));
         assertEquals("10.0.0.11", env.get("PLC0_ip"));
+        // JENKINS-75943: the un-indexed alias must resolve to the FIRST resource's property value
+        assertEquals("10.0.0.11", env.get("PLC_ip"));
         assertEquals("plc-b", env.get("PLC1"));
         assertEquals("10.0.0.12", env.get("PLC1_ip"));
+    }
+
+    @Test
+    void buildLockEnvVarsExposesFirstResourcePropertiesWithoutIndex() {
+        LockableResourceProperty ip = new LockableResourceProperty();
+        ip.setName("ip");
+        ip.setValue("10.0.0.11");
+
+        LockableResourceProperty port = new LockableResourceProperty();
+        port.setName("port");
+        port.setValue("8080");
+
+        LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
+        lockedResources.put("plc-a", List.of(ip, port));
+
+        Map<String, String> env = LockStepExecution.buildLockEnvVars("PLC", lockedResources);
+
+        // existing indexed vars are unchanged
+        assertEquals("plc-a", env.get("PLC"));
+        assertEquals("plc-a", env.get("PLC0"));
+        assertEquals("10.0.0.11", env.get("PLC0_ip"));
+        assertEquals("8080", env.get("PLC0_port"));
+
+        // JENKINS-75943: same property values are additionally exposed without the numeric index
+        assertEquals("10.0.0.11", env.get("PLC_ip"));
+        assertEquals("8080", env.get("PLC_port"));
     }
 
     @Test
