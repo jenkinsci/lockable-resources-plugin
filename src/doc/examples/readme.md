@@ -17,3 +17,4 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Lock with allocation timeout](lock-with-timeout.md)
 - [Remote Lock REST API (curl examples)](remote-api-curl.md)
 - [Remote lock from Jenkins Pipeline (local gate + remote lock)](remote-lock-pipeline-pattern.md)
+- [Unlock a resource via LockableResourcesManager](unlock-via-lrm.md)

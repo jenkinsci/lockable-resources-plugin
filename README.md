@@ -292,6 +292,17 @@ lock(
 echo 'Finish'
 ```
 
+#### Release a lock early
+
+The `lock` step keeps the resource until the block ends. To release it
+sooner (for example after one `parallel` branch fails, without
+`failFast`), call `LockableResourcesManager` from scripted Pipeline or
+the Script Console. See [Unlock a resource via LockableResourcesManager](src/doc/examples/unlock-via-lrm.md).
+
+> **Risk:** another job can take the resource while this build is still
+> running. Remaining branches that still need exclusive access will race
+> with that job.
+
 More examples are [here](src/doc/examples/readme.md).
 
 ----
