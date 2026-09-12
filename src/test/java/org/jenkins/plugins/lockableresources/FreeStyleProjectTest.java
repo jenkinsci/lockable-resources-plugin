@@ -218,6 +218,36 @@ class FreeStyleProjectTest {
     }
 
     @Test
+    @Issue("JENKINS-75943")
+    void nonIndexedPropertyEnvVarForFirstResource(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResource("res-with-prop");
+        LockableResource r = LockableResourcesManager.get().fromName("res-with-prop");
+        LockableResourceProperty prop = new LockableResourceProperty();
+        prop.setName("PROP_ABC");
+        prop.setValue("the-value");
+        r.setProperties(List.of(prop));
+
+        FreeStyleProject p = j.createFreeStyleProject("freestyleProp");
+        p.addProperty(new RequiredResourcesProperty("res-with-prop", "LOCKED_RESOURCE", null, null, null));
+        p.getBuildersList().add(new TestBuilder() {
+            @Override
+            public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+                    throws InterruptedException, IOException {
+                listener.getLogger()
+                        .println("indexed=" + build.getEnvironment(listener).get("LOCKED_RESOURCE0_PROP_ABC"));
+                listener.getLogger()
+                        .println("nonIndexed=" + build.getEnvironment(listener).get("LOCKED_RESOURCE_PROP_ABC"));
+                return true;
+            }
+        });
+
+        FreeStyleBuild b = p.scheduleBuild2(0).get();
+        j.assertBuildStatus(Result.SUCCESS, b);
+        j.assertLogContains("indexed=the-value", b); // existing behaviour intact
+        j.assertLogContains("nonIndexed=the-value", b); // JENKINS-75943
+    }
+
+    @Test
     void migrateToScript(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResource("resource1");
 
