@@ -167,9 +167,17 @@ lock(resource: 'staging-server', priority: 10) {
 ```groovy
 lock(label: 'some_resource', variable: 'LOCKED_RESOURCE') {
   echo env.LOCKED_RESOURCE
+  // properties of the first acquired resource are available both without an index ...
+  echo env.LOCKED_RESOURCE_PROP_ABC
+  // ... and with the numeric index (0 == first acquired resource)
   echo env.LOCKED_RESOURCE0_PROP_ABC
 }
 ```
+
+The properties of the first acquired resource are exposed both with the `0` index
+(`LOCKED_RESOURCE0_PROP_ABC`) and without it (`LOCKED_RESOURCE_PROP_ABC`). The un-indexed form is a
+convenience alias for the first acquired resource and is always present, even when multiple resources
+are locked.
 
 When multiple locks are acquired, each will be assigned to a numbered variable:
 
@@ -181,6 +189,8 @@ lock(label: 'some_resource', variable: 'LOCKED_RESOURCE', quantity: 2) {
   // first lock
   echo env.LOCKED_RESOURCE0
   echo env.LOCKED_RESOURCE0_PROP_ABC
+  // the un-indexed alias always refers to the first lock's properties
+  echo env.LOCKED_RESOURCE_PROP_ABC
 
   // second lock
   echo env.LOCKED_RESOURCE1
