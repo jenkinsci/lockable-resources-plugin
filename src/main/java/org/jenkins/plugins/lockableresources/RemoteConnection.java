@@ -20,6 +20,7 @@ import java.util.Locale;
 import java.util.Objects;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.verb.POST;
 
@@ -32,11 +33,31 @@ public class RemoteConnection extends AbstractDescribableImpl<RemoteConnection> 
     private final String url;
     private final String credentialsId;
 
+    /**
+     * Whether this controller may use the connection. Turning it off is the borrower's counterpart of
+     * the server-side maintenance switch: the entry keeps its URL and credentials binding, but no new
+     * lock is requested through it. Leases already held are unaffected - dropping them would strand
+     * the resources on the other side.
+     *
+     * <p>Set through a {@link DataBoundSetter} rather than the constructor so that configuration
+     * written before this existed - JCasC yaml with only the three connection fields - still loads.
+     */
+    private boolean enabled = true;
+
     @DataBoundConstructor
     public RemoteConnection(String serverId, String url, String credentialsId) {
         this.serverId = serverId;
         this.url = url;
         this.credentialsId = credentialsId;
+    }
+
+    @DataBoundSetter
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 
     public String getServerId() {
@@ -83,19 +104,21 @@ public class RemoteConnection extends AbstractDescribableImpl<RemoteConnection> 
             return false;
         }
         RemoteConnection that = (RemoteConnection) o;
-        return Objects.equals(serverId, that.serverId)
+        return enabled == that.enabled
+                && Objects.equals(serverId, that.serverId)
                 && Objects.equals(url, that.url)
                 && Objects.equals(credentialsId, that.credentialsId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(serverId, url, credentialsId);
+        return Objects.hash(serverId, url, credentialsId, enabled);
     }
 
     @Override
     public String toString() {
-        return "RemoteConnection{" + "serverId='" + serverId + '\'' + ", url='" + url + '\'' + "}";
+        return "RemoteConnection{" + "serverId='" + serverId + '\'' + ", url='" + url + '\'' + ", enabled=" + enabled
+                + "}";
     }
 
     @Extension

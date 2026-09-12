@@ -1,0 +1,17 @@
+<div>
+  <p>
+    Maintenance switch for the remote lock API. Leave it on for normal operation.
+  </p>
+  <p>
+    While it is off, this controller answers <code>POST /lockable-resources/remote/v1/acquire</code>
+    with <code>503</code> and the error code <code>ACQUIRES_PAUSED</code>, so no new remote lock is
+    handed out. Everything else keeps working: leases already held can send heartbeats and release
+    normally, status can still be polled, and requests already waiting in the queue keep their place
+    and are still promoted as resources free up.
+  </p>
+  <p>
+    Client controllers do not fail their builds when they see this. They keep retrying until their
+    own allocation timeout expires, so you can drain this controller for maintenance without
+    disturbing the pipelines waiting on it.
+  </p>
+</div>

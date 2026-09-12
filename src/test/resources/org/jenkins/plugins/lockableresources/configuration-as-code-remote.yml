@@ -7,6 +7,7 @@ unclassified:
     # ── Server-side (this Jenkins exposes resources) ──────────────────────────
     remoteApiEnabled: true
     exposeLabel: "remote-enabled"
+    acceptNewAcquires: false   # maintenance switch; default is true
     # ── Client-side (this Jenkins contacts remote servers) ────────────────────
     clientId: "jenkins-client-1"
     forcedServerId: ""
@@ -17,6 +18,7 @@ unclassified:
       - serverId: "server-b"
         url: "https://jenkins-server-b.example.com/"
         credentialsId: "server-b-token"
+        enabled: false          # borrower-side switch; default is true
     # ── Resources (optional - may be defined separately) ─────────────────────
     declaredResources:
       - name: "plc-01"

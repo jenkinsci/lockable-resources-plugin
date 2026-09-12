@@ -17,6 +17,7 @@ import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -32,8 +33,12 @@ import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
+import org.jenkins.plugins.lockableresources.RemoteConnection;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteCatalog;
+import org.jenkins.plugins.lockableresources.remote.RemoteCatalogCache;
+import org.jenkins.plugins.lockableresources.remote.RemoteClientRegistry;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
@@ -547,6 +552,96 @@ public class LockableResourcesRootAction implements RootAction {
     }
 
     // ---------------------------------------------------------------------------
+    /**
+     * Remote locks this controller currently holds or waits for on other controllers.
+     *
+     * <p>This is the client side of the picture: the resources listed elsewhere on this page belong to
+     * this controller, while these belong to someone else. The state shown here is what this controller
+     * last observed, not the remote's own record - the view says so.
+     */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public List<RemoteClientRegistry.Entry> getRemoteLocks() {
+        Jenkins.get().checkPermission(VIEW);
+        return RemoteClientRegistry.get().getAll();
+    }
+
+    /**
+     * True when this controller serves resources remotely but has stopped handing out new locks.
+     *
+     * <p>Only interesting while the remote API is on: with it off, nothing is being served either way,
+     * and a banner about paused acquires would be noise.
+     */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isRemoteAcquiresPaused() {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        return lrm.isRemoteApiEnabled() && !lrm.isAcceptNewAcquires();
+    }
+
+    /** True when this controller delegates every lock() to one remote server. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isDelegatedMode() {
+        String forced = getForcedServerId();
+        return forced != null && !forced.isEmpty();
+    }
+
+    /**
+     * What the delegated target publishes, as last observed, or {@code null} when nothing has been
+     * fetched yet. Never blocks: a stale snapshot is refreshed in the background.
+     */
+    @CheckForNull
+    @Restricted(NoExternalUse.class) // used by jelly
+    public RemoteCatalog getDelegatedCatalog() {
+        Jenkins.get().checkPermission(VIEW);
+        String forced = getForcedServerId();
+        if (forced == null || forced.isEmpty()) {
+            return null;
+        }
+        return RemoteCatalogCache.get().get(forced);
+    }
+
+    /** True when a connection exists for this serverId but has been switched off. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isServerDisabled(String serverId) {
+        RemoteConnection remote =
+                LockableResourcesManager.get().getRemotesAsMap().get(serverId);
+        return remote != null && !remote.isEnabled();
+    }
+
+    /** Human-readable age of a timestamp, for the remote view. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String getElapsedSince(long timestampMillis) {
+        if (timestampMillis <= 0) {
+            return "";
+        }
+        return formatDuration(System.currentTimeMillis() - timestampMillis);
+    }
+
+    /** True when this controller has any remote relation at all - server side or client side. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public boolean isRemoteConfigured() {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        return lrm.isRemoteApiEnabled() || !lrm.getRemotes().isEmpty();
+    }
+
+    /** The serverId every lock() on this controller is routed to, or empty when not delegating. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String getForcedServerId() {
+        return LockableResourcesManager.get().getForcedServerId();
+    }
+
+    /** Base URL of the delegated target, for the badge; empty when not delegating or unknown. */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String getForcedServerUrl() {
+        String forced = getForcedServerId();
+        if (forced == null || forced.isEmpty()) {
+            return "";
+        }
+        RemoteConnection remote =
+                LockableResourcesManager.get().getRemotesAsMap().get(forced);
+        return remote != null ? remote.getUrl() : "";
+    }
+
+    // ---------------------------------------------------------------------------
     @Restricted(NoExternalUse.class) // used by jelly
     public Queue getQueue() throws Descriptor.FormException {
         List<QueuedContextStruct> currentQueueContext =
@@ -563,6 +658,7 @@ public class LockableResourcesRootAction implements RootAction {
             queue.add(remoteEntry);
         }
 
+        queue.sortByPromotionOrder();
         return queue;
     }
 
@@ -604,6 +700,21 @@ public class LockableResourcesRootAction implements RootAction {
             if (oldest == null || oldest.getQueuedAt() > queueStruct.getQueuedAt()) {
                 oldest = queueStruct;
             }
+        }
+
+        // -------------------------------------------------------------------------
+        /**
+         * Orders the merged local and remote entries the way they will actually be promoted.
+         *
+         * <p>Local and remote entries arrive as two separately ordered lists, so simply concatenating
+         * them showed every remote entry behind every local one no matter its priority. Promotion
+         * ({@code LockableResourcesManager#proceedNextContext}) compares the heads of both queues and
+         * takes the higher priority, favouring local on a tie - which is exactly a stable sort by
+         * descending priority over "locals first, then remotes".
+         */
+        @Restricted(NoExternalUse.class)
+        public void sortByPromotionOrder() {
+            this.queue.sort(Comparator.comparingInt(QueueStruct::getPriority).reversed());
         }
 
         // -------------------------------------------------------------------------
@@ -1205,6 +1316,16 @@ public class LockableResourcesRootAction implements RootAction {
                                 && b.getFullDisplayName()
                                         .toLowerCase(Locale.ENGLISH)
                                         .contains(lowerFilter)) {
+                            return true;
+                        }
+                        // Remote rows have no resource list, no label and no build, so without these two
+                        // the free-text filter could only ever match their lock id.
+                        if (getQueueItemRequestText(item)
+                                .toLowerCase(Locale.ENGLISH)
+                                .contains(lowerFilter)) {
+                            return true;
+                        }
+                        if (item.getRequestedBy().toLowerCase(Locale.ENGLISH).contains(lowerFilter)) {
                             return true;
                         }
                         return item.getId().toLowerCase(Locale.ENGLISH).contains(lowerFilter);

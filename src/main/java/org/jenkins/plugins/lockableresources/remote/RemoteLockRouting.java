@@ -65,6 +65,12 @@ public final class RemoteLockRouting {
         if (remote == null) {
             throw new AbortException("Remote connection not found for serverId=" + serverId);
         }
+        if (!remote.isEnabled()) {
+            // Fail rather than fall back to a local resource of the same name: locking the wrong thing
+            // quietly is the accident delegated mode was made strict to avoid.
+            throw new AbortException("Remote connection is disabled for serverId=" + serverId
+                    + " (enable it in Manage Jenkins > System, or remove the serverId from this lock())");
+        }
         return remote;
     }
 

@@ -1428,7 +1428,9 @@ function initColumnVisibility(config) {
 
     // Action
     html += "<td>";
-    if (hasQueuePermission) {
+    // Reordering works on the local queue only: changeQueueOrder looks the id up among the queued
+    // contexts, so offering the button on a remote row can only ever fail.
+    if (hasQueuePermission && item.type !== "remote") {
       html += "<button data-queue-item-id=\"" + escapeHtml(item.id) + "\" class=\"jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-change-queue-order\" title=\"Change Position\" tooltip=\"Change Position\" aria-label=\"Change Position\">" + queueOrderIconHtml + "</button>";
     }
     html += "</td>";

@@ -21,6 +21,8 @@ import org.htmlunit.html.HtmlPage;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.RemoteConnection;
+import org.jenkins.plugins.lockableresources.remote.RemoteClientRegistry;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -482,6 +484,169 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         when(req.getParameter("id")).thenReturn(id);
         when(req.getParameter("index")).thenReturn("4");
         action.doChangeQueueOrder(req, rsp);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testQueueMergesRemoteEntriesByPriority() throws Exception {
+        // The queue used to be rendered as "all local entries, then all remote ones", which contradicts
+        // promotion: proceedNextContext compares the heads by priority and only favours local on a tie.
+        LockableResourcesManager.get().setRemoteApiEnabled(true);
+        LockableResourcesManager.get().setExposeLabel("remote-ok");
+        LockableResourcesManager.get().createResourceWithLabel("merge-res", "remote-ok");
+
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        // Hold the resource so everything that follows has to wait.
+        WorkflowJob holder = j.jenkins.createProject(WorkflowJob.class, "merge-holder");
+        holder.setDefinition(new CpsFlowDefinition("""
+                lock('merge-res') {
+                    semaphore 'merge-hold'
+                }
+                """, true));
+        WorkflowRun holderRun = holder.scheduleBuild2(0).waitForStart();
+        org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep.waitForStart("merge-hold/1", holderRun);
+
+        // A local waiter at the default priority.
+        WorkflowJob waiter = j.jenkins.createProject(WorkflowJob.class, "merge-waiter");
+        waiter.setDefinition(new CpsFlowDefinition("""
+                lock('merge-res') {
+                    echo('local waiter')
+                }
+                """, true));
+        WorkflowRun waiterRun = waiter.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[Resource: merge-res] is not free, waiting for execution ...", waiterRun);
+
+        // A remote waiter that outranks it, and one that ties with it.
+        String highId = RemoteLockManager.get()
+                .enqueue(remoteRequest("merge-res", 10), "client-high")
+                .getLockId();
+        String tieId = RemoteLockManager.get()
+                .enqueue(remoteRequest("merge-res", 0), "client-tie")
+                .getLockId();
+
+        List<LockableResourcesRootAction.Queue.QueueStruct> queueItems =
+                action.getQueue().getAll();
+        assertEquals(3, queueItems.size(), "queue size");
+
+        assertEquals(highId, queueItems.get(0).getId(), "the higher priority remote entry comes first");
+        assertFalse(queueItems.get(1).isRemote(), "on a tie the local entry keeps its place");
+        assertEquals(tieId, queueItems.get(2).getId(), "the tying remote entry follows the local one");
+
+        // Drain everything before leaving: the remote entries have no client to release them, so the
+        // local waiter would never be promoted and both builds would still be running at teardown.
+        RemoteLockManager.get().release(highId);
+        RemoteLockManager.get().release(tieId);
+        org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep.success("merge-hold/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(holderRun));
+        j.assertBuildStatusSuccess(j.waitForCompletion(waiterRun));
+    }
+
+    private static RemoteLockRequest remoteRequest(String resource, int priority) {
+        return new RemoteLockRequest(
+                resource, null, 0, null, false, "SEQUENTIAL", false, null, priority, 0, "MINUTES", null);
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testRemoteTabShowsWhatThisControllerHoldsRemotely() throws Exception {
+        // The client side of the page: these resources belong to another controller, so they cannot
+        // appear in the Resources tab, and until now they appeared nowhere at all.
+        LockableResourcesManager.get()
+                .setRemotes(java.util.List.of(new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "")));
+        RemoteClientRegistry.get().queued("lock-1", "server-a", "plc-01", null);
+        RemoteClientRegistry.get().acquired("lock-1", java.util.List.of("plc-01"));
+        RemoteClientRegistry.get().queued("lock-2", "server-a", "label:plc", null);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertTrue(page.contains("data-lr-tab=\"remote\""), "the Remote tab is offered");
+        assertTrue(page.contains("plc-01"), "a held remote lock is listed");
+        assertTrue(page.contains("label:plc"), "a waiting remote request is listed");
+        assertTrue(page.contains("source of truth"), "the view says it is a cached view");
+
+        RemoteClientRegistry.get().forget("lock-1");
+        RemoteClientRegistry.get().forget("lock-2");
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testRemoteTabIsHiddenWhenNoRemoteRelationIsConfigured() throws Exception {
+        // Nothing remote configured: the tab would only be an empty promise.
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertFalse(page.contains("data-lr-tab=\"remote\""));
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testDelegatedModeShowsABadgeAndKeepsLocalResourcesVisible() throws Exception {
+        // Roles are per relation: a controller that delegates its own lock() calls can still be the
+        // server other controllers lock against, so its resources must stay on the page.
+        this.createResource("local-1");
+        LockableResourcesManager.get()
+                .setRemotes(java.util.List.of(new RemoteConnection("server-a", "http://jenkins-b:8080/jenkins", "")));
+        LockableResourcesManager.get().setForcedServerId("server-a");
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertTrue(page.contains("Delegated mode"), "the badge explains the changed resolution");
+        assertTrue(page.contains("server-a"), "the badge names the target");
+        assertTrue(page.contains("local-1"), "local resources are not hidden");
+        assertTrue(
+                page.contains("remain lockable by other controllers"), "and the page says why they are still listed");
+
+        LockableResourcesManager.get().setForcedServerId("");
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testNoDelegatedBadgeWithoutForcedServerId() throws Exception {
+        this.createResource("local-2");
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String page = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+
+        assertFalse(page.contains("Delegated mode"));
+    }
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testPausedBannerAppearsOnlyWhileServingAndPaused() throws Exception {
+        // The switch is easy to leave on by accident, and its effect is invisible from this side -
+        // clients wait quietly rather than failing - so the page has to say it out loud.
+        this.createResource("served-1");
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setAcceptNewAcquires(false);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+        String paused = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+        assertTrue(paused.contains("acquire requests are paused"), "the banner explains the pause");
+
+        manager.setAcceptNewAcquires(true);
+        String running = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+        assertFalse(running.contains("acquire requests are paused"));
+
+        // Not serving at all: pausing acquires means nothing, so neither should the banner.
+        manager.setAcceptNewAcquires(false);
+        manager.setRemoteApiEnabled(false);
+        String notServing = wc.goTo("lockable-resources").getWebResponse().getContentAsString();
+        assertFalse(notServing.contains("acquire requests are paused"));
+
+        manager.setAcceptNewAcquires(true);
     }
 
     // ---------------------------------------------------------------------------

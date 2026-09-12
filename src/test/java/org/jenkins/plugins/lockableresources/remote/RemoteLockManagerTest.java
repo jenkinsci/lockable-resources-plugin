@@ -6,11 +6,13 @@
 package org.jenkins.plugins.lockableresources.remote;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -44,6 +46,10 @@ class RemoteLockManagerTest {
     private static RemoteLockRequest labelReqWithVar(String label, int quantity, String variable) {
         return new RemoteLockRequest(
                 null, label, quantity, variable, false, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
+    }
+
+    private static RemoteLockRequest inverseReq(String resource) {
+        return new RemoteLockRequest(resource, null, 0, null, true, "SEQUENTIAL", false, null, 0, 0, "MINUTES", null);
     }
 
     private static RemoteLockRequest reqWithTimeout(String resource, long timeout, String unit) {
@@ -372,6 +378,42 @@ class RemoteLockManagerTest {
         // The timed-out entry must NOT grab the resource once it frees up.
         RemoteLockManager.get().release(first.getLockId());
         assertNull(manager.fromName("board-1").getRemoteLockedBy());
+    }
+
+    @Test
+    void queuedRequestTimesOutOnItsOwnDeadlineWithoutOutsideHelp(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("board-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+
+        RemoteLockRecord waiter =
+                RemoteLockManager.get().enqueue(reqWithTimeout("board-1", 500L, "MILLISECONDS"), null);
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+
+        // Deliberately no checkTimeouts() and no release: nothing here touches the queue after the
+        // request is made. The deadline has to be enforced by a wake-up the queue scheduled for
+        // itself, which is the whole point - a timeout that only fires when something else happens to
+        // run a maintenance pass is not an upper bound on the wait, and every other test in this file
+        // hides that by calling checkTimeouts() by hand.
+        long deadlineAt = System.currentTimeMillis() + 500L;
+        for (int i = 0; i < 100 && waiter.getState() == RemoteLockState.QUEUED; i++) {
+            Thread.sleep(100);
+        }
+
+        assertEquals(RemoteLockState.FAILED, waiter.getState(), "the queued request timed out on its own");
+        assertEquals("LOCK_WAIT_TIMEOUT", waiter.getErrorCode());
+        assertTrue(
+                waiter.getTerminalAt() >= deadlineAt,
+                "it timed out at its deadline, not before: terminalAt=" + waiter.getTerminalAt() + " deadline="
+                        + deadlineAt);
+
+        // The holder is still holding: nothing about this timeout depended on the resource freeing up.
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+        assertNotNull(manager.fromName("board-1").getRemoteLockedBy());
     }
 
     @Test
@@ -772,5 +814,176 @@ class RemoteLockManagerTest {
         RemoteLockRecord other = RemoteLockManager.get().enqueue(req("other-1"), null);
         assertEquals(RemoteLockState.FAILED, other.getState());
         assertEquals("UNKNOWN_RESOURCE", other.getErrorCode());
+    }
+
+    @Test
+    void inversePrecedenceTakesTheFirstPositionInTheRemoteQueue(JenkinsRule j) {
+        // inversePrecedence is carried on the wire and kept on the request, but the remote queue only
+        // looked at priority - so the parameter that makes a local lock() jump the queue did nothing here.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("inv-1", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("inv-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+
+        RemoteLockRecord first = RemoteLockManager.get().enqueue(req("inv-1"), null);
+        RemoteLockRecord jumper = RemoteLockManager.get().enqueue(inverseReq("inv-1"), null);
+        assertEquals(RemoteLockState.QUEUED, first.getState());
+        assertEquals(RemoteLockState.QUEUED, jumper.getState());
+
+        List<String> queued = manager.getCurrentRemoteQueueEntries().stream()
+                .map(RemoteQueueEntry::getLockId)
+                .collect(Collectors.toList());
+        assertEquals(List.of(jumper.getLockId(), first.getLockId()), queued, "inversePrecedence goes first");
+
+        // And the order is the one that actually gets promoted, not just the one that is displayed.
+        RemoteLockManager.get().release(holder.getLockId());
+        assertEquals(RemoteLockState.ACQUIRED, jumper.getState());
+        assertEquals(RemoteLockState.QUEUED, first.getState());
+    }
+
+    @Test
+    void pausingNewAcquiresDoesNotStopTheQueueFromDraining(JenkinsRule j) {
+        // The switch gates the REST boundary only. Requests that were already accepted keep their place
+        // and are still promoted, so an administrator can drain the server instead of stranding clients.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("drain-1", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("drain-1"), null);
+        RemoteLockRecord waiter = RemoteLockManager.get().enqueue(req("drain-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+
+        manager.setAcceptNewAcquires(false);
+        RemoteLockManager.get().release(holder.getLockId());
+
+        assertEquals(RemoteLockState.ACQUIRED, waiter.getState(), "a queued request still gets promoted");
+    }
+
+    @Test
+    void releasedRecordStaysObservableUntilItsTtl(JenkinsRule j) {
+        // A released record used to be dropped from the map at once, so the very next status poll got a
+        // 404 - indistinguishable from "the server restarted and lost the lock".
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("rel-1", "remote-ok");
+
+        RemoteLockRecord record = RemoteLockManager.get().enqueue(req("rel-1"), null);
+        assertEquals(RemoteLockState.ACQUIRED, record.getState());
+
+        RemoteLockManager.get().release(record.getLockId());
+
+        RemoteLockRecord afterRelease = RemoteLockManager.get().find(record.getLockId());
+        assertNotNull(afterRelease, "a released record must stay observable for the terminal TTL");
+        assertEquals(RemoteLockState.FAILED, afterRelease.getState());
+        assertEquals("RELEASED", afterRelease.getErrorCode());
+        assertTrue(afterRelease.getTerminalAt() > 0L, "markFailed must record terminalAt");
+        assertNull(manager.fromName("rel-1").getRemoteLockedBy(), "the resource is still freed");
+
+        // A maintenance pass right after the release must not evict it either.
+        RemoteLockManager.get().doRun();
+        assertNotNull(RemoteLockManager.get().find(record.getLockId()));
+    }
+
+    @Test
+    void releasingAQueuedRequestReportsItAsReleased(JenkinsRule j) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("rel-2", "remote-ok");
+
+        RemoteLockRecord holder = RemoteLockManager.get().enqueue(req("rel-2"), null);
+        assertEquals(RemoteLockState.ACQUIRED, holder.getState());
+        RemoteLockRecord waiter = RemoteLockManager.get().enqueue(req("rel-2"), null);
+        assertEquals(RemoteLockState.QUEUED, waiter.getState());
+
+        RemoteLockManager.get().release(waiter.getLockId());
+
+        RemoteLockRecord afterRelease = RemoteLockManager.get().find(waiter.getLockId());
+        assertNotNull(afterRelease, "a released queued request must stay observable, not vanish");
+        assertEquals(RemoteLockState.FAILED, afterRelease.getState());
+        assertEquals("RELEASED", afterRelease.getErrorCode());
+
+        // It left the queue: freeing the resource must not hand it to the released request.
+        RemoteLockManager.get().release(holder.getLockId());
+        assertEquals(RemoteLockState.FAILED, afterRelease.getState());
+        assertNull(manager.fromName("rel-2").getRemoteLockedBy());
+    }
+
+    @Test
+    void releasingTwiceDoesNotFreeSomebodyElsesLock(JenkinsRule j) {
+        // Now that the record survives the first release, a repeated (or late) release must be a no-op
+        // rather than unlocking whatever holds the resource by then.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("rel-3", "remote-ok");
+
+        RemoteLockRecord first = RemoteLockManager.get().enqueue(req("rel-3"), null);
+        assertEquals(RemoteLockState.ACQUIRED, first.getState());
+        RemoteLockManager.get().release(first.getLockId());
+
+        RemoteLockRecord second = RemoteLockManager.get().enqueue(req("rel-3"), null);
+        assertEquals(RemoteLockState.ACQUIRED, second.getState());
+
+        RemoteLockManager.get().release(first.getLockId()); // repeated release of the old lock
+
+        assertEquals(RemoteLockState.ACQUIRED, second.getState());
+        assertEquals(
+                second.getLockId(),
+                manager.fromName("rel-3").getRemoteLockedBy(),
+                "the second holder must keep the resource");
+    }
+
+    @Test
+    void lockCauseNamesTheRemoteHolder(JenkinsRule j) {
+        // A remote lock has no build and no reservedTimestamp, so the generic branches used to render
+        // "locked by null at <unknown>" - in the REST API and in the console of a locally waiting job.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("remote-ok");
+        manager.createResourceWithLabel("cause-1", "remote-ok");
+
+        RemoteLockRecord record = RemoteLockManager.get().enqueue(req("cause-1"), "jenkins-a");
+        assertEquals(RemoteLockState.ACQUIRED, record.getState());
+
+        LockableResource resource = manager.fromName("cause-1");
+        assertNotNull(resource);
+
+        String cause = resource.getLockCause();
+        assertNotNull(cause);
+        assertTrue(cause.contains("remote client jenkins-a"), cause);
+        assertFalse(cause.contains("null"), cause);
+        assertFalse(cause.contains("<unknown>"), cause);
+
+        String detail = resource.getLockCauseDetail();
+        assertNotNull(detail);
+        assertTrue(detail.contains("remote client jenkins-a"), detail);
+        assertTrue(detail.contains(record.getLockId()), detail);
+        assertFalse(detail.contains("<unknown>"), detail);
+    }
+
+    @Test
+    void lockCauseFallsBackToTheLockIdWhenTheRecordIsGone(JenkinsRule j) {
+        // The record is transient: after a restart a still-locked resource has a lock id and nothing else.
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.createResource("orphan-1");
+        LockableResource resource = manager.fromName("orphan-1");
+        assertNotNull(resource);
+        resource.setRemoteLockedBy("lost-lock-id");
+
+        String cause = resource.getLockCause();
+        assertNotNull(cause);
+        assertTrue(cause.contains("remote lockId lost-lock-id"), cause);
+        assertTrue(cause.contains("<unknown>"), cause);
+
+        String detail = resource.getLockCauseDetail();
+        assertNotNull(detail);
+        assertTrue(detail.contains("remote lockId lost-lock-id"), detail);
     }
 }

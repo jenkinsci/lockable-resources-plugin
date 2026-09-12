@@ -1,0 +1,19 @@
+<div>
+  <p>
+    Whether this controller may use this connection. Leave it on for normal operation.
+  </p>
+  <p>
+    Turning it off keeps the entry - its URL and its credentials binding - but stops this controller
+    from requesting new locks through it. A <code>lock(..., serverId: '...')</code> naming a disabled
+    connection fails the step rather than falling back to a local resource of the same name: locking
+    something other than what was asked for is worse than failing.
+  </p>
+  <p>
+    Locks already held are not affected. Heartbeats and releases continue, so nothing is stranded on
+    the other side; only new requests are refused.
+  </p>
+  <p>
+    This is the client-side counterpart of the server-side "Accept new acquire requests" switch: that
+    one stops lending resources out, this one stops asking for them.
+  </p>
+</div>

@@ -9,6 +9,7 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.PeriodicWork;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,13 +101,29 @@ public class RemoteLockManager extends PeriodicWork {
                 LOGGER.fine("Remote acquire rejected: lockId=" + lockId + " errorCode=" + errorCode);
                 return record;
             }
+            // Whether the parameters make sense together is lock() semantics, so ask the canonical
+            // validator rather than re-implementing its rules at the REST boundary. It runs after
+            // admission on purpose: it also rejects labels that do not exist, and answering that with a
+            // 400 while an existing-but-unexposed label answers 404 would tell a client which names are
+            // real. Admission has already reduced both to a uniform 404 by the time we get here.
+            // Throws IllegalArgumentException, which the endpoint maps to 400 INVALID_REQUEST.
+            RemoteResolver.validateAsLocalStep(lockRequest, lrm.isAllowEmptyOrNullValues());
+
             // Resolve through the SAME canonical path local lock() uses (no re-implementation of lock()
             // semantics), with the exposeLabel set as candidate filter. extra / label / quantity(0=all) /
             // resourceSelectStrategy / property env vars all come from the canonical path. A request whose
             // (exposed, existing) targets are merely busy stays QUEUED, exactly like local.
             List<LockableResourcesStruct> structs = resolver.toRemoteStructs(lockRequest);
             if (structs.isEmpty()) {
-                record.markFailed("MISSING_TARGET");
+                if (lrm.isAllowEmptyOrNullValues()) {
+                    // Local lock() with nothing to lock runs the body holding nothing when the instance
+                    // allows empty values; the bridge grants the same no-op lease instead of failing.
+                    record.markAcquired(Collections.emptyList(), Collections.emptyMap());
+                } else {
+                    // Unreachable: the canonical validator above rejects a target-less request in this
+                    // configuration. Kept so a future change cannot fall through to a 202 with no lease.
+                    record.markFailed("MISSING_TARGET");
+                }
             } else {
                 List<LockableResource> available = resolver.availableForRemote(structs, lockRequest);
                 if (available != null && !available.isEmpty()) {
@@ -165,9 +182,14 @@ public class RemoteLockManager extends PeriodicWork {
     // -----------------------------------------------------------------------
     /**
      * Releases a lock, freeing the underlying resource(s). Idempotent.
+     *
+     * <p>The record is kept as a terminal {@code FAILED}/{@code RELEASED} entry until its TTL rather
+     * than being dropped here, so a {@code GET /acquire/{lockId}} right after the release reports what
+     * happened instead of a 404 that cannot be told apart from "the server restarted". The sweep in
+     * {@link #maybeScanStale()} owns removal.
      */
     public void release(String lockId) {
-        RemoteLockRecord record = records.remove(lockId);
+        RemoteLockRecord record = records.get(lockId);
         if (record == null) {
             return;
         }
@@ -186,10 +208,15 @@ public class RemoteLockManager extends PeriodicWork {
                 if (names != null && !names.isEmpty()) {
                     namesToUnlock = names;
                 }
+                record.markFailed("RELEASED");
             } else if (state == RemoteLockState.QUEUED) {
                 // Terminal-mark before unqueue so a not-yet-run promotion is excluded.
                 record.markFailed("RELEASED");
                 lrm.unqueueRemote(lockId);
+            } else {
+                // Already terminal - a repeated release. The first call freed whatever was held, so
+                // there is nothing left to do; the record waits out its TTL.
+                return;
             }
         }
 

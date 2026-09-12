@@ -47,6 +47,7 @@ import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
+import org.jenkins.plugins.lockableresources.remote.RemoteCatalogCache;
 import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
 import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.jenkins.plugins.lockableresources.util.Constants;
@@ -78,6 +79,35 @@ public class LockableResourcesManager extends GlobalConfiguration {
             CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesManager.class.getName());
 
+    /**
+     * One line per resource state change, for working out who held what and when.
+     *
+     * <p>Separate from {@link #LOGGER} so it can be turned on by itself: switching the main logger to
+     * FINE to see holdings would bury them in unrelated debug output.
+     *
+     * <p>The line is written where the state actually changes, under the same lock that guards it, so
+     * the order of these lines is the order the resources really changed hands. That is the whole
+     * point of it: a client can only timestamp its own call to release, which returns after the server
+     * has already freed the resource and possibly handed it to someone else - so two clients' logs can
+     * appear to overlap on a resource that was never held twice. Reconstructing exclusion from the
+     * clients therefore cannot distinguish a real double-grant from a slow round trip, and this can.
+     *
+     * <p>Format: {@code LRA|<epochMs>|<LOCAL|REMOTE>|<ACQUIRED|RELEASED>|<resource>|<holder>}, where
+     * holder is the lock id for a remote hold and the build id for a local one.
+     */
+    private static final Logger AUDIT = Logger.getLogger("org.jenkins.plugins.lockableresources.audit");
+
+    /**
+     * Records a resource changing hands. Costs one level check when the logger is off, which is the
+     * normal case - a load test can afford the lines, ordinary use should not pay for them.
+     */
+    private static void audit(String kind, String event, String resourceName, String holder) {
+        if (AUDIT.isLoggable(Level.FINE)) {
+            AUDIT.fine(
+                    "LRA|" + System.currentTimeMillis() + "|" + kind + "|" + event + "|" + resourceName + "|" + holder);
+        }
+    }
+
     private boolean allowEmptyOrNullValues;
 
     /**
@@ -105,6 +135,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     /** When true the remote lock REST API (/remote/v1/*) is active on this server. */
     private boolean remoteApiEnabled = false;
+
+    /**
+     * Maintenance switch. While false the remote API keeps serving every endpoint except
+     * {@code POST /acquire}, so leases already held can heartbeat and release undisturbed while no new
+     * ones are handed out. Requests already queued keep their place and are still promoted.
+     */
+    private boolean acceptNewAcquires = true;
 
     /**
      * Only resources that carry this label are exposed via the remote API.
@@ -212,6 +249,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     @DataBoundSetter
+    public void setAcceptNewAcquires(boolean acceptNewAcquires) {
+        this.acceptNewAcquires = acceptNewAcquires;
+    }
+
+    public boolean isAcceptNewAcquires() {
+        return acceptNewAcquires;
+    }
+
+    @DataBoundSetter
     public void setExposeLabel(String exposeLabel) {
         this.exposeLabel = exposeLabel != null ? exposeLabel : "";
     }
@@ -270,8 +316,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (trimmed == null) {
             return FormValidation.ok();
         }
-        if (!getRemotesAsMap().containsKey(trimmed)) {
+        RemoteConnection target = getRemotesAsMap().get(trimmed);
+        if (target == null) {
             return FormValidation.warning(Messages.warning_forcedServerIdNotConfigured(trimmed));
+        }
+        if (!target.isEnabled()) {
+            // Delegated mode routes every lock() here, so a disabled target fails all of them.
+            return FormValidation.warning(Messages.warning_forcedServerIdDisabled(trimmed));
         }
         return FormValidation.ok();
     }
@@ -344,6 +395,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         this.remotes = validatedRemotes;
         save();
+        // The catalog snapshots belong to the previous configuration; a changed URL, credential or
+        // enabled flag makes them meaningless.
+        RemoteCatalogCache.get().invalidateAll();
     }
 
     // ---------------------------------------------------------------------------
@@ -908,6 +962,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             if (reason != null && !reason.isEmpty()) {
                 r.setLockReason(reason);
             }
+            audit("LOCAL", "ACQUIRED", r.getName(), build.getExternalizableId());
         }
 
         LockedResourcesBuildAction.findAndInitAction(build).addUsedResources(getResourcesNames(resourcesToLock));
@@ -938,6 +993,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resource.unqueue();
             resource.setBuild(null);
             resource.setLockReason(null);
+            audit("LOCAL", "RELEASED", resource.getName(), build.getExternalizableId());
             uncacheIfFreeing(resource, true, false);
 
             if (resource.isEphemeral()) {
@@ -1151,10 +1207,37 @@ public class LockableResourcesManager extends GlobalConfiguration {
             this.queuedContexts.removeAll(toRemove);
         }
 
-        // reschedule for the next earliest deadline
+        // reschedule for the next earliest deadline, across both queues.
+        //
+        // There is one timeout task, and scheduleTimeoutAt() cancels whatever is pending before it
+        // schedules again. Computing the deadline from the local queue alone therefore does not just
+        // ignore remote entries - it cancels a wake-up a remote entry was relying on and never puts
+        // it back, so remote requests only ever time out when something else happens to run a
+        // maintenance pass.
+        earliestDeadline = Math.min(earliestDeadline, earliestRemoteDeadline());
         scheduleTimeoutAt(earliestDeadline);
 
         return nextEntry;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Earliest allocate-timeout deadline among the queued remote requests, or {@link Long#MAX_VALUE}
+     * when none of them is waiting against a deadline.
+     * Must be called under {@link #syncResources}.
+     */
+    private long earliestRemoteDeadline() {
+        long earliest = Long.MAX_VALUE;
+        for (RemoteQueueEntry entry : getRemoteQueueEntries()) {
+            if (!entry.isValid()) {
+                continue;
+            }
+            long deadline = entry.getTimeoutDeadlineMillis();
+            if (deadline > 0 && deadline < earliest) {
+                earliest = deadline;
+            }
+        }
+        return earliest;
     }
 
     // ---------------------------------------------------------------------------
@@ -1913,17 +1996,36 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public void queueRemote(@NonNull RemoteQueueEntry entry) {
         synchronized (syncResources) {
             List<RemoteQueueEntry> list = getRemoteQueueEntries();
-            int insertAt = list.size();
-            for (int i = list.size() - 1; i >= 0; i--) {
-                if (list.get(i).getPriority() < entry.getPriority()) {
-                    insertAt = i;
-                } else {
-                    break;
+            int insertAt;
+            if (entry.getLockRequest().isInversePrecedence() && entry.getPriority() == 0) {
+                // Same rule as queueContext(): with the default priority, inversePrecedence means "take the
+                // first position". The flag travels on the wire and is kept on the request, but this queue
+                // used to ignore it, so the very parameter that makes a local lock() jump the queue did
+                // nothing once the request arrived over the bridge.
+                insertAt = 0;
+            } else {
+                insertAt = list.size();
+                for (int i = list.size() - 1; i >= 0; i--) {
+                    if (list.get(i).getPriority() < entry.getPriority()) {
+                        insertAt = i;
+                    } else {
+                        break;
+                    }
                 }
             }
             list.add(insertAt, entry);
             LOGGER.fine("Remote acquire queued: lockId=" + entry.getLockId() + " priority=" + entry.getPriority()
                     + " position=" + insertAt);
+
+            // Same as queueContext(): if this entry has a timeout and its deadline is earlier than the
+            // currently scheduled one, (re)schedule so it fires on time. Without this a remote request
+            // computes a deadline that nothing ever wakes up to enforce, so timeoutForAllocateResource
+            // stops being an upper bound on the wait - it only takes effect when a maintenance pass
+            // happens to run for some other reason, such as the holder releasing.
+            long deadline = entry.getTimeoutDeadlineMillis();
+            if (deadline > 0 && (nextTimeoutDeadline == 0 || deadline < nextTimeoutDeadline)) {
+                scheduleTimeoutAt(deadline);
+            }
         }
     }
 
@@ -1958,6 +2060,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource r : resources) {
             r.unqueue();
             r.setRemoteLockedBy(lockId);
+            audit("REMOTE", "ACQUIRED", r.getName(), lockId);
         }
         save();
         return true;
@@ -1974,6 +2077,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 LockableResource r = fromName(name);
                 if (r != null && lockId.equals(r.getRemoteLockedBy())) {
                     r.setRemoteLockedBy(null);
+                    audit("REMOTE", "RELEASED", name, lockId);
                 }
             }
             while (proceedNextContext()) {
