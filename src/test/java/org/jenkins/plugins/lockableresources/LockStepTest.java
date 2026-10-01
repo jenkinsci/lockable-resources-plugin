@@ -1702,4 +1702,15 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("resource2 HAS MYKEY=MYVAL2", b1);
         j.assertLogContains("null HAS MYKEY=null", b1);
     }
+
+    @Test
+    @Issue("154")
+    void lockAcquiredMessageShowsResourceNames(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(
+                new CpsFlowDefinition("lock(label: 'label1', quantity: 1) {\n" + "  echo 'inside'\n" + "}", true));
+        WorkflowRun b1 = j.buildAndAssertSuccess(p);
+        j.assertLogContains("Lock acquired on [Label: label1, Quantity: 1], resources: [resource1]", b1);
+    }
 }

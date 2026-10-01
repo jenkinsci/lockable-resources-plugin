@@ -262,8 +262,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             build = context.get(Run.class);
             node = context.get(FlowNode.class);
             logger = context.get(TaskListener.class).getLogger();
-            LockableResourcesManager.printLogs(
-                    "Lock acquired on [" + resourceDescription + "]", Level.FINE, LOGGER, logger);
+            String message = "Lock acquired on [" + resourceDescription + "]";
+            if (!lockedResources.isEmpty()) {
+                message += ", resources: " + lockedResources.keySet();
+            }
+            LockableResourcesManager.printLogs(message, Level.FINE, LOGGER, logger);
         } catch (Exception e) {
             context.onFailure(e);
             return;
