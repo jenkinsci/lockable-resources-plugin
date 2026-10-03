@@ -8,6 +8,7 @@ import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -249,6 +250,24 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
     }
 
     // ---------------------------------------------------------------------------
+
+    private static final int MAX_LOGGED_RESOURCE_NAMES = 5;
+
+    static String formatResourceNames(Collection<String> names) {
+        List<String> shown = new ArrayList<>();
+        for (String name : names) {
+            if (shown.size() == MAX_LOGGED_RESOURCE_NAMES) {
+                break;
+            }
+            shown.add(name);
+        }
+        int hidden = names.size() - shown.size();
+        if (hidden > 0) {
+            shown.add("+" + hidden + " more");
+        }
+        return shown.toString();
+    }
+
     @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
@@ -262,8 +281,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             build = context.get(Run.class);
             node = context.get(FlowNode.class);
             logger = context.get(TaskListener.class).getLogger();
-            LockableResourcesManager.printLogs(
-                    "Lock acquired on [" + resourceDescription + "]", Level.FINE, LOGGER, logger);
+            String message = "Lock acquired on [" + resourceDescription + "]";
+            if (!lockedResources.isEmpty()) {
+                message += ", resources: " + formatResourceNames(lockedResources.keySet());
+            }
+            LockableResourcesManager.printLogs(message, Level.FINE, LOGGER, logger);
         } catch (Exception e) {
             context.onFailure(e);
             return;
