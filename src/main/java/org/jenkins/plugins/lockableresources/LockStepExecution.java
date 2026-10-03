@@ -250,7 +250,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
     }
 
     // ---------------------------------------------------------------------------
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+
     private static final int MAX_LOGGED_RESOURCE_NAMES = 5;
 
     static String formatResourceNames(Collection<String> names) {
@@ -268,6 +268,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         return shown.toString();
     }
 
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
