@@ -418,11 +418,12 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             Run<?, ?> build = context.get(Run.class);
             LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
             LockableResourcesManager.get().unlockNames(this.resourceNames, build);
+            String message = "Lock released on resource [" + this.resourceDescription + "]";
+            if (this.resourceNames != null && !this.resourceNames.isEmpty()) {
+                message += ", resources: " + formatResourceNames(this.resourceNames);
+            }
             LockableResourcesManager.printLogs(
-                    "Lock released on resource [" + this.resourceDescription + "]",
-                    Level.FINE,
-                    LOGGER,
-                    context.get(TaskListener.class).getLogger());
+                    message, Level.FINE, LOGGER, context.get(TaskListener.class).getLogger());
         }
     }
 
