@@ -2,6 +2,7 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -1701,5 +1702,27 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("resource1 HAS MYKEY=MYVAL1", b1);
         j.assertLogContains("resource2 HAS MYKEY=MYVAL2", b1);
         j.assertLogContains("null HAS MYKEY=null", b1);
+    }
+
+    @Test
+    @Issue("154")
+    void lockAcquiredMessageShowsResourceNames(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(
+                new CpsFlowDefinition("lock(label: 'label1', quantity: 1) {\n" + "  echo 'inside'\n" + "}", true));
+        WorkflowRun b1 = j.buildAndAssertSuccess(p);
+        j.assertLogContains("Lock acquired on [Label: label1, Quantity: 1], resources: [resource1]", b1);
+    }
+
+    @Test
+    @Issue("154")
+    void lockAcquiredMessageLimitsResourceNames() {
+        List<String> names = new ArrayList<>();
+        for (int i = 1; i <= 7; i++) {
+            names.add("r" + i);
+        }
+        assertEquals("[r1, r2, r3, r4, r5, +2 more]", LockStepExecution.formatResourceNames(names));
+        assertEquals("[r1, r2]", LockStepExecution.formatResourceNames(List.of("r1", "r2")));
     }
 }
