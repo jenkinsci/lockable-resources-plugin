@@ -1725,4 +1725,38 @@ class LockStepTest extends LockStepTestBase {
         assertEquals("[r1, r2, r3, r4, r5, +2 more]", LockStepExecution.formatResourceNames(names));
         assertEquals("[r1, r2]", LockStepExecution.formatResourceNames(List.of("r1", "r2")));
     }
+
+    @Test
+    void lockNamedResourceAndSameLabelInExtra(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.createResourceWithLabel("resource1", "label1");
+        lrm.createResourceWithLabel("resource2", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("""
+                lock(resource: 'resource1', variable: 'var', extra: [[label: 'label1', quantity: 1]]) {
+                    echo "Locked: ${env.var}"
+                }
+                """, true));
+        WorkflowRun b1 = j.buildAndAssertSuccess(p);
+        j.assertLogContains("Locked: resource1,resource2", b1);
+        j.assertLogNotContains("Extra filter tries to allocate pre-reserved resources", b1);
+    }
+
+    @Test
+    void lockOverlappingLabelsInExtra(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.createResourceWithLabel("resource1", "label1 label2");
+        lrm.createResourceWithLabel("resource2", "label1");
+        lrm.createResourceWithLabel("resource3", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("""
+                lock(label: 'label1 && label2', quantity: 1, variable: 'var',
+                     extra: [[label: 'label1', quantity: 1], [label: 'label1', quantity: 1]]) {
+                    echo "Locked: ${env.var}"
+                }
+                """, true));
+        WorkflowRun b1 = j.buildAndAssertSuccess(p);
+        j.assertLogContains("Locked: resource1,resource2,resource3", b1);
+        j.assertLogNotContains("Extra filter tries to allocate pre-reserved resources", b1);
+    }
 }
