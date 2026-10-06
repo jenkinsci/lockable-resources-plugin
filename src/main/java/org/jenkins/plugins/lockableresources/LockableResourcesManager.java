@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1740,6 +1741,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
         candidates.addAll(this.getResourcesWithLabel(label));
         // Restrict to the visible candidate pool before count-based selection (e.g. remote exposure policy).
+
         // Applied here so amount<=0 ("all") resolves to "all visible matching".
         candidates.removeIf(r -> !candidateFilter.test(r));
 
@@ -1764,6 +1766,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Collections.shuffle(candidates);
         }
 
+        // Prefer resources not already taken by an earlier entry of the same lock (#961)
+        candidates.sort(Comparator.comparing((LockableResource r) -> alreadySelected.contains(r)));
         for (LockableResource r : candidates) {
             // TODO: it shall be used isFree() here, but in that case we need to change the
             // logic in parametrized builds and that is much more effort as I want to spend here now
