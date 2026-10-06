@@ -1087,12 +1087,12 @@ class LockStepTest extends LockStepTestBase {
                   semaphore 'wait-inside'
                 }
                 echo 'Finish'""", true));
-        // #1 should lock as few resources as possible
+        // #1 label entry picks additional resources instead of reusing the named ones (#961)
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait-inside/1", b1);
 
-        j.waitForMessage("Extra filter tries to allocate pre-reserved resources.", b1);
-        j.waitForMessage("Resources locked: [resource2, resource4]", b1);
+        j.waitForMessage("Resources locked: [resource1, resource2, resource3, resource4]", b1);
+        j.assertLogNotContains("Extra filter tries to allocate pre-reserved resources.", b1);
 
         WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
         p2.setDefinition(new CpsFlowDefinition("""
@@ -1104,7 +1104,7 @@ class LockStepTest extends LockStepTestBase {
                 echo 'Finish'""", true));
         WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
         j.waitForMessage("[Label: label1, Quantity: 3] is not free, waiting for execution ...", b2);
-        j.waitForMessage("Found 2 available resource(s). Waiting for correct amount: 3.", b2);
+        j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 3.", b2);
         isPaused(b2, 1, 1);
 
         WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "p3");
@@ -1116,32 +1116,37 @@ class LockStepTest extends LockStepTestBase {
                 }
                 echo 'Finish'""", true));
         WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
-        // While 2 continues waiting, 3 can continue directly
-        SemaphoreStep.waitForStart("wait-inside-quantity2/1", b3);
-        // Let 3 finish
-        SemaphoreStep.success("wait-inside-quantity2/1", null);
-        j.waitForMessage("Finish", b3);
-        j.assertBuildStatusSuccess(j.waitForCompletion(b3));
-        j.assertLogContains("Resources locked: [resource1, resource3]", b3);
-        isPaused(b3, 1, 0);
+        // #1 holds all resources, so #3 has to wait too
+        j.waitForMessage("[Label: label1, Quantity: 2] is not free, waiting for execution ...", b3);
+        j.waitForMessage("Found 0 available resource(s). Waiting for correct amount: 2.", b3);
+        isPaused(b3, 1, 1);
 
         // Unlock resources
         SemaphoreStep.success("wait-inside/1", null);
         j.waitForMessage(
                 "Lock released on resource [{Resource: resource4},{Resource: resource2},{Label: label1, Quantity: 2}]",
                 b1);
-        j.assertLogContains("Resources locked: [resource2, resource4]", b1);
         j.assertBuildStatusSuccess(j.waitForCompletion(b1));
         isPaused(b1, 1, 0);
 
-        // #2 gets the lock
+        // #2 gets the lock first (it requested it first), #3 keeps waiting for the one remaining resource
         j.waitForMessage("Lock acquired on [Label: label1, Quantity: 3]", b2);
+        SemaphoreStep.waitForStart("wait-inside-quantity3/1", b2);
+        j.assertLogNotContains("Lock acquired on [Label: label1, Quantity: 2]", b3);
+        isPaused(b3, 1, 1);
         SemaphoreStep.success("wait-inside-quantity3/1", null);
         j.waitForMessage("Finish", b2);
         j.assertBuildStatusSuccess(j.waitForCompletion(b2));
         // Could be any 3 resources, so just check the beginning of the message
         j.assertLogContains("Resources locked: [resource", b2);
         isPaused(b2, 1, 0);
+
+        // #3 gets the lock after #2 released it
+        j.waitForMessage("Lock acquired on [Label: label1, Quantity: 2]", b3);
+        SemaphoreStep.success("wait-inside-quantity2/1", null);
+        j.waitForMessage("Finish", b3);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b3));
+        isPaused(b3, 1, 0);
 
         assertNotNull(LockableResourcesManager.get().fromName("resource1"));
         assertNotNull(LockableResourcesManager.get().fromName("resource2"));

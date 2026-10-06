@@ -1741,7 +1741,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
         List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
         candidates.addAll(this.getResourcesWithLabel(label));
         // Restrict to the visible candidate pool before count-based selection (e.g. remote exposure policy).
-
         // Applied here so amount<=0 ("all") resolves to "all visible matching".
         candidates.removeIf(r -> !candidateFilter.test(r));
 
