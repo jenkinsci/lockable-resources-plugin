@@ -298,6 +298,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             BodyInvoker bodyInvoker =
                     context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
             if (variable != null && !variable.isEmpty()) {
+                Map<String, String> resourceLabels = new LinkedHashMap<>();
+                for (String resourceName : resourceNames) {
+                    LockableResource resource = LockableResourcesManager.get().fromName(resourceName);
+                    resourceLabels.put(resourceName, resource == null ? "" : resource.getLabelsAsString());
+                }
                 // set the variable for the duration of the block
                 bodyInvoker.withContext(EnvironmentExpander.merge(
                         context.get(EnvironmentExpander.class), new EnvironmentExpander() {
@@ -305,7 +310,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
 
                             @Override
                             public void expand(@NonNull EnvVars env) {
-                                Map<String, String> variables = buildLockEnvVars(variable, lockedResources);
+                                Map<String, String> variables =
+                                        buildLockEnvVars(variable, lockedResources, resourceLabels);
                                 if (variables == null) {
                                     return;
                                 }
@@ -341,6 +347,16 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
     public static Map<String, String> buildLockEnvVars(
             @edu.umd.cs.findbugs.annotations.CheckForNull String variable,
             @NonNull LinkedHashMap<String, List<LockableResourceProperty>> lockedResources) {
+        return buildLockEnvVars(variable, lockedResources, Collections.emptyMap());
+    }
+
+    /** Builds lock environment variables with indexed labels and a first-resource label alias. */
+    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    @edu.umd.cs.findbugs.annotations.CheckForNull
+    public static Map<String, String> buildLockEnvVars(
+            @edu.umd.cs.findbugs.annotations.CheckForNull String variable,
+            @NonNull LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            @NonNull Map<String, String> resourceLabels) {
         if (variable == null || variable.isEmpty()) {
             return null;
         }
@@ -357,6 +373,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     // index, so ${variable}_<prop> resolves for the common single-resource lock.
                     variables.put(variable + "_" + lockProperty.getName(), lockProperty.getValue());
                 }
+            }
+            String labels = resourceLabels.getOrDefault(lockResourceEntry.getKey(), "");
+            variables.put(lockEnvName + "_LABELS", labels);
+            if (index == 0) {
+                variables.put(variable + "_LABELS", labels);
             }
             ++index;
         }

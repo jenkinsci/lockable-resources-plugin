@@ -1150,6 +1150,42 @@ class LockStepTest extends LockStepTestBase {
     }
 
     @Test
+    void locksExposeResourceLabels(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1 fast");
+        LockableResourcesManager.get().createResource("resource2");
+        WorkflowJob project = j.jenkins.createProject(WorkflowJob.class, "labels");
+        project.setDefinition(new CpsFlowDefinition("""
+                                lock(resource: 'resource1', extra: [[resource: 'resource2']], variable: 'LOCKED') {
+                                    assert env.LOCKED0_LABELS == 'label1 fast'
+                                    assert env.LOCKED_LABELS == 'label1 fast'
+                                      assert env.LOCKED1_LABELS == null
+                                }
+                                assert env.LOCKED0_LABELS == null
+                                assert env.LOCKED_LABELS == null
+                                assert env.LOCKED1_LABELS == null
+                                """, true));
+        j.assertBuildStatusSuccess(project.scheduleBuild2(0));
+    }
+
+    @Test
+    void nestedLabelAliasShadowsAndRestoresOuterVariable(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("PLC", "hw fast");
+        LockableResourcesManager.get().createResource("PLC_LABELS");
+        WorkflowJob project = j.jenkins.createProject(WorkflowJob.class, "label-collision");
+        project.setDefinition(new CpsFlowDefinition("""
+                                lock(resource: 'PLC_LABELS', variable: 'PLC_LABELS') {
+                                    assert env.PLC_LABELS == 'PLC_LABELS'
+                                    lock(resource: 'PLC', variable: 'PLC') {
+                                        assert env.PLC_LABELS == 'hw fast'
+                                    }
+                                    assert env.PLC_LABELS == 'PLC_LABELS'
+                                }
+                                assert env.PLC_LABELS == null
+                                """, true));
+        j.assertBuildStatusSuccess(project.scheduleBuild2(0));
+    }
+
+    @Test
     void multipleLocksFillVariables(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
