@@ -1494,7 +1494,11 @@ public class LockableResourcesRootAction implements RootAction {
         if ("remote".equals(token)) {
             return new RemoteRouterAction();
         }
-        return null;
+        if (Util.fixEmptyAndTrim(token) == null) {
+            // Keep the root page (/lockable-resources/) reachable.
+            return this;
+        }
+        return new LockableResourceDetailsAction(token);
     }
 
     /** Routes {@code /lockable-resources/remote/v1/*} to {@link RemoteApiV1Action}. */

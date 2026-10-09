@@ -42,7 +42,7 @@ THE SOFTWARE.
       data-root-url="${rootURL}"
     >
       <l:hasPermission permission="${it.QUEUE}">
-        <span id="lr-queue-has-permission" style="display:none"/>
+        <span id="lr-queue-has-permission" class="lr-hidden"/>
       </l:hasPermission>
       <thead>
         <tr>

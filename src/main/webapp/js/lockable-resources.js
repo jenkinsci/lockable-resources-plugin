@@ -187,17 +187,51 @@ function deleteResource(button) {
     });
 }
 
+function promptForActionReason(action, resourceName, allowEmpty) {
+  return dialog.prompt(i18n(action + "-title", resourceName), {
+    message: i18n(action + "-message", resourceName),
+    minWidth: "450px",
+    maxWidth: "600px",
+    allowEmpty: !!allowEmpty,
+  });
+}
+
+// Expose for pages that reuse the same reserve/steal reason popup.
+window.lrPromptForActionReason = promptForActionReason;
+
+function bindActionReasonPopup(buttonSelector, hiddenSelector, action, allowEmpty) {
+  const button = document.querySelector(buttonSelector);
+  if (!button) return;
+
+  button.addEventListener("click", function () {
+    const form = button.closest("form");
+    const reasonInput = form ? form.querySelector(hiddenSelector) : null;
+    const resourceName = button.getAttribute("data-resource-name") || "";
+    if (!form || !reasonInput) {
+      if (form) form.submit();
+      return;
+    }
+
+    promptForActionReason(action, resourceName, allowEmpty)
+      .then(function (reason) {
+        reasonInput.value = reason || "";
+        form.submit();
+      });
+  });
+}
+
+function bindDetailReasonPopups() {
+  bindActionReasonPopup(".lr-detail-reserve-btn", ".lr-detail-reason", "reserve", true);
+  bindActionReasonPopup(".lr-detail-steal-btn", ".lr-detail-reason-steal", "steal", false);
+}
+
+window.lrBindDetailReasonPopups = bindDetailReasonPopups;
+
 function resource_action(button, action) {
   const resourceName = button.closest('tr').getAttribute('data-resource-name');
 
   if (action === "reserve" || action === "steal") {
-    dialog
-      .prompt(i18n(action + "-title", resourceName), {
-        message: i18n(action + "-message", resourceName),
-        minWidth: "450px",
-        maxWidth: "600px",
-        allowEmpty: action === "reserve",
-      })
+    promptForActionReason(action, resourceName, action === "reserve")
       .then(
         (reason) => {
           const url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || "");
@@ -301,7 +335,19 @@ function i18n(messageId, arg0, arg1, arg2) {
   return result;
 }
 
+function initOverviewDonutBackgrounds() {
+  document.querySelectorAll(".lr-donut[data-locked-end][data-reserved-end]").forEach(function (donut) {
+    var lockedEnd = donut.getAttribute("data-locked-end");
+    var reservedEnd = donut.getAttribute("data-reserved-end");
+    donut.style.background = "conic-gradient(var(--red) 0 " + lockedEnd
+      + "%, var(--orange) " + lockedEnd + "% " + reservedEnd
+      + "%, var(--green) " + reservedEnd + "% 100%)";
+  });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
+  bindDetailReasonPopups();
+  initOverviewDonutBackgrounds();
 
   // Tab switching (with history state)
   function switchTab(tabId, pushState) {

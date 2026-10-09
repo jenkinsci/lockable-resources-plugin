@@ -1,0 +1,193 @@
+<?jelly escape-by-default='true'?>
+<j:jelly
+  xmlns:j="jelly:core"
+  xmlns:l="/lib/layout"
+  xmlns:f="/lib/form"
+  xmlns:i="jelly:fmt"
+  xmlns:st="jelly:stapler"
+>
+  <l:layout title="${%detail.pageTitle(it.displayName)}" norefresh="true">
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
+
+      <j:choose>
+        <j:when test="${it.missing}">
+          <l:notice title="${%detail.notFound.title}">
+            <p>${%detail.notFound.message(it.resourceName)}</p>
+          </l:notice>
+        </j:when>
+        <j:otherwise>
+          <j:set var="resource" value="${it.resource}"/>
+
+          <template id="i18n"
+                    data-reserve-title="${%reserve.dialog.title}"
+                    data-reserve-message="${%reserve.dialog.message}"
+                    data-steal-title="${%steal.dialog.title}"
+                    data-steal-message="${%steal.dialog.message}"></template>
+
+          <l:app-bar title="${resource.name}">
+            <div class="jenkins-button-row lr-detail-actions-row">
+              <l:hasPermission permission="${it.RESERVE}">
+                <f:form method="post" action="reserve" class="jenkins-form-inline lr-inline-form-reset">
+                  <input type="hidden" name="reason" value="" class="lr-detail-reason" />
+                  <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lr-detail-reserve-btn" tooltip="${%btn.reserve}" aria-label="${%btn.reserve}" data-resource-name="${resource.name}">
+                    <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
+                  </button>
+                </f:form>
+              </l:hasPermission>
+
+              <l:hasPermission permission="${it.RESERVE}">
+                <f:form method="post" action="unreserve" class="jenkins-form-inline lr-inline-form-reset">
+                  <button type="submit" class="jenkins-button jenkins-button--tertiary jenkins-!-success-color" tooltip="${%btn.unReserve}" aria-label="${%btn.unReserve}">
+                    <l:icon src="symbol-log-out-outline plugin-ionicons-api" />
+                  </button>
+                </f:form>
+              </l:hasPermission>
+
+              <l:hasPermission permission="${it.UNLOCK}">
+                <f:form method="post" action="unlock" class="jenkins-form-inline lr-inline-form-reset">
+                  <button type="submit" class="jenkins-button jenkins-button--tertiary jenkins-!-warning-color" tooltip="${%btn.unlock}" aria-label="${%btn.unlock}">
+                    <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                  </button>
+                </f:form>
+              </l:hasPermission>
+
+              <l:hasPermission permission="${it.STEAL}">
+                <f:form method="post" action="steal" class="jenkins-form-inline lr-inline-form-reset">
+                  <input type="hidden" name="reason" value="" class="lr-detail-reason-steal" />
+                  <button type="button" class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lr-detail-steal-btn" tooltip="${%btn.steal}" aria-label="${%btn.steal}" data-resource-name="${resource.name}">
+                    <l:icon src="symbol-flash-outline plugin-ionicons-api" />
+                  </button>
+                </f:form>
+              </l:hasPermission>
+
+              <l:hasPermission permission="${it.UNLOCK}">
+                <f:form method="post" action="reset" class="jenkins-form-inline lr-inline-form-reset">
+                  <button type="submit" class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color" tooltip="${%btn.reset}" aria-label="${%btn.reset}">
+                    <l:icon src="symbol-refresh" />
+                  </button>
+                </f:form>
+              </l:hasPermission>
+            </div>
+          </l:app-bar>
+
+          <div class="jenkins-section">
+            <table class="jenkins-table">
+              <tbody>
+                <tr>
+                  <th>${%detail.status}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${it.state == 'reserved'}">${%detail.state.reserved}</j:when>
+                      <j:when test="${it.state == 'remoteLocked'}">${%detail.state.remoteLocked}</j:when>
+                      <j:when test="${it.state == 'locked'}">${%detail.state.locked}</j:when>
+                      <j:when test="${it.state == 'queued'}">${%detail.state.queued}</j:when>
+                      <j:otherwise>${%detail.state.free}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.heldBy}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${resource.reservedBy != null}">
+                        <a class="jenkins-table__link" href="${rootURL}/user/${resource.reservedBy}">${resource.reservedBy}</a>
+                      </j:when>
+                      <j:when test="${resource.remoteLockedBy != null}">
+                        <j:choose>
+                          <j:when test="${resource.remoteLockClientId != null}">${resource.remoteLockClientId}</j:when>
+                          <j:otherwise>${%detail.remoteUnknown}</j:otherwise>
+                        </j:choose>
+                      </j:when>
+                      <j:when test="${it.build != null}">
+                        <a class="jenkins-table__link" href="${rootURL}/${it.build.url}">${it.build.fullDisplayName}</a>
+                      </j:when>
+                      <j:when test="${resource.queued}">${resource.queueItemProject}</j:when>
+                      <j:otherwise>${%detail.none}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.reason}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">${resource.lockReason}</j:when>
+                      <j:otherwise>${%detail.none}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.since}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${resource.reservedTimestamp != null}">
+                        <i:formatDate value="${resource.reservedTimestamp}" type="both" dateStyle="medium" timeStyle="short"/>
+                      </j:when>
+                      <j:otherwise>${%detail.none}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.labels}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${resource.labelsAsList != null and resource.labelsAsList.size() gt 0}">
+                        <j:forEach var="label" items="${resource.labelsAsList}">
+                          <a class="jenkins-table__link model-link" href="${rootURL}/label/${label}">
+                            ${label}
+                            <button class="jenkins-menu-dropdown-chevron"></button>
+                          </a>
+                        </j:forEach>
+                      </j:when>
+                      <j:otherwise>${%detail.none}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.properties}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${resource.properties != null and resource.properties.size() gt 0}">
+                        <div class="lr-properties-pills">
+                          <j:forEach var="property" items="${resource.properties}">
+                            <span class="lr-property-pill">
+                              <span class="lr-property-pill__key">${property.name}</span>
+                              <span class="lr-property-pill__value">${property.value}</span>
+                            </span>
+                          </j:forEach>
+                        </div>
+                      </j:when>
+                      <j:otherwise>${%detail.none}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.description}</th>
+                  <td>
+                    <j:choose>
+                      <j:when test="${resource.description != null and !resource.description.isEmpty()}">${resource.description}</j:when>
+                      <j:otherwise>${%detail.none}</j:otherwise>
+                    </j:choose>
+                  </td>
+                </tr>
+                <tr>
+                  <th>${%detail.note}</th>
+                  <td>
+                    <j:if test="${resource.note != null and !resource.note.isEmpty()}">
+                      <j:out value="${app.markupFormatter.translate(resource.note)}"/>
+                    </j:if>
+                    <j:if test="${resource.note == null or resource.note.isEmpty()}">${%detail.none}</j:if>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
+
+        </j:otherwise>
+      </j:choose>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

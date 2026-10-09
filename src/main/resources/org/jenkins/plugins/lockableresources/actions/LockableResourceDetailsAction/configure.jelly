@@ -1,0 +1,59 @@
+<?jelly escape-by-default='true'?>
+<j:jelly
+  xmlns:j="jelly:core"
+  xmlns:l="/lib/layout"
+  xmlns:f="/lib/form"
+  xmlns:st="jelly:stapler"
+>
+  <l:layout title="${%configure.pageTitle(it.displayName)}" norefresh="true" permission="${it.CONFIGURE}">
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <j:choose>
+        <j:when test="${it.missing}">
+          <l:notice title="${%configure.notFound.title}">
+            <p>${%configure.notFound.message(it.resourceName)}</p>
+          </l:notice>
+        </j:when>
+        <j:otherwise>
+          <j:set var="resource" value="${it.resource}"/>
+
+          <l:app-bar title="${%configure.header(resource.name)}"/>
+
+          <f:form method="post" action="configSubmit">
+            <f:entry title="${%configure.field.name}">
+              <f:textbox value="${resource.name}" readonly="true"/>
+            </f:entry>
+            <f:entry title="${%configure.field.description}">
+              <f:textbox name="description" value="${resource.description}"/>
+            </f:entry>
+            <f:entry title="${%configure.field.labels}">
+              <f:textbox name="labels" value="${resource.labelsAsString}"/>
+            </f:entry>
+            <f:entry title="${%configure.field.properties}">
+              <f:repeatable minimum="0" add="${%configure.field.properties.add}">
+                <f:block>
+                  <f:entry title="${%configure.field.properties.name}">
+                    <f:textbox name="propertyName" value="${instance.name}"/>
+                  </f:entry>
+                  <f:entry title="${%configure.field.properties.value}">
+                    <f:textbox name="propertyValue" value="${instance.value}"/>
+                  </f:entry>
+                  <f:block>
+                    <div class="lr-text-align-right">
+                      <f:repeatableDeleteButton value="${%configure.field.properties.delete}"/>
+                    </div>
+                  </f:block>
+                </f:block>
+              </f:repeatable>
+            </f:entry>
+            <f:entry>
+              <f:submit value="${%configure.save}"/>
+            </f:entry>
+          </f:form>
+
+          <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"></script>
+        </j:otherwise>
+      </j:choose>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

@@ -102,6 +102,30 @@ tr.lr-global-search-hidden {
   margin-top: 0.25rem;
 }
 
+/* Shared utility classes to avoid inline styles in Jelly */
+.lr-hidden {
+  display: none !important;
+}
+
+.lr-text-align-right {
+  text-align: right;
+}
+
+.lr-flex-grow-1 {
+  flex-grow: 1;
+}
+
+.lr-detail-actions-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.lr-inline-form-reset {
+  margin: 0;
+}
+
 /* Resource labels */
 span.lr-static-label {
   border: var(--jenkins-border--subtle);
@@ -600,6 +624,7 @@ span.lr-static-label {
 }
 
 .lr-global-search-popup {
+  display: none;
   position: absolute;
   right: 0;
   top: calc(100% + 0.3125rem);
@@ -685,6 +710,7 @@ span.lr-static-label {
 }
 
 .lr-col-visibility-menu {
+  display: none;
   position: absolute;
   top: calc(100% + 0.3125rem);
   right: 0;

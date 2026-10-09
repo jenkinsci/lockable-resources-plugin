@@ -70,7 +70,9 @@ THE SOFTWARE.
             -->
             <td>
               <div class="lr-resource-header">
-                <strong>${resource.name}</strong>
+                <a class="jenkins-table__link" href="${rootURL}/lockable-resources/${h.urlEncode(resource.name)}/">
+                  <strong>${resource.name}</strong>
+                </a>
                 <j:if test="${resource.ephemeral}">
                   <span class="lr-static-label">${%resources.ephemeral}</span>
                 </j:if>

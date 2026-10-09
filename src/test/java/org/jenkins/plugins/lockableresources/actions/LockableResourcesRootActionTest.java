@@ -13,9 +13,14 @@ import hudson.model.User;
 import hudson.security.AccessDeniedException3;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.htmlunit.FailingHttpStatusCodeException;
+import org.htmlunit.HttpMethod;
+import org.htmlunit.WebRequest;
 import jenkins.model.Jenkins;
 import org.htmlunit.html.HtmlPage;
 import org.jenkins.plugins.lockableresources.LockStepTestBase;
@@ -573,6 +578,51 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         assertTrue(page.getWebResponse().getContentAsString().contains("Remote: client-jenkins-a"));
     }
 
+    @Test
+    void testResourceDetailPageRendersForExistingResource() throws Exception {
+        this.LRM.createResourceWithLabel("resource-detail-a", "detail-label");
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+
+        HtmlPage listPage = wc.goTo("lockable-resources");
+        String listHtml = listPage.getWebResponse().getContentAsString();
+        assertTrue(listHtml.contains("resource-detail-a/"));
+
+        HtmlPage detailPage = wc.goTo("lockable-resources/resource-detail-a/");
+        String detailHtml = detailPage.getWebResponse().getContentAsString();
+        assertTrue(detailHtml.contains("resource-detail-a"));
+        assertTrue(detailHtml.contains("detail-label"));
+    }
+
+    @Test
+    void testResourceDetailPageMutatingActionRequiresPermission() throws Exception {
+        this.LRM.createResourceWithLabel("resource-detail-no-perm", "detail-label");
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.USER);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+
+        WebRequest reserveRequest = new WebRequest(
+                new URL(j.getURL(), "lockable-resources/resource-detail-no-perm/reserve"), HttpMethod.POST);
+        FailingHttpStatusCodeException ex =
+                assertThrows(FailingHttpStatusCodeException.class, () -> wc.getPage(reserveRequest));
+        assertEquals(HttpURLConnection.HTTP_FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void testResourceDetailPageShowsNotFoundMessage() throws Exception {
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.login(this.ADMIN);
+        wc.getOptions().setThrowExceptionOnScriptError(false);
+
+        HtmlPage detailPage = wc.goTo("lockable-resources/resource-that-does-not-exist/");
+        String detailHtml = detailPage.getWebResponse().getContentAsString();
+        assertTrue(detailHtml.contains("Resource not found"));
+        assertTrue(detailHtml.contains("resource-that-does-not-exist"));
+    }
+
     // ---------------------------------------------------------------------------
     @Test
     void testGetAssignedResourceAmount() throws IOException, ServletException {
@@ -749,6 +799,28 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
         assertEquals(3, action.getNumberOfAllLabels(), "three resources with three labels");
         this.LRM.createResourceWithLabel("resource-D", "resource-label-1 resource-label-2 resource-label-3");
         assertEquals(3, action.getNumberOfAllLabels(), "four resources with three labels");
+    }
+
+    @Test
+    void testResourceConfigSubmitUpdatesOpenedResource() throws Exception {
+        this.LRM.createResourceWithLabel("resource-config-a", "label-old");
+        LockableResource resource = this.LRM.fromName("resource-config-a");
+        resource.setDescription("old desc");
+
+        LockableResourceDetailsAction detailsAction = new LockableResourceDetailsAction("resource-config-a");
+
+        SecurityContextHolder.getContext().setAuthentication(this.cfg_user.impersonate2());
+        when(req.getMethod()).thenReturn("POST");
+        when(req.getParameter("description")).thenReturn("new description");
+        when(req.getParameter("labels")).thenReturn("label-new-a label-new-b");
+
+        detailsAction.doConfigSubmit(req, rsp);
+
+        assertEquals("new description", resource.getDescription());
+        assertEquals("label-new-a label-new-b", resource.getLabelsAsString());
+
+        SecurityContextHolder.getContext().setAuthentication(this.user.impersonate2());
+        assertThrows(AccessDeniedException3.class, () -> detailsAction.doConfigSubmit(req, rsp));
     }
 
     // ---------------------------------------------------------------------------

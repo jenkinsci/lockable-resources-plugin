@@ -15,7 +15,7 @@
   xmlns:t="/lib/hudson"
 >
       <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
-      <div id="lr-page-data" data-current-user="${it.userName}" style="display:none;"></div>
+      <div id="lr-page-data" data-current-user="${it.userName}" class="lr-hidden"></div>
       <l:app-bar title="${%header.resources}">
         <j:if test="${it.resources.size() > 0}">
           <div class="app-build-tabs lr-tab-bar" role="tablist">
@@ -150,8 +150,9 @@
                   <j:set var="freePct" value="${summary.total > 0 ? (summary.free * 100.0) / summary.total : 0}" />
                   <j:set var="lockedEnd" value="${lockedPct}" />
                   <j:set var="reservedEnd" value="${lockedPct + reservedPct}" />
-                  <div class="lr-donut"
-                       style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--green) ${reservedEnd}% 100%);"
+                     <div class="lr-donut"
+                       data-locked-end="${lockedEnd}"
+                       data-reserved-end="${reservedEnd}"
                        aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.free}: ${summary.free}">
                   </div>
                   <div class="lr-donut-center">${summary.total}</div>
@@ -258,7 +259,7 @@
                   <button class="jenkins-button jenkins-button--tertiary lr-global-search-toggle" tooltip="${%filter.search.tooltip}">
                     <l:icon src="symbol-search" />
                   </button>
-                  <div class="lr-global-search-popup" style="display:none;">
+                  <div class="lr-global-search-popup">
                     <input type="text" class="jenkins-input lr-global-search-input" placeholder="${%filter.search.placeholder}" />
                   </div>
                 </div>
@@ -269,7 +270,7 @@
                   <button id="lr-col-visibility-toggle" class="jenkins-button jenkins-button--tertiary" tooltip="${%filter.columns.tooltip}">
                     <l:icon src="symbol-eye-outline plugin-ionicons-api" />
                   </button>
-                  <div id="lr-col-visibility-menu" class="lr-col-visibility-menu" style="display:none;">
+                  <div id="lr-col-visibility-menu" class="lr-col-visibility-menu">
                   </div>
                 </div>
               </div>
@@ -289,7 +290,7 @@
                   <button class="jenkins-button jenkins-button--tertiary lr-global-search-toggle" tooltip="${%filter.search.tooltip}">
                     <l:icon src="symbol-search" />
                   </button>
-                  <div class="lr-global-search-popup" style="display:none;">
+                  <div class="lr-global-search-popup">
                     <input type="text" class="jenkins-input lr-global-search-input" placeholder="${%filter.search.placeholder}" />
                   </div>
                 </div>
@@ -300,7 +301,7 @@
                   <button id="lr-labels-col-visibility-toggle" class="jenkins-button jenkins-button--tertiary" tooltip="${%filter.columns.tooltip}">
                     <l:icon src="symbol-eye-outline plugin-ionicons-api" />
                   </button>
-                  <div id="lr-labels-col-visibility-menu" class="lr-col-visibility-menu" style="display:none;">
+                  <div id="lr-labels-col-visibility-menu" class="lr-col-visibility-menu">
                   </div>
                 </div>
               </div>
@@ -321,7 +322,7 @@
                   <button class="jenkins-button jenkins-button--tertiary lr-global-search-toggle" tooltip="${%filter.search.tooltip}">
                     <l:icon src="symbol-search" />
                   </button>
-                  <div class="lr-global-search-popup" style="display:none;">
+                  <div class="lr-global-search-popup">
                     <input type="text" class="jenkins-input lr-global-search-input" placeholder="${%filter.search.placeholder}" />
                   </div>
                 </div>
@@ -332,7 +333,7 @@
                   <button id="lr-queue-col-visibility-toggle" class="jenkins-button jenkins-button--tertiary" tooltip="${%filter.columns.tooltip}">
                     <l:icon src="symbol-eye-outline plugin-ionicons-api" />
                   </button>
-                  <div id="lr-queue-col-visibility-menu" class="lr-col-visibility-menu" style="display:none;">
+                  <div id="lr-queue-col-visibility-menu" class="lr-col-visibility-menu">
                   </div>
                 </div>
               </div>

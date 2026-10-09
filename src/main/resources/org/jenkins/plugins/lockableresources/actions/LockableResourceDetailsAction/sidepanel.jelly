@@ -1,0 +1,12 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:side-panel>
+    <l:tasks>
+      <l:task href="./" title="${%sidepanel.resourceOverview}" icon="symbol-information"/>
+      <l:task href="../" title="${%sidepanel.allResources}" icon="symbol-list-view"/>
+      <l:hasPermission permission="${it.CONFIGURE}">
+        <l:task href="configure" title="${%sidepanel.configureResource}" icon="symbol-settings"/>
+      </l:hasPermission>
+    </l:tasks>
+  </l:side-panel>
+</j:jelly>
