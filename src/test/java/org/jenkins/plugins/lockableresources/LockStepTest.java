@@ -1725,4 +1725,15 @@ class LockStepTest extends LockStepTestBase {
         assertEquals("[r1, r2, r3, r4, r5, +2 more]", LockStepExecution.formatResourceNames(names));
         assertEquals("[r1, r2]", LockStepExecution.formatResourceNames(List.of("r1", "r2")));
     }
+
+    @Test
+    @Issue("154")
+    void lockReleasedMessageShowsResourceNames(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(
+                new CpsFlowDefinition("lock(label: 'label1', quantity: 1) {\n" + "  echo 'inside'\n" + "}", true));
+        WorkflowRun b1 = j.buildAndAssertSuccess(p);
+        j.assertLogContains("Lock released on resource [Label: label1, Quantity: 1], resources: [resource1]", b1);
+    }
 }
