@@ -340,6 +340,20 @@ System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "
 
 > *Note:* When the node has been deleted, during the lockable-resource is locked / reserved / queued, then the lockable-resource will be NOT deleted.
 
+### Cloud agents (Kubernetes and similar)
+
+Node mirroring only mirrors nodes that already exist in Jenkins. Cloud agents, such as Kubernetes pods, are created on demand and removed after the build, so there is nothing to mirror before the agent starts. Node mirroring can't limit how many cloud agents run at the same time.
+
+To limit concurrent cloud agents, create a fixed set of resources with a shared label, one per allowed agent (for example `k8s-slot-1` to `k8s-slot-5`, all with the label `k8s-slot`). Then lock one of them before asking for the agent:
+
+```groovy
+lock(label: 'k8s-slot', quantity: 1) {
+    node('kubernetes') {
+        // build steps
+    }
+}
+```
+
 ----
 
 ## Remote lockable resources
