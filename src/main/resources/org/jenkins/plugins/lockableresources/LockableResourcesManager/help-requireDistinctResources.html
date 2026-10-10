@@ -1,0 +1,11 @@
+<div>
+  Disabled by default to preserve existing pipelines that reuse resources across
+  overlapping selectors. When enabled, each named resource and each unit of a
+  label quantity requires a different resource across the entire lock request,
+  including extra entries. Matching can reassign earlier choices to satisfy
+  later selectors. The request waits unless all entries can be satisfied together.
+  An omitted or non-positive label quantity requires all matching resources;
+  overlapping "all" selectors can therefore be impossible to satisfy.
+  This affects local Pipeline locks and remote requests resolved on this controller,
+  but does not change scheduling priority between separate requests.
+</div>
