@@ -10,9 +10,56 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockSession;
+import org.jenkins.plugins.lockableresources.remote.RemoteResolver;
 import org.junit.jupiter.api.Test;
 
 class LockStepExecutionEnvVarsTest {
+
+    @Test
+    void buildLockEnvVarsIncludesIndexedLabels() {
+        LockableResourceProperty property = new LockableResourceProperty();
+        property.setName("LABELS");
+        property.setValue("custom property");
+        LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
+        lockedResources.put("plc-a", List.of(property));
+        lockedResources.put("plc-b", List.of());
+        lockedResources.put("plc-c", List.of());
+
+        Map<String, String> labels = Map.of("plc-a", "hw fast", "plc-b", "hw");
+        Map<String, String> env = LockStepExecution.buildLockEnvVars("PLC", lockedResources, labels);
+
+        assertEquals("hw fast", env.get("PLC0_LABELS"));
+        assertEquals("hw", env.get("PLC1_LABELS"));
+        assertEquals("", env.get("PLC2_LABELS"));
+        assertEquals("hw fast", env.get("PLC_LABELS"));
+        assertNull(LockStepExecution.buildLockEnvVars(null, lockedResources, labels));
+        assertNull(LockStepExecution.buildLockEnvVars("", lockedResources, labels));
+    }
+
+    @Test
+    void remoteLockEnvVarsIncludesResourceLabels() {
+        LockableResource first = new LockableResource("plc-a");
+        first.setLabelsFromString("hw fast");
+        LockableResource second = new LockableResource("plc-b");
+
+        Map<String, String> env = RemoteResolver.remoteLockEnvVars("PLC", List.of(first, second));
+
+        assertEquals("hw fast", env.get("PLC0_LABELS"));
+        assertEquals("", env.get("PLC1_LABELS"));
+        assertEquals("hw fast", env.get("PLC_LABELS"));
+    }
+
+    @Test
+    void buildLockEnvVarsLabelAliasUsesFirstResourceEvenWhenUnlabeled() {
+        LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
+        lockedResources.put("plc-a", List.of());
+        lockedResources.put("plc-b", List.of());
+
+        Map<String, String> env = LockStepExecution.buildLockEnvVars("PLC", lockedResources, Map.of("plc-b", "hw"));
+
+        assertEquals("", env.get("PLC_LABELS"));
+        assertEquals("hw", env.get("PLC1_LABELS"));
+    }
 
     @Test
     void buildLockEnvVarsIncludesIndexedNamesAndProperties() {

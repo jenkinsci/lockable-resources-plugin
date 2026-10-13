@@ -501,7 +501,7 @@ class FreeStyleProjectTest {
         j.assertBuildStatus(Result.SUCCESS, b);
 
         // Verify exactly 2 resources were locked via the variable
-        String log = b.getLog();
+        String log = JenkinsRule.getLog(b);
         String varLine = null;
         for (String line : log.split("\n")) {
             if (line.contains("acquired lock on")) {

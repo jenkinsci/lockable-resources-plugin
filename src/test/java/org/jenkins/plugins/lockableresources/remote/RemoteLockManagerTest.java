@@ -229,7 +229,9 @@ class RemoteLockManagerTest {
         assertNotNull(record.getLockEnvVars());
         assertEquals("board-1", record.getLockEnvVars().get("MY_RES"));
         assertEquals("board-1", record.getLockEnvVars().get("MY_RES0"));
-        assertEquals(2, record.getLockEnvVars().size());
+        assertEquals("board", record.getLockEnvVars().get("MY_RES_LABELS"));
+        assertEquals("board", record.getLockEnvVars().get("MY_RES0_LABELS"));
+        assertEquals(4, record.getLockEnvVars().size());
     }
 
     @Test
@@ -250,7 +252,10 @@ class RemoteLockManagerTest {
         // Individual entries present
         assertTrue(record.getLockEnvVars().containsKey("BOARDS0"));
         assertTrue(record.getLockEnvVars().containsKey("BOARDS1"));
-        assertEquals(3, record.getLockEnvVars().size());
+        assertEquals("board", record.getLockEnvVars().get("BOARDS_LABELS"));
+        assertEquals("board", record.getLockEnvVars().get("BOARDS0_LABELS"));
+        assertEquals("board", record.getLockEnvVars().get("BOARDS1_LABELS"));
+        assertEquals(6, record.getLockEnvVars().size());
     }
 
     @Test

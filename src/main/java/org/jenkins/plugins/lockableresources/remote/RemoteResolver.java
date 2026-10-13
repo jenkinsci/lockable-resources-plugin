@@ -225,10 +225,12 @@ public final class RemoteResolver {
     public static Map<String, String> remoteLockEnvVars(
             @CheckForNull String variable, @NonNull List<LockableResource> resources) {
         LinkedHashMap<String, List<LockableResourceProperty>> map = new LinkedHashMap<>();
+        Map<String, String> resourceLabels = new LinkedHashMap<>();
         for (LockableResource r : resources) {
             map.put(r.getName(), r.getProperties());
+            resourceLabels.put(r.getName(), r.getLabelsAsString());
         }
-        return LockStepExecution.buildLockEnvVars(variable, map);
+        return LockStepExecution.buildLockEnvVars(variable, map, resourceLabels);
     }
 
     private static ResourceSelectStrategy parseSelectStrategy(@CheckForNull String strategy) {
