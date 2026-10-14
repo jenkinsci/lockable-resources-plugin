@@ -354,6 +354,36 @@ class ResourceManagementTest {
     }
 
     @Test
+    void resourceTableRendersDisplayIndexesAndGroupBadges(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        for (String group : List.of("common", "plc", "release")) {
+            for (int i = 1; i <= 2; i++) {
+                String name = group + "-" + i;
+                manager.createResource(name);
+                manager.fromName(name).setGroup(group);
+            }
+        }
+        HtmlPage page = loginAsAdmin(j).goTo("lockable-resources");
+        assertThat(
+                page.<DomElement>getFirstByXPath("//table[@id='lockable-resources']/thead/tr/th[2]")
+                        .getAttribute("data-sort-disable"),
+                is("true"));
+        int index = 1;
+        for (String group : List.of("common", "plc", "release")) {
+            for (int i = 1; i <= 2; i++) {
+                DomElement row = page.getFirstByXPath("//tr[@data-resource-name='" + group + "-" + i + "']");
+                DomElement indexCell = row.getFirstByXPath("td[2]");
+                assertThat(indexCell.getAttribute("class"), containsString("lr-resource-index"));
+                assertThat(indexCell.getTextContent(), is(String.valueOf(index++)));
+                assertThat(
+                        row.<DomElement>getFirstByXPath("td[3]/div[@class='lr-resource-group']")
+                                .getTextContent(),
+                        is(group));
+            }
+        }
+    }
+
+    @Test
     void editingGroupWakesWaitingRequests(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.createResourceWithLabel("ordinary", "device");
