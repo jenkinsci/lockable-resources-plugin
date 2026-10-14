@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<org.jenkins.plugins.lockableresources.LockableResourcesManager>
+  <resources>
+    <org.jenkins.plugins.lockableresources.LockableResource>
+      <name>legacy-printer</name>
+      <description>Existing shared printer</description>
+      <labels>printer office</labels>
+      <reservedBy>operator</reservedBy>
+      <note>Keep this reservation</note>
+      <ephemeral>false</ephemeral>
+    </org.jenkins.plugins.lockableresources.LockableResource>
+    <org.jenkins.plugins.lockableresources.LockableResource>
+      <name>legacy-device</name>
+      <description>Existing device</description>
+      <labelsAsList>
+        <string>printer</string>
+      </labelsAsList>
+      <ephemeral>false</ephemeral>
+    </org.jenkins.plugins.lockableresources.LockableResource>
+  </resources>
+  <queuedContexts/>
+  <allowEphemeralResources>true</allowEphemeralResources>
+</org.jenkins.plugins.lockableresources.LockableResourcesManager>

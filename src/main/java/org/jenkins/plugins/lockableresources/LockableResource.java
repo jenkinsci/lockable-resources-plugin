@@ -71,6 +71,27 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private transient String labels = null;
 
     private List<String> labelsAsList = new ArrayList<>();
+
+    private String group;
+
+    /** @since TODO */
+    @Exported
+    public String getGroup() {
+        return normalizeGroup(group);
+    }
+
+    /** @since TODO */
+    @DataBoundSetter
+    public void setGroup(@Nullable String group) {
+        this.group = normalizeGroup(group);
+    }
+
+    /** @since TODO */
+    public static String normalizeGroup(@Nullable String group) {
+        String value = Util.fixEmptyAndTrim(group);
+        return value == null ? ResourceGroup.DEFAULT_NAME : value;
+    }
+
     private String reservedBy = null;
     private Date reservedTimestamp = null;
     private String note = "";
@@ -208,6 +229,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     protected Object readResolve() {
+        group = normalizeGroup(group);
         if (queuedContexts == null) { // this field was added after the initial version if this class
             queuedContexts = new ArrayList<>();
         }

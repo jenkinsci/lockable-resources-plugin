@@ -35,6 +35,24 @@ public class LockStep extends Step implements Serializable {
 
     private static final long serialVersionUID = -953609907239674360L;
 
+    private String group;
+
+    /** @since TODO */
+    public String getGroup() {
+        return LockableResource.normalizeGroup(group);
+    }
+
+    /** @since TODO */
+    @DataBoundSetter
+    public void setGroup(@Nullable String group) {
+        this.group = hudson.Util.fixEmptyAndTrim(group);
+    }
+
+    /** @since TODO */
+    public boolean isGroupOnly() {
+        return group != null && resource == null && label == null && (extra == null || extra.isEmpty());
+    }
+
     @CheckForNull
     public String resource = null;
 
@@ -214,6 +232,18 @@ public class LockStep extends Step implements Serializable {
             return Messages.LockStep_displayName();
         }
 
+        /** @since TODO */
+        @RequirePOST
+        public FormValidation doCheckGroup(
+                @QueryParameter String value,
+                @QueryParameter String resource,
+                @QueryParameter String label,
+                @AncestorInPath Item item) {
+            return Jenkins.get()
+                    .getDescriptorByType(RequiredResourcesProperty.DescriptorImpl.class)
+                    .doCheckGroup(value, resource, label, item);
+        }
+
         @Override
         public boolean takesImplicitBlockArgument() {
             return true;
@@ -301,8 +331,13 @@ public class LockStep extends Step implements Serializable {
             return getResources().stream()
                     .map(res -> "{" + res.toString() + "}")
                     .collect(Collectors.joining(","));
+        } else if (isGroupOnly()) {
+            return "Group: " + getGroup() + (quantity > 0 ? ", Quantity: " + quantity : "");
         } else if (resource != null || label != null) {
             String ret = LockStepResource.toString(resource, label, quantity, reason);
+            if (!ResourceGroup.DEFAULT_NAME.equals(getGroup())) {
+                ret += ", Group: " + getGroup();
+            }
             if (this.priority != 0) {
                 ret += ", Priority: " + this.priority;
             }
@@ -320,21 +355,37 @@ public class LockStep extends Step implements Serializable {
                 label,
                 quantity,
                 resourceSelectStrategy,
-                extra,
+                isGroupOnly() || (extra != null && !extra.isEmpty()),
                 priority,
                 inversePrecedence,
                 allowEmptyOrNullValues);
+        if (extra != null) {
+            for (LockStepResource selector : extra) {
+                selector.validate(allowEmptyOrNullValues || group != null);
+            }
+        }
+        for (LockStepResource selector : getResources()) {
+            selector.validate(allowEmptyOrNullValues);
+            LockableResourcesManager.get().validateGroup(selector.resource, selector.label, selector.getGroup());
+        }
     }
 
     // -------------------------------------------------------------------------
     public List<LockStepResource> getResources() {
         List<LockStepResource> resources = new ArrayList<>();
-        if (resource != null || label != null) {
-            resources.add(new LockStepResource(resource, label, quantity, reason));
+        if (resource != null || label != null || isGroupOnly()) {
+            LockStepResource main = new LockStepResource(resource, label, quantity, reason);
+            main.setGroup(getGroup());
+            resources.add(main);
         }
 
         if (extra != null) {
-            resources.addAll(extra);
+            for (LockStepResource selector : extra) {
+                LockStepResource resolved =
+                        new LockStepResource(selector.resource, selector.label, selector.quantity, selector.reason);
+                resolved.setGroup(selector.getGroup() == null ? getGroup() : selector.getGroup());
+                resources.add(resolved);
+            }
         }
         return resources;
     }
