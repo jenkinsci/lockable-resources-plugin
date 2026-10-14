@@ -72,16 +72,43 @@ class LockableResourceManagerTest {
         // the 'user' has no permission
         assertThrows(AccessDeniedException3.class, () -> d.doCheckResourceNames("resource1", null, false, item));
         assertThrows(AccessDeniedException3.class, () -> d.doCheckLabelName("some-label", null, false, item));
+        assertThrows(AccessDeniedException3.class, () -> d.doCheckGroup("${GROUP}", null, null, item));
 
         User cfg_user = User.get("cfg_user", true, Collections.emptyMap());
         SecurityContextHolder.getContext().setAuthentication(cfg_user.impersonate2());
         assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false, item));
         assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false, item));
+        assertEquals(FormValidation.ok(), d.doCheckGroup(null, "resource1", null, item));
 
         User manager = User.get("manager", true, Collections.emptyMap());
         SecurityContextHolder.getContext().setAuthentication(manager.impersonate2());
         assertEquals(FormValidation.ok(), d.doCheckResourceNames("resource1", null, false, item));
         assertEquals(FormValidation.ok(), d.doCheckLabelName("some-label", null, false, item));
+    }
+
+    @Test
+    void variableValidationPreservesDeferredChecksAndStaticErrors(JenkinsRule j) {
+        RequiredResourcesProperty.DescriptorImpl d = new RequiredResourcesProperty.DescriptorImpl();
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.createResourceWithLabel("shared", "device");
+        manager.createResourceWithLabel("dedicated", "device");
+        manager.fromName("dedicated").setGroup("plc");
+
+        assertEquals(FormValidation.ok(), d.doCheckGroup(null, null, null, null));
+        assertEquals(FormValidation.ok(), d.doCheckGroup("plc", "dedicated", null, null));
+        assertEquals(FormValidation.Kind.ERROR, d.doCheckGroup(null, "dedicated", null, null).kind);
+        assertEquals(FormValidation.Kind.ERROR, d.doCheckGroup("plc", null, "missing-label", null).kind);
+        assertEquals(FormValidation.Kind.ERROR, d.doCheckGroup("${}", null, null, null).kind);
+        assertEquals(FormValidation.ok(), d.doCheckGroup("${GROUP}", null, null, null));
+        assertEquals(FormValidation.ok(), d.doCheckGroup("missing", "prefix-${DEVICE}", null, null));
+        assertEquals(FormValidation.ok(), d.doCheckGroup("missing", null, "${LABEL}", null));
+
+        assertEquals(FormValidation.ok(), d.doCheckResourceNames(null, null, false, null));
+        assertEquals(FormValidation.ok(), d.doCheckLabelName(null, null, false, null));
+        assertEquals(FormValidation.ok(), d.doCheckResourceNumber(null, null, null, null, null));
+        assertEquals(FormValidation.Kind.WARNING, d.doCheckResourceNames("shared ${DEVICE}", null, false, null).kind);
+        assertEquals(FormValidation.Kind.WARNING, d.doCheckLabelName("${LABEL}", null, false, null).kind);
+        assertEquals(FormValidation.Kind.WARNING, d.doCheckResourceNumber("${COUNT}", null, "device", null, null).kind);
     }
 
     @Test

@@ -1,0 +1,9 @@
+<div>
+  Global resource groups have a name and an optional description. Assign resources to a group on
+  the Lockable Resources page and select it with <code>lock(group: 'plc', label: 'S7')</code>.
+  Resources without a group belong to <code>common</code>; requests without a group only use
+  <code>common</code>.
+  <p>Groups referenced by resources are included automatically. Removing a group entry does not
+  move or delete its resources. Empty groups can be configured here before adding resources.</p>
+  <p>Groups are global selection boundaries, not job permissions or folder-scoped resources.</p>
+</div>

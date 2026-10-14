@@ -78,6 +78,12 @@ public final class RemoteCatalog {
     public static final class Resource {
 
         private final String name;
+        private final String group;
+
+        public String getGroup() {
+            return org.jenkins.plugins.lockableresources.LockableResource.normalizeGroup(group);
+        }
+
         private final List<String> labels;
         private final String description;
         private final String state;
@@ -93,6 +99,19 @@ public final class RemoteCatalog {
                 String heldByKind,
                 String heldByClientId,
                 long since) {
+            this(name, labels, description, state, heldByKind, heldByClientId, since, null);
+        }
+
+        Resource(
+                String name,
+                List<String> labels,
+                String description,
+                String state,
+                String heldByKind,
+                String heldByClientId,
+                long since,
+                String group) {
+            this.group = org.jenkins.plugins.lockableresources.LockableResource.normalizeGroup(group);
             this.name = name;
             this.labels = labels == null ? Collections.emptyList() : List.copyOf(labels);
             this.description = description == null ? "" : description;
