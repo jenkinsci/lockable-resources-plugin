@@ -164,17 +164,110 @@ span.lr-static-label {
     justify-content: flex-start;
 }
 
-/* Resources table — auto layout with scroll wrapper handles overflow */
+/* Reserve scrollbar space when filtering makes the page shorter. */
+html:has(#lockable-resources) {
+    scrollbar-gutter: stable;
+}
+
+/* Fixed column widths keep filtering from resizing the resource table. */
 #lockable-resources {
     width: 100%;
+    table-layout: fixed;
 }
 
-/* Allow cell content to wrap */
+#lockable-resources .lr-col-select,
+#lockable-resources .lr-col-index {
+    width: 2.25rem;
+    text-align: center;
+    padding-inline: 0;
+}
+
+#lockable-resources .lr-col-resource {
+    width: 18rem;
+    padding-left: 0.75rem;
+}
+
+#lockable-resources .lr-col-status {
+    width: 5.5rem;
+    text-align: center;
+    padding-inline: 0.375rem;
+}
+
+/* Keep the sorting indicator from offsetting the centered header label. */
+#lockable-resources .lr-col-status .sortarrow {
+    position: absolute;
+    inset-inline-start: 100%;
+}
+
+#lockable-resources .lr-col-held-by,
+#lockable-resources .lr-col-reason {
+    width: 8rem;
+}
+
+#lockable-resources .lr-col-since {
+    width: 5.5rem;
+    padding-inline: 0.375rem;
+}
+
+#lockable-resources .lr-col-labels {
+    width: 14rem;
+}
+
+#lockable-resources .lr-col-properties {
+    width: 22.5rem;
+}
+
+#lockable-resources .lr-col-actions {
+    width: 8rem;
+    padding-inline: 0.375rem;
+}
+
+#lockable-resources .lr-select-all,
+#lockable-resources .lr-select-resource {
+    margin-inline: 0;
+}
+
+#lockable-resources .jenkins-table__cell__button-wrapper {
+    gap: 0.125rem;
+}
+
+#lockable-resources .jenkins-table__cell__button-wrapper > .jenkins-button {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    padding: 0.25rem;
+}
+
 #lockable-resources td {
     word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
-/* Properties — inline key=value pills */
+#lockable-resources .lr-resource-header strong {
+    min-width: 0;
+}
+
+#lockable-resources .lr-note-btn {
+    flex-shrink: 0;
+}
+
+#lockable-resources .lr-resource-group,
+#lockable-resources .lr-property-pill,
+#lockable-resources .jenkins-table__link {
+    max-width: 100%;
+}
+
+#lockable-resources .jenkins-table__link {
+    white-space: normal;
+}
+
+#lockable-resources .lr-property-pill__key,
+#lockable-resources .lr-property-pill__value {
+    min-width: 0;
+}
+
+/* Properties — keys above values leave room for device mappings. */
 .lr-properties-pills {
     display: flex;
     flex-wrap: wrap;
@@ -183,11 +276,12 @@ span.lr-static-label {
 
 .lr-property-pill {
     display: inline-flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     border: var(--jenkins-border--subtle);
     border-radius: var(--form-input-border-radius, 0.66rem);
     font-size: var(--font-size-xs, 0.75rem);
-    line-height: 1;
+    line-height: 1.35;
     overflow: hidden;
 }
 

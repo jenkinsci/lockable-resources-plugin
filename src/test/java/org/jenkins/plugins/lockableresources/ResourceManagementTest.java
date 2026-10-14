@@ -363,7 +363,26 @@ class ResourceManagementTest {
                 manager.fromName(name).setGroup(group);
             }
         }
+        assertThat(manager.reserve(List.of(manager.fromName("common-1")), "admin"), is(true));
         HtmlPage page = loginAsAdmin(j).goTo("lockable-resources");
+        List<String> columnClasses = List.of(
+                "lr-col-select",
+                "lr-col-index",
+                "lr-col-resource",
+                "lr-col-status",
+                "lr-col-held-by",
+                "lr-col-reason",
+                "lr-col-since",
+                "lr-col-labels",
+                "lr-col-properties",
+                "lr-col-actions");
+        for (int column = 0; column < columnClasses.size(); column++) {
+            assertThat(
+                    page.<DomElement>getFirstByXPath(
+                                    "//table[@id='lockable-resources']/thead/tr/th[" + (column + 1) + "]")
+                            .getAttribute("class"),
+                    containsString(columnClasses.get(column)));
+        }
         assertThat(
                 page.<DomElement>getFirstByXPath("//table[@id='lockable-resources']/thead/tr/th[2]")
                         .getAttribute("data-sort-disable"),
@@ -372,6 +391,12 @@ class ResourceManagementTest {
         for (String group : List.of("common", "plc", "release")) {
             for (int i = 1; i <= 2; i++) {
                 DomElement row = page.getFirstByXPath("//tr[@data-resource-name='" + group + "-" + i + "']");
+                for (int column = 0; column < columnClasses.size(); column++) {
+                    assertThat(
+                            row.<DomElement>getFirstByXPath("td[" + (column + 1) + "]")
+                                    .getAttribute("class"),
+                            containsString(columnClasses.get(column)));
+                }
                 DomElement indexCell = row.getFirstByXPath("td[2]");
                 assertThat(indexCell.getAttribute("class"), containsString("lr-resource-index"));
                 assertThat(indexCell.getTextContent(), is(String.valueOf(index++)));

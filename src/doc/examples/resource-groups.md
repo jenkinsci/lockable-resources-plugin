@@ -68,6 +68,11 @@ filters combine with the existing status, name, label and search filters.
 Group membership appears as a rounded badge below the resource name only in
 **All**; it is hidden when a specific group is selected. The **#** column numbers
 the current filtered and sorted view from 1, continuing across pages.
+Column widths stay consistent when switching groups or filters. Long names,
+labels, and properties wrap within their columns; narrower screens can scroll
+the table horizontally. Columns can still be hidden with the column picker.
+Compact checkbox, row-number, status, since, and action columns leave more space for properties.
+Each property shows its key above its value so device mapping lines remain readable.
 The **Add Resource** and **Edit Resource** dialogs include group membership.
 Changing membership re-evaluates waiting requests, but does not revoke locks
 already held by running builds.
