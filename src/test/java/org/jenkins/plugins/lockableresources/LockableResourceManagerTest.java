@@ -161,6 +161,18 @@ class LockableResourceManagerTest {
         RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames("", item);
     }
 
+    @Test
+    void getFreeResourcesAmountSkipsUnloggedCausesScan(JenkinsRule j) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.createResourceWithLabel("busy-res", "gpu-pool");
+        LockableResource res = manager.fromName("busy-res");
+        res.setReservedBy("tester");
+
+        org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(
+                Collections.singletonList(new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                        Collections.emptyList(), "gpu-pool", 1))));
+    }
+
     private static void assertContains(AutoCompletionCandidates c, String... values) {
         assertEquals(new TreeSet<>(Arrays.asList(values)), new TreeSet<>(c.getValues()));
     }
