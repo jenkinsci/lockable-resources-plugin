@@ -624,6 +624,8 @@ function initPagination() {
 
       // Show/hide rows
       rows.forEach(function (row, i) {
+        const indexCell = row.querySelector(".lr-resource-index");
+        if (indexCell) indexCell.textContent = String(i + 1);
         if (pageSize === 0) {
           row.style.display = "";
         } else {
@@ -1110,6 +1112,7 @@ function initColumnVisibility(config) {
       groupVal = "";
       groupInput.value = "";
     }
+    table.classList.toggle("lr-group-selected", !!groupVal);
     groupButtons.forEach(function (button) {
       var active = button.dataset.lrGroup === groupVal;
       button.classList.toggle("lr-group-button--active", active);
@@ -1135,7 +1138,7 @@ function initColumnVisibility(config) {
     var tbody = table.querySelector("tbody");
     if (!tbody) return;
 
-    Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+    Array.from(tbody.rows).forEach(function (row) {
       var resourceName = row.dataset.resourceName || "";
       var exprOk = !labelExprVal || !allowedSet || allowedSet.has(resourceName);
       var show = exprOk
@@ -1291,17 +1294,22 @@ function initColumnVisibility(config) {
     if (!table) return;
     var tbody = table.querySelector("tbody");
     if (!tbody) return;
-    Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
+    Array.from(tbody.rows).forEach(function (row) {
       if (!query) {
         row.classList.remove("lr-global-search-hidden");
         return;
       }
-      var text = row.textContent.toLowerCase();
+      var text = Array.from(row.cells).filter(function (cell) {
+        return !cell.classList.contains("lr-resource-index");
+      }).map(function (cell) {
+        return cell.textContent;
+      }).join(" ").toLowerCase();
       row.classList.toggle("lr-global-search-hidden", text.indexOf(query) === -1);
     });
     var state = getState();
     if (query) { state[tab] = query; } else { delete state[tab]; }
     saveState(state);
+    table.dispatchEvent(new CustomEvent("lr-filter-changed"));
   }
 
   function restoreAll() {

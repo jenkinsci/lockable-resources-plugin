@@ -18,9 +18,18 @@
 }
 
 .lr-resource-group {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border: var(--jenkins-border--subtle, 1px solid #ddd);
+  border-radius: 999px;
+  background: var(--item-background--hover, rgba(0, 0, 0, 0.05));
   color: var(--text-color-secondary, #666);
   font-size: var(--font-size-xs, 0.75rem);
   margin-top: 0.25rem;
+}
+
+#lockable-resources.lr-group-selected .lr-resource-group {
+  display: none;
 }
 
 /* Toolbar — sits between app-bar and table */

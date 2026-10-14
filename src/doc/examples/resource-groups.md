@@ -65,6 +65,9 @@ group, so specify `quantity: 1` when only one device is needed.
 On the resource management page, the **Resources** view offers **All**,
 **common**, and a button for each custom group with its resource count. Group
 filters combine with the existing status, name, label and search filters.
+Group membership appears as a rounded badge below the resource name only in
+**All**; it is hidden when a specific group is selected. The **#** column numbers
+the current filtered and sorted view from 1, continuing across pages.
 The **Add Resource** and **Edit Resource** dialogs include group membership.
 Changing membership re-evaluates waiting requests, but does not revoke locks
 already held by running builds.
