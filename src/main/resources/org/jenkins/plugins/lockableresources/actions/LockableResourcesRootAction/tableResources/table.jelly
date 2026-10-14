@@ -39,7 +39,7 @@ THE SOFTWARE.
       <thead>
         <tr>
           <th data-sort-disable="true"><input type="checkbox" class="lr-select-all" aria-label="${%resource.editor.selectAll}" /></th>
-          <th>${%resources.table.column.index}</th>
+          <th data-sort-disable="true">${%resources.table.column.index}</th>
           <th>${%resources.table.column.resource}</th>
           <th>${%resources.table.column.status}</th>
           <th>${%resources.table.column.heldBy}</th>
@@ -64,7 +64,7 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Index
             -->
-            <td>${idx.index + 1}</td>
+            <td class="lr-resource-index">${idx.index + 1}</td>
 
             <!-- **************************************************************
                  Column with common resource data
