@@ -34,6 +34,7 @@ import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.jenkins.plugins.lockableresources.RemoteConnection;
+import org.jenkins.plugins.lockableresources.ResourceGroup;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
 import org.jenkins.plugins.lockableresources.queue.QueuedContextStruct;
 import org.jenkins.plugins.lockableresources.remote.RemoteCatalog;
@@ -373,6 +374,20 @@ public class LockableResourcesRootAction implements RootAction {
     @Restricted(NoExternalUse.class) // used by jelly
     public List<LockableResource> getResources() {
         return LockableResourcesManager.get().getReadOnlyResources();
+    }
+
+    /** Group names and resource counts. Used by {@code _content.jelly}. */
+    @Restricted(NoExternalUse.class)
+    public Map<String, Integer> getGroups() {
+        Jenkins.get().checkPermission(VIEW);
+        Map<String, Integer> groups = new LinkedHashMap<>();
+        for (ResourceGroup group : LockableResourcesManager.get().getResourceGroups()) {
+            groups.put(group.getName(), 0);
+        }
+        for (LockableResource resource : getResources()) {
+            groups.merge(resource.getGroup(), 1, Integer::sum);
+        }
+        return groups;
     }
 
     // ---------------------------------------------------------------------------
@@ -1467,6 +1482,7 @@ public class LockableResourcesRootAction implements RootAction {
         String name;
         String description;
         String labels;
+        String group;
         List<LockableResourceProperty> properties = new ArrayList<>();
 
         String contentType = req.getContentType();
@@ -1477,12 +1493,14 @@ public class LockableResourcesRootAction implements RootAction {
             name = Util.fixEmptyAndTrim(json.optString("name", null));
             description = Util.fixEmptyAndTrim(json.optString("description", null));
             labels = Util.fixEmptyAndTrim(json.optString("labels", null));
+            group = Util.fixEmptyAndTrim(json.optString("group", null));
             properties = parsePropertiesFromJson(json);
         } else {
             // Form-encoded (e.g. from tests)
             name = Util.fixEmptyAndTrim(req.getParameter("name"));
             description = Util.fixEmptyAndTrim(req.getParameter("description"));
             labels = Util.fixEmptyAndTrim(req.getParameter("labels"));
+            group = Util.fixEmptyAndTrim(req.getParameter("group"));
         }
 
         if (name == null) {
@@ -1497,6 +1515,7 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         LockableResource resource = new LockableResource(name);
+        resource.setGroup(group);
 
         if (description != null) {
             resource.setDescription(description);
@@ -1548,12 +1567,24 @@ public class LockableResourcesRootAction implements RootAction {
                 return;
             }
 
+            if (resource.isEphemeral()
+                    && json.has("group")
+                    && !ResourceGroup.DEFAULT_NAME.equals(
+                            LockableResource.normalizeGroup(json.optString("group", null)))) {
+                rsp.sendError(400, Messages.error_ephemeralResourceGroup(name));
+                return;
+            }
+
             resource.setDescription(Util.fixEmptyAndTrim(json.optString("description", null)));
             resource.setLabelsFromString(Util.fixEmptyAndTrim(json.optString("labels", null)));
+            if (json.has("group")) {
+                resource.setGroup(Util.fixEmptyAndTrim(json.optString("group", null)));
+            }
             resource.setProperties(parsePropertiesFromJson(json));
 
             manager.save();
         }
+        manager.refreshQueue();
         rsp.forwardToPreviousPage(req);
     }
 

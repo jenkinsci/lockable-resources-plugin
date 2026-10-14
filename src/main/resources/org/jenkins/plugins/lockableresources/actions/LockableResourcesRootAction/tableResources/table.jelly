@@ -56,6 +56,7 @@ THE SOFTWARE.
           <tr data-resource-name="${resource.name}"
               data-resource-description="${resource.description != null ? resource.description : ''}"
               data-resource-labels="${resource.labels != null ? resource.labels : ''}"
+              data-resource-group="${resource.group}"
               data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : 'free'))}"
               data-resource-owner="${resource.reservedBy != null ? resource.reservedBy : (resource.buildName != null ? resource.buildName : '')}">
             <!-- Checkbox -->
@@ -82,6 +83,7 @@ THE SOFTWARE.
                   </a>
                 </l:hasPermission>
               </div>
+              <div class="lr-resource-group">${resource.group}</div>
               <j:if test="${resource.description != null and !resource.description.isEmpty()}">
                 <div class="lr-resource-description">
                   ${resource.description}

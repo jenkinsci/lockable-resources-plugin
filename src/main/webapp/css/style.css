@@ -5,6 +5,24 @@
   transform: translateX(-50%);
 }
 
+.lr-group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.lr-group-button--active {
+  background: var(--button-background--active, var(--button-background));
+  font-weight: 600;
+}
+
+.lr-resource-group {
+  color: var(--text-color-secondary, #666);
+  font-size: var(--font-size-xs, 0.75rem);
+  margin-top: 0.25rem;
+}
+
 /* Toolbar — sits between app-bar and table */
 .lr-toolbar {
   display: flex;

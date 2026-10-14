@@ -25,6 +25,22 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class LockStepResource extends AbstractDescribableImpl<LockStepResource> implements Serializable {
 
+    private String group;
+
+    /** Null inherits the main lock step's group.
+     * @since TODO
+     */
+    @CheckForNull
+    public String getGroup() {
+        return group;
+    }
+
+    /** @since TODO */
+    @DataBoundSetter
+    public void setGroup(@Nullable String group) {
+        this.group = Util.fixEmptyAndTrim(group);
+    }
+
     @CheckForNull
     public String resource = null;
 
@@ -73,7 +89,13 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     @Override
     public String toString() {
-        return toString(resource, label, quantity, reason);
+        if (resource == null && label == null && group != null) {
+            return "Group: " + group + (quantity > 0 ? ", Quantity: " + quantity : "");
+        }
+        String description = toString(resource, label, quantity, reason);
+        return group != null && !ResourceGroup.DEFAULT_NAME.equals(group)
+                ? description + ", Group: " + group
+                : description;
     }
 
     public static String toString(String resource, String label, int quantity) {
@@ -102,7 +124,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
     public void validate(boolean allowEmptyOrNullValues) {
-        validate(resource, label, null, false, 0, false, allowEmptyOrNullValues);
+        validate(resource, label, null, group != null, 0, false, allowEmptyOrNullValues);
     }
 
     // -------------------------------------------------------------------------
@@ -221,6 +243,26 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         @Override
         public String getDisplayName() {
             return Messages.LockStepResource_displayName();
+        }
+
+        /** @since TODO */
+        @RequirePOST
+        public FormValidation doCheckGroup(
+                @QueryParameter String value,
+                @QueryParameter String resource,
+                @QueryParameter String label,
+                @AncestorInPath Item item) {
+            if (item != null) {
+                item.checkPermission(Item.CONFIGURE);
+            } else {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            }
+            if (Util.fixEmptyAndTrim(value) == null) {
+                return FormValidation.ok();
+            }
+            return Jenkins.get()
+                    .getDescriptorByType(RequiredResourcesProperty.DescriptorImpl.class)
+                    .doCheckGroup(value, resource, label, item);
         }
 
         @RequirePOST
