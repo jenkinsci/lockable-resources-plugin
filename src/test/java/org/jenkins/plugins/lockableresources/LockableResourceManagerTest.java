@@ -162,15 +162,76 @@ class LockableResourceManagerTest {
     }
 
     @Test
-    void getFreeResourcesAmountSkipsUnloggedCausesScan(JenkinsRule j) {
+    @SuppressWarnings("unchecked")
+    void getFreeResourcesAmountSkipsUnloggedCausesScan(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.createResourceWithLabel("busy-res", "gpu-pool");
+        manager.createResourceWithLabel("other-res", "cpu-pool");
         LockableResource res = manager.fromName("busy-res");
         res.setReservedBy("tester");
 
-        org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(
-                Collections.singletonList(new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
-                        Collections.emptyList(), "gpu-pool", 1))));
+        org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct matchingStruct =
+                new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                        Collections.singletonList("busy-res"), null, 0);
+        org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct nonMatchingStruct =
+                new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                        Collections.singletonList("other-res"), null, 0);
+
+        hudson.model.Run<?, ?> holderBuild = j.buildAndAssertSuccess(j.createFreeStyleProject("holder"));
+
+        java.util.concurrent.atomic.AtomicInteger matchingGetBuildCalls =
+                new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger nonMatchingGetBuildCalls =
+                new java.util.concurrent.atomic.AtomicInteger();
+
+        org.jenkins.plugins.lockableresources.queue.QueuedContextStruct matchingQueued =
+                new org.jenkins.plugins.lockableresources.queue.QueuedContextStruct(
+                        null, Collections.singletonList(matchingStruct), "busy", null, 0) {
+                    @Override
+                    public hudson.model.Run<?, ?> getBuild() {
+                        matchingGetBuildCalls.incrementAndGet();
+                        return holderBuild;
+                    }
+                };
+        org.jenkins.plugins.lockableresources.queue.QueuedContextStruct nonMatchingQueued =
+                new org.jenkins.plugins.lockableresources.queue.QueuedContextStruct(
+                        null, Collections.singletonList(nonMatchingStruct), "other", null, 0) {
+                    @Override
+                    public hudson.model.Run<?, ?> getBuild() {
+                        nonMatchingGetBuildCalls.incrementAndGet();
+                        return holderBuild;
+                    }
+                };
+
+        java.lang.reflect.Field queueField = LockableResourcesManager.class.getDeclaredField("queuedContexts");
+        queueField.setAccessible(true);
+        java.util.List<org.jenkins.plugins.lockableresources.queue.QueuedContextStruct> queuedContexts =
+                (java.util.List<org.jenkins.plugins.lockableresources.queue.QueuedContextStruct>)
+                        queueField.get(manager);
+        queuedContexts.add(nonMatchingQueued);
+        queuedContexts.add(matchingQueued);
+
+        java.util.logging.Logger lrmLogger =
+                java.util.logging.Logger.getLogger(LockableResourcesManager.class.getName());
+        java.util.logging.Level previousLevel = lrmLogger.getLevel();
+        try {
+            lrmLogger.setLevel(java.util.logging.Level.INFO);
+            org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(
+                    Collections.singletonList(new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                            Collections.emptyList(), "gpu-pool", 1))));
+            assertEquals(0, nonMatchingGetBuildCalls.get());
+            assertEquals(0, matchingGetBuildCalls.get());
+
+            lrmLogger.setLevel(java.util.logging.Level.FINE);
+            org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(
+                    Collections.singletonList(new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                            Collections.emptyList(), "gpu-pool", 1))));
+            assertEquals(0, nonMatchingGetBuildCalls.get());
+            assertEquals(1, matchingGetBuildCalls.get());
+        } finally {
+            lrmLogger.setLevel(previousLevel);
+            queuedContexts.clear();
+        }
     }
 
     private static void assertContains(AutoCompletionCandidates c, String... values) {
