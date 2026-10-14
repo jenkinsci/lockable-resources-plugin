@@ -339,21 +339,17 @@ System.setProperty("org.jenkins.plugins.lockableresources.ENABLE_NODE_MIRROR", "
 ```
 
 > *Note:* When the node has been deleted, during the lockable-resource is locked / reserved / queued, then the lockable-resource will be NOT deleted.
+### Cloud agents (Kubernetes and similar)
 
-----
+Node mirroring also works for cloud agents, but only after Jenkins has created them. When a cloud agent is added or removed, Jenkins fires the same configuration change event that triggers mirroring. The agent then gets a lockable resource with the same name and labels, and that resource is removed again when the agent goes away (unless it is locked or reserved at that moment, see the note above).
 
-## Remote lockable resources
-
-A resource can be locked from a *different* Jenkins controller. This is for hardware that only one
-controller owns but several need to use - a test rig, a licence dongle, a PLC - without duplicating
-the resource definition on every controller and hoping the duplicates never disagree.
-
-The controller that owns the resource is the **server**. Any controller that locks it is a **client**.
-A controller can be both. From the pipeline it is one extra argument:
+Because the resource only exists once the agent is running, node mirroring can't limit how many cloud agents Jenkins starts at the same time. To do that, create a fixed set of resources with a shared label, one per allowed agent (for example `k8s-slot-1` to `k8s-slot-5`, all with the label `k8s-slot`). Then lock one of them before asking for the agent:
 
 ```groovy
-lock(resource: 'plc-01', serverId: 'server-a') {
-  echo 'This build holds plc-01, which lives on server-a'
+lock(label: 'k8s-slot', quantity: 1) {
+    node('kubernetes') {
+        // build steps
+    }
 }
 ```
 
