@@ -116,6 +116,48 @@ pipeline {
 
 Setting `quantity` to `null`, `0` or a smaller number, all available resources of that label are locked at once.
 
+#### Distinct resources across overlapping selectors
+
+By default, resources selected by one entry may also satisfy another entry in
+the same `lock` request. To require separate devices, enable **Require distinct
+resources for each lock request entry** under **Manage Jenkins > System >
+Lockable Resources Manager**. Configuration as Code uses:
+
+```yaml
+unclassified:
+  lockableResourcesManager:
+    requireDistinctResources: true
+```
+
+With this option enabled, the manager uses bipartite matching instead of greedy
+selection across a request and its `extra` entries. For example, if `device1`
+has labels `device special` and `device2` has label `device`, this request locks
+`device2` for the first entry and `device1` for the second, regardless of their
+configured resource order:
+
+```groovy
+lock(label: 'device', quantity: 1,
+     extra: [[label: 'device && special', quantity: 1]],
+     variable: 'DEVICES') {
+    echo "Distinct devices: ${env.DEVICES}"
+}
+```
+
+Each named resource and each unit of a label quantity needs a distinct resource.
+If no complete assignment is available, the request waits (or skips with
+`skipIfLocked`); it never proceeds with a smaller or partially locked set.
+An omitted or non-positive quantity requires **all matching resources** in the
+caller-visible pool, including those currently unavailable. Combining an "all"
+selector with an overlapping selector, or repeating a resource name, can never
+be satisfied while distinct matching is enabled.
+
+The setting is disabled by default for compatibility. It applies to local
+Pipeline requests and remote requests resolved by this controller, including
+queue retries. Delegated requests use the resolving server's setting.
+Freestyle allocation and priority between separate requests are unchanged.
+Sequential candidate order or shuffled candidates for `random` remain
+preferences, not guarantees of a uniformly random complete assignment.
+
 #### Take first position in queue
 
 ```groovy

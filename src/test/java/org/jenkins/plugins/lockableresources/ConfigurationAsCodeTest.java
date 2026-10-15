@@ -38,6 +38,7 @@ class ConfigurationAsCodeTest {
         LockableResourcesManager LRM = LockableResourcesManager.get();
         assertTrue(LRM.isAllowEmptyOrNullValues());
         assertTrue(LRM.isAllowEphemeralResources());
+        assertFalse(LRM.isRequireDistinctResources());
 
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(
@@ -105,6 +106,12 @@ class ConfigurationAsCodeTest {
 
         List<LockableResource> declaredResources = LRM.getDeclaredResources();
         assertEquals(1, declaredResources.size());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-distinct.yml")
+    void should_support_distinct_matching_via_casc(JenkinsConfiguredWithCodeRule r) {
+        assertTrue(LockableResourcesManager.get().isRequireDistinctResources());
     }
 
     @Test

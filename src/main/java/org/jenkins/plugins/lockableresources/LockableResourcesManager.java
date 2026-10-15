@@ -110,6 +110,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     private boolean allowEmptyOrNullValues;
 
+    private boolean requireDistinctResources;
+
     /**
      * Controls whether ephemeral resources can be created automatically.
      * When enabled (default), locking a non-existent resource creates it dynamically.
@@ -188,6 +190,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     public boolean isAllowEmptyOrNullValues() {
         return allowEmptyOrNullValues;
+    }
+
+    @DataBoundSetter
+    public void setRequireDistinctResources(boolean requireDistinctResources) {
+        this.requireDistinctResources = requireDistinctResources;
+    }
+
+    public boolean isRequireDistinctResources() {
+        return requireDistinctResources;
     }
 
     /**
@@ -1644,6 +1655,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
             @NonNull final Predicate<LockableResource> candidateFilter) {
 
         LOGGER.finest("getAvailableResources, " + requiredResourcesList);
+        if (requireDistinctResources) {
+            synchronized (syncResources) {
+                return getDistinctAvailableResources(requiredResourcesList, logger, selectStrategy, candidateFilter);
+            }
+        }
         List<LockableResource> candidates = new ArrayList<>();
         for (LockableResourcesStruct requiredResources : requiredResourcesList) {
             List<LockableResource> available = new ArrayList<>();
@@ -1698,6 +1714,73 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         return candidates;
+    }
+
+    @CheckForNull
+    private List<LockableResource> getDistinctAvailableResources(
+            List<LockableResourcesStruct> requirements,
+            @Nullable PrintStream logger,
+            @Nullable ResourceSelectStrategy selectStrategy,
+            Predicate<LockableResource> candidateFilter) {
+        List<List<LockableResource>> candidatesPerSlot = new ArrayList<>();
+        for (LockableResourcesStruct requirement : requirements) {
+            if (requirement.label != null && !requirement.label.isBlank()) {
+                List<LockableResource> possible = getResourcesWithLabel(requirement.label);
+                possible.removeIf(r -> !candidateFilter.test(r));
+                int amount = 0;
+                if (requirement.requiredNumber != null) {
+                    try {
+                        amount = Integer.parseInt(requirement.requiredNumber);
+                    } catch (NumberFormatException e) {
+                        printLogs("Invalid resource quantity: " + requirement.requiredNumber, logger, Level.WARNING);
+                        return null;
+                    }
+                }
+                if (amount <= 0) {
+                    amount = possible.size();
+                }
+                // Preserve label eligibility, including the existing treatment of freestyle queue markers.
+                List<LockableResource> available = new ArrayList<>(possible);
+                available.removeIf(r -> r.isReserved() || r.isLocked());
+                if (amount == 0 || available.size() < amount) {
+                    printLogs(
+                            "Found " + available.size() + " available resource(s). Waiting for correct amount: "
+                                    + amount + ".",
+                            logger,
+                            Level.FINE);
+                    return null;
+                }
+                if (selectStrategy == ResourceSelectStrategy.RANDOM) {
+                    Collections.shuffle(available);
+                }
+                for (int i = 0; i < amount; i++) {
+                    candidatesPerSlot.add(available);
+                }
+            } else if (requirement.required != null && !requirement.required.isEmpty()) {
+                List<String> names = getResourcesNames(requirement.required);
+                List<LockableResource> available = fromNames(names, /*create un-existent resources */ true);
+                if (available.size() != names.size()
+                        || available.stream().anyMatch(r -> !candidateFilter.test(r))
+                        || !areAllAvailable(available)) {
+                    printLogs("Named resources are not available: " + names, logger, Level.FINE);
+                    return null;
+                }
+                for (LockableResource resource : available) {
+                    candidatesPerSlot.add(Collections.singletonList(resource));
+                }
+            } else {
+                printLogs("No resource selector in requirement: " + requirement, logger, Level.WARNING);
+                return null;
+            }
+        }
+        List<LockableResource> assignment = ResourceMatcher.match(candidatesPerSlot);
+        if (assignment == null) {
+            printLogs(
+                    "Cannot satisfy all resource requirements with distinct resources. Waiting for a complete matching.",
+                    logger,
+                    Level.FINE);
+        }
+        return assignment;
     }
 
     // ---------------------------------------------------------------------------

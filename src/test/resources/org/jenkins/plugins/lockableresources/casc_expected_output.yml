@@ -12,3 +12,4 @@ declaredResources:
   labels: "Label_C"
   name: "Resource_C"
 remoteApiEnabled: false
+requireDistinctResources: false
