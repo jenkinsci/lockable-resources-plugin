@@ -2,6 +2,7 @@ package org.jenkins.plugins.lockableresources;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import hudson.Functions;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
@@ -12,6 +13,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.JenkinsSessionExtension;
@@ -118,6 +120,7 @@ class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
+    @DisabledIf(value = "isWindowsJenkins", disabledReason = "Intermittently hangs on Windows Jenkins agents")
     void testReserveOverRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager manager = LockableResourcesManager.get();
@@ -156,6 +159,11 @@ class LockStepWithRestartTest extends LockStepTestBase {
 
             j.waitUntilNoActivity();
         });
+    }
+
+    @SuppressWarnings("unused") // is used in DisabledIf
+    private static boolean isWindowsJenkins() {
+        return Functions.isWindows() && System.getenv("JENKINS_URL") != null;
     }
 
     @Test
