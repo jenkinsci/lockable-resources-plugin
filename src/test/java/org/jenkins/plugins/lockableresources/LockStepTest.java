@@ -1688,6 +1688,52 @@ class LockStepTest extends LockStepTestBase {
     }
 
     @Test
+    @Issue("613")
+    void lockWithQuantityGreaterThanResourcesWithLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("""
+            lock(label: 'label1', quantity: 2) {
+            }
+            """, true));
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
+        j.assertLogContains("Requested 2 resource(s) with label label1, but only 1 exist.", b1);
+        isPaused(b1, 0, 0);
+    }
+
+    @Test
+    @Issue("613")
+    void lockWithQuantityEqualToResourcesWithLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("""
+            lock(label: 'label1', quantity: 2) {
+                echo 'Locked both'
+            }
+            """, true));
+        WorkflowRun b1 = j.buildAndAssertSuccess(p);
+        j.assertLogContains("Locked both", b1);
+    }
+
+    @Test
+    @Issue("613")
+    void lockWithExtraQuantityGreaterThanResourcesWithLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
+        LockableResourcesManager.get().createResourceWithLabel("resource2", "label2");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("""
+            lock(label: 'label1', extra: [[label: 'label2', quantity: 2]]) {
+            }
+            """, true));
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
+        j.assertLogContains("Requested 2 resource(s) with label label2, but only 1 exist.", b1);
+        isPaused(b1, 0, 0);
+    }
+
+    @Test
     void inversePrecedenceAndPriorityAreSet(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
