@@ -8,6 +8,7 @@ import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 import java.io.Serializable;
+import jenkins.model.Jenkins;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -15,6 +16,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 /** Global group metadata; resources reference their group by name.
  * @since TODO
@@ -62,7 +64,9 @@ public class ResourceGroup extends AbstractDescribableImpl<ResourceGroup> implem
             return Messages.ResourceGroup_displayName();
         }
 
+        @RequirePOST
         public FormValidation doCheckName(@QueryParameter String value) {
+            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             return Util.fixEmptyAndTrim(value) == null
                     ? FormValidation.error(Messages.error_groupNameRequired())
                     : FormValidation.ok();
