@@ -193,7 +193,7 @@ THE SOFTWARE.
             -->
             <j:choose>
               <j:when test="${resource.reservedTimestamp != null}">
-                <td data-sort-value="${resource.reservedTimestamp.time}">
+                <td data="${resource.reservedTimestamp.time}">
                   <i:formatDate
                     value="${resource.reservedTimestamp}"
                     type="both"

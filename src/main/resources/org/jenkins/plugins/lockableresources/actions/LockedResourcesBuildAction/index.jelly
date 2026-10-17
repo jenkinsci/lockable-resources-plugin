@@ -68,7 +68,7 @@ THE SOFTWARE.
 
                 <tr>
                   <td>${idx.index + 1}</td>
-                  <td>
+                  <td data="${loEntry.timeStamp.time}">
                     <i:formatDate
                       value="${loEntry.timeStamp}"
                       type="both"
