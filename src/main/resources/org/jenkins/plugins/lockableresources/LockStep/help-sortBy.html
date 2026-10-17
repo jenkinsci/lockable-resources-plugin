@@ -1,0 +1,25 @@
+<div>
+  <p>
+    Optional Groovy expression used to order the resources that match the label.
+    It is evaluated once for each candidate and must return a number.
+    Resources with <strong>lower</strong> values are locked first; resources with equal values keep the
+    order given by the selection strategy.
+  </p>
+  <p>The expression can use these variables:</p>
+  <ul>
+    <li><code>resourceName</code></li>
+    <li><code>resourceDescription</code></li>
+    <li><code>resourceLabels</code> (list of labels)</li>
+    <li><code>resourceNote</code></li>
+    <li><code>resourceLockReason</code></li>
+  </ul>
+  <p>
+    Example: <code>resourceLabels.contains('nwcard:2') ? 0 : 1</code> prefers resources that also have the
+    label <code>nwcard:2</code>.
+  </p>
+  <p>
+    The expression always runs in the Groovy script sandbox. If it fails, is rejected by the sandbox or does
+    not return a number, a warning is written to the build log and the default order is used.
+    It applies to label selections (including extra resources) and is ignored for named resources and remote locks.
+  </p>
+</div>
