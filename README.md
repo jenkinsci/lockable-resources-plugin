@@ -116,6 +116,21 @@ pipeline {
 
 Setting `quantity` to `null`, `0` or a smaller number, all available resources of that label are locked at once.
 
+#### Fail fast when a label has too few resources
+
+By default, a `lock` step that requests a label `quantity` bigger than the number
+of resources with that label waits until enough resources exist. This is useful
+when resources appear later, for example cloud nodes. To fail the step right away
+instead, enable **Fail immediately when a label has fewer resources than the
+requested quantity** under **Manage Jenkins > System > Lockable Resources
+Manager**. Configuration as Code uses:
+
+```yaml
+unclassified:
+  lockableResourcesManager:
+    failFastOnInsufficientResources: true
+```
+
 #### Distinct resources across overlapping selectors
 
 By default, resources selected by one entry may also satisfy another entry in

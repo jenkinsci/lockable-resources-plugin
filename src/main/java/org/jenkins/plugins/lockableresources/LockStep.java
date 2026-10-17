@@ -316,7 +316,14 @@ public class LockStep extends Step implements Serializable {
     /** Label and resource are mutual exclusive. */
     public void validate(boolean allowEmptyOrNullValues) {
         LockStepResource.validate(
-                resource, label, resourceSelectStrategy, extra, priority, inversePrecedence, allowEmptyOrNullValues);
+                resource,
+                label,
+                quantity,
+                resourceSelectStrategy,
+                extra,
+                priority,
+                inversePrecedence,
+                allowEmptyOrNullValues);
     }
 
     // -------------------------------------------------------------------------

@@ -132,6 +132,46 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     // -------------------------------------------------------------------------
     /**
+     * Validate input parameters. If {@link LockableResourcesManager#isFailFastOnInsufficientResources()}
+     * is enabled, also check that no label request (main or extra) asks for more resources than exist
+     * with that label. Otherwise such a request waits until enough resources exist.
+     */
+    public static void validate(
+            String resource,
+            String label,
+            int quantity,
+            String resourceSelectStrategy,
+            List<LockStepResource> extra,
+            int priority,
+            boolean inversePrecedence,
+            boolean allowEmptyOrNullValues) {
+        validate(resource, label, resourceSelectStrategy, extra, priority, inversePrecedence, allowEmptyOrNullValues);
+        if (!LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
+            return;
+        }
+        validateQuantity(label, quantity);
+        if (extra != null) {
+            for (LockStepResource e : extra) {
+                validateQuantity(e.label, e.quantity);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /** The requested quantity must not exceed the number of resources with the given label. */
+    private static void validateQuantity(String label, int quantity) {
+        if (label == null || quantity <= 0) {
+            return;
+        }
+        int available =
+                LockableResourcesManager.get().getResourcesWithLabel(label).size();
+        if (quantity > available) {
+            throw new IllegalArgumentException(Messages.error_notEnoughResourcesWithLabel(label, quantity, available));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /**
      * Label and resource are mutual exclusive. The label, if provided, must be configured (at least
      * one resource must have this label).
      */

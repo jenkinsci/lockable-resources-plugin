@@ -11,5 +11,6 @@ declaredResources:
 - description: "Description_C"
   labels: "Label_C"
   name: "Resource_C"
+failFastOnInsufficientResources: false
 remoteApiEnabled: false
 requireDistinctResources: false

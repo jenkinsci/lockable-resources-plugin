@@ -113,6 +113,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private boolean requireDistinctResources;
 
     /**
+     * When enabled, a lock step fails immediately if it requests more resources with a label than
+     * exist with that label. When disabled (default), the step waits until enough resources exist.
+     */
+    private boolean failFastOnInsufficientResources;
+
+    /**
      * Controls whether ephemeral resources can be created automatically.
      * When enabled (default), locking a non-existent resource creates it dynamically.
      * When disabled, locking a non-existent resource will block until it is manually created.
@@ -199,6 +205,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     public boolean isRequireDistinctResources() {
         return requireDistinctResources;
+    }
+
+    @DataBoundSetter
+    public void setFailFastOnInsufficientResources(boolean failFastOnInsufficientResources) {
+        this.failFastOnInsufficientResources = failFastOnInsufficientResources;
+    }
+
+    public boolean isFailFastOnInsufficientResources() {
+        return failFastOnInsufficientResources;
     }
 
     /**
