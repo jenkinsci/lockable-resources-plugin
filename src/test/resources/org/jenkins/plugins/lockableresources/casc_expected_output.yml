@@ -13,3 +13,5 @@ declaredResources:
   name: "Resource_C"
 remoteApiEnabled: false
 requireDistinctResources: false
+resourceGroups:
+- name: "common"

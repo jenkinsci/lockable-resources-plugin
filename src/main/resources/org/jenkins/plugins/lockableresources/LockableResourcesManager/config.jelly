@@ -25,6 +25,17 @@
       </f:entry>
     </f:entry>
 
+    <f:entry title="${%groups.title}" field="resourceGroups">
+      <f:repeatable field="resourceGroups" header="${%groups.header}" minimum="0" add="${%groups.add}">
+        <table width="100%">
+          <st:include page="config.jelly" class="org.jenkins.plugins.lockableresources.ResourceGroup"/>
+          <f:entry title="">
+            <f:repeatableDeleteButton/>
+          </f:entry>
+        </table>
+      </f:repeatable>
+    </f:entry>
+
     <f:entry title="${%entry.title}">
       <div class="lr-config-moved-notice">
         ${%entry.moved}

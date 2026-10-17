@@ -70,6 +70,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     private List<LockableResource> resources;
 
+    private List<ResourceGroup> resourceGroups = new ArrayList<>();
+
     /**
      * Remote connections are persisted as a list for GlobalConfiguration/XStream compatibility.
      */
@@ -229,12 +231,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
         resources = new ArrayList<>();
         remotes = new ArrayList<>();
         load();
+        resourceGroups = getResourceGroups();
     }
 
     /**
      * Called by XStream after deserialization to restore defaults for newly added fields.
      */
     private Object readResolve() {
+        resourceGroups = getResourceGroups();
         if (remotes == null) {
             remotes = new ArrayList<>();
         }
@@ -439,6 +443,47 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /**
+     * Global group metadata, including the default and groups referenced by resources.
+     * Used by {@code config.jelly}.
+     * @since TODO
+     */
+    public List<ResourceGroup> getResourceGroups() {
+        synchronized (syncResources) {
+            Map<String, ResourceGroup> groups = new java.util.TreeMap<>();
+            if (resourceGroups != null) {
+                for (ResourceGroup group : resourceGroups) {
+                    groups.put(group.getName(), group);
+                }
+            }
+            groups.putIfAbsent(ResourceGroup.DEFAULT_NAME, new ResourceGroup(ResourceGroup.DEFAULT_NAME));
+            if (resources != null) {
+                for (LockableResource resource : resources) {
+                    groups.computeIfAbsent(resource.getGroup(), ResourceGroup::new);
+                }
+            }
+            List<ResourceGroup> ordered = new ArrayList<>();
+            ordered.add(groups.remove(ResourceGroup.DEFAULT_NAME));
+            ordered.addAll(groups.values());
+            return ordered;
+        }
+    }
+
+    /** @since TODO */
+    @DataBoundSetter
+    public void setResourceGroups(List<ResourceGroup> resourceGroups) {
+        Set<String> names = new HashSet<>();
+        for (ResourceGroup group : resourceGroups) {
+            if (!names.add(group.getName())) {
+                throw new IllegalArgumentException(Messages.error_duplicateResourceGroup(group.getName()));
+            }
+        }
+        synchronized (syncResources) {
+            this.resourceGroups = new ArrayList<>(resourceGroups);
+            save();
+        }
+    }
+
     /** Set all declared resources (do not include ephemeral and node resources). */
     @DataBoundSetter
     public void setDeclaredResources(List<LockableResource> declaredResources) {
@@ -461,6 +506,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     // Merge already locked lock.
                     locked.setDescription(r.getDescription());
                     locked.setLabelsFromString(r.getLabelsAsString());
+                    locked.setGroup(r.getGroup());
                     locked.setEphemeral(false);
                     locked.setNote(r.getNote());
                     mergedResources.add(locked);
@@ -702,7 +748,63 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /** Effective groups available for resource selection. Used by resource group Jelly.
+     * @since TODO
+     */
+    @Restricted(NoExternalUse.class)
+    public Set<String> getGroups() {
+        synchronized (syncResources) {
+            Set<String> groups = new java.util.TreeSet<>();
+            for (ResourceGroup group : getResourceGroups()) {
+                groups.add(group.getName());
+            }
+            return groups;
+        }
+    }
+
+    /** Validate a selector independently of availability.
+     * @since TODO
+     */
+    @Restricted(NoExternalUse.class)
+    public void validateGroup(String resource, String label, String group) {
+        String requestedGroup = LockableResource.normalizeGroup(group);
+        synchronized (syncResources) {
+            if (resource != null) {
+                LockableResource named = fromName(resource);
+                if (named != null && !requestedGroup.equals(named.getGroup())) {
+                    throw new IllegalArgumentException(
+                            Messages.error_resourceOutsideGroup(resource, named.getGroup(), requestedGroup));
+                }
+                if (named == null && !ResourceGroup.DEFAULT_NAME.equals(requestedGroup)) {
+                    throw new IllegalArgumentException(Messages.error_resourceDoesNotExist(List.of(resource)));
+                }
+            }
+            boolean hasCandidate = resources.stream()
+                    .anyMatch(r -> requestedGroup.equals(r.getGroup()) && (label == null || r.isValidLabel(label)));
+            if (!hasCandidate
+                    && (label != null || resource == null || !ResourceGroup.DEFAULT_NAME.equals(requestedGroup))) {
+                throw new IllegalArgumentException(Messages.error_groupHasNoResources(requestedGroup));
+            }
+        }
+    }
+
     public boolean queue(List<LockableResource> resources, long queueItemId, String queueProjectName) {
+        return queue(resources, queueItemId, queueProjectName, ResourceGroup.DEFAULT_NAME);
+    }
+
+    /** @since TODO */
+    @Restricted(NoExternalUse.class)
+    public boolean queue(List<LockableResource> resources, long queueItemId, String queueProjectName, String group) {
+        try {
+            for (LockableResource r : resources) {
+                validateGroup(r.getName(), null, group);
+            }
+        } catch (IllegalArgumentException e) {
+            synchronized (syncResources) {
+                unqueueTask(resources, queueItemId);
+            }
+            throw e;
+        }
         for (LockableResource r : resources) {
             if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
                 return false;
@@ -712,6 +814,24 @@ public class LockableResourcesManager extends GlobalConfiguration {
             r.setQueued(queueItemId, queueProjectName);
         }
         return true;
+    }
+
+    /** Releases resource assignments belonging to a Freestyle queue item.
+     * @since TODO
+     */
+    @Restricted(NoExternalUse.class)
+    public void unqueueTask(long queueItemId) {
+        synchronized (syncResources) {
+            unqueueTask(resources, queueItemId);
+        }
+    }
+
+    private static void unqueueTask(List<LockableResource> resources, long queueItemId) {
+        for (LockableResource resource : resources) {
+            if (resource.isQueuedByTask(queueItemId)) {
+                resource.unqueue();
+            }
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -820,11 +940,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // threads may read from the cache concurrently, so cached lists must not be
         // modified. Create a mutable copy below when modifications are needed.
         List<LockableResource> candidates = null;
-        if (candidatesByScript || (requiredResources.label != null && !requiredResources.label.isEmpty())) {
+        if (candidatesByScript
+                || requiredResources.isGroupOnly()
+                || (requiredResources.label != null && !requiredResources.label.isEmpty())) {
             candidates = cachedCandidates.getIfPresent(queueItemId);
             if (candidates == null) {
                 candidates = (systemGroovyScript == null)
-                        ? getResourcesWithLabel(requiredResources.label)
+                        ? (requiredResources.isGroupOnly()
+                                ? getReadOnlyResources()
+                                : getResourcesWithLabel(requiredResources.label))
                         : getResourcesMatchingScript(systemGroovyScript, params);
                 // Store as unmodifiable to prevent accidental modification of cached data
                 cachedCandidates.put(queueItemId, Collections.unmodifiableList(candidates));
@@ -833,6 +957,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         List<LockableResource> selected = new ArrayList<>();
         synchronized (syncResources) {
+            try {
+                if (requiredResources.isGroupOnly()
+                        || !requiredResources.label.isEmpty()
+                        || !ResourceGroup.DEFAULT_NAME.equals(requiredResources.getGroup())) {
+                    validateGroup(
+                            null,
+                            requiredResources.label.isEmpty() ? null : requiredResources.label,
+                            requiredResources.getGroup());
+                }
+                for (LockableResource named : requiredResources.required) {
+                    validateGroup(named.getName(), null, requiredResources.getGroup());
+                }
+            } catch (IllegalArgumentException e) {
+                unqueueTask(queueItemId);
+                throw new ExecutionException(e);
+            }
             if (!checkCurrentResourcesStatus(selected, queueItemProject, queueItemId, log)) {
                 // The project has another buildable item waiting -> bail out
                 log.log(
@@ -847,8 +987,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 candidates = new ArrayList<>(candidates);
                 candidates.retainAll(this.resources);
             } else {
-                candidates = requiredResources.required;
+                candidates = new ArrayList<>(requiredResources.required);
             }
+            candidates.removeIf(r -> !requiredResources.getGroup().equals(r.getGroup()));
+            List<LockableResource> eligible = candidates;
+            selected.removeIf(r -> {
+                if (!eligible.contains(r)) {
+                    r.unqueue();
+                    return true;
+                }
+                return false;
+            });
 
             for (LockableResource rs : candidates) {
                 if (number != 0 && (selected.size() >= number)) break;
@@ -1662,9 +1811,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         List<LockableResource> candidates = new ArrayList<>();
         for (LockableResourcesStruct requiredResources : requiredResourcesList) {
+            Predicate<LockableResource> groupFilter =
+                    candidateFilter.and(r -> requiredResources.getGroup().equals(r.getGroup()));
             List<LockableResource> available = new ArrayList<>();
             // filter by labels
-            if (requiredResources.label != null && !requiredResources.label.isBlank()) {
+            if (requiredResources.isGroupOnly()
+                    || (requiredResources.label != null && !requiredResources.label.isBlank())) {
                 // get required amount first
                 int requiredAmount = 0;
                 if (requiredResources.requiredNumber != null) {
@@ -1675,7 +1827,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
 
                 available = this.getFreeResourcesWithLabel(
-                        requiredResources.label, requiredAmount, selectStrategy, logger, candidates, candidateFilter);
+                        requiredResources.isGroupOnly() ? null : requiredResources.label,
+                        requiredAmount,
+                        selectStrategy,
+                        logger,
+                        candidates,
+                        groupFilter);
             } else if (requiredResources.required != null) {
                 // resource by name requested
 
@@ -1685,7 +1842,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 available = fromNames(
                         getResourcesNames(requiredResources.required), /*create un-existent resources */ true);
 
-                if (available.stream().anyMatch(r -> !candidateFilter.test(r)) || !this.areAllAvailable(available)) {
+                if (available.stream().anyMatch(r -> !groupFilter.test(r)) || !this.areAllAvailable(available)) {
                     // not all available, or a requested resource is not visible to this caller
                     available = null;
                 }
@@ -1812,7 +1969,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @CheckForNull
     @Restricted(NoExternalUse.class)
     private List<LockableResource> getFreeResourcesWithLabel(
-            @NonNull String label,
+            @Nullable String label,
             long amount,
             final @Nullable ResourceSelectStrategy selectStrategy,
             final @Nullable PrintStream logger,
@@ -1820,9 +1977,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
             @NonNull final Predicate<LockableResource> candidateFilter) {
         List<LockableResource> found = new ArrayList<>();
 
-        List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
-        candidates.addAll(this.getResourcesWithLabel(label));
-        // Restrict to the visible candidate pool before count-based selection (e.g. remote exposure policy).
+        List<LockableResource> candidates =
+                label == null ? new ArrayList<>(alreadySelected) : _getResourcesWithLabel(label, alreadySelected);
+        candidates.addAll(label == null ? this.getResources() : this.getResourcesWithLabel(label));
+        // Restrict to the visible candidate group before count-based selection (e.g. remote exposure policy).
         // Applied here so amount<=0 ("all") resolves to "all visible matching".
         candidates.removeIf(r -> !candidateFilter.test(r));
 
@@ -2203,8 +2361,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /**
      * Refresh the queue to allow waiting jobs to re-evaluate available resources.
      * <p>
-     * This method should be called after modifying labels on existing resources,
-     * as label changes do not automatically trigger queue re-evaluation.
+     * This method should be called after modifying labels or group membership on existing resources,
+     * as these changes do not automatically trigger queue re-evaluation.
+     * Call outside {@code synchronized(syncResources)}.
      * <p>
      * It performs the following actions:
      * <ol>
@@ -2337,6 +2496,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private void doSave() {
         getSavePending().set(false);
         synchronized (syncResources) {
+            resourceGroups = getResourceGroups();
             try {
                 getConfigFile().write(this);
             } catch (IOException e) {

@@ -17,6 +17,7 @@ import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
+import org.jenkins.plugins.lockableresources.ResourceGroup;
 import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.kohsuke.accmod.Restricted;
@@ -29,6 +30,31 @@ public class LockableResourcesStruct implements Serializable {
     // class BecauseResourcesLocked method getShortDescription() for user info.
     public List<LockableResource> required;
     public String label;
+    private String group;
+    private boolean groupOnly;
+
+    /** @since TODO */
+    @Restricted(NoExternalUse.class)
+    public boolean isGroupOnly() {
+        return groupOnly;
+    }
+
+    /** @since TODO */
+    @Restricted(NoExternalUse.class)
+    public void setGroupOnly(boolean groupOnly) {
+        this.groupOnly = groupOnly;
+    }
+
+    /** @since TODO */
+    public String getGroup() {
+        return LockableResource.normalizeGroup(group);
+    }
+
+    /** @since TODO */
+    public void setGroup(String group) {
+        this.group = LockableResource.normalizeGroup(group);
+    }
+
     public String requiredVar;
     public String requiredNumber;
     public long queuedAt = 0;
@@ -56,6 +82,11 @@ public class LockableResourcesStruct implements Serializable {
         }
 
         LockableResourcesManager lrm = LockableResourcesManager.get();
+        group = LockableResource.normalizeGroup(env.expand(property.getGroup()));
+        groupOnly = property.isGroupOnly();
+        for (String name : names) {
+            lrm.validateGroup(name, null, group);
+        }
         this.required = lrm.fromNames(names, /*create un-existent resources */ true);
 
         label = env.expand(property.getLabelName());
@@ -154,6 +185,9 @@ public class LockableResourcesStruct implements Serializable {
         }
         if (this.requiredNumber != null) {
             str += ", Number of resources: " + this.requiredNumber;
+        }
+        if (!ResourceGroup.DEFAULT_NAME.equals(getGroup())) {
+            str += ", Group: " + getGroup();
         }
         return str;
     }
