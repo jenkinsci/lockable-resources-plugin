@@ -89,6 +89,14 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String timeoutUnit = "MINUTES";
 
+    /**
+     * Optional Groovy expression used to order label candidates. Evaluated in the script sandbox for each
+     * candidate; resources with lower values are preferred. Ignored for named resources and remote locks.
+     */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public String sortBy = null;
+
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
     // is not required)
@@ -200,6 +208,15 @@ public class LockStep extends Step implements Serializable {
         }
     }
 
+    @DataBoundSetter
+    public void setSortBy(String sortBy) {
+        if (sortBy != null && !sortBy.trim().isEmpty()) {
+            this.sortBy = sortBy.trim();
+        } else {
+            this.sortBy = null;
+        }
+    }
+
     @Extension
     public static final class DescriptorImpl extends StepDescriptor {
 
@@ -305,6 +322,9 @@ public class LockStep extends Step implements Serializable {
             String ret = LockStepResource.toString(resource, label, quantity, reason);
             if (this.priority != 0) {
                 ret += ", Priority: " + this.priority;
+            }
+            if (this.sortBy != null) {
+                ret += ", Sort by: " + this.sortBy;
             }
             return ret;
         } else {
