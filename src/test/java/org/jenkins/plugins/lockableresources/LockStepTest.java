@@ -1690,6 +1690,7 @@ class LockStepTest extends LockStepTestBase {
     @Test
     @Issue("613")
     void lockWithQuantityGreaterThanResourcesWithLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().setFailFastOnInsufficientResources(true);
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("""
@@ -1705,6 +1706,7 @@ class LockStepTest extends LockStepTestBase {
     @Test
     @Issue("613")
     void lockWithQuantityEqualToResourcesWithLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().setFailFastOnInsufficientResources(true);
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "label1");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -1720,6 +1722,7 @@ class LockStepTest extends LockStepTestBase {
     @Test
     @Issue("613")
     void lockWithExtraQuantityGreaterThanResourcesWithLabel(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().setFailFastOnInsufficientResources(true);
         LockableResourcesManager.get().createResourceWithLabel("resource1", "label1");
         LockableResourcesManager.get().createResourceWithLabel("resource2", "label2");
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -1731,6 +1734,31 @@ class LockStepTest extends LockStepTestBase {
         j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(b1));
         j.assertLogContains("Requested 2 resource(s) with label label2, but only 1 exist.", b1);
         isPaused(b1, 0, 0);
+    }
+
+    @Test
+    @Issue("613")
+    void lockWithQuantityGreaterThanResourcesWithLabelWaitsByDefault(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.createResourceWithLabel("resource1", "label1");
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("""
+            lock(label: 'label1', quantity: 2) {
+                semaphore 'wait-inside'
+            }
+            echo 'Finish'
+            """, true));
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("[Label: label1, Quantity: 2] is not free, waiting for execution ...", b1);
+        j.waitForMessage("Found 1 possible resource(s). Waiting for correct amount: 2.", b1);
+        isPaused(b1, 1, 1);
+
+        // a new resource appears later, e.g. a cloud node
+        lrm.createResourceWithLabel("resource2", "label1");
+        SemaphoreStep.waitForStart("wait-inside/1", b1);
+        SemaphoreStep.success("wait-inside/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+        j.assertLogContains("Finish", b1);
     }
 
     @Test

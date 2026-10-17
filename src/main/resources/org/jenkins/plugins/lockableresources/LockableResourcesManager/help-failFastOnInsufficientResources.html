@@ -1,0 +1,9 @@
+<div>
+  Disabled by default. When enabled, a <code>lock</code> step fails right away if it
+  requests a label <code>quantity</code> bigger than the number of resources with that
+  label, including <code>extra</code> entries. Such a request could otherwise never be
+  satisfied with the current set of resources.
+  When disabled, the step waits until enough resources with that label exist. This is
+  useful when resources appear later, for example cloud nodes that are provisioned
+  after the build starts.
+</div>

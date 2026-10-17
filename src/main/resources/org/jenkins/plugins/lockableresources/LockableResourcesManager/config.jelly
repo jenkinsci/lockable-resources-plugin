@@ -23,6 +23,9 @@
       <f:entry field="requireDistinctResources">
         <f:checkbox title="${%configuration.requireDistinctResources.title}"/>
       </f:entry>
+      <f:entry field="failFastOnInsufficientResources">
+        <f:checkbox title="${%configuration.failFastOnInsufficientResources.title}"/>
+      </f:entry>
     </f:entry>
 
     <f:entry title="${%entry.title}">

@@ -132,9 +132,9 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     // -------------------------------------------------------------------------
     /**
-     * Validate input parameters, including that no label request (main or extra) asks for more
-     * resources than exist with that label. Such a request could never be satisfied and would wait
-     * forever.
+     * Validate input parameters. If {@link LockableResourcesManager#isFailFastOnInsufficientResources()}
+     * is enabled, also check that no label request (main or extra) asks for more resources than exist
+     * with that label. Otherwise such a request waits until enough resources exist.
      */
     public static void validate(
             String resource,
@@ -146,6 +146,9 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             boolean inversePrecedence,
             boolean allowEmptyOrNullValues) {
         validate(resource, label, resourceSelectStrategy, extra, priority, inversePrecedence, allowEmptyOrNullValues);
+        if (!LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
+            return;
+        }
         validateQuantity(label, quantity);
         if (extra != null) {
             for (LockStepResource e : extra) {
