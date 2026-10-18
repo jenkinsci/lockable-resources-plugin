@@ -366,6 +366,126 @@ class ResourceGroupsTest {
     }
 
     @Test
+    void failFastQuantityCountsOnlyMatchingGroupMembers(JenkinsRule j) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setFailFastOnInsufficientResources(true);
+        LockableResource common = add("common-device", null, "device");
+        LockableResource plc = add("plc-device", "plc", "device");
+        add("plc-other", "plc", "other");
+        add("release-device", "release", "device");
+        for (String group : List.of("common", "plc")) {
+            LockStep step = new LockStep(null);
+            step.setGroup(group);
+            step.setLabel("device && !other");
+            step.setQuantity(2);
+            IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, () -> step.validate(false));
+            assertTrue(failure.getMessage().contains("only 1 exist"));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false));
+            step.setQuantity(1);
+            manager.reserve(List.of(common, plc), "test");
+            step.validate(false);
+            RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false);
+            manager.unreserve(List.of(common, plc));
+            step.setQuantity(0);
+            step.validate(false);
+            step.setQuantity(-1);
+            step.validate(false);
+        }
+        LockStep named = new LockStep("plc-device");
+        named.setGroup("plc");
+        named.setQuantity(100);
+        named.validate(false);
+    }
+
+    @Test
+    void failFastExtraQuantityUsesInheritedAndOverriddenGroups(JenkinsRule j) {
+        LockableResourcesManager.get().setFailFastOnInsufficientResources(true);
+        add("plc-device-1", "plc", "device");
+        add("plc-device-2", "plc", "device");
+        add("common-device", null, "device");
+        LockStep step = new LockStep(null);
+        step.setGroup("plc");
+        step.setLabel("device");
+        step.setQuantity(1);
+        LockStepResource extra = new LockStepResource(null, "device", 2);
+        step.setExtra(List.of(extra));
+        step.validate(false);
+        RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false);
+        assertNull(extra.getGroup(), "validation must not mutate inherited selectors");
+        extra.setQuantity(3);
+        assertThrows(IllegalArgumentException.class, () -> step.validate(false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false));
+        extra.setQuantity(2);
+        extra.setGroup("common");
+        assertThrows(IllegalArgumentException.class, () -> step.validate(false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false));
+        extra.setQuantity(1);
+        step.validate(false);
+        RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false);
+    }
+
+    @Test
+    void failFastGroupOnlyQuantityUsesSelectedGroup(JenkinsRule j) {
+        LockableResourcesManager.get().setFailFastOnInsufficientResources(true);
+        add("plc-device", "plc", "device");
+        add("common-device", null, "device");
+        LockStep step = new LockStep(null);
+        step.setGroup("plc");
+        step.setQuantity(2);
+        assertThrows(IllegalArgumentException.class, () -> step.validate(false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false));
+        step.setQuantity(1);
+        step.validate(false);
+        step.setQuantity(0);
+        step.validate(false);
+        LockStepResource extra = new LockStepResource(null);
+        extra.setQuantity(2);
+        step.setExtra(List.of(extra));
+        assertThrows(IllegalArgumentException.class, () -> step.validate(false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false));
+        extra.setQuantity(1);
+        step.validate(false);
+        RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false);
+    }
+
+    @Test
+    void insufficientGroupQuantityWaitsByDefaultAndFailsWhenEnabled(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        add("plc-device", "plc", "device");
+        LockableResource common = add("common-device", null, "device");
+        WorkflowJob job = j.createProject(WorkflowJob.class, "group-quantity");
+        job.setDefinition(new CpsFlowDefinition("""
+                lock(group: 'plc', label: 'device', quantity: 2) {
+                  echo 'acquired both plc devices'
+                }
+                """, true));
+        WorkflowRun waiting = job.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("Waiting for correct amount: 2.", waiting);
+        assertTrue(common.isFree());
+        add("plc-device-2", "plc", "device");
+        manager.refreshQueue();
+        j.assertBuildStatusSuccess(j.waitForCompletion(waiting));
+        j.assertLogContains("acquired both plc devices", waiting);
+        assertTrue(common.isFree());
+
+        manager.setFailFastOnInsufficientResources(true);
+        manager.fromName("plc-device-2").setGroup("common");
+        WorkflowRun failed = job.scheduleBuild2(0).waitForStart();
+        j.assertBuildStatus(Result.FAILURE, j.waitForCompletion(failed));
+        j.assertLogContains("with label device in group plc, but only 1 exist", failed);
+    }
+
+    @Test
     void namedAndEmptyGroupValidationFailsClearly(JenkinsRule j) {
         add("protected", "production", "device");
         LockStep named = new LockStep("protected");

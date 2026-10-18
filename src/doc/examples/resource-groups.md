@@ -62,6 +62,13 @@ expression intersect; a matching label never selects a resource from another gro
 Omitted or non-positive quantity requests all matching resources in the selected
 group, so specify `quantity: 1` when only one device is needed.
 
+When **Fail immediately when the selected group has fewer matching resources than the requested quantity** is enabled, a positive quantity
+cannot exceed the number of matching resources in the selector's group. This
+also applies to group-only requests and each extra selector, using its inherited
+or explicitly overridden group. Locked and reserved resources count as existing:
+temporary unavailability still causes the request to wait. With fail-fast disabled,
+an insufficient quantity waits for more matching resources to be added to that group.
+
 On the resource management page, the **Resources** view offers **All**,
 **common**, and a button for each custom group with its resource count. Group
 filters combine with the existing status, name, label and search filters.
