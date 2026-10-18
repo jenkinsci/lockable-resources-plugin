@@ -360,7 +360,7 @@ public class LockStep extends Step implements Serializable {
                 allowEmptyOrNullValues);
         if (extra != null) {
             for (LockStepResource selector : extra) {
-                selector.validate(allowEmptyOrNullValues || group != null);
+                selector.validate(allowEmptyOrNullValues || group != null, getGroup());
             }
         }
         for (LockStepResource selector : getResources()) {
