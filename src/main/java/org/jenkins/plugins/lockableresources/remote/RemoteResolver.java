@@ -175,6 +175,13 @@ public final class RemoteResolver {
                 req.getPriority(),
                 req.isInversePrecedence(),
                 allowEmptyOrNullValues);
+        if (req.getResource() != null || req.getLabel() != null || req.isGroupOnly()) {
+            LockStepResource main = new LockStepResource(req.getResource());
+            main.setLabel(req.getLabel());
+            main.setQuantity(req.getQuantity());
+            main.setGroup(req.getGroup());
+            main.validate(allowEmptyOrNullValues);
+        }
         for (LockStepResource selector : extra) {
             selector.validate(allowEmptyOrNullValues);
         }

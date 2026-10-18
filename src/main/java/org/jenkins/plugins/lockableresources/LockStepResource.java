@@ -124,9 +124,13 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
     public void validate(boolean allowEmptyOrNullValues) {
+        validate(allowEmptyOrNullValues, null);
+    }
+
+    void validate(boolean allowEmptyOrNullValues, @Nullable String inheritedGroup) {
         validate(resource, label, null, group != null, 0, false, allowEmptyOrNullValues);
-        if (LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
-            validateQuantity(label, quantity);
+        if (resource == null && LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
+            validateQuantity(label, quantity, group == null ? inheritedGroup : group);
         }
     }
 
@@ -159,7 +163,8 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     /**
      * Validate input parameters. If {@link LockableResourcesManager#isFailFastOnInsufficientResources()}
      * is enabled, also check that no label request (main or extra) asks for more resources than exist
-     * with that label. Otherwise such a request waits until enough resources exist.
+     * with that label in the selected group. The main selector defaults to common.
+     * Otherwise such a request waits until enough resources exist.
      */
     public static void validate(
             String resource,
@@ -174,23 +179,36 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         if (!LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
             return;
         }
-        validateQuantity(label, quantity);
-        if (extra != null) {
-            for (LockStepResource e : extra) {
-                validateQuantity(e.label, e.quantity);
-            }
-        }
+        validateQuantity(label, quantity, null);
     }
 
     // -------------------------------------------------------------------------
-    /** The requested quantity must not exceed the number of resources with the given label. */
-    private static void validateQuantity(String label, int quantity) {
-        if (label == null || quantity <= 0) {
+    /** Count group members matching the selector, including resources currently in use. */
+    private static void validateQuantity(@Nullable String label, int quantity, @Nullable String group) {
+        if ((label == null && group == null) || quantity <= 0) {
             return;
         }
-        int available =
-                LockableResourcesManager.get().getResourcesWithLabel(label).size();
+        String requestedGroup = LockableResource.normalizeGroup(group);
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        int available;
+        synchronized (LockableResourcesManager.syncResources) {
+            available = (int) manager.getResources().stream()
+                    .filter(resource -> requestedGroup.equals(resource.getGroup()))
+                    .filter(resource -> label == null || resource.isValidLabel(label))
+                    .count();
+        }
         if (quantity > available) {
+            /** Group only **/
+            if (label == null) {
+                throw new IllegalArgumentException(
+                        Messages.error_notEnoughResourcesInGroup(requestedGroup, quantity, available));
+            }
+            /** Custom group **/
+            if (!ResourceGroup.DEFAULT_NAME.equals(requestedGroup)) { 
+                throw new IllegalArgumentException(
+                        Messages.error_notEnoughResourcesWithLabelInGroup(label, requestedGroup, quantity, available));
+            }
+            /** Default group (common) **/
             throw new IllegalArgumentException(Messages.error_notEnoughResourcesWithLabel(label, quantity, available));
         }
     }
