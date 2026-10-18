@@ -18,7 +18,10 @@ import java.util.Map;
 final class ResourceMatcher {
     private ResourceMatcher() {}
 
-    /** Returns one resource per slot in input order, or null when no complete matching exists. */
+    /**
+     * Returns one resource per slot in input order, or null when no complete matching exists. Each slot tries its
+     * candidates in list order, so earlier candidates are preferred.
+     */
     @CheckForNull
     static <T> List<T> match(List<List<T>> candidatesPerSlot) {
         List<T> assignments = new ArrayList<>(Collections.nCopies(candidatesPerSlot.size(), null));
