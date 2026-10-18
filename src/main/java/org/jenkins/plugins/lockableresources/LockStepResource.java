@@ -125,6 +125,9 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     /** Label and resource are mutual exclusive. */
     public void validate(boolean allowEmptyOrNullValues) {
         validate(resource, label, null, group != null, 0, false, allowEmptyOrNullValues);
+        if (LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
+            validateQuantity(label, quantity);
+        }
     }
 
     // -------------------------------------------------------------------------
