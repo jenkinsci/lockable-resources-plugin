@@ -353,7 +353,6 @@ public class LockStep extends Step implements Serializable {
         LockStepResource.validate(
                 resource,
                 label,
-                quantity,
                 resourceSelectStrategy,
                 isGroupOnly() || (extra != null && !extra.isEmpty()),
                 priority,
