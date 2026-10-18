@@ -1872,7 +1872,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (selectStrategy != null && selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
             Collections.shuffle(candidates);
         }
-        sortCandidates(candidates, requirement, logger);
 
         for (LockableResource r : candidates) {
             // TODO: it shall be used isFree() here, but in that case we need to change the
@@ -1880,19 +1879,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
             if (!r.isReserved() && !r.isLocked()) {
                 found.add(r);
             }
+        }
 
-            if (amount > 0 && found.size() >= amount) {
-                return found;
+        // amount is 0 only when there are no candidates at all; that never counts as satisfied
+        if (amount <= 0 || found.size() < amount) {
+            String msg =
+                    "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
+            if (enabledBlockedCount != 0) {
+                msg += "\nBlocking causes: " + getCauses(candidates);
             }
+            printLogs(msg, logger, Level.FINE);
+            return null;
         }
 
-        String msg = "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
-        if (enabledBlockedCount != 0) {
-            msg += "\nBlocking causes: " + getCauses(candidates);
-        }
-        printLogs(msg, logger, Level.FINE);
-
-        return null;
+        // only evaluate the sortBy script on resources that can actually be picked
+        sortCandidates(found, requirement, logger);
+        return new ArrayList<>(found.subList(0, (int) amount));
     }
 
     // ---------------------------------------------------------------------------

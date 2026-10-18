@@ -131,6 +131,28 @@ class LockStepSortByTest extends LockStepTestBase {
 
     @Test
     @Issue("669")
+    void sortByIgnoresLockedResources(JenkinsRule j) throws Exception {
+        createResources();
+        WorkflowJob holder = j.jenkins.createProject(WorkflowJob.class, "holder");
+        holder.setDefinition(new CpsFlowDefinition("""
+                lock('resource1') {
+                  semaphore 'wait-inside'
+                }
+                echo 'Finish'""", true));
+        WorkflowRun b1 = holder.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait-inside/1", b1);
+
+        // would throw if evaluated for the locked resource1
+        WorkflowRun b2 = runLock(j, ", sortBy: \"resourceName == 'resource1' ? 1/0 : 0\"");
+        j.assertLogNotContains("sortBy script failed", b2);
+        j.assertLogContains("Locked: resource2", b2);
+
+        SemaphoreStep.success("wait-inside/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+    }
+
+    @Test
+    @Issue("669")
     void sortByWithDistinctResources(JenkinsRule j) throws Exception {
         createResources();
         LockableResourcesManager.get().setRequireDistinctResources(true);
