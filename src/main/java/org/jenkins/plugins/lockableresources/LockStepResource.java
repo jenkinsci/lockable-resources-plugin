@@ -204,7 +204,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
                         Messages.error_notEnoughResourcesInGroup(requestedGroup, quantity, available));
             }
             /** Custom group **/
-            if (!ResourceGroup.DEFAULT_NAME.equals(requestedGroup)) { 
+            if (!ResourceGroup.DEFAULT_NAME.equals(requestedGroup)) {
                 throw new IllegalArgumentException(
                         Messages.error_notEnoughResourcesWithLabelInGroup(label, requestedGroup, quantity, available));
             }
