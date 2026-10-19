@@ -268,12 +268,26 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         return shown.toString();
     }
 
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    static String formatWaitDuration(long millis) {
+        long totalSeconds = Math.max(0, millis) / 1000;
+        return String.format("%d:%02d:%02d", totalSeconds / 3600, (totalSeconds % 3600) / 60, totalSeconds % 60);
+    }
+
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
             String resourceDescription,
             final String variable) {
+        proceed(lockedResources, context, resourceDescription, variable, 0);
+    }
+
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    public static void proceed(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            final long waitStartMillis) {
         Run<?, ?> build;
         FlowNode node;
         PrintStream logger;
@@ -285,6 +299,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             if (!lockedResources.isEmpty()) {
                 message += ", resources: " + formatResourceNames(lockedResources.keySet());
             }
+            long waitedMillis = waitStartMillis > 0 ? System.currentTimeMillis() - waitStartMillis : 0;
+            message += " after " + formatWaitDuration(waitedMillis);
             LockableResourcesManager.printLogs(message, Level.FINE, LOGGER, logger);
         } catch (Exception e) {
             context.onFailure(e);
