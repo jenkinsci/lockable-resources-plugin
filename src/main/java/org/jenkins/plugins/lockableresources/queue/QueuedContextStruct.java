@@ -72,6 +72,12 @@ public class QueuedContextStruct implements Serializable {
      */
     private long timeoutDeadlineMillis = 0;
 
+    /*
+     * Epoch millis when this entry was queued (i.e. when waiting started).
+     * Used to report how long was waited once the lock is acquired (issue #178).
+     */
+    private long queuedAtMillis = 0;
+
     // cached candidates
     public transient List<String> candidates = null;
 
@@ -125,6 +131,7 @@ public class QueuedContextStruct implements Serializable {
                 this.timeoutDeadlineMillis = 0;
             }
         }
+        this.queuedAtMillis = System.currentTimeMillis();
     }
 
     @Restricted(NoExternalUse.class)
@@ -227,6 +234,14 @@ public class QueuedContextStruct implements Serializable {
     @Restricted(NoExternalUse.class)
     public long getTimeoutDeadlineMillis() {
         return this.timeoutDeadlineMillis;
+    }
+
+    /**
+     * Returns the epoch millis when this entry was queued (waiting started).
+     */
+    @Restricted(NoExternalUse.class)
+    public long getQueuedAtMillis() {
+        return this.queuedAtMillis;
     }
 
     /**
