@@ -226,17 +226,29 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         @RequirePOST
         public AutoCompletionCandidates doAutoCompleteResource(
                 @QueryParameter String value, @AncestorInPath Item item) {
+            if (!hasConfigurePermission(item)) {
+                return new AutoCompletionCandidates();
+            }
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
+        }
+
+        /**
+         * Form methods must not throw permission errors into the form (e.g. Pipeline Syntax snippet
+         * generator), so callers check this and return an empty / OK result instead.
+         */
+        static boolean hasConfigurePermission(Item item) {
+            if (item != null) {
+                return item.hasPermission(Item.CONFIGURE);
+            }
+            return Jenkins.get().hasPermission(Jenkins.ADMINISTER);
         }
 
         @RequirePOST
         public static FormValidation doCheckLabel(
                 @QueryParameter String value, @QueryParameter String resource, @AncestorInPath Item item) {
-            // check permission, security first
-            if (item != null) {
-                item.checkPermission(Item.CONFIGURE);
-            } else {
-                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            // check permission, security first; do not reveal label existence without permission
+            if (!hasConfigurePermission(item)) {
+                return FormValidation.ok();
             }
 
             String resourceLabel = Util.fixEmpty(value);
