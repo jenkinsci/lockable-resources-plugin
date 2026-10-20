@@ -19,7 +19,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
@@ -222,16 +221,14 @@ public class LockStep extends Step implements Serializable {
         @RequirePOST
         public AutoCompletionCandidates doAutoCompleteResource(
                 @QueryParameter String value, @AncestorInPath Item item) {
+            if (!LockStepResource.DescriptorImpl.hasConfigurePermission(item)) {
+                return new AutoCompletionCandidates();
+            }
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
         }
 
         @RequirePOST
         public ListBoxModel doFillResourceSelectStrategyItems(@AncestorInPath Item item) {
-            if (item != null) {
-                item.checkPermission(Item.CONFIGURE);
-            } else {
-                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-            }
             ListBoxModel items = new ListBoxModel();
             for (ResourceSelectStrategy resSelStrategy : ResourceSelectStrategy.values()) {
                 items.add(resSelStrategy.name());
@@ -254,12 +251,6 @@ public class LockStep extends Step implements Serializable {
         @RequirePOST
         public static FormValidation doCheckResourceSelectStrategy(
                 @QueryParameter String resourceSelectStrategy, @AncestorInPath Item item) {
-            // check permission, security first
-            if (item != null) {
-                item.checkPermission(Item.CONFIGURE);
-            } else {
-                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-            }
             if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
                 try {
                     ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
@@ -277,11 +268,6 @@ public class LockStep extends Step implements Serializable {
 
         @RequirePOST
         public ListBoxModel doFillTimeoutUnitItems(@AncestorInPath Item item) {
-            if (item != null) {
-                item.checkPermission(Item.CONFIGURE);
-            } else {
-                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-            }
             ListBoxModel items = new ListBoxModel();
             items.add("Seconds", "SECONDS");
             items.add("Minutes", "MINUTES");
