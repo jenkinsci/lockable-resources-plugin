@@ -498,29 +498,54 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     private boolean evaluateScript(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
             throws ExecutionException {
+        try {
+            return (Boolean) runScript(script, params);
+        } catch (Exception e) {
+            throw new ExecutionException(
+                    "Cannot get boolean result out of groovy expression. See system log for more info", e);
+        }
+    }
+
+    /**
+     * Evaluates a {@code sortBy} script for this resource, with the same bindings as {@link
+     * #scriptMatches(SecureGroovyScript, Map)}. Lower values are preferred when selecting resources.
+     *
+     * @param script Script to be executed
+     * @param params Extra script parameters
+     * @return the numeric sort key
+     * @throws ExecutionException Script execution failed or did not return a number.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public Number evaluateSortScript(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+            throws ExecutionException {
+        Object result;
+        try {
+            result = runScript(script, params);
+        } catch (Exception e) {
+            throw new ExecutionException("Cannot evaluate sortBy expression for resource " + name, e);
+        }
+        if (!(result instanceof Number)) {
+            throw new ExecutionException(
+                    "sortBy expression must return a number, but returned " + result + " for resource " + name, null);
+        }
+        return (Number) result;
+    }
+
+    private Object runScript(@NonNull SecureGroovyScript script, @CheckForNull Map<String, Object> params)
+            throws Exception {
         Binding binding = new Binding(params);
         binding.setVariable("resourceName", name);
         binding.setVariable("resourceDescription", description);
         binding.setVariable("resourceLabels", this.getLabelsAsList());
         binding.setVariable("resourceNote", note);
         binding.setVariable("resourceLockReason", lockReason);
-        try {
-            Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.fine("Checked resource "
-                        + name
-                        + " for "
-                        + script.getScript()
-                        + " with "
-                        + binding
-                        + " -> "
-                        + result);
-            }
-            return (Boolean) result;
-        } catch (Exception e) {
-            throw new ExecutionException(
-                    "Cannot get boolean result out of groovy expression. See system log for more info", e);
+        Object result = script.evaluate(Jenkins.get().getPluginManager().uberClassLoader, binding, null);
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine(
+                    "Checked resource " + name + " for " + script.getScript() + " with " + binding + " -> " + result);
         }
+        return result;
     }
 
     @Exported

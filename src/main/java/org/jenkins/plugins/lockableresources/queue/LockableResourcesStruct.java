@@ -19,6 +19,7 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkins.plugins.lockableresources.RequiredResourcesProperty;
 import org.jenkins.plugins.lockableresources.util.SerializableSecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -39,6 +40,14 @@ public class LockableResourcesStruct implements Serializable {
     @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
     @CheckForNull
     private transient SecureGroovyScript resourceMatchScript;
+
+    /** Optional sandboxed script ordering label candidates, see {@link #getSortByScript()}. */
+    @CheckForNull
+    private SerializableSecureGroovyScript serializableSortByScript;
+
+    @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
+    @CheckForNull
+    private transient SecureGroovyScript sortByScript;
 
     private static final long serialVersionUID = 1L;
 
@@ -83,6 +92,30 @@ public class LockableResourcesStruct implements Serializable {
             @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
         this(resources, label, quantity);
         requiredVar = variable;
+    }
+
+    /**
+     * Constructor for a lock request whose label candidates are ordered by a script.
+     *
+     * @param sortByScript Groovy expression evaluated per candidate; lower values are preferred. It is
+     *     always run in the script sandbox.
+     */
+    public LockableResourcesStruct(
+            @Nullable List<String> resources,
+            @Nullable String label,
+            int quantity,
+            @Nullable String variable,
+            @CheckForNull String sortByScript) {
+        this(resources, label, quantity);
+        requiredVar = variable;
+        if (sortByScript != null && !sortByScript.isBlank()) {
+            try {
+                this.sortByScript = createSortByScript(sortByScript);
+            } catch (Descriptor.FormException e) {
+                throw new IllegalArgumentException("Invalid sortBy script: " + e.getMessage(), e);
+            }
+            this.serializableSortByScript = new SerializableSecureGroovyScript(this.sortByScript);
+        }
     }
 
     public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
@@ -137,6 +170,32 @@ public class LockableResourcesStruct implements Serializable {
         return serializableResourceMatchScript != null ? serializableResourceMatchScript.getScript() : null;
     }
 
+    /**
+     * Gets the script used to order label candidates. Lower results are preferred.
+     *
+     * @return sandboxed script, or {@code null} if no ordering was requested
+     * @see LockableResource#evaluateSortScript(SecureGroovyScript, java.util.Map)
+     */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public SecureGroovyScript getSortByScript() throws Descriptor.FormException {
+        String text = getSortByScriptText();
+        if (sortByScript == null && text != null) {
+            // rebuilt from the text only, so the sandbox can never be turned off
+            sortByScript = createSortByScript(text);
+        }
+        return sortByScript;
+    }
+
+    @CheckForNull
+    public String getSortByScriptText() {
+        return serializableSortByScript != null ? serializableSortByScript.getScript() : null;
+    }
+
+    private static SecureGroovyScript createSortByScript(String script) throws Descriptor.FormException {
+        return new SecureGroovyScript(script, true, null).configuring(ApprovalContext.create());
+    }
+
     @Override
     public String toString() {
         String str = "";
@@ -148,6 +207,9 @@ public class LockableResourcesStruct implements Serializable {
         }
         if (this.resourceMatchScript != null) {
             str += "Required label script: " + this.resourceMatchScript.getScript();
+        }
+        if (this.serializableSortByScript != null) {
+            str += ", Sort by: " + this.serializableSortByScript.getScript();
         }
         if (this.requiredVar != null) {
             str += ", Variable name: " + this.requiredVar;
