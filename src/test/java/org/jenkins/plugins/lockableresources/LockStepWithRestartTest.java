@@ -75,6 +75,7 @@ class LockStepWithRestartTest extends LockStepTestBase {
     }
 
     @Test
+    @DisabledIf(value = "isWindowsJenkins", disabledReason = "Intermittently hangs on Windows Jenkins agents")
     void interoperabilityOnRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
