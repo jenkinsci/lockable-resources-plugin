@@ -1132,7 +1132,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 resourcesToLock,
                 nextContext.getContext(),
                 nextContext.getResourceDescription(),
-                nextContext.getVariableName());
+                nextContext.getVariableName(),
+                nextContext.getQueuedAtMillis());
         return true;
     }
 
