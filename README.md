@@ -180,6 +180,8 @@ label. Resources with lower values are locked first; equal values keep the
 normal order (including the `random` shuffle). The script has the bindings
 `resourceName`, `resourceDescription`, `resourceLabels`, `resourceNote` and
 `resourceLockReason`, and always runs in the script sandbox.
+`sortBy` is a Pipeline (`lock` step) option and is not available for freestyle
+jobs.
 
 ```groovy
 // resource1 has label 'nwcard:1', resource2 has 'nwcard:1 nwcard:2'.
