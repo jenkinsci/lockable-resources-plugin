@@ -94,6 +94,13 @@ public class RemoteApiClient {
 
     private JSONObject buildLockRequestJson(RemoteLockRequest lr) {
         JSONObject json = new JSONObject();
+        List<RemoteLockRequest.ExtraResource> extra = lr.getExtra();
+        if (lr.isGroupOnly()
+                || lr.getResource() != null
+                || lr.getLabel() != null
+                || (extra != null && !extra.isEmpty())) {
+            json.put("group", lr.getGroup());
+        }
         if (lr.getResource() != null) {
             json.put("resource", lr.getResource());
         }
@@ -109,11 +116,11 @@ public class RemoteApiClient {
         json.put("inversePrecedence", lr.isInversePrecedence());
         json.put("resourceSelectStrategy", lr.getResourceSelectStrategy());
         json.put("skipIfLocked", lr.isSkipIfLocked());
-        List<RemoteLockRequest.ExtraResource> extra = lr.getExtra();
         if (extra != null && !extra.isEmpty()) {
             JSONArray extraJson = new JSONArray();
             for (RemoteLockRequest.ExtraResource r : extra) {
                 JSONObject rJson = new JSONObject();
+                if (r.getGroup() != null) rJson.put("group", r.getGroup());
                 if (r.getResource() != null) rJson.put("resource", r.getResource());
                 if (r.getLabel() != null) rJson.put("label", r.getLabel());
                 if (r.getQuantity() > 0) rJson.put("quantity", r.getQuantity());
@@ -215,7 +222,8 @@ public class RemoteApiClient {
                         r.optString("state", ""),
                         r.optString("heldByKind", ""),
                         r.optString("heldByClientId", ""),
-                        r.optLong("since", 0)));
+                        r.optLong("since", 0),
+                        r.optString("group", null)));
             }
         }
         return new RemoteCatalog(

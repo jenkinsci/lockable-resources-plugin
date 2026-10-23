@@ -91,7 +91,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     } else {
                         resourceNames.add("N/A");
                     }
-                    resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
+                    LockableResourcesStruct requirement =
+                            new LockableResourcesStruct(resources, resource.label, resource.quantity);
+                    requirement.setGroup(resource.getGroup());
+                    requirement.setGroupOnly(resource.resource == null && resource.label == null);
+                    resourceHolderList.add(requirement);
                 }
                 LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
                 // determine if there are enough resources available to proceed
@@ -184,6 +188,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
      * To acquire a lock, at least one of these properties must be non-null and non-empty.
      */
     private boolean acquireLock() {
+        if (step.isGroupOnly()) {
+            return true;
+        }
         if (step.label != null) {
             return true;
         }

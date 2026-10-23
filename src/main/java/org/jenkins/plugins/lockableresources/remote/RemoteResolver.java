@@ -59,14 +59,24 @@ public final class RemoteResolver {
     @CheckForNull
     public String validateRemoteSelectors(@NonNull RemoteLockRequest req) {
         Set<String> exposeLabels = lrm.getExposeLabels();
-        String main = validateSelector(req.getResource(), req.getLabel(), exposeLabels);
+        if (req.isGroupOnly() && !hasExposedCandidate(null, req.getGroup(), exposeLabels)) {
+            return "UNKNOWN_GROUP";
+        }
+        String main = validateSelector(req.getResource(), req.getLabel(), req.getGroup(), exposeLabels);
         if (main != null) {
             return main;
         }
         List<RemoteLockRequest.ExtraResource> extra = req.getExtra();
         if (extra != null) {
             for (RemoteLockRequest.ExtraResource e : extra) {
-                String err = validateSelector(e.getResource(), e.getLabel(), exposeLabels);
+                String group = req.getEffectiveGroup(e);
+                if (e.getResource() == null
+                        && e.getLabel() == null
+                        && group != null
+                        && !hasExposedCandidate(null, group, exposeLabels)) {
+                    return "UNKNOWN_GROUP";
+                }
+                String err = validateSelector(e.getResource(), e.getLabel(), group, exposeLabels);
                 if (err != null) {
                     return err;
                 }
@@ -77,13 +87,22 @@ public final class RemoteResolver {
 
     @CheckForNull
     private String validateSelector(
-            @CheckForNull String resource, @CheckForNull String label, @NonNull Set<String> exposeLabels) {
+            @CheckForNull String resource,
+            @CheckForNull String label,
+            String group,
+            @NonNull Set<String> exposeLabels) {
+        String requestedGroup = LockableResource.normalizeGroup(group);
         if (resource != null) {
             LockableResource r = lrm.fromName(resource);
+            if (r != null && isExposed(r, exposeLabels) && !requestedGroup.equals(r.getGroup())) {
+                throw new IllegalArgumentException(
+                        org.jenkins.plugins.lockableresources.Messages.error_resourceOutsideGroup(
+                                resource, r.getGroup(), requestedGroup));
+            }
             return (r != null && isExposed(r, exposeLabels)) ? null : "UNKNOWN_RESOURCE";
         }
         if (label != null && !label.isEmpty()) {
-            return hasExposedCandidate(label, exposeLabels) ? null : "UNKNOWN_LABEL";
+            return hasExposedCandidate(label, requestedGroup, exposeLabels) ? null : "UNKNOWN_LABEL";
         }
         return null; // absent selector (e.g. main when extra-only) - nothing to validate
     }
@@ -106,13 +125,15 @@ public final class RemoteResolver {
         return !exposeLabels.isEmpty() && !Collections.disjoint(r.getLabelsAsList(), exposeLabels);
     }
 
-    private boolean hasExposedCandidate(@NonNull String label, @NonNull Set<String> exposeLabels) {
+    private boolean hasExposedCandidate(@CheckForNull String label, String group, @NonNull Set<String> exposeLabels) {
         if (exposeLabels.isEmpty()) {
             return false; // exposeLabel is opt-in: empty exposes nothing
         }
         for (LockableResource r : lrm.getResources()) {
             List<String> labels = r.getLabelsAsList();
-            if (labels.contains(label) && !Collections.disjoint(labels, exposeLabels)) {
+            if (r.getGroup().equals(group)
+                    && (label == null || r.isValidLabel(label))
+                    && !Collections.disjoint(labels, exposeLabels)) {
                 return true;
             }
         }
@@ -142,6 +163,7 @@ public final class RemoteResolver {
                 LockStepResource resource = new LockStepResource(e.getResource());
                 resource.setLabel(e.getLabel());
                 resource.setQuantity(e.getQuantity());
+                resource.setGroup(req.getEffectiveGroup(e));
                 extra.add(resource);
             }
         }
@@ -149,10 +171,20 @@ public final class RemoteResolver {
                 req.getResource(),
                 req.getLabel(),
                 req.getResourceSelectStrategy(),
-                extra,
+                req.isGroupOnly() || !extra.isEmpty(),
                 req.getPriority(),
                 req.isInversePrecedence(),
                 allowEmptyOrNullValues);
+        if (req.getResource() != null || req.getLabel() != null || req.isGroupOnly()) {
+            LockStepResource main = new LockStepResource(req.getResource());
+            main.setLabel(req.getLabel());
+            main.setQuantity(req.getQuantity());
+            main.setGroup(req.getGroup());
+            main.validate(allowEmptyOrNullValues);
+        }
+        for (LockStepResource selector : extra) {
+            selector.validate(allowEmptyOrNullValues);
+        }
     }
 
     /**
@@ -165,11 +197,19 @@ public final class RemoteResolver {
     @NonNull
     public List<LockableResourcesStruct> toRemoteStructs(@NonNull RemoteLockRequest req) {
         List<LockableResourcesStruct> structs = new ArrayList<>();
-        addRemoteStruct(structs, req.getResource(), req.getLabel(), req.getQuantity());
+        addRemoteStruct(
+                structs, req.getResource(), req.getLabel(), req.getQuantity(), req.getGroup(), req.isGroupOnly());
         List<RemoteLockRequest.ExtraResource> extra = req.getExtra();
         if (extra != null) {
             for (RemoteLockRequest.ExtraResource e : extra) {
-                addRemoteStruct(structs, e.getResource(), e.getLabel(), e.getQuantity());
+                String group = req.getEffectiveGroup(e);
+                addRemoteStruct(
+                        structs,
+                        e.getResource(),
+                        e.getLabel(),
+                        e.getQuantity(),
+                        LockableResource.normalizeGroup(group),
+                        e.getResource() == null && e.getLabel() == null && group != null);
             }
         }
         return structs;
@@ -179,9 +219,11 @@ public final class RemoteResolver {
             List<LockableResourcesStruct> structs,
             @CheckForNull String resource,
             @CheckForNull String label,
-            int quantity) {
+            int quantity,
+            String group,
+            boolean groupOnly) {
         boolean hasLabel = label != null && !label.isEmpty();
-        if (resource == null && !hasLabel) {
+        if (resource == null && !hasLabel && !groupOnly) {
             return; // absent selector (e.g. main when extra-only)
         }
         List<String> names = new ArrayList<>();
@@ -190,7 +232,10 @@ public final class RemoteResolver {
             // is exposed, so a remote request never creates new resources on the server.
             names.add(resource);
         }
-        structs.add(new LockableResourcesStruct(names, label, quantity));
+        LockableResourcesStruct requirement = new LockableResourcesStruct(names, label, quantity);
+        requirement.setGroup(group);
+        requirement.setGroupOnly(groupOnly);
+        structs.add(requirement);
     }
 
     /**

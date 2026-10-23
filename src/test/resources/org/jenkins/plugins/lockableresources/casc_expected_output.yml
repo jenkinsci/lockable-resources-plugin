@@ -14,3 +14,5 @@ declaredResources:
 failFastOnInsufficientResources: false
 remoteApiEnabled: false
 requireDistinctResources: false
+resourceGroups:
+- name: "common"
