@@ -1874,11 +1874,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
         }
 
-        String msg = "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
-        if (enabledBlockedCount != 0) {
-            msg += "\nBlocking causes: " + getCauses(candidates);
+        if (logger != null || LOGGER.isLoggable(Level.FINE)) {
+            String msg =
+                    "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
+            if (enabledBlockedCount != 0) {
+                msg += "\nBlocking causes: " + getCauses(candidates);
+            }
+            printLogs(msg, logger, Level.FINE);
         }
-        printLogs(msg, logger, Level.FINE);
 
         return null;
     }
@@ -1910,9 +1913,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     // for debug purpose
     private String getQueueCause(final LockableResource resource) {
+        if (enabledCausesCount == 0) {
+            return "";
+        }
+
         Map<Run<?, ?>, Integer> usage = new HashMap<>();
 
         for (QueuedContextStruct entry : this.queuedContexts) {
+            boolean matched = false;
+            for (LockableResourcesStruct _struct : entry.getResources()) {
+                if (_struct.isResourceRequired(resource)) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                continue;
+            }
 
             Run<?, ?> build = entry.getBuild();
             if (build == null) {
@@ -1920,19 +1937,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 continue;
             }
 
-            int count = 0;
-            if (usage.containsKey(build)) {
-                count = usage.get(build);
-            }
-
-            for (LockableResourcesStruct _struct : entry.getResources()) {
-                if (_struct.isResourceRequired(resource)) {
-                    LOGGER.fine("found " + resource + " " + count);
-                    count++;
-                    break;
-                }
-            }
-
+            int count = usage.getOrDefault(build, 0) + 1;
+            LOGGER.fine("found " + resource + " " + count);
             usage.put(build, count);
         }
 
@@ -1951,7 +1957,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                         .append(" ")
                         .append(ModelHyperlinkNote.encodeTo(build));
 
-                if (currentSize >= enabledCausesCount) {
+                if (enabledCausesCount > 0 && currentSize >= enabledCausesCount) {
                     buf.append("\n    ...");
                     break;
                 }
