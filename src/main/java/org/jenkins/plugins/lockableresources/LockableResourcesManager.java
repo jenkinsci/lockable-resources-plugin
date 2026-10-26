@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1690,7 +1692,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
 
                 available = this.getFreeResourcesWithLabel(
-                        requiredResources.label, requiredAmount, selectStrategy, logger, candidates, candidateFilter);
+                        requiredResources.label,
+                        requiredAmount,
+                        selectStrategy,
+                        logger,
+                        candidates,
+                        candidateFilter,
+                        requiredResources);
             } else if (requiredResources.required != null) {
                 // resource by name requested
 
@@ -1768,6 +1776,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 if (selectStrategy == ResourceSelectStrategy.RANDOM) {
                     Collections.shuffle(available);
                 }
+                // ResourceMatcher tries candidates in list order, so this order is the preference
+                sortCandidates(available, requirement, logger);
                 for (int i = 0; i < amount; i++) {
                     candidatesPerSlot.add(available);
                 }
@@ -1832,7 +1842,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             final @Nullable ResourceSelectStrategy selectStrategy,
             final @Nullable PrintStream logger,
             final List<LockableResource> alreadySelected,
-            @NonNull final Predicate<LockableResource> candidateFilter) {
+            @NonNull final Predicate<LockableResource> candidateFilter,
+            @CheckForNull final LockableResourcesStruct requirement) {
         List<LockableResource> found = new ArrayList<>();
 
         List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
@@ -1868,19 +1879,60 @@ public class LockableResourcesManager extends GlobalConfiguration {
             if (!r.isReserved() && !r.isLocked()) {
                 found.add(r);
             }
+        }
 
-            if (amount > 0 && found.size() >= amount) {
-                return found;
+        // amount is 0 only when there are no candidates at all; that never counts as satisfied
+        if (amount <= 0 || found.size() < amount) {
+            String msg =
+                    "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
+            if (enabledBlockedCount != 0) {
+                msg += "\nBlocking causes: " + getCauses(candidates);
             }
+            printLogs(msg, logger, Level.FINE);
+            return null;
         }
 
-        String msg = "Found " + found.size() + " available resource(s). Waiting for correct amount: " + amount + ".";
-        if (enabledBlockedCount != 0) {
-            msg += "\nBlocking causes: " + getCauses(candidates);
-        }
-        printLogs(msg, logger, Level.FINE);
+        // only evaluate the sortBy script on resources that can actually be picked
+        sortCandidates(found, requirement, logger);
+        return new ArrayList<>(found.subList(0, (int) amount));
+    }
 
-        return null;
+    // ---------------------------------------------------------------------------
+    /**
+     * Orders {@code candidates} ascending by the requirement's {@code sortBy} script (stable, so equal
+     * values keep the current order). On any script failure, a warning is printed once and the order is
+     * left untouched.
+     */
+    private static void sortCandidates(
+            List<LockableResource> candidates,
+            @CheckForNull LockableResourcesStruct requirement,
+            @Nullable PrintStream logger) {
+        if (requirement == null || requirement.getSortByScriptText() == null || candidates.size() < 2) {
+            return;
+        }
+        Map<LockableResource, Double> keys = new IdentityHashMap<>();
+        try {
+            SecureGroovyScript script = requirement.getSortByScript();
+            if (script == null) {
+                return;
+            }
+            for (LockableResource candidate : candidates) {
+                if (!keys.containsKey(candidate)) {
+                    keys.put(
+                            candidate,
+                            candidate.evaluateSortScript(script, null).doubleValue());
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "sortBy evaluation failed", e);
+            printLogs("sortBy script failed, keeping default resource order: " + describe(e), logger, Level.WARNING);
+            return;
+        }
+        candidates.sort(Comparator.comparingDouble(keys::get));
+    }
+
+    private static String describe(Throwable e) {
+        return e.getCause() == null ? e.getMessage() : e.getMessage() + ": " + e.getCause();
     }
 
     // ---------------------------------------------------------------------------

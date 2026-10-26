@@ -25,6 +25,9 @@
   <f:entry title="${%entry.resourceSelectStrategy.title}" field="resourceSelectStrategy">
     <f:select/>
   </f:entry>
+  <f:entry title="${%entry.sortBy.title}" field="sortBy">
+    <f:textbox/>
+  </f:entry>
   <f:entry title="${%entry.priority.title}" field="priority">
     <f:number/>
   </f:entry>

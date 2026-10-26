@@ -173,6 +173,29 @@ Freestyle allocation and priority between separate requests are unchanged.
 Sequential candidate order or shuffled candidates for `random` remain
 preferences, not guarantees of a uniformly random complete assignment.
 
+#### Prefer some label candidates with sortBy
+
+`sortBy` is a Groovy expression evaluated for every resource matching the
+label. Resources with lower values are locked first; equal values keep the
+normal order (including the `random` shuffle). The script has the bindings
+`resourceName`, `resourceDescription`, `resourceLabels`, `resourceNote` and
+`resourceLockReason`, and always runs in the script sandbox.
+`sortBy` is a Pipeline (`lock` step) option and is not available for freestyle
+jobs.
+
+```groovy
+// resource1 has label 'nwcard:1', resource2 has 'nwcard:1 nwcard:2'.
+// Prefer resources that also carry nwcard:2.
+lock(label: 'nwcard:1', quantity: 1, sortBy: "resourceLabels.contains('nwcard:2') ? 0 : 1") {
+    echo 'Locked a resource with nwcard:2 if one was free'
+}
+```
+
+If the script fails or does not return a number, a warning is printed and the
+default order is used; the build does not fail. `sortBy` applies to label
+selectors (including `extra` entries), not to named resources, and is ignored
+for remote locks (`serverId`).
+
 #### Take first position in queue
 
 ```groovy
