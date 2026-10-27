@@ -486,6 +486,53 @@ class ResourceGroupsTest {
     }
 
     @Test
+    void unknownGroupIsNotReportedAsAnEmptyGroup(JenkinsRule j) {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        add("common-device", null, "S7");
+        LockStep step = new LockStep(null);
+        step.setGroup("plc");
+        step.setLabel("S7");
+        step.setQuantity(1);
+        for (boolean failFast : List.of(false, true)) {
+            manager.setFailFastOnInsufficientResources(failFast);
+            assertEquals(
+                    Messages.error_groupDoesNotExist("plc"),
+                    assertThrows(IllegalArgumentException.class, () -> step.validate(false))
+                            .getMessage());
+            assertEquals(
+                    Messages.error_groupDoesNotExist("plc"),
+                    assertThrows(
+                                    IllegalArgumentException.class,
+                                    () -> RemoteResolver.validateAsLocalStep(RemoteLockRequest.from(step), false))
+                            .getMessage());
+        }
+        assertEquals(
+                Messages.error_groupDoesNotExist("plc"),
+                assertThrows(IllegalArgumentException.class, () -> manager.validateGroup(null, "S7", "plc"))
+                        .getMessage());
+
+        manager.setResourceGroups(List.of(new ResourceGroup("plc")));
+        manager.setFailFastOnInsufficientResources(false);
+        assertEquals(
+                Messages.error_groupHasNoResources("plc"),
+                assertThrows(IllegalArgumentException.class, () -> step.validate(false))
+                        .getMessage());
+        manager.setFailFastOnInsufficientResources(true);
+        assertEquals(
+                Messages.error_notEnoughResourcesWithLabelInGroup("S7", "plc", 1, 0),
+                assertThrows(IllegalArgumentException.class, () -> step.validate(false))
+                        .getMessage());
+        add("plc-other", "plc", "other");
+        manager.setFailFastOnInsufficientResources(false);
+        assertEquals(
+                Messages.error_groupHasNoResources("plc"),
+                assertThrows(IllegalArgumentException.class, () -> step.validate(false))
+                        .getMessage());
+        add("plc-device", "plc", "S7");
+        step.validate(false);
+    }
+
+    @Test
     void namedAndEmptyGroupValidationFailsClearly(JenkinsRule j) {
         add("protected", "production", "device");
         LockStep named = new LockStep("protected");

@@ -128,6 +128,7 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     }
 
     void validate(boolean allowEmptyOrNullValues, @Nullable String inheritedGroup) {
+        LockableResourcesManager.get().validateGroupExists(group == null ? inheritedGroup : group);
         validate(resource, label, null, group != null, 0, false, allowEmptyOrNullValues);
         if (resource == null && LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
             validateQuantity(label, quantity, group == null ? inheritedGroup : group);
