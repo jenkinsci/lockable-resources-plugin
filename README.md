@@ -46,6 +46,7 @@ Each lockable resource has the following properties:
   `DK_Printer_Production`, `DK_Printer_Engineering`
 - **Group** - Optional allocation group. Empty means `common`. Resources in other
   groups are only selected by requests that explicitly choose that group.
+  Each resource belongs to exactly one group.
 - **Reserved by** - Optional reserved / locked cause. If non-empty,
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
   This option is still possible, but we recommend to use the *Manage Jenkins* > *Lockable Resources* page
@@ -62,6 +63,12 @@ This is similar to nodes and node labels.
 Groups isolate resource selection independently of capability labels. Configure
 groups in Jenkins global configuration and assign each resource a **Group**.
 Existing resources and requests without a group use `common`.
+The single-group membership is intentional: groups define separate allocation
+boundaries, while labels describe shared capabilities. A group can contain many
+resources, and each resource can have multiple labels.
+
+Create the `plc` group and assign resources with the `S7` label to it before using
+this example:
 
 ```groovy
 lock(group: 'plc', label: 'S7', quantity: 1) {
@@ -73,58 +80,6 @@ The management page offers **All**, **common**, and custom group filters.
 Groups prevent accidental selection, not unauthorized access; folder scoping is
 not implemented. See [resource groups](src/doc/examples/resource-groups.md) for
 configuration, selection rules, migration, and examples.
-
-### Testing the local build with Docker Compose
-
-The included Compose setup runs the current Jenkins LTS with Java 21 and the local
-`target/lockable-resources.hpi`, its dependencies, and Pipeline support.
-The HPI must exist before building the image; Compose does not compile the plugin.
-From the repository root:
-
-```sh
-docker compose up -d --build --wait
-docker compose exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-```
-
-Open <http://localhost:18080>, unlock Jenkins with that password, and choose
-**Select plugins to install**, then **None**: the test plugins are already installed.
-Finish creating your local admin account.
-Configure groups under **Manage Jenkins → System → Lockable Resources Manager**
-and resources under **Manage Jenkins → Lockable Resources**.
-
-The instance is seeded with `common`, `plc`, and `release` groups, each containing
-one Bullseye (`armhf`) and one Bookworm (`arm64`) demo device. All six devices have
-the `demo-device` label; the PLC devices also have `S7`.
-No physical device is accessed.
-
-Open **resource-groups-demo → Build with Parameters**:
-
-1. Use `GROUP=common`, `LABEL="os=bullseye"`, and `HOLD_SECONDS=30`.
-2. Start another build with the same parameters. It waits for the first build
-   to release `demo-common-bullseye`, despite free devices in the other groups.
-3. Start a build with `GROUP=plc` or `release`. It runs concurrently using a
-   device from that group. Console output shows acquisition and release;
-   the Lockable Resources page shows locks and waiting requests.
-
-The seed adds missing groups, resources, and the demo job at startup, including
-when upgrading an existing Compose volume. It does not replace existing objects,
-overwrite edits to the demo job/resources, or change authentication. Deleted
-demo objects are recreated at the next startup.
-
-This is a separate test instance with its own named Jenkins home volume. It runs
-non-root, listens only on localhost, and has no host source, credentials, or Docker
-socket mounted. Dependency downloads require internet access during the image build.
-If port 18080 is occupied, set `JENKINS_TEST_PORT` before starting Compose.
-
-After rebuilding the HPI, run `docker compose up -d --build --wait` again.
-The local plugin replaces the previous test plugin even when its snapshot version
-has not changed. Do not update Lockable Resources through the Jenkins plugin manager,
-as that would replace the experimental build with a published release.
-
-```sh
-docker compose down     # Stop; retain test configuration and jobs.
-docker compose down -v  # Delete this instance's test configuration and jobs.
-```
 
 ### Using a resource in a freestyle job
 
