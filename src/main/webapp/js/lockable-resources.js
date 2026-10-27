@@ -592,7 +592,8 @@ function initPagination() {
       const tbody = table.querySelector("tbody");
       return tbody
         ? Array.from(tbody.children).filter(function (row) {
-            return row.matches("tr");
+            return row.matches("tr")
+              && (row.dataset.labelGroup === undefined || row.dataset.labelGroup === (table.dataset.labelGroup || ""));
           })
         : [];
     }
@@ -1099,15 +1100,10 @@ function initColumnVisibility(config) {
     }, 250);
   }
 
-  function applyResourcesFilters(table) {
-    var quickInput = document.getElementById("lr-filter-quick");
-    var statusSelect = document.getElementById("lr-filter-status");
-    var heldByInput = document.getElementById("lr-filter-held-by");
-    var labelInput = document.getElementById("lr-filter-label");
-    var labelExprInput = document.getElementById("lr-filter-label-expression");
-    var groupInput = document.getElementById("lr-filter-group");
+  function applyGroupFilter(table, inputId) {
+    var groupInput = document.getElementById(inputId);
     var groupVal = groupInput ? groupInput.value : "";
-    var groupButtons = Array.from(document.querySelectorAll(".lr-group-button"));
+    var groupButtons = Array.from(table.closest(".lr-tab-pane").querySelectorAll(".lr-group-button"));
     if (groupVal && !groupButtons.some(function (button) { return button.dataset.lrGroup === groupVal; })) {
       groupVal = "";
       groupInput.value = "";
@@ -1119,6 +1115,16 @@ function initColumnVisibility(config) {
       button.classList.toggle("jenkins-button--tertiary", !active);
       button.setAttribute("aria-pressed", String(active));
     });
+    return groupVal;
+  }
+
+  function applyResourcesFilters(table) {
+    var quickInput = document.getElementById("lr-filter-quick");
+    var statusSelect = document.getElementById("lr-filter-status");
+    var heldByInput = document.getElementById("lr-filter-held-by");
+    var labelInput = document.getElementById("lr-filter-label");
+    var labelExprInput = document.getElementById("lr-filter-label-expression");
+    var groupVal = applyGroupFilter(table, "lr-filter-group");
 
     var nameVal = quickInput ? quickInput.value.trim().toLowerCase() : "";
     var statusVal = statusSelect ? statusSelect.value : "";
@@ -1152,11 +1158,11 @@ function initColumnVisibility(config) {
     table.dispatchEvent(new CustomEvent("lr-filter-changed"));
   }
 
-  // Resources tab filters
+  // Group filters
   document.addEventListener("click", function (event) {
     var button = event.target.closest(".lr-group-button");
     if (!button) return;
-    var groupInput = document.getElementById("lr-filter-group");
+    var groupInput = button.closest(".lr-group-tabs").querySelector("input");
     groupInput.value = button.dataset.lrGroup;
     groupInput.dispatchEvent(new Event("change", { bubbles: true }));
   });
@@ -1186,16 +1192,20 @@ function initColumnVisibility(config) {
     applyFn: function (table) {
       var nameInput = document.getElementById("lr-labels-filter-name");
       var assignedInput = document.getElementById("lr-labels-filter-assigned");
+      var groupVal = applyGroupFilter(table, "lr-labels-filter-group");
+      table.dataset.labelGroup = groupVal;
       var nameVal = nameInput ? nameInput.value.trim().toLowerCase() : "";
       var assignedVal = assignedInput ? assignedInput.value.trim() : "";
       var tbody = table.querySelector("tbody");
       if (!tbody) return;
 
       Array.from(tbody.querySelectorAll(":scope > tr")).forEach(function (row) {
-        var show = (!nameVal || (row.dataset.labelName || "").toLowerCase().indexOf(nameVal) !== -1)
+        var show = row.dataset.labelGroup === groupVal
+          && (!nameVal || (row.dataset.labelName || "").toLowerCase().indexOf(nameVal) !== -1)
           && (!assignedVal || (row.dataset.labelAssigned || "") === assignedVal);
         row.classList.toggle("lr-col-filtered-out", !show);
       });
+      table.dispatchEvent(new CustomEvent("lr-filter-changed"));
     }
   });
 
@@ -1424,7 +1434,7 @@ function initColumnVisibility(config) {
         localStorage.setItem(gsKey, JSON.stringify(gs));
       }
     } catch (ex) { /* noop */ }
-    var groupInput = pane.querySelector("#lr-filter-group");
+    var groupInput = pane.querySelector(".lr-group-tabs input");
     if (groupInput) groupInput.dispatchEvent(new Event("change", { bubbles: true }));
   });
 })();

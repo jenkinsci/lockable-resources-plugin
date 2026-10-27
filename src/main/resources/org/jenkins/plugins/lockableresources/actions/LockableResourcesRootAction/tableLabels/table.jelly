@@ -43,59 +43,48 @@ THE SOFTWARE.
           </tr>
         </thead>
         <tbody>
-          <j:forEach var="entry" items="${allLabels.entrySet()}">
-	    <j:set
-              var="label"
-              value="${entry.value}"
-            />
-            <j:set
-              var="freeCount"
-              value="${label.free}"
-            />
-            <j:set
-              var="allCount"
-              value="${label.assigned}"
-            />
-            <j:set
-              var="percentage"
-              value="${label.percentage}"
-            />
-            <j:choose>
-              <j:when test="${percentage lt 5}">
-                <j:set var="cssClass" value="jenkins-!-error-color" />
-              </j:when>
-              <j:when test="${percentage lt 10}">
-                <j:set var="cssClass" value="jenkins-!-warning-color" />
-              </j:when>
-              <j:when test="${percentage eq 100}">
-                <j:set var="cssClass" value="jenkins-!-success-color" />
-              </j:when>
-              <j:otherwise>
-                <j:set var="cssClass" value="" />
-              </j:otherwise>
-            </j:choose>
-            <tr data-label-name="${label.name}" data-label-assigned="${allCount}">
-              <td>
-                <a
-                  class="jenkins-table__link model-link"
-                  href="${rootURL}/label/${label.name}"
-                  >${label.name}<button
-                    class="jenkins-menu-dropdown-chevron"
-                  ></button
-                ></a>
-              </td>
-              <td>
-                ${allCount}
-              </td>
-              <td tooltip="${%labels.free.tooltip(percentage)}"
-              >
-                ${freeCount}
-              </td>
-              <td class="${cssClass}"
-              >
-                ${percentage}
-              </td>
-            </tr>
+          <j:forEach var="group" items="${it.labelsByGroup.entrySet()}">
+            <j:forEach var="entry" items="${group.value.entrySet()}">
+              <j:set var="label" value="${entry.value}" />
+              <j:set var="freeCount" value="${label.free}" />
+              <j:set var="allCount" value="${label.assigned}" />
+              <j:set var="percentage" value="${label.percentage}" />
+              <j:choose>
+                <j:when test="${percentage lt 5}">
+                  <j:set var="cssClass" value="jenkins-!-error-color" />
+                </j:when>
+                <j:when test="${percentage lt 10}">
+                  <j:set var="cssClass" value="jenkins-!-warning-color" />
+                </j:when>
+                <j:when test="${percentage eq 100}">
+                  <j:set var="cssClass" value="jenkins-!-success-color" />
+                </j:when>
+                <j:otherwise>
+                  <j:set var="cssClass" value="" />
+                </j:otherwise>
+              </j:choose>
+              <tr data-label-name="${label.name}" data-label-assigned="${allCount}"
+                  data-label-group="${group.key}" class="${group.key == '' ? '' : 'lr-col-filtered-out'}">
+                <td>
+                  <a
+                    class="jenkins-table__link model-link"
+                    href="${rootURL}/label/${label.name}"
+                    >${label.name}<button
+                      class="jenkins-menu-dropdown-chevron"
+                    ></button
+                  ></a>
+                </td>
+                <td>
+                  ${allCount}
+                </td>
+                <td tooltip="${%labels.free.tooltip(percentage)}">
+                  ${freeCount}
+                </td>
+                <td class="${cssClass}">
+                  ${percentage}
+                </td>
+              </tr>
+            </j:forEach>
           </j:forEach>
         </tbody>
       </table>

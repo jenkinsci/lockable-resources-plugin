@@ -77,6 +77,9 @@ an insufficient quantity waits for more matching resources to be added to that g
 On the resource management page, the **Resources** view offers **All**,
 **common**, and a button for each custom group with its resource count. Group
 filters combine with the existing status, name, label and search filters.
+The **Labels** view offers the same group filters. Assigned resources, available
+resources, and availability percentages reflect the selected group; **All** shows
+the combined totals.
 Group membership appears as a rounded badge below the resource name only in
 **All**; it is hidden when a specific group is selected. The **#** column numbers
 the current filtered and sorted view from 1, continuing across pages.
