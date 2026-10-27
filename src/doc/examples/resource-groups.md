@@ -6,12 +6,17 @@ Configure a group named `release` with a description such as "Release test devic
 in Jenkins global configuration. Group names are case-sensitive and descriptions
 are optional. Resource names remain globally unique across groups; groups do not
 create separate resource-name namespaces.
+Each resource intentionally belongs to exactly one group, so group boundaries
+cannot overlap. A group can contain multiple resources; use multiple labels on
+a resource to describe shared capabilities.
 Folder-scoped resources and delegated folder administration are not implemented.
 
 Groups can be configured before they have resources; empty groups also appear in
 the UI with a zero count. Assigning a resource to a new group automatically adds
 that group. Removing a catalog entry does not move or delete its resources:
 groups still referenced by resources remain available, without the removed description.
+Requesting an unknown group reports that the group does not exist. An existing
+group with no matching resources reports that no resources match the request.
 
 Configure `device-01` in `common` and `device-02` in `release`, both with labels
 `armhf env=dev os=bullseye`. Group membership is separate from labels.
