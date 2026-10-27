@@ -398,11 +398,29 @@ public class LockableResourcesRootAction implements RootAction {
      */
     @Restricted(NoExternalUse.class) // used by jelly
     public LinkedHashMap<String, LockableResourcesLabel> getLabelsList() {
+        return getLabelsList(null);
+    }
+
+    /** Label counts for All and each resource group. Used by {@code tableLabels/table.jelly}. */
+    @Restricted(NoExternalUse.class)
+    public Map<String, LinkedHashMap<String, LockableResourcesLabel>> getLabelsByGroup() {
+        Map<String, LinkedHashMap<String, LockableResourcesLabel>> groups = new LinkedHashMap<>();
+        groups.put("", getLabelsList());
+        for (String group : getGroups().keySet()) {
+            groups.put(group, getLabelsList(group));
+        }
+        return groups;
+    }
+
+    private LinkedHashMap<String, LockableResourcesLabel> getLabelsList(String group) {
         LinkedHashMap<String, LockableResourcesLabel> map = new LinkedHashMap<>();
 
         for (LockableResource r : LockableResourcesManager.get().getReadOnlyResources()) {
             if (r == null || r.getName().isEmpty()) {
                 continue; // defensive, shall never happens, but ...
+            }
+            if (group != null && !group.equals(r.getGroup())) {
+                continue;
             }
             List<String> assignedLabels = r.getLabelsAsList();
             if (assignedLabels.isEmpty()) {

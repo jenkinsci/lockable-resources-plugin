@@ -22,6 +22,7 @@ import org.htmlunit.WebRequest;
 import org.htmlunit.html.DomElement;
 import org.htmlunit.html.HtmlPage;
 import org.htmlunit.util.NameValuePair;
+import org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction;
 import org.jenkins.plugins.lockableresources.util.Constants;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -333,7 +334,14 @@ class ResourceManagementTest {
         JenkinsRule.WebClient wc = loginAsAdmin(j);
         HtmlPage page = wc.goTo("lockable-resources");
 
-        assertThat(page.getByXPath("//button[@data-lr-group]").size(), is(3));
+        assertThat(
+                page.getByXPath("//div[@id='lr-tab-resources']//button[@data-lr-group]")
+                        .size(),
+                is(3));
+        assertThat(
+                page.getByXPath("//div[@id='lr-tab-labels']//button[@data-lr-group]")
+                        .size(),
+                is(3));
         assertThat(
                 page.<DomElement>getFirstByXPath("//button[@data-lr-group='']")
                         .getTextContent()
@@ -351,6 +359,45 @@ class ResourceManagementTest {
                 is("release (1)"));
         assertThat(page.getByXPath("//tr[@data-resource-group='release']").size(), is(1));
         assertThat(page.getWebResponse().getContentAsString(), containsString("name=\"group\""));
+    }
+
+    @Test
+    void labelsShowGroupScopedCountsAndAvailability(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setResourceGroups(List.of(new ResourceGroup("empty")));
+        manager.createResourceWithLabel("common-device", "shared common-only");
+        manager.createResourceWithLabel("release-free", "shared release-only");
+        manager.createResourceWithLabel("release-reserved", "shared");
+        manager.fromName("release-free").setGroup("release");
+        manager.fromName("release-reserved").setGroup("release");
+        manager.reserve(List.of(manager.fromName("release-reserved")), "admin");
+        var groups = new LockableResourcesRootAction().getLabelsByGroup();
+        assertThat(groups.get("").get("shared").getAssigned(), is(3));
+        assertThat(groups.get("").get("shared").getFree(), is(2));
+        assertThat(groups.get("common").get("shared").getAssigned(), is(1));
+        assertThat(groups.get("common").get("shared").getFree(), is(1));
+        assertThat(groups.get("release").get("shared").getAssigned(), is(2));
+        assertThat(groups.get("release").get("shared").getFree(), is(1));
+        assertThat(groups.get("release").get("shared").getPercentage(), is(50));
+        assertThat(groups.get("release").containsKey("common-only"), is(false));
+        assertThat(groups.get("empty").isEmpty(), is(true));
+        HtmlPage page = loginAsAdmin(j).goTo("lockable-resources");
+        assertThat(
+                page.<DomElement>getFirstByXPath(
+                                "//tr[@data-label-name='shared' and @data-label-group='release']/td[2]")
+                        .getTextContent()
+                        .trim(),
+                is("2"));
+        assertThat(
+                page.<DomElement>getFirstByXPath(
+                                "//tr[@data-label-name='shared' and @data-label-group='release']/td[3]")
+                        .getTextContent()
+                        .trim(),
+                is("1"));
+        assertThat(
+                page.getByXPath("//div[@id='lr-tab-labels']//button[@data-lr-group='empty']")
+                        .size(),
+                is(1));
     }
 
     @Test
