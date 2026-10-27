@@ -784,6 +784,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     public void validateGroup(String resource, String label, String group) {
         String requestedGroup = LockableResource.normalizeGroup(group);
         synchronized (syncResources) {
+            validateGroupExists(requestedGroup);
             if (resource != null) {
                 LockableResource named = fromName(resource);
                 if (named != null && !requestedGroup.equals(named.getGroup())) {
@@ -799,6 +800,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
             if (!hasCandidate
                     && (label != null || resource == null || !ResourceGroup.DEFAULT_NAME.equals(requestedGroup))) {
                 throw new IllegalArgumentException(Messages.error_groupHasNoResources(requestedGroup));
+            }
+        }
+    }
+
+    void validateGroupExists(String group) {
+        String requestedGroup = LockableResource.normalizeGroup(group);
+        synchronized (syncResources) {
+            if (getResourceGroups().stream().noneMatch(entry -> requestedGroup.equals(entry.getName()))) {
+                throw new IllegalArgumentException(Messages.error_groupDoesNotExist(requestedGroup));
             }
         }
     }
