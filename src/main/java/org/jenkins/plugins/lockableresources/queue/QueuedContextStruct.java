@@ -72,6 +72,14 @@ public class QueuedContextStruct implements Serializable {
      */
     private long timeoutDeadlineMillis = 0;
 
+    /*
+     * Seconds the resources stay locked after the lock block ends normally or fails (onReleaseDelay),
+     * or after the build is aborted (onCancelDelay). 0 means release right away.
+     */
+    private long onReleaseDelay = 0;
+
+    private long onCancelDelay = 0;
+
     // cached candidates
     public transient List<String> candidates = null;
 
@@ -105,7 +113,37 @@ public class QueuedContextStruct implements Serializable {
             String reason,
             long timeoutForAllocateResource,
             String timeoutUnit) {
+        this(
+                context,
+                lockableResourcesStruct,
+                resourceDescription,
+                variableName,
+                priority,
+                reason,
+                timeoutForAllocateResource,
+                timeoutUnit,
+                0,
+                0);
+    }
+
+    /*
+     * Constructor for the QueuedContextStruct class with reason, timeout and release delays.
+     */
+    @Restricted(NoExternalUse.class)
+    public QueuedContextStruct(
+            StepContext context,
+            List<LockableResourcesStruct> lockableResourcesStruct,
+            String resourceDescription,
+            String variableName,
+            int priority,
+            String reason,
+            long timeoutForAllocateResource,
+            String timeoutUnit,
+            long onReleaseDelay,
+            long onCancelDelay) {
         this.context = context;
+        this.onReleaseDelay = Math.max(0, onReleaseDelay);
+        this.onCancelDelay = Math.max(0, onCancelDelay);
         this.lockableResourcesStruct = lockableResourcesStruct;
         this.resourceDescription = resourceDescription;
         this.variableName = variableName;
@@ -243,6 +281,18 @@ public class QueuedContextStruct implements Serializable {
     @Restricted(NoExternalUse.class)
     public String getTimeoutUnit() {
         return this.timeoutUnit;
+    }
+
+    /** Seconds the resources stay locked after the lock block ends normally or fails. */
+    @Restricted(NoExternalUse.class)
+    public long getOnReleaseDelay() {
+        return this.onReleaseDelay;
+    }
+
+    /** Seconds the resources stay locked after the build is aborted. */
+    @Restricted(NoExternalUse.class)
+    public long getOnCancelDelay() {
+        return this.onCancelDelay;
     }
 
     @Restricted(NoExternalUse.class)

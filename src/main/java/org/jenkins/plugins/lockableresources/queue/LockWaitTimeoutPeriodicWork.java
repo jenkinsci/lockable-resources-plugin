@@ -12,12 +12,16 @@ import java.util.logging.Logger;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 
 /**
- * Periodic work that checks for timed-out lock queue entries.
+ * Periodic work that checks for timed-out lock queue entries and for resources whose release delay
+ * is over.
  *
  * <p>This runs every 15 seconds to check if any queued pipeline contexts have exceeded
  * their {@code timeoutForAllocateResource}. Without this, timed-out entries would only
  * be detected when resources are freed (which might never happen if all resources are
  * permanently busy).
+ *
+ * <p>Delayed releases ({@code onReleaseDelay} / {@code onCancelDelay}) have their own scheduled
+ * task; this is only the safety net in case that task did not run.
  */
 @Extension
 public class LockWaitTimeoutPeriodicWork extends PeriodicWork {
@@ -32,6 +36,7 @@ public class LockWaitTimeoutPeriodicWork extends PeriodicWork {
     @Override
     protected void doRun() {
         LockableResourcesManager lrm = LockableResourcesManager.get();
+        lrm.releaseDueResources();
         if (lrm.getCurrentQueuedContext().isEmpty()) {
             return;
         }

@@ -189,6 +189,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Deadline (epoch ms) the current {@link #nextTimeoutTask} targets. 0 = none. */
     private transient long nextTimeoutDeadline;
 
+    /** Single scheduled delayed-release task. Guarded by {@link #syncResources}. */
+    private transient java.util.concurrent.ScheduledFuture<?> nextReleaseTask;
+
+    /** Epoch millis the {@link #nextReleaseTask} runs at, 0 when none. Guarded by {@link #syncResources}. */
+    private transient long nextReleaseAt;
+
     @DataBoundSetter
     public void setAllowEmptyOrNullValues(boolean allowEmptyOrNullValues) {
         this.allowEmptyOrNullValues = allowEmptyOrNullValues;
@@ -1016,14 +1022,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
             // the resource has been currently unlocked (like by LRM page - button unlock, or by API)
             if (!build.equals(resource.getBuild())) continue;
 
-            resource.unqueue();
-            resource.setBuild(null);
-            resource.setLockReason(null);
-            audit("LOCAL", "RELEASED", resource.getName(), build.getExternalizableId());
-            uncacheIfFreeing(resource, true, false);
+            // the lock block is over and the resource waits for its release delay; only
+            // releaseDueResources() or an explicit unlock may free it
+            if (resource.isReleaseDelayed()) continue;
 
-            if (resource.isEphemeral()) {
-                LOGGER.fine("Remove ephemeral resource: " + resource);
+            if (releaseResource(resource, build.getExternalizableId())) {
                 toBeRemoved.add(resource);
             }
         }
@@ -1032,6 +1035,133 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         // remove all ephemeral resources
         removeResources(toBeRemoved);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Frees one locally locked resource. Must be called under {@link #syncResources}.
+     *
+     * @return true when the resource is ephemeral and shall be removed by the caller.
+     */
+    private boolean releaseResource(LockableResource resource, String holder) {
+        resource.unqueue();
+        resource.setBuild(null);
+        resource.setLockReason(null);
+        audit("LOCAL", "RELEASED", resource.getName(), holder);
+        uncacheIfFreeing(resource, true, false);
+
+        if (resource.isEphemeral()) {
+            LOGGER.fine("Remove ephemeral resource: " + resource);
+            return true;
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Keeps the resources locked by {@code build} after the lock block is over, and releases them
+     * once {@code delaySeconds} have passed (lock step onReleaseDelay / onCancelDelay). The pipeline
+     * continues right away; the release time is persisted on the resource, so it survives a restart.
+     */
+    @Restricted(NoExternalUse.class)
+    public void delayRelease(@Nullable List<String> resourceNames, @Nullable Run<?, ?> build, long delaySeconds) {
+        if (resourceNames == null || resourceNames.isEmpty() || build == null) {
+            return;
+        }
+        synchronized (syncResources) {
+            final long releaseAt = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(delaySeconds);
+            boolean delayed = false;
+            for (LockableResource resource : this.fromNames(resourceNames)) {
+                // the resource has been unlocked meanwhile (UI, API) - nothing to delay
+                if (!build.equals(resource.getBuild())) continue;
+                resource.setReleaseAt(releaseAt);
+                audit("LOCAL", "RELEASE_DELAYED", resource.getName(), build.getExternalizableId());
+                delayed = true;
+            }
+            // the build no longer uses them, so onCompleted / onDeleted (unlockBuild) do not free them early
+            LockedResourcesBuildAction.findAndInitAction(build).removeUsedResources(resourceNames);
+            save();
+            if (delayed) {
+                scheduleReleaseAt(releaseAt);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Releases every resource whose release delay is over, then processes the queue, and schedules
+     * the next pending delayed release. Called by the scheduled task, at startup ({@link
+     * FreeDeadJobs#resumeDelayedReleases}) and by {@link org.jenkins.plugins.lockableresources.queue.LockWaitTimeoutPeriodicWork}
+     * as a safety net.
+     */
+    @Restricted(NoExternalUse.class)
+    public void releaseDueResources() {
+        boolean released = false;
+        synchronized (syncResources) {
+            final long now = System.currentTimeMillis();
+            long next = 0;
+            List<LockableResource> toBeRemoved = new ArrayList<>();
+            for (LockableResource resource : this.resources) {
+                final long releaseAt = resource.getReleaseAt();
+                if (releaseAt <= 0) continue;
+                if (releaseAt > now) {
+                    next = next == 0 ? releaseAt : Math.min(next, releaseAt);
+                    continue;
+                }
+                LOGGER.fine("Release delay is over for resource: " + resource);
+                if (releaseResource(resource, resource.getBuildExternalizableId())) {
+                    toBeRemoved.add(resource);
+                }
+                released = true;
+            }
+
+            if (released) {
+                this.resources.removeAll(toBeRemoved);
+                while (proceedNextContext()) {
+                    // process as many contexts as possible
+                }
+                save();
+            }
+            scheduleReleaseAt(next);
+        }
+        if (released) {
+            scheduleQueueMaintenance();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Makes sure the single delayed-release task runs no later than {@code releaseAt}. A value
+     * {@code <= 0} cancels the task. Must be called while holding {@link #syncResources}.
+     */
+    private void scheduleReleaseAt(long releaseAt) {
+        if (releaseAt > 0 && nextReleaseTask != null && nextReleaseAt <= releaseAt) {
+            // an earlier run is already planned; it reschedules itself for the later ones
+            return;
+        }
+        if (nextReleaseTask != null) {
+            nextReleaseTask.cancel(false);
+            nextReleaseTask = null;
+            nextReleaseAt = 0;
+        }
+        if (releaseAt <= 0) {
+            return;
+        }
+        nextReleaseAt = releaseAt;
+        long delayMs = Math.max(0, releaseAt - System.currentTimeMillis());
+        LOGGER.fine("Scheduling delayed release in " + delayMs + "ms");
+        nextReleaseTask = jenkins.util.Timer.get()
+                .schedule(
+                        () -> {
+                            LOGGER.fine("Scheduled delayed release fired");
+                            synchronized (syncResources) {
+                                nextReleaseTask = null;
+                                nextReleaseAt = 0;
+                            }
+                            releaseDueResources();
+                        },
+                        delayMs,
+                        java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     public void unlockBuild(@Nullable Run<?, ?> build) {
@@ -1063,7 +1193,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     public void unlockResources(List<LockableResource> resourcesToUnLock) {
-        unlockResources(resourcesToUnLock, resourcesToUnLock.get(0).getBuild());
+        Run<?, ?> build = resourcesToUnLock.get(0).getBuild();
+        synchronized (syncResources) {
+            // an explicit unlock (UI, API, steal, recycle) also ends a pending release delay right away
+            List<LockableResource> toBeRemoved = new ArrayList<>();
+            for (LockableResource resource : resourcesToUnLock) {
+                if (resource.isReleaseDelayed() && releaseResource(resource, resource.getBuildExternalizableId())) {
+                    toBeRemoved.add(resource);
+                }
+            }
+            this.resources.removeAll(toBeRemoved);
+        }
+        unlockResources(resourcesToUnLock, build);
     }
 
     // ---------------------------------------------------------------------------
@@ -1132,7 +1273,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 resourcesToLock,
                 nextContext.getContext(),
                 nextContext.getResourceDescription(),
-                nextContext.getVariableName());
+                nextContext.getVariableName(),
+                nextContext.getOnReleaseDelay(),
+                nextContext.getOnCancelDelay());
         return true;
     }
 
@@ -2006,6 +2149,39 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String reason,
             long timeoutForAllocateResource,
             String timeoutUnit) {
+        queueContext(
+                context,
+                requiredResources,
+                resourceDescription,
+                variableName,
+                inversePrecedence,
+                priority,
+                reason,
+                timeoutForAllocateResource,
+                timeoutUnit,
+                0,
+                0);
+    }
+
+    // ---------------------------------------------------------------------------
+    /*
+     * Adds the given context and the required resources to the queue if
+     * this context is not yet queued, with reason, timeout for resource allocation
+     * and the release delays (in seconds) applied once the lock block is over.
+     */
+    @Restricted(NoExternalUse.class)
+    public void queueContext(
+            StepContext context,
+            List<LockableResourcesStruct> requiredResources,
+            String resourceDescription,
+            String variableName,
+            boolean inversePrecedence,
+            int priority,
+            String reason,
+            long timeoutForAllocateResource,
+            String timeoutUnit,
+            long onReleaseDelay,
+            long onCancelDelay) {
         synchronized (syncResources) {
             for (QueuedContextStruct entry : this.queuedContexts) {
                 if (entry.getContext() == context) {
@@ -2023,7 +2199,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     priority,
                     reason,
                     timeoutForAllocateResource,
-                    timeoutUnit);
+                    timeoutUnit,
+                    onReleaseDelay,
+                    onCancelDelay);
 
             if (!inversePrecedence || priority != 0) {
                 queueIndex = this.queuedContexts.size() - 1;
