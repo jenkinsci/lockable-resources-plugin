@@ -478,6 +478,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     locked.setLabelsFromString(r.getLabelsAsString());
                     locked.setEphemeral(false);
                     locked.setNote(r.getNote());
+                    locked.setDisabledCause(r.getDisabledCause());
                     mergedResources.add(locked);
                     continue;
                 }
@@ -507,7 +508,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             this.resources = mergedResources;
             save();
+
+            // A resource may have been enabled again (or got new labels), let waiting builds re-check
+            cachedCandidates.invalidateAll();
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
         }
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------
@@ -719,7 +727,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     public boolean queue(List<LockableResource> resources, long queueItemId, String queueProjectName) {
         for (LockableResource r : resources) {
-            if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
+            if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked() || r.isDisabled()) {
                 return false;
             }
         }
@@ -867,7 +875,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             for (LockableResource rs : candidates) {
                 if (number != 0 && (selected.size() >= number)) break;
-                if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) selected.add(rs);
+                if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued() && !rs.isDisabled()) selected.add(rs);
             }
 
             // if did not get wanted amount or did not get all
@@ -1022,7 +1030,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             audit("LOCAL", "RELEASED", resource.getName(), build.getExternalizableId());
             uncacheIfFreeing(resource, true, false);
 
-            if (resource.isEphemeral()) {
+            // keep a disabled ephemeral resource, otherwise it is re-created enabled for the next build
+            if (resource.isEphemeral() && !resource.isDisabled()) {
                 LOGGER.fine("Remove ephemeral resource: " + resource);
                 toBeRemoved.add(resource);
             }
@@ -1756,7 +1765,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
                 // Preserve label eligibility, including the existing treatment of freestyle queue markers.
                 List<LockableResource> available = new ArrayList<>(possible);
-                available.removeIf(r -> r.isReserved() || r.isLocked());
+                available.removeIf(r -> r.isReserved() || r.isLocked() || r.isDisabled());
                 if (amount == 0 || available.size() < amount) {
                     printLogs(
                             "Found " + available.size() + " available resource(s). Waiting for correct amount: "
@@ -1801,7 +1810,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     private boolean areAllAvailable(List<LockableResource> resources) {
         for (LockableResource resource : resources) {
-            if (!resource.isFree()) {
+            if (!resource.isFree() || resource.isDisabled()) {
                 return false;
             }
         }
@@ -1865,7 +1874,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource r : candidates) {
             // TODO: it shall be used isFree() here, but in that case we need to change the
             // logic in parametrized builds and that is much more effort as I want to spend here now
-            if (!r.isReserved() && !r.isLocked()) {
+            if (!r.isReserved() && !r.isLocked() && !r.isDisabled()) {
                 found.add(r);
             }
 
