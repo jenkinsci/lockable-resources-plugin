@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
@@ -7,10 +8,12 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -70,6 +73,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         step.validate(lrm.isAllowEmptyOrNullValues());
 
         synchronized (LockableResourcesManager.syncResources) {
+            if (step.reentrant && tryReenter(run, logger)) {
+                return false;
+            }
+
             LockableResourcesManager.printLogs("Trying to acquire lock on [" + step + "]", Level.FINE, LOGGER, logger);
 
             getContext().get(FlowNode.class).addAction(new PauseAction("Lock"));
@@ -176,6 +183,52 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         } catch (Exception ex) {
             remoteSession.fail(this, ex);
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Runs the body right away when every requested resource is already held by an enclosing lock block of
+     * this build. Nothing is locked here and nothing is released when the body ends; the enclosing block
+     * still owns the resources. Returns false (lock as usual) on partial overlap or for label requests.
+     */
+    private boolean tryReenter(Run<?, ?> run, PrintStream logger) throws IOException, InterruptedException {
+        List<String> names = new ArrayList<>();
+        for (LockStepResource resource : step.getResources()) {
+            if (resource.resource == null) {
+                LockableResourcesManager.printLogs(
+                        "reentrant is only supported for named resources, [" + step + "] is locked as usual",
+                        Level.FINE,
+                        LOGGER,
+                        logger);
+                return false;
+            }
+            names.add(resource.resource);
+        }
+        HeldResources held = getContext().get(HeldResources.class);
+        if (names.isEmpty() || held == null || !held.names.containsAll(names)) {
+            return false;
+        }
+
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        LinkedHashMap<String, List<LockableResourceProperty>> heldResources = new LinkedHashMap<>();
+        for (String name : names) {
+            LockableResource resource = lrm.fromName(name);
+            Run<?, ?> lockedBy = resource == null ? null : resource.getBuild();
+            if (lockedBy == null || !lockedBy.getExternalizableId().equals(run.getExternalizableId())) {
+                // the enclosing block lost the resource (e.g. unlocked in the UI), so really lock it
+                return false;
+            }
+            heldResources.put(name, resource.getProperties());
+        }
+
+        LockableResourcesManager.printLogs(
+                "Resource " + formatResourceNames(names)
+                        + " is already held by an enclosing lock, entering without waiting",
+                Level.FINE,
+                LOGGER,
+                logger);
+        startBody(heldResources, getContext(), step.toString(), step.variable, false);
+        return true;
     }
 
     // ---------------------------------------------------------------------------
@@ -292,43 +345,64 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         }
 
         try {
-            List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
-            LockedResourcesBuildAction.addLog(build, resourceNames, "acquired", resourceDescription);
+            LockedResourcesBuildAction.addLog(
+                    build, new ArrayList<>(lockedResources.keySet()), "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
-            BodyInvoker bodyInvoker =
-                    context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
-            if (variable != null && !variable.isEmpty()) {
-                Map<String, String> resourceLabels = new LinkedHashMap<>();
-                for (String resourceName : resourceNames) {
-                    LockableResource resource = LockableResourcesManager.get().fromName(resourceName);
-                    resourceLabels.put(resourceName, resource == null ? "" : resource.getLabelsAsString());
-                }
-                // set the variable for the duration of the block
-                bodyInvoker.withContext(EnvironmentExpander.merge(
-                        context.get(EnvironmentExpander.class), new EnvironmentExpander() {
-                            private static final long serialVersionUID = -3431466225193397896L;
-
-                            @Override
-                            public void expand(@NonNull EnvVars env) {
-                                Map<String, String> variables =
-                                        buildLockEnvVars(variable, lockedResources, resourceLabels);
-                                if (variables == null) {
-                                    return;
-                                }
-                                LOGGER.finest("Setting "
-                                        + variables.entrySet().stream()
-                                                .map(e -> e.getKey() + "=" + e.getValue())
-                                                .collect(Collectors.joining(", "))
-                                        + " for the duration of the block");
-                                env.overrideAll(variables);
-                            }
-                        }));
-            }
-            bodyInvoker.start();
+            startBody(lockedResources, context, resourceDescription, variable, true);
         } catch (IOException | InterruptedException e) {
             LOGGER.warning("proceed done with failure " + resourceDescription);
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Starts the lock body. When {@code ownsLock} is true the resources were locked for this block: they are
+     * published to nested blocks as {@link HeldResources} and released when the body ends. Otherwise this is a
+     * reentrant block running inside the owner, which keeps them.
+     */
+    private static void startBody(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            boolean ownsLock)
+            throws IOException, InterruptedException {
+        List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
+        BodyInvoker bodyInvoker = context.newBodyInvoker();
+        if (ownsLock) {
+            bodyInvoker
+                    .withCallback(new Callback(resourceNames, resourceDescription))
+                    .withContext(HeldResources.merge(context.get(HeldResources.class), resourceNames));
+        } else {
+            bodyInvoker.withCallback(new ReentrantCallback(resourceNames));
+        }
+        if (variable != null && !variable.isEmpty()) {
+            Map<String, String> resourceLabels = new LinkedHashMap<>();
+            for (String resourceName : resourceNames) {
+                LockableResource resource = LockableResourcesManager.get().fromName(resourceName);
+                resourceLabels.put(resourceName, resource == null ? "" : resource.getLabelsAsString());
+            }
+            // set the variable for the duration of the block
+            bodyInvoker.withContext(EnvironmentExpander.merge(
+                    context.get(EnvironmentExpander.class), new EnvironmentExpander() {
+                        private static final long serialVersionUID = -3431466225193397896L;
+
+                        @Override
+                        public void expand(@NonNull EnvVars env) {
+                            Map<String, String> variables = buildLockEnvVars(variable, lockedResources, resourceLabels);
+                            if (variables == null) {
+                                return;
+                            }
+                            LOGGER.finest("Setting "
+                                    + variables.entrySet().stream()
+                                            .map(e -> e.getKey() + "=" + e.getValue())
+                                            .collect(Collectors.joining(", "))
+                                    + " for the duration of the block");
+                            env.overrideAll(variables);
+                        }
+                    }));
+        }
+        bodyInvoker.start();
     }
 
     /**
@@ -445,6 +519,51 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             }
             LockableResourcesManager.printLogs(
                     message, Level.FINE, LOGGER, context.get(TaskListener.class).getLogger());
+        }
+    }
+
+    /** Ends a reentrant block. The resources stay locked: the enclosing block releases them. */
+    private static final class ReentrantCallback extends BodyExecutionCallback.TailCall {
+
+        private static final long serialVersionUID = 4409385916418326170L;
+        private final List<String> resourceNames;
+
+        ReentrantCallback(List<String> resourceNames) {
+            this.resourceNames = resourceNames;
+        }
+
+        @Override
+        protected void finished(StepContext context) throws Exception {
+            LockableResourcesManager.printLogs(
+                    "Leaving reentrant lock, resources " + formatResourceNames(this.resourceNames)
+                            + " stay locked by the enclosing lock",
+                    Level.FINE,
+                    LOGGER,
+                    context.get(TaskListener.class).getLogger());
+        }
+    }
+
+    /**
+     * Body context listing the resources held by the current lock block and all enclosing ones, so a nested
+     * {@code lock(reentrant: true)} can tell they are already owned. Parallel branches that are not inside
+     * such a block do not see it, so they still wait for each other.
+     */
+    static final class HeldResources implements Serializable {
+
+        private static final long serialVersionUID = -5062398724305183520L;
+        private final LinkedHashSet<String> names;
+
+        private HeldResources(LinkedHashSet<String> names) {
+            this.names = names;
+        }
+
+        static HeldResources merge(@CheckForNull HeldResources outer, Collection<String> names) {
+            LinkedHashSet<String> merged = new LinkedHashSet<>();
+            if (outer != null) {
+                merged.addAll(outer.names);
+            }
+            merged.addAll(names);
+            return new HeldResources(merged);
         }
     }
 

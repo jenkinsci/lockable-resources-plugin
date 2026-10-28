@@ -267,6 +267,39 @@ lock(resource: 'some_resource', skipIfLocked: true) {
 }
 ```
 
+#### Reentrant lock of a resource held by an enclosing lock
+
+A nested `lock` on a resource that an enclosing `lock` of the same build already holds waits forever,
+because the build waits for itself. Set `reentrant: true` on the inner lock to enter it right away instead:
+
+```groovy
+pipeline {
+  agent any
+  options {
+    lock('DUT1')
+  }
+  stages {
+    stage('test') {
+      steps {
+        // shared code that also locks DUT1 when it runs on its own
+        lock(resource: 'DUT1', reentrant: true) {
+          echo 'DUT1 is already ours, no waiting'
+        }
+      }
+    }
+  }
+}
+```
+
+- The inner block only enters without waiting when **every** requested resource is held by an
+  enclosing `lock` block. If only some are held (outer holds `A`, inner asks `A` and `B`), it waits for
+  the others as usual.
+- Nothing is released when the inner block ends; the enclosing block still owns the resources.
+- Only *enclosing* blocks count. Parallel branches that each lock the same resource, without an outer
+  `lock` around them, still wait for each other even with `reentrant: true`.
+- Only named resources (`resource`, `extra: [[resource: ...]]`) are supported. A `label` request is
+  always locked as usual.
+
 #### Update resource properties
 
 The `updateLock` step allows pipelines to dynamically manage lockable resources without using the Jenkins UI.

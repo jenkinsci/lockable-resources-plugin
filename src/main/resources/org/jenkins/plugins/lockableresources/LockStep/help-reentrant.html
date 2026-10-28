@@ -1,0 +1,21 @@
+<div>
+  <p>
+    By default a nested <code>lock</code> on a resource that an enclosing <code>lock</code> of the same build
+    already holds waits forever, because the build waits for itself.
+  </p>
+  <p>
+    By checking this option the body runs right away when <strong>every</strong> requested resource is already
+    held by an enclosing <code>lock</code> block (including <code>options { lock(...) }</code> in a declarative
+    pipeline). Nothing is released when this inner block ends; the enclosing block still owns the resources.
+  </p>
+  <p>
+    If only some of the resources are held, the step waits for the others as usual.
+    Parallel branches that are not inside an enclosing <code>lock</code> still wait for each other.
+    Only named resources are supported; <code>label</code> requests are always locked as usual.
+  </p>
+  <p>
+    See also
+    <a href="https://github.com/jenkinsci/lockable-resources-plugin#reentrant-lock-of-a-resource-held-by-an-enclosing-lock">examples</a>
+    .
+  </p>
+</div>
