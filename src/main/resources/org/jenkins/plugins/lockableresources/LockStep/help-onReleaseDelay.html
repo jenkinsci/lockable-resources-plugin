@@ -1,0 +1,15 @@
+<div>
+  <p>
+    Number of seconds the resources stay locked after the <code>lock</code> block ends normally or fails,
+    for example when a license server needs a cooldown before it can be used again.
+  </p>
+  <p>
+    The pipeline continues right away with the steps after the <code>lock</code> block. The resources stay
+    locked in the background and are released when the delay is over; then the next waiting build gets them.
+    The resources page shows the resource as locked until that time. The delay survives a Jenkins restart.
+  </p>
+  <p>
+    Set to 0 (the default) to release the resources immediately. When the build is aborted,
+    <code>onCancelDelay</code> is used instead. Not supported for remote locks (<code>serverId</code>).
+  </p>
+</div>

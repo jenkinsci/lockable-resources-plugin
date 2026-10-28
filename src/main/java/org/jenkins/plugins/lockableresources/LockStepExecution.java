@@ -27,6 +27,7 @@ import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.BodyInvoker;
 import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
+import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
 
@@ -64,6 +65,15 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
         if (RemoteLockRouting.isRemoteRequest(step, lrm)) {
+            if (step.onReleaseDelay > 0 || step.onCancelDelay > 0) {
+                LockableResourcesManager.printLogs(
+                        "onReleaseDelay and onCancelDelay are not supported for remote locks and are ignored ["
+                                + step
+                                + "]",
+                        Level.WARNING,
+                        LOGGER,
+                        logger);
+            }
             remoteSession = new RemoteLockSession();
             return remoteSession.start(this);
         }
@@ -116,7 +126,13 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                 }
             }
 
-            LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
+            LockStepExecution.proceed(
+                    lockedResources,
+                    getContext(),
+                    step.toString(),
+                    step.variable,
+                    step.onReleaseDelay,
+                    step.onCancelDelay);
         }
 
         return false;
@@ -231,7 +247,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     step.priority,
                     step.reason,
                     step.timeoutForAllocateResource,
-                    step.timeoutUnit);
+                    step.timeoutUnit,
+                    step.onReleaseDelay,
+                    step.onCancelDelay);
         }
     }
 
@@ -268,12 +286,27 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         return shown.toString();
     }
 
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
             String resourceDescription,
             final String variable) {
+        proceed(lockedResources, context, resourceDescription, variable, 0, 0);
+    }
+
+    /**
+     * Starts the lock body. Once it is over, the resources are released after {@code onReleaseDelay}
+     * seconds, or after {@code onCancelDelay} seconds when the build was aborted.
+     */
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    public static void proceed(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            long onReleaseDelay,
+            long onCancelDelay) {
         Run<?, ?> build;
         FlowNode node;
         PrintStream logger;
@@ -295,8 +328,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
             LockedResourcesBuildAction.addLog(build, resourceNames, "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
-            BodyInvoker bodyInvoker =
-                    context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
+            BodyInvoker bodyInvoker = context.newBodyInvoker()
+                    .withCallback(new Callback(resourceNames, resourceDescription, onReleaseDelay, onCancelDelay));
             if (variable != null && !variable.isEmpty()) {
                 Map<String, String> resourceLabels = new LinkedHashMap<>();
                 for (String resourceName : resourceNames) {
@@ -428,18 +461,49 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         private static final long serialVersionUID = -2024890670461847666L;
         private final List<String> resourceNames;
         private final String resourceDescription;
+        // new fields default to 0 (release right away) for callbacks serialized by older plugin versions
+        private final long onReleaseDelay;
+        private final long onCancelDelay;
 
-        Callback(List<String> resourceNames, String resourceDescription) {
+        Callback(List<String> resourceNames, String resourceDescription, long onReleaseDelay, long onCancelDelay) {
             this.resourceNames = resourceNames;
             this.resourceDescription = resourceDescription;
+            this.onReleaseDelay = onReleaseDelay;
+            this.onCancelDelay = onCancelDelay;
+        }
+
+        /** Same as {@link BodyExecutionCallback.TailCall#onFailure}, but knows whether the build was aborted. */
+        @Override
+        public void onFailure(StepContext context, Throwable t) {
+            try {
+                // abort (and other interruptions like timeout) end the body with FlowInterruptedException
+                release(context, t instanceof FlowInterruptedException);
+            } catch (Exception x) {
+                t.addSuppressed(x);
+            }
+            context.onFailure(t);
         }
 
         @Override
         protected void finished(StepContext context) throws Exception {
+            release(context, false);
+        }
+
+        private void release(StepContext context, boolean cancelled) throws Exception {
             Run<?, ?> build = context.get(Run.class);
-            LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
-            LockableResourcesManager.get().unlockNames(this.resourceNames, build);
-            String message = "Lock released on resource [" + this.resourceDescription + "]";
+            long delay = cancelled ? this.onCancelDelay : this.onReleaseDelay;
+            String message;
+            if (delay > 0) {
+                LockedResourcesBuildAction.addLog(
+                        build, this.resourceNames, "release delayed", this.resourceDescription);
+                LockableResourcesManager.get().delayRelease(this.resourceNames, build, delay);
+                message =
+                        "Lock on resource [" + this.resourceDescription + "] will be released in " + delay + " seconds";
+            } else {
+                LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
+                LockableResourcesManager.get().unlockNames(this.resourceNames, build);
+                message = "Lock released on resource [" + this.resourceDescription + "]";
+            }
             if (this.resourceNames != null && !this.resourceNames.isEmpty()) {
                 message += ", resources: " + formatResourceNames(this.resourceNames);
             }

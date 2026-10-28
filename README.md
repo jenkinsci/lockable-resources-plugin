@@ -267,6 +267,29 @@ lock(resource: 'some_resource', skipIfLocked: true) {
 }
 ```
 
+#### Keep the resource locked for a while after the block (release delay)
+
+Some resources need a cooldown before the next build may use them, for example a license
+server that only gives a license back a few minutes after it was used.
+
+```groovy
+lock(resource: 'licenseServer1', onReleaseDelay: 300, onCancelDelay: 0) {
+  echo 'Use the license'
+}
+echo 'Continues right away, licenseServer1 stays locked for 5 more minutes'
+```
+
+- `onReleaseDelay`: seconds the resources stay locked after the block ends normally or fails.
+- `onCancelDelay`: seconds the resources stay locked after the build is aborted.
+
+Both are optional and default to `0`, which releases the resources immediately. The pipeline does not
+wait for the delay: it continues with the steps after the block, the resources stay locked in the background,
+and when the delay is over they are released and the next waiting build gets them. The resources page shows
+the resource as locked until that time. The pending release survives a Jenkins restart. Unlocking or
+resetting the resource on the resources page ends the delay right away.
+
+Not supported for remote locks (`serverId`): the options are ignored with a warning.
+
 #### Update resource properties
 
 The `updateLock` step allows pipelines to dynamically manage lockable resources without using the Jenkins UI.

@@ -129,6 +129,19 @@ THE SOFTWARE.
                 <!-- Locked by job -->
                 <j:when test="${resource.locked}">
                   ${%resource.status.locked}
+                  <!-- Lock block is over, the resource waits for its release delay (onReleaseDelay / onCancelDelay) -->
+                  <j:if test="${resource.releaseDelayed}">
+                    <br/>
+                    <span class="jenkins-!-color-secondary">
+                      ${%resource.status.releaseDelayed}
+                      <i:formatDate
+                        value="${resource.releaseDelayedUntil}"
+                        type="both"
+                        dateStyle="medium"
+                        timeStyle="short"
+                      />
+                    </span>
+                  </j:if>
                 </j:when>
                 <!-- Queued -->
                 <j:when test="${resource.queued}">
@@ -168,6 +181,10 @@ THE SOFTWARE.
                       <span class="jenkins-!-color-secondary">${%resource.heldBy.remoteUnknown}</span>
                     </j:otherwise>
                   </j:choose>
+                </j:when>
+                <!-- Release delay of a build that has been deleted meanwhile -->
+                <j:when test="${resource.locked and resource.build == null and resource.releaseDelayed}">
+                  ${resource.buildExternalizableId}
                 </j:when>
                 <j:when test="${resource.locked}">
                   <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>

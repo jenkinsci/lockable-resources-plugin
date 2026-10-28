@@ -114,6 +114,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private String buildExternalizableId = null;
     private long queuingStarted = 0;
 
+    /**
+     * Epoch millis when a delayed release (lock step onReleaseDelay / onCancelDelay) frees this
+     * resource, or 0 when no delayed release is pending. While set, the resource stays locked by the
+     * build that held it, even when that build has finished. Persisted, so the delay survives a restart.
+     */
+    private long releaseAt = 0;
+
     private static final long serialVersionUID = 1L;
 
     private static final long SCRIPT_CACHE_TTL_MS =
@@ -605,7 +612,42 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     @Exported
     public boolean isLocked() {
-        return getBuild() != null || remoteLockedBy != null;
+        // a pending delayed release keeps the resource locked even when its build has been deleted
+        return getBuild() != null || remoteLockedBy != null || isReleaseDelayed();
+    }
+
+    /** Return true when the lock is held only until its release delay is over. */
+    @Exported
+    public boolean isReleaseDelayed() {
+        return releaseAt > 0;
+    }
+
+    /**
+     * Returns when the pending delayed release frees this resource.
+     *
+     * @return the release time, or null when no delayed release is pending.
+     */
+    @CheckForNull
+    @Exported
+    public Date getReleaseDelayedUntil() {
+        return releaseAt > 0 ? new Date(releaseAt) : null;
+    }
+
+    /** Id of the build holding the lock, also when that build no longer exists. */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public String getBuildExternalizableId() {
+        return buildExternalizableId;
+    }
+
+    @Restricted(NoExternalUse.class)
+    public long getReleaseAt() {
+        return releaseAt;
+    }
+
+    @Restricted(NoExternalUse.class)
+    public void setReleaseAt(long releaseAt) {
+        this.releaseAt = Math.max(0, releaseAt);
     }
 
     public String getRemoteLockedBy() {
@@ -699,6 +741,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             Date since = this.getReservedTimestamp();
             final String timestamp = (since == null ? "<unknown>" : format.format(since));
             Run<?, ?> lockBuild = getBuild();
+            if (isReleaseDelayed()) {
+                String holder = lockBuild != null
+                        ? lockBuild.getFullDisplayName() + " " + ModelHyperlinkNote.encodeTo(lockBuild)
+                        : buildExternalizableId;
+                return String.format(
+                        "The resource [%s] is locked by build %s until its release delay is over at %s.",
+                        name, holder, format.format(new Date(releaseAt)));
+            }
             if (lockBuild != null) {
                 return String.format(
                         "The resource [%s] is locked by build %s since %s.",
@@ -734,6 +784,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     public void setBuild(@Nullable Run<?, ?> lockedBy) {
 
         this.build = lockedBy;
+        // a new lock, or any unlock (release, reset, UI), ends a pending delayed release
+        this.releaseAt = 0;
 
         if (lockedBy != null) {
             this.buildExternalizableId = lockedBy.getExternalizableId();
