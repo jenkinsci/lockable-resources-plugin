@@ -4,3 +4,6 @@
 /target/
 /work/
 /jsbundles/
+
+# Graft's local graph is regenerable (run `graft build`).
+/graft/

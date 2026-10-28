@@ -1,0 +1,4 @@
+# Keep Graft's generated cards searchable while excluding its cache and graph.
+!graft/
+graft/.cache/
+graft/.graph/
