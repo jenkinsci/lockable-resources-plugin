@@ -25,6 +25,36 @@ import org.junit.jupiter.api.Test;
 @WithJenkinsConfiguredWithCode
 class ConfigurationAsCodeTest {
 
+    @Test
+    @ConfiguredWithCode("configuration-as-code-groups.yml")
+    void resourceGroupsSurviveCascReloadAndExport(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        assertEquals("common", manager.fromName("legacy-device").getGroup());
+        assertEquals("production", manager.fromName("protected-device").getGroup());
+        assertTrue(manager.getResourceGroups().stream()
+                .anyMatch(group -> "production".equals(group.getName())
+                        && "Devices dedicated to production validation".equals(group.getDescription())));
+        assertTrue(manager.getResourceGroups().stream()
+                .anyMatch(group -> "empty".equals(group.getName())
+                        && "Devices planned for future validation".equals(group.getDescription())));
+        assertTrue(manager.getResources().stream().noneMatch(resource -> "empty".equals(resource.getGroup())));
+        ConfigurationContext context = new ConfigurationContext(ConfiguratorRegistry.get());
+        String exported = Util.toYamlString(Util.getUnclassifiedRoot(context).get("lockableResourcesManager"));
+        assertTrue(exported.contains("production"));
+        assertTrue(exported.contains("Devices dedicated to production validation"));
+        assertTrue(exported.contains("empty"));
+        assertTrue(exported.contains("Devices planned for future validation"));
+        ConfigurationAsCode.get().configure(ConfigurationAsCode.get().getSources());
+        assertEquals("production", manager.fromName("protected-device").getGroup());
+        assertTrue(manager.getResourceGroups().stream()
+                .anyMatch(group -> "production".equals(group.getName())
+                        && "Devices dedicated to production validation".equals(group.getDescription())));
+        assertTrue(manager.getResourceGroups().stream()
+                .anyMatch(group -> "empty".equals(group.getName())
+                        && "Devices planned for future validation".equals(group.getDescription())));
+        assertTrue(manager.getResources().stream().noneMatch(resource -> "empty".equals(resource.getGroup())));
+    }
+
     // ---------------------------------------------------------------------------
     @BeforeEach
     void setUp() {

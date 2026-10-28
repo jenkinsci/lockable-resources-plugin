@@ -42,8 +42,11 @@ Each lockable resource has the following properties:
 - **Description** - Optional verbose description of this particular resource,
   i.e. `Printers in the Danish Office`
 - **Labels** - Optional space-delimited list of Labels (A label can not containing spaces) used to
-  identify a pool of resources. i.e. `DK_Printers_Office Country:DK device:printer`,
+  identify shared capabilities. i.e. `DK_Printers_Office Country:DK device:printer`,
   `DK_Printer_Production`, `DK_Printer_Engineering`
+- **Group** - Optional allocation group. Empty means `common`. Resources in other
+  groups are only selected by requests that explicitly choose that group.
+  Each resource belongs to exactly one group.
 - **Reserved by** - Optional reserved / locked cause. If non-empty,
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
   This option is still possible, but we recommend to use the *Manage Jenkins* > *Lockable Resources* page
@@ -51,9 +54,32 @@ Each lockable resource has the following properties:
 A resource is always the one thing that is locked (or free or reserved).
 It exists once and has an unique name (if we take the hardware example, this may be `office_printer_14`).
 Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.).
-All resources with the same label form a "pool", so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
+Within the selected resource group, labels select matching resources, so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
 If all resources with the label `a4-printer` are in use, your job waits until one is available.
 This is similar to nodes and node labels.
+
+### Global resource groups
+
+Groups isolate resource selection independently of capability labels. Configure
+groups in Jenkins global configuration and assign each resource a **Group**.
+Existing resources and requests without a group use `common`.
+The single-group membership is intentional: groups define separate allocation
+boundaries, while labels describe shared capabilities. A group can contain many
+resources, and each resource can have multiple labels.
+
+Create the `plc` group and assign resources with the `S7` label to it before using
+this example:
+
+```groovy
+lock(group: 'plc', label: 'S7', quantity: 1) {
+    // Only matching devices in plc are eligible; no fallback to other groups.
+}
+```
+
+The management page offers **All**, **common**, and custom group filters.
+Groups prevent accidental selection, not unauthorized access; folder scoping is
+not implemented. See [resource groups](src/doc/examples/resource-groups.md) for
+configuration, selection rules, migration, and examples.
 
 ### Using a resource in a freestyle job
 

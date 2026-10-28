@@ -57,6 +57,11 @@
               <input type="text" name="labels" class="jenkins-input" placeholder="label1 label2" />
             </div>
             <div class="jenkins-form-item">
+              <label class="jenkins-form-label">${%add.resource.dialog.group}</label>
+              <input type="text" name="group" class="jenkins-input" value="common" />
+              <div class="jenkins-!-color-secondary">${%add.resource.dialog.groupHint}</div>
+            </div>
+            <div class="jenkins-form-item">
               <label class="jenkins-form-label">${%add.resource.dialog.properties}</label>
               <div class="lr-properties-container">
                 <!-- dynamic property rows inserted here by JS -->
@@ -293,6 +298,15 @@
             </div>
           </div>
           <div class="lr-tab-pane" id="lr-tab-resources" role="tabpanel">
+            <div class="lr-group-tabs" role="group" aria-label="${%group.tabs.title}">
+              <button type="button" class="jenkins-button lr-group-button lr-group-button--active"
+                      data-lr-group="" aria-pressed="true">${%group.tabs.all} (${it.resources.size()})</button>
+              <j:forEach var="group" items="${it.groups}">
+                <button type="button" class="jenkins-button jenkins-button--tertiary lr-group-button"
+                        data-lr-group="${group.key}" aria-pressed="false">${group.key} (${group.value})</button>
+              </j:forEach>
+              <input type="hidden" id="lr-filter-group" class="lr-col-filter" value="" />
+            </div>
             <!-- Toolbar: filters + column visibility -->
             <div class="lr-toolbar">
               <div class="lr-toolbar__filters">
@@ -335,6 +349,15 @@
             <st:include page="tableResources/table"/>
           </div>
           <div class="lr-tab-pane" id="lr-tab-labels" role="tabpanel">
+            <div class="lr-group-tabs" role="group" aria-label="${%group.tabs.title}">
+              <button type="button" class="jenkins-button lr-group-button lr-group-button--active"
+                      data-lr-group="" aria-pressed="true">${%group.tabs.all} (${it.resources.size()})</button>
+              <j:forEach var="group" items="${it.groups}">
+                <button type="button" class="jenkins-button jenkins-button--tertiary lr-group-button"
+                        data-lr-group="${group.key}" aria-pressed="false">${group.key} (${group.value})</button>
+              </j:forEach>
+              <input type="hidden" id="lr-labels-filter-group" class="lr-labels-filter" value="" />
+            </div>
             <!-- Toolbar: filters + column visibility for labels -->
             <div class="lr-toolbar">
               <div class="lr-toolbar__filters">
