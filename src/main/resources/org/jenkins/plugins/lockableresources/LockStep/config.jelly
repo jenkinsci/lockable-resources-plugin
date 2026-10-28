@@ -22,6 +22,9 @@
   <f:entry field="skipIfLocked">
     <f:checkbox title="${%entry.skipIfLocked.title}"/>
   </f:entry>
+  <f:entry field="reentrant">
+    <f:checkbox title="${%entry.reentrant.title}"/>
+  </f:entry>
   <f:entry title="${%entry.resourceSelectStrategy.title}" field="resourceSelectStrategy">
     <f:select/>
   </f:entry>

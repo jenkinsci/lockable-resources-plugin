@@ -64,6 +64,14 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public boolean skipIfLocked = false;
 
+    /**
+     * When true and every requested resource is already held by an enclosing {@code lock()} block of the
+     * same build, the body runs right away instead of waiting for itself (and nothing is released when it
+     * ends). Only named resources are supported; label requests are always locked as usual.
+     */
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public boolean reentrant = false;
+
     @CheckForNull
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String serverId = null;
@@ -128,6 +136,11 @@ public class LockStep extends Step implements Serializable {
     @DataBoundSetter
     public void setSkipIfLocked(boolean skipIfLocked) {
         this.skipIfLocked = skipIfLocked;
+    }
+
+    @DataBoundSetter
+    public void setReentrant(boolean reentrant) {
+        this.reentrant = reentrant;
     }
 
     @DataBoundSetter
