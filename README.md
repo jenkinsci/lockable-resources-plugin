@@ -299,6 +299,19 @@ updateLock(resource: 'my-resource', addLabels: 'new', removeLabels: 'old')
 updateLock(resource: 'my-resource', setNote: 'Updated by build #${BUILD_NUMBER}')
 ```
 
+**Disable and enable a resource:**
+
+```groovy
+// Disable: new lock() requests for this resource (by name or by label) wait as if it were busy.
+// A build that currently holds the resource keeps it.
+updateLock(resource: 'my-resource', disabledCause: "Something goes wrong in ${env.BUILD_ID}")
+
+// Enable again: builds waiting for the resource can take it.
+updateLock(resource: 'my-resource', disabledCause: null)
+```
+
+The cause can also be set with Configuration as Code (`disabledCause` on a declared resource).
+
 **Delete a resource:**
 
 ```groovy

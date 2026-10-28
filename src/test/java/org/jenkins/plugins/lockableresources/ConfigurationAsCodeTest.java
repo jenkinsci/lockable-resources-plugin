@@ -15,6 +15,8 @@ import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.misc.Util;
 import io.jenkins.plugins.casc.misc.junit.jupiter.WithJenkinsConfiguredWithCode;
 import io.jenkins.plugins.casc.model.CNode;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -157,5 +159,29 @@ class ConfigurationAsCodeTest {
         assertEquals("plc-01", declared.get(0).getName());
         assertEquals("plc remote-enabled", declared.get(0).getLabelsAsString());
         assertEquals("plc-02", declared.get(1).getName());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-disabled.yml")
+    void should_support_disabled_cause_via_casc(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+        assertTrue(LRM.fromName("Resource_A").isDisabled());
+        assertNull(LRM.fromName("Resource_B").getDisabledCause());
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+
+        // export
+        ConfigurationContext context = new ConfigurationContext(ConfiguratorRegistry.get());
+        String exported = Util.toYamlString(Util.getUnclassifiedRoot(context).get("lockableResourcesManager"));
+        assertThat(exported.contains("disabledCause: \"Broken power supply\""), is(true));
+
+        // import the exported configuration again
+        LRM.fromName("Resource_A").setDisabledCause(null);
+        Path yaml = Files.createTempFile("casc-disabled", ".yml");
+        Files.writeString(yaml, "unclassified:\n  lockableResourcesManager:\n" + exported.replaceAll("(?m)^", "    "));
+        ConfigurationAsCode.get().configure(yaml.toString());
+        Files.delete(yaml);
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+        assertNull(LRM.fromName("Resource_B").getDisabledCause());
     }
 }
