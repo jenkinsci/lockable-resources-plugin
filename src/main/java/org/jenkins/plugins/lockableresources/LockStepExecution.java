@@ -268,12 +268,55 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         return shown.toString();
     }
 
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    static String formatWaitDuration(long millis) {
+        long totalSeconds = Math.max(0, millis) / 1000;
+        return String.format("%d:%02d:%02d", totalSeconds / 3600, (totalSeconds % 3600) / 60, totalSeconds % 60);
+    }
+
+    /**
+     * Returns the " after ..." suffix for the "Lock acquired" log line.
+     * When the wait start is unknown (a queued entry restored from a Jenkins restart
+     * that was serialized by an older plugin version, so its timestamp field is 0),
+     * the duration is reported as unknown instead of a misleading 0:00:00.
+     * An immediate acquisition always passes a known start, so it still logs 0:00:00.
+     */
+    static String formatWaitSuffix(long waitStartMillis, boolean waitStartKnown) {
+        if (!waitStartKnown) {
+            return " after unknown duration";
+        }
+        long waitedMillis = waitStartMillis > 0 ? System.currentTimeMillis() - waitStartMillis : 0;
+        return " after " + formatWaitDuration(waitedMillis);
+    }
+
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
             String resourceDescription,
             final String variable) {
+        // Immediate acquisition: no waiting happened, so the wait is known to be zero.
+        // (This must not delegate to the queue-path overload with 0, which means "unknown".)
+        proceed(lockedResources, context, resourceDescription, variable, 0, true);
+    }
+
+    public static void proceed(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            final long waitStartMillis) {
+        // Queue path: a zero start means the entry predates the timestamp field,
+        // so the wait is unknown (see formatWaitSuffix).
+        proceed(lockedResources, context, resourceDescription, variable, waitStartMillis, waitStartMillis > 0);
+    }
+
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    private static void proceed(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            final long waitStartMillis,
+            final boolean waitStartKnown) {
         Run<?, ?> build;
         FlowNode node;
         PrintStream logger;
@@ -285,6 +328,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             if (!lockedResources.isEmpty()) {
                 message += ", resources: " + formatResourceNames(lockedResources.keySet());
             }
+            message += formatWaitSuffix(waitStartMillis, waitStartKnown);
             LockableResourcesManager.printLogs(message, Level.FINE, LOGGER, logger);
         } catch (Exception e) {
             context.onFailure(e);
