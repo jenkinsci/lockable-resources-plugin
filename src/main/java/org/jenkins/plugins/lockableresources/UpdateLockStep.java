@@ -37,6 +37,7 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  *   <li>Delete existing resources</li>
  *   <li>Add, remove, or set labels on resources</li>
  *   <li>Set notes on resources</li>
+ *   <li>Disable or enable resources</li>
  * </ul>
  */
 public class UpdateLockStep extends Step implements Serializable {
@@ -58,6 +59,12 @@ public class UpdateLockStep extends Step implements Serializable {
 
     @CheckForNull
     private String setNote = null;
+
+    @CheckForNull
+    private String disabledCause = null;
+
+    /** {@code true} when disabledCause was given, so {@code disabledCause: null} can enable the resource. */
+    private boolean disabledCauseSet = false;
 
     private boolean createResource = false;
     private boolean deleteResource = false;
@@ -134,6 +141,25 @@ public class UpdateLockStep extends Step implements Serializable {
         }
     }
 
+    @CheckForNull
+    public String getDisabledCause() {
+        return disabledCause;
+    }
+
+    /**
+     * Disables the resource with the given cause. {@code null} (or an empty string) enables it again.
+     */
+    @DataBoundSetter
+    public void setDisabledCause(@CheckForNull String disabledCause) {
+        this.disabledCause = Util.fixEmptyAndTrim(disabledCause);
+        this.disabledCauseSet = true;
+    }
+
+    /** Returns {@code true} when the step shall change the disabled state of the resource. */
+    public boolean isDisabledCauseSet() {
+        return disabledCauseSet;
+    }
+
     public boolean isCreateResource() {
         return createResource;
     }
@@ -164,7 +190,12 @@ public class UpdateLockStep extends Step implements Serializable {
         if (deleteResource && createResource) {
             throw new IllegalArgumentException(Messages.UpdateLockStep_error_deleteAndCreateConflict());
         }
-        if (deleteResource && (addLabels != null || setLabels != null || removeLabels != null || setNote != null)) {
+        if (deleteResource
+                && (addLabels != null
+                        || setLabels != null
+                        || removeLabels != null
+                        || setNote != null
+                        || disabledCauseSet)) {
             throw new IllegalArgumentException(Messages.UpdateLockStep_error_deleteWithOtherOptions());
         }
         if (setLabels != null && (addLabels != null || removeLabels != null)) {
@@ -188,6 +219,8 @@ public class UpdateLockStep extends Step implements Serializable {
         if (removeLabels != null)
             sb.append(", removeLabels='").append(removeLabels).append("'");
         if (setNote != null) sb.append(", setNote='").append(setNote).append("'");
+        if (disabledCauseSet)
+            sb.append(", disabledCause='").append(disabledCause).append("'");
         sb.append("}");
         return sb.toString();
     }
