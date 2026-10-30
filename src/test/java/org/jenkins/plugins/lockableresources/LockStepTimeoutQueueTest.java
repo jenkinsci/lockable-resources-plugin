@@ -267,7 +267,7 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         // Hard-kill b2 — this is the "extreme prejudice" path
         b2.doKill();
-        j.waitForMessage("Hard kill!", b2);
+        j.waitForMessage("Forcibly killing entire build", b2);
         j.waitForCompletion(b2);
         j.assertBuildStatus(Result.ABORTED, b2);
 
