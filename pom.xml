@@ -55,7 +55,7 @@
   <properties>
     <changelist>999999-SNAPSHOT</changelist>
     <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
-    <jenkins.baseline>2.541</jenkins.baseline>
+    <jenkins.baseline>2.568</jenkins.baseline>
     <jenkins.version>${jenkins.baseline}.3</jenkins.version>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
     <spotbugs.effort>Max</spotbugs.effort>
@@ -63,6 +63,7 @@
     <spotless.check.skip>false</spotless.check.skip>
     <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
     <system-stubs.version>2.1.8</system-stubs.version>
+    <banObsoleteDependencyOverrides.skip>false</banObsoleteDependencyOverrides.skip>
     <!-- FIXME: Get this into parent BOM? -->
   </properties>
 
@@ -74,6 +75,11 @@
         <version>7002.v028a_3607ddc8</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.jenkins-ci.plugins.workflow</groupId>
+        <artifactId>workflow-job</artifactId>
+        <version>1622.vc41c189cb_e5f</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
