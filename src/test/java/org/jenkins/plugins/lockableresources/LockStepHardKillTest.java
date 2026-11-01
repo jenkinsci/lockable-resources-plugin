@@ -75,7 +75,7 @@ class LockStepHardKillTest extends LockStepTestBase {
 
         // Kill b1 hard.
         b1.doKill();
-        j.waitForMessage("Hard kill!", b1);
+        j.waitForMessage("Forcibly killing entire build", b1);
         j.waitForCompletion(b1);
         j.assertBuildStatus(Result.ABORTED, b1);
 
