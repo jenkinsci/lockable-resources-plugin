@@ -36,7 +36,10 @@ public class LockWaitTimeoutPeriodicWork extends PeriodicWork {
     @Override
     protected void doRun() {
         LockableResourcesManager lrm = LockableResourcesManager.get();
-        lrm.releaseDueResources();
+        // lock-free check, so the no-delay path stays as before
+        if (lrm.isReleaseDelayPending()) {
+            lrm.releaseDueResources();
+        }
         if (lrm.getCurrentQueuedContext().isEmpty()) {
             return;
         }
