@@ -197,6 +197,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /** Epoch millis the {@link #nextReleaseTask} runs at, 0 when none. Guarded by {@link #syncResources}. */
     private transient long nextReleaseAt;
 
+    /**
+     * True while some resource may have a pending delayed release. Lets the periodic safety net skip
+     * {@link #releaseDueResources()} without locking when no release delay is used. Written under
+     * {@link #syncResources}; set by {@link #delayRelease}, recomputed by {@link #releaseDueResources()}
+     * (which also runs at startup, so persisted delays are picked up).
+     */
+    private transient volatile boolean releaseDelayPending;
+
     @DataBoundSetter
     public void setAllowEmptyOrNullValues(boolean allowEmptyOrNullValues) {
         this.allowEmptyOrNullValues = allowEmptyOrNullValues;
@@ -1259,9 +1267,20 @@ public class LockableResourcesManager extends GlobalConfiguration {
             LockedResourcesBuildAction.findAndInitAction(build).removeUsedResources(resourceNames);
             save();
             if (delayed) {
+                releaseDelayPending = true;
                 scheduleReleaseAt(releaseAt);
             }
         }
+    }
+
+    /**
+     * Cheap, lock-free check whether {@link #releaseDueResources()} may have anything to do. May be
+     * true when nothing is pending anymore (e.g. after an explicit unlock); the next {@link
+     * #releaseDueResources()} call then resets it.
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean isReleaseDelayPending() {
+        return releaseDelayPending;
     }
 
     // ---------------------------------------------------------------------------
@@ -1299,6 +1318,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
                 save();
             }
+            releaseDelayPending = next != 0;
             scheduleReleaseAt(next);
         }
         if (released) {
