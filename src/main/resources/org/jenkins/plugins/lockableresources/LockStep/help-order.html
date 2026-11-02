@@ -1,0 +1,26 @@
+<div>
+  <p>
+    Optional list of resource names that sets which label candidates are tried first.
+    Listed resources are tried in list order; candidates that are not listed come after them and keep
+    their normal order (sequential, or shuffled for the <code>random</code> strategy).
+  </p>
+  <ul>
+    <li>Names that do not match the label, or that are locked or reserved, are skipped.</li>
+    <li><code>order</code> never adds candidates: it only reorders resources that match the label.</li>
+    <li>A name listed twice counts at its first position.</li>
+  </ul>
+  <p>
+    It applies to label selections (including extra resources) and is ignored for named resources.
+    Use <code>findLockableResources</code> to build the list, for example:
+  </p>
+  <pre>
+def order = findLockableResources(label: 'nwcard:1').findAll { r -&gt; r.labels.contains('nwcard:2') }*.name
+lock(label: 'nwcard:1', quantity: 1, order: order) {
+    // ...
+}</pre>
+  <p>
+    <strong>Local locks only:</strong> <code>order</code> does not apply to remote locks. When the lock goes to
+    a remote server (through <code>serverId</code> or a forced server ID), a warning is written to the build
+    log and <code>order</code> is ignored; the remote server picks resources in its default order.
+  </p>
+</div>
