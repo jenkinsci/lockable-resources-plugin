@@ -88,6 +88,14 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String timeoutUnit = "MINUTES";
 
+    /**
+     * Optional preferred order of label candidates, as resource names. Listed resources are tried first, in list
+     * order; the others keep their normal order. Ignored for named resources and remote locks.
+     */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public List<String> order = null;
+
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
     // is not required)
@@ -199,6 +207,19 @@ public class LockStep extends Step implements Serializable {
         }
     }
 
+    @DataBoundSetter
+    public void setOrder(@CheckForNull List<String> order) {
+        List<String> names = new ArrayList<>();
+        if (order != null) {
+            for (String name : order) {
+                if (name != null && !name.trim().isEmpty()) {
+                    names.add(name.trim());
+                }
+            }
+        }
+        this.order = names.isEmpty() ? null : names;
+    }
+
     @Extension
     public static final class DescriptorImpl extends StepDescriptor {
 
@@ -291,6 +312,9 @@ public class LockStep extends Step implements Serializable {
             String ret = LockStepResource.toString(resource, label, quantity, reason);
             if (this.priority != 0) {
                 ret += ", Priority: " + this.priority;
+            }
+            if (this.order != null) {
+                ret += ", Order: " + this.order;
             }
             return ret;
         } else {
