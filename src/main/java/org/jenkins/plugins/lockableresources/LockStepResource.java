@@ -12,6 +12,7 @@ import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.util.FormValidation;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -51,6 +52,15 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public int quantity = 0;
 
+    /**
+     * Resource names to pick from, in list order. Mutually exclusive with {@link #resource} and {@link #label}.
+     *
+     * @see LockStep#candidates
+     */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public List<String> candidates = null;
+
     /** The reason why this resource is being locked, displayed in the UI while locked. */
     @CheckForNull
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
@@ -87,12 +97,33 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
         this.reason = Util.fixEmptyAndTrim(reason);
     }
 
+    @DataBoundSetter
+    public void setCandidates(@CheckForNull List<String> candidates) {
+        this.candidates = cleanCandidates(candidates);
+    }
+
+    /** Trims the names and drops blank ones. Returns {@code null} when no name is left. */
+    @CheckForNull
+    static List<String> cleanCandidates(@CheckForNull List<String> candidates) {
+        if (candidates == null) {
+            return null;
+        }
+        List<String> names = new ArrayList<>();
+        for (String name : candidates) {
+            String trimmed = Util.fixEmptyAndTrim(name);
+            if (trimmed != null) {
+                names.add(trimmed);
+            }
+        }
+        return names.isEmpty() ? null : names;
+    }
+
     @Override
     public String toString() {
-        if (resource == null && label == null && group != null) {
+        if (resource == null && label == null && candidates == null && group != null) {
             return "Group: " + group + (quantity > 0 ? ", Quantity: " + quantity : "");
         }
-        String description = toString(resource, label, quantity, reason);
+        String description = toString(resource, label, candidates, quantity, reason);
         return group != null && !ResourceGroup.DEFAULT_NAME.equals(group)
                 ? description + ", Group: " + group
                 : description;
@@ -103,9 +134,18 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
     }
 
     public static String toString(String resource, String label, int quantity, String reason) {
+        return toString(resource, label, null, quantity, reason);
+    }
+
+    static String toString(String resource, String label, List<String> candidates, int quantity, String reason) {
         // a label takes always priority
         StringBuilder sb = new StringBuilder();
-        if (label != null) {
+        if (candidates != null && label == null && resource == null) {
+            sb.append("Candidates: ").append(candidates);
+            if (quantity > 0) {
+                sb.append(", Quantity: ").append(quantity);
+            }
+        } else if (label != null) {
             sb.append("Label: ").append(label);
             if (quantity > 0) {
                 sb.append(", Quantity: ").append(quantity);
@@ -129,9 +169,43 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
 
     void validate(boolean allowEmptyOrNullValues, @Nullable String inheritedGroup) {
         LockableResourcesManager.get().validateGroupExists(group == null ? inheritedGroup : group);
-        validate(resource, label, null, group != null, 0, false, allowEmptyOrNullValues);
+        validate(resource, label, candidates, null, group != null, 0, false, allowEmptyOrNullValues);
         if (resource == null && LockableResourcesManager.get().isFailFastOnInsufficientResources()) {
-            validateQuantity(label, quantity, group == null ? inheritedGroup : group);
+            if (candidates != null) {
+                validateCandidatesQuantity(candidates, quantity, group == null ? inheritedGroup : group);
+            } else {
+                validateQuantity(label, quantity, group == null ? inheritedGroup : group);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /**
+     * With a quantity, only candidates that exist in the selected group can be locked. Fail when fewer of them
+     * exist than requested, counting resources currently in use. Without a quantity all candidates are locked
+     * like named resources, so there is nothing to count.
+     */
+    private static void validateCandidatesQuantity(
+            @NonNull List<String> candidates, int quantity, @Nullable String group) {
+        if (quantity <= 0) {
+            return;
+        }
+        String requestedGroup = LockableResource.normalizeGroup(group);
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        int available;
+        synchronized (LockableResourcesManager.syncResources) {
+            available = (int) candidates.stream()
+                    .distinct()
+                    .map(manager::fromName)
+                    .filter(resource -> resource != null && requestedGroup.equals(resource.getGroup()))
+                    .count();
+        }
+        if (quantity > available) {
+            if (!ResourceGroup.DEFAULT_NAME.equals(requestedGroup)) {
+                throw new IllegalArgumentException(
+                        Messages.error_notEnoughCandidatesInGroup(candidates, requestedGroup, quantity, available));
+            }
+            throw new IllegalArgumentException(Messages.error_notEnoughCandidates(candidates, quantity, available));
         }
     }
 
@@ -227,9 +301,35 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
             int priority,
             boolean inversePrecedence,
             boolean allowEmptyOrNullValues) {
+        validate(
+                resource,
+                label,
+                null,
+                resourceSelectStrategy,
+                hasExtra,
+                priority,
+                inversePrecedence,
+                allowEmptyOrNullValues);
+    }
 
-        if (!allowEmptyOrNullValues && !hasExtra && label == null && resource == null) {
+    // -------------------------------------------------------------------------
+    /** As above, and also checks that {@code candidates} is not combined with a resource name or a label. */
+    static void validate(
+            String resource,
+            String label,
+            @CheckForNull List<String> candidates,
+            String resourceSelectStrategy,
+            boolean hasExtra,
+            int priority,
+            boolean inversePrecedence,
+            boolean allowEmptyOrNullValues) {
+
+        if (!allowEmptyOrNullValues && !hasExtra && label == null && resource == null && candidates == null) {
             throw new IllegalArgumentException(Messages.error_labelOrNameMustBeSpecified());
+        }
+
+        if (candidates != null && (label != null || resource != null)) {
+            throw new IllegalArgumentException(Messages.error_candidatesAndNameOrLabelSpecified());
         }
 
         if (priority != 0 && inversePrecedence) {
