@@ -202,6 +202,48 @@ Freestyle allocation and priority between separate requests are unchanged.
 Sequential candidate order or shuffled candidates for `random` remain
 preferences, not guarantees of a uniformly random complete assignment.
 
+#### Lock from a list of candidates
+
+`candidates` is a list of resource names. Use exactly one of `resource`,
+`label` or `candidates` per entry (main entry or `extra` entry).
+
+- Without `quantity`, all listed resources are locked, like a list of named
+  resources. A missing one is created as an ephemeral resource if ephemeral
+  resources are allowed, and is skipped with a line in the build log otherwise.
+- With `quantity`, only resources that exist are used. They are tried in list
+  order and the first free ones are locked. Missing names are skipped with one
+  line in the build log. If fewer resources exist than requested,
+  *fail fast on insufficient resources* decides, as for labels: the step fails
+  when it is on and waits in the queue when it is off.
+- With `group`, only candidates of that group are used.
+- `resourceSelectStrategy: 'random'` shuffles the candidates before picking.
+- The list is stored with the queued request and checked again every time the
+  queue is processed, so a resource deleted while waiting simply drops out.
+
+`findLockableResources(label: ...)` returns the local resources matching a
+label (same label syntax as `lock`) as a list of maps with `name`, `labels`,
+`group`, `description`, `note` and `properties` (a map of property name to
+value), so the list can be built in the Pipeline. The optional `group`
+parameter returns only the resources of that group
+(`findLockableResources(label: 'nwcard:1', group: 'plc')`); without it,
+matching resources of every group are returned.
+
+```groovy
+// Skip test agents, then prefer resources that also carry nwcard:2.
+// Note: list.sort { ... } does not work in a sandboxed Pipeline (CPS), findAll does.
+def preferred = findLockableResources(label: 'os:Debian && nwcard:1').findAll { r -> !r.description.contains('Test-agent') }
+def sorted = preferred.findAll { r -> r.labels.contains('nwcard:2') } + preferred.findAll { r -> !r.labels.contains('nwcard:2') }
+lock(candidates: sorted*.name, quantity: 2, variable: 'LOCKED') { echo 'Locked: ' + env.LOCKED }
+```
+
+`findLockableResources` is read-only and only sees resources on this
+controller. `candidates` is not in the Snippet Generator form, because a text
+field cannot hold a list; write it in the Pipeline script directly.
+
+**`candidates` applies to local locks only.** A lock that goes to a
+[remote server](#remote-lockable-resources) (`serverId`, or a forced server ID
+in delegated mode) with `candidates` fails with an error.
+
 #### Take first position in queue
 
 ```groovy
@@ -514,7 +556,8 @@ lock(label: 'k8s-slot', quantity: 1) {
 
 Everything else about `lock()` behaves as it does locally: `label`, `quantity`, `variable`, `extra`,
 `priority`, `skipIfLocked`, `inversePrecedence` and the allocate timeout all work the same way, and
-the queue on the server is shared between local and remote waiters. A remote lock **fails closed**:
+the queue on the server is shared between local and remote waiters. The one exception is `candidates`,
+which is local only: a remote lock with `candidates` fails with an error. A remote lock **fails closed**:
 if the server cannot be reached, the step fails rather than running the block unlocked.
 
 ### On the server (the controller that owns the resource)

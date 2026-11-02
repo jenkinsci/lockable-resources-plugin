@@ -2,6 +2,7 @@ package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import hudson.AbortException;
 import hudson.EnvVars;
 import hudson.model.Run;
 import hudson.model.TaskListener;
@@ -70,6 +71,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             throw new IllegalArgumentException(Messages.error_shareIdWithRemoteLock());
         }
         if (RemoteLockRouting.isRemoteRequest(step, lrm)) {
+            if (step.getResources().stream().anyMatch(r -> r.candidates != null)) {
+                throw new AbortException(Messages.error_candidatesNotSupportedForRemoteLocks());
+            }
             remoteSession = new RemoteLockSession();
             return remoteSession.start(this);
         }
@@ -84,23 +88,47 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                 List<String> resourceNames = new ArrayList<>();
                 for (LockStepResource resource : step.getResources()) {
                     List<String> resources = new ArrayList<>();
-                    if (resource.resource != null) {
-                        if (lrm.createResource(resource.resource)) {
-                            LockableResourcesManager.printLogs(
-                                    "Resource [" + resource.resource + "] did not exist. Created.",
-                                    Level.FINE,
-                                    LOGGER,
-                                    logger);
+                    LockableResourcesStruct requirement;
+                    if (resource.candidates != null && resource.quantity > 0) {
+                        // pick from the candidates that exist; the names are checked again while queued
+                        List<String> missing = new ArrayList<>();
+                        for (String name : resource.candidates) {
+                            if (lrm.fromName(name) == null) {
+                                missing.add(name);
+                            }
                         }
-                        resources.add(resource.resource);
-                        resourceNames.addAll(resources);
+                        if (!missing.isEmpty()) {
+                            LockableResourcesManager.printLogs(
+                                    "Candidates that do not exist are skipped: " + missing, Level.INFO, LOGGER, logger);
+                        }
+                        resourceNames.addAll(resource.candidates);
+                        requirement = LockableResourcesStruct.forCandidates(resource.candidates, resource.quantity);
                     } else {
-                        resourceNames.add("N/A");
+                        if (resource.candidates != null) {
+                            // without a quantity, candidates are locked like named resources
+                            for (String name : resource.candidates) {
+                                addNamedResource(name, resources, lrm, logger);
+                                if (lrm.fromName(name) == null) {
+                                    LockableResourcesManager.printLogs(
+                                            "Candidate [" + name + "] does not exist and ephemeral resources are"
+                                                    + " disabled. Skipped.",
+                                            Level.INFO,
+                                            LOGGER,
+                                            logger);
+                                }
+                            }
+                            resourceNames.addAll(resources);
+                        } else if (resource.resource != null) {
+                            addNamedResource(resource.resource, resources, lrm, logger);
+                            resourceNames.addAll(resources);
+                        } else {
+                            resourceNames.add("N/A");
+                        }
+                        requirement = new LockableResourcesStruct(resources, resource.label, resource.quantity);
                     }
-                    LockableResourcesStruct requirement =
-                            new LockableResourcesStruct(resources, resource.label, resource.quantity);
                     requirement.setGroup(resource.getGroup());
-                    requirement.setGroupOnly(resource.resource == null && resource.label == null);
+                    requirement.setGroupOnly(
+                            resource.resource == null && resource.label == null && resource.candidates == null);
                     resourceHolderList.add(requirement);
                 }
                 LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString(), step.shareId);
@@ -151,6 +179,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         }
 
         return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Adds a resource requested by name, creating it first when it does not exist and ephemeral resources are
+     * allowed. Used for {@code resource} and for {@code candidates} without a quantity.
+     */
+    private static void addNamedResource(
+            String name, List<String> resources, LockableResourcesManager lrm, PrintStream logger) {
+        if (lrm.createResource(name)) {
+            LockableResourcesManager.printLogs(
+                    "Resource [" + name + "] did not exist. Created.", Level.FINE, LOGGER, logger);
+        }
+        resources.add(name);
     }
 
     // ---------------------------------------------------------------------------
@@ -222,6 +264,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             return true;
         }
         if (step.resource != null) {
+            return true;
+        }
+        if (step.candidates != null) {
             return true;
         }
         if (step.extra != null && !step.extra.isEmpty()) {
