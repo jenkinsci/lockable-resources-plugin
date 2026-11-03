@@ -57,10 +57,17 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
         // Extract build parameters so that ${PARAM} references in resource
         // names, labels, and numbers are expanded before scheduling.
         EnvVars paramEnv = Utils.getParametersAsEnvVars(item);
-        LockableResourcesStruct resources = Utils.requiredResources(project, paramEnv);
+        LockableResourcesStruct resources;
+        try {
+            resources = Utils.requiredResources(project, paramEnv);
+        } catch (IllegalArgumentException e) {
+            LockableResourcesManager.get().unqueueTask(item.getId());
+            return new BecauseResourcesQueueFailed(new LockableResourcesStruct(java.util.List.of()), e);
+        }
         if (resources == null
                 || (resources.required.isEmpty()
                         && resources.label.isEmpty()
+                        && !resources.isGroupOnly()
                         && resources.getResourceMatchScriptText() == null)) {
             return null;
         }
@@ -74,7 +81,10 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
 
         LOGGER.finest(project.getName() + " trying to get resources with these details: " + resources);
 
-        if (resourceNumber > 0 || !resources.label.isEmpty() || resources.getResourceMatchScriptText() != null) {
+        if (resourceNumber > 0
+                || !resources.label.isEmpty()
+                || resources.isGroupOnly()
+                || resources.getResourceMatchScriptText() != null) {
             Map<String, Object> params = new HashMap<>();
 
             // Inject Build Parameters, if possible and applicable to the "item" type
@@ -137,7 +147,14 @@ public class LockableResourcesQueueTaskDispatcher extends QueueTaskDispatcher {
             }
 
         } else {
-            if (LockableResourcesManager.get().queue(resources.required, item.getId(), project.getFullDisplayName())) {
+            boolean queued;
+            try {
+                queued = LockableResourcesManager.get()
+                        .queue(resources.required, item.getId(), project.getFullDisplayName(), resources.getGroup());
+            } catch (IllegalArgumentException e) {
+                return new BecauseResourcesQueueFailed(resources, e);
+            }
+            if (queued) {
                 LOGGER.finest(project.getName() + " reserved resources " + resources.required);
                 deadlines.remove(item.getId());
                 return null;

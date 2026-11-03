@@ -16,11 +16,55 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.RemoteConnection;
 import org.junit.jupiter.api.Test;
 
 class RemoteApiClientTest {
+
+    @Test
+    void groupAndExtraOverrideAreSentInAcquirePayload() throws Exception {
+        AtomicReference<JSONObject> payload = new AtomicReference<>();
+        HttpServer server = startServer("/lockable-resources/remote/v1/acquire", exchange -> {
+            payload.set(JSONObject.fromObject(
+                    new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+            byte[] body = "{\"lockId\":\"group-lock\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(202, body.length);
+            try (OutputStream output = exchange.getResponseBody()) {
+                output.write(body);
+            }
+        });
+        try {
+            RemoteLockRequest request = new RemoteLockRequest(
+                    null,
+                    "device",
+                    1,
+                    null,
+                    false,
+                    "SEQUENTIAL",
+                    false,
+                    List.of(new RemoteLockRequest.ExtraResource("ordinary", null, 0, "common")),
+                    0,
+                    0,
+                    "MINUTES",
+                    null,
+                    "production");
+            RemoteApiClient client = new RemoteApiClient(Duration.ofSeconds(2));
+            assertEquals(
+                    "group-lock",
+                    client.enqueueAcquire(
+                            new RemoteConnection("server", baseUrl(server), null), null, request, 10, null));
+            JSONObject lockRequest = payload.get().getJSONObject("lockRequest");
+            assertEquals("production", lockRequest.getString("group"));
+            assertEquals(
+                    "common", lockRequest.getJSONArray("extra").getJSONObject(0).getString("group"));
+        } finally {
+            server.stop(0);
+        }
+    }
 
     @Test
     void testAuthorizationHeaderIsSentWhenPresent() throws Exception {

@@ -117,6 +117,7 @@ public class RemoteApiV1Action {
 
             String resource = stringField(lockRequestJson, "resource");
             String label = stringField(lockRequestJson, "label");
+            String group = stringField(lockRequestJson, "group");
 
             // Whether a request without any target is acceptable depends on allowEmptyOrNullValues, and
             // whether the parameters make sense together is lock() semantics - both are canonical rules,
@@ -158,12 +159,16 @@ public class RemoteApiV1Action {
                     JSONObject extraEntry = extraArray.getJSONObject(i);
                     String extraResource = stringField(extraEntry, "resource");
                     String extraLabel = stringField(extraEntry, "label");
-                    if (extraResource == null && extraLabel == null) {
+                    if (extraResource == null
+                            && extraLabel == null
+                            && stringField(extraEntry, "group") == null
+                            && group == null) {
                         sendJsonError(
                                 rsp,
                                 400,
                                 "INVALID_EXTRA",
-                                "extra[" + i + "] must contain at least one of: resource, label");
+                                "extra[" + i + "] must contain at least one of: resource, label, group"
+                                        + " (or inherit the request group)");
                         return;
                     }
                     // Exposure/existence of this extra selector is checked by admission in enqueue (see above).
@@ -174,7 +179,8 @@ public class RemoteApiV1Action {
                         sendJsonError(rsp, 400, "INVALID_FIELD_VALUE", "extra[" + i + "]: " + e.getMessage());
                         return;
                     }
-                    extra.add(new RemoteLockRequest.ExtraResource(extraResource, extraLabel, extraQuantity));
+                    extra.add(new RemoteLockRequest.ExtraResource(
+                            extraResource, extraLabel, extraQuantity, stringField(extraEntry, "group")));
                 }
             }
 
@@ -216,7 +222,8 @@ public class RemoteApiV1Action {
                     priority,
                     timeoutForAllocateResource,
                     timeoutUnit,
-                    reason);
+                    reason,
+                    group);
 
             RemoteLockRecord record;
             try {
@@ -239,7 +246,7 @@ public class RemoteApiV1Action {
             // 202 success (defensive - malformed requests are already rejected as INVALID_REQUEST).
             if (record.getState() == RemoteLockState.FAILED) {
                 String ec = record.getErrorCode();
-                if ("UNKNOWN_RESOURCE".equals(ec) || "UNKNOWN_LABEL".equals(ec)) {
+                if ("UNKNOWN_RESOURCE".equals(ec) || "UNKNOWN_LABEL".equals(ec) || "UNKNOWN_GROUP".equals(ec)) {
                     sendJsonError(rsp, 404, ec, "No lockable resource matches the request");
                 } else {
                     sendJsonError(rsp, 400, ec != null ? ec : "ACQUIRE_FAILED", "Remote acquire request was rejected");
@@ -418,6 +425,7 @@ public class RemoteApiV1Action {
             JSONObject json = new JSONObject();
             json.put("name", r.getName());
             json.put("labels", JSONArray.fromObject(r.getLabelsAsList()));
+            json.put("group", r.getGroup());
             json.put("description", r.getDescription() == null ? "" : r.getDescription());
 
             if (r.getReservedBy() != null) {
