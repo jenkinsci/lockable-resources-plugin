@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.google.common.collect.ImmutableMap;
 import hudson.model.Result;
@@ -44,6 +45,91 @@ class LockStepTest extends LockStepTestBase {
         j.assertLogContains("Resource [resource1] did not exist. Created.", b1);
 
         assertNull(LockableResourcesManager.get().fromName("resource1"));
+    }
+
+    // Regression coverage for:
+    // https://github.com/jenkinsci/lockable-resources-plugin/issues/677
+    @Test
+    @Issue("https://github.com/jenkinsci/lockable-resources-plugin/issues/677")
+    void testIssue677ResourceLifecycle(JenkinsRule j) throws Exception {
+
+        LockableResourcesManager manager = LockableResourcesManager.get();
+
+        // P1 locks R1, R2 and R3.
+        WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "issue677-p1");
+        p1.setDefinition(new CpsFlowDefinition("""
+                lock(resource: 'R1', extra: [[resource: 'R2'], [resource: 'R3']]) {
+                    semaphore 'hold-p1'
+                }
+                """, true));
+
+        WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("hold-p1/1", b1);
+        assertSame(b1, manager.fromName("R1").getBuild());
+        assertSame(b1, manager.fromName("R2").getBuild());
+        assertSame(b1, manager.fromName("R3").getBuild());
+
+        // P2 requests R2 and R3, so it must wait for P1.
+        WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "issue677-p2");
+        p2.setDefinition(new CpsFlowDefinition("""
+                lock(resource: 'R2', extra: [[resource: 'R3']]) {
+                    semaphore 'hold-p2'
+                }
+                """, true));
+
+        WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("is not free, waiting for execution", b2);
+
+        // Release P1. P2 should now acquire R2 and R3.
+        SemaphoreStep.success("hold-p1/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+        SemaphoreStep.waitForStart("hold-p2/1", b2);
+
+        // R1 is removed, while P2 holds R2 and R3.
+        assertNull(manager.fromName("R1"));
+        assertNotNull(manager.fromName("R2"));
+        assertNotNull(manager.fromName("R3"));
+        assertSame(b2, manager.fromName("R2").getBuild());
+        assertSame(b2, manager.fromName("R3").getBuild());
+
+        // P3 requests all three resources while P2 is active.
+        WorkflowJob p3 = j.jenkins.createProject(WorkflowJob.class, "issue677-p3");
+        p3.setDefinition(new CpsFlowDefinition("""
+                lock(resource: 'R1', extra: [[resource: 'R2'], [resource: 'R3']]) {
+                    echo 'P3 acquired all resources'
+                    semaphore 'hold-p3'
+                }
+                """, true));
+
+        WorkflowRun b3 = p3.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("is not free, waiting for execution", b3);
+
+        // P3's request recreates temporary resource R1.
+        assertNotNull(manager.fromName("R1"));
+        assertNull(manager.fromName("R1").getBuild());
+        assertSame(b2, manager.fromName("R2").getBuild());
+        assertSame(b2, manager.fromName("R3").getBuild());
+
+        // Release P2 and verify P3 can finish.
+        SemaphoreStep.success("hold-p2/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+        SemaphoreStep.waitForStart("hold-p3/1", b3);
+        assertSame(b3, manager.fromName("R1").getBuild());
+        assertSame(b3, manager.fromName("R2").getBuild());
+        assertSame(b3, manager.fromName("R3").getBuild());
+        SemaphoreStep.success("hold-p3/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b3));
+        j.assertLogContains("P3 acquired all resources", b3);
+
+        // Check that no null entries remain in the resource list.
+        for (LockableResource resource : manager.getReadOnlyResources()) {
+            assertNotNull(resource, "Issue #677: null resource found");
+        }
+
+        // All three temporary resources should be cleaned up.
+        assertNull(manager.fromName("R1"));
+        assertNull(manager.fromName("R2"));
+        assertNull(manager.fromName("R3"));
     }
 
     @Test
