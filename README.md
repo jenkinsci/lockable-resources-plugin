@@ -341,6 +341,10 @@ updateLock(resource: 'my-resource', disabledCause: null)
 
 The cause can also be set with Configuration as Code (`disabledCause` on a declared resource).
 
+On the *Lockable Resources* page, users with the *Configure* permission can disable a resource (a cause is required)
+and enable it again. A disabled resource is shown as *DISABLED* with its cause, and it can not be reserved, stolen
+or reassigned until it is enabled again.
+
 **Delete a resource:**
 
 ```groovy

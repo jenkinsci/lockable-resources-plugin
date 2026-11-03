@@ -46,9 +46,9 @@ THE SOFTWARE.
           <j:forEach var="group" items="${it.labelsByGroup.entrySet()}">
             <j:forEach var="entry" items="${group.value.entrySet()}">
               <j:set var="label" value="${entry.value}" />
-              <j:set var="freeCount" value="${label.free}" />
+              <j:set var="freeCount" value="${label.available}" />
               <j:set var="allCount" value="${label.assigned}" />
-              <j:set var="percentage" value="${label.percentage}" />
+              <j:set var="percentage" value="${label.availablePercentage}" />
               <j:choose>
                 <j:when test="${percentage lt 5}">
                   <j:set var="cssClass" value="jenkins-!-error-color" />

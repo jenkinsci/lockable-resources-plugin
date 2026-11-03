@@ -172,6 +172,7 @@ public class LockableResourcesRootAction implements RootAction {
         int reserved = 0;
         int queued = 0;
         int free = 0;
+        int disabled = 0;
         int total = 0;
 
         for (LockableResource r : LockableResourcesManager.get().getReadOnlyResources()) {
@@ -180,6 +181,9 @@ public class LockableResourcesRootAction implements RootAction {
                 reserved++;
             } else if (r.isLocked()) {
                 locked++;
+            } else if (r.isDisabled()) {
+                // not free: new lock requests and manual reservations can not take it
+                disabled++;
             } else {
                 // Queued resources are counted as free since the queued state
                 // is transient and nearly invisible in practice.
@@ -235,6 +239,7 @@ public class LockableResourcesRootAction implements RootAction {
                 reserved,
                 queued,
                 free,
+                disabled,
                 queueItems,
                 distinctBuildsWaiting,
                 labelsCount,
@@ -254,6 +259,7 @@ public class LockableResourcesRootAction implements RootAction {
         private final int reserved;
         private final int queued;
         private final int free;
+        private final int disabled;
         private final int queueItems;
         private final int distinctBuildsWaiting;
         private final int labelsCount;
@@ -270,6 +276,7 @@ public class LockableResourcesRootAction implements RootAction {
                 int reserved,
                 int queued,
                 int free,
+                int disabled,
                 int queueItems,
                 int distinctBuildsWaiting,
                 int labelsCount,
@@ -284,6 +291,7 @@ public class LockableResourcesRootAction implements RootAction {
             this.reserved = reserved;
             this.queued = queued;
             this.free = free;
+            this.disabled = disabled;
             this.queueItems = queueItems;
             this.distinctBuildsWaiting = distinctBuildsWaiting;
             this.labelsCount = labelsCount;
@@ -315,6 +323,11 @@ public class LockableResourcesRootAction implements RootAction {
             return free;
         }
 
+        /** Disabled resources that are not locked or reserved (they are not counted as free). */
+        public int getDisabled() {
+            return disabled;
+        }
+
         public int getQueueItems() {
             return queueItems;
         }
@@ -341,6 +354,10 @@ public class LockableResourcesRootAction implements RootAction {
 
         public int getFreePct() {
             return total > 0 ? (free * 100) / total : 0;
+        }
+
+        public int getDisabledPct() {
+            return total > 0 ? (disabled * 100) / total : 0;
         }
 
         public String getOldestBuildName() {
@@ -449,19 +466,24 @@ public class LockableResourcesRootAction implements RootAction {
     public static class LockableResourcesLabel {
         String name;
         int free;
+        int available;
         int assigned;
 
         // -------------------------------------------------------------------------
         public LockableResourcesLabel(String _name) {
             this.name = _name;
             this.free = 0;
+            this.available = 0;
             this.assigned = 0;
         }
 
         // -------------------------------------------------------------------------
         public void update(LockableResource resource) {
             this.assigned++;
-            if (resource.isFree()) free++;
+            if (resource.isFree()) {
+                free++;
+                if (!resource.isDisabled()) available++;
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -485,6 +507,23 @@ public class LockableResourcesRootAction implements RootAction {
                 return this.assigned;
             }
             return (int) ((double) this.free / (double) this.assigned * 100);
+        }
+
+        // -------------------------------------------------------------------------
+        /** Like {@link #getFree()}, but a disabled resource is not counted. Used by the labels table. */
+        @Restricted(NoExternalUse.class) // used by jelly
+        public int getAvailable() {
+            return this.available;
+        }
+
+        // -------------------------------------------------------------------------
+        /** Like {@link #getPercentage()}, but a disabled resource is not counted as free. */
+        @Restricted(NoExternalUse.class) // used by jelly
+        public int getAvailablePercentage() {
+            if (this.assigned == 0) {
+                return this.assigned;
+            }
+            return (int) ((double) this.available / (double) this.assigned * 100);
         }
     }
 
@@ -1039,7 +1078,7 @@ public class LockableResourcesRootAction implements RootAction {
         Jenkins.get().checkPermission(RESERVE);
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
-        if (resources == null) {
+        if (resources == null || sendErrorIfDisabled(resources, rsp)) {
             return;
         }
 
@@ -1075,7 +1114,7 @@ public class LockableResourcesRootAction implements RootAction {
         Jenkins.get().checkPermission(STEAL);
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
-        if (resources == null) {
+        if (resources == null || sendErrorIfDisabled(resources, rsp)) {
             return;
         }
 
@@ -1087,7 +1126,11 @@ public class LockableResourcesRootAction implements RootAction {
             return;
         }
 
-        LockableResourcesManager.get().steal(resources, userName, reason);
+        if (!LockableResourcesManager.get().steal(resources, userName, reason)) {
+            // disabled in the meantime
+            sendErrorIfDisabled(resources, rsp);
+            return;
+        }
         rsp.forwardToPreviousPage(req);
     }
 
@@ -1104,7 +1147,7 @@ public class LockableResourcesRootAction implements RootAction {
         }
 
         List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
-        if (resources == null) {
+        if (resources == null || sendErrorIfDisabled(resources, rsp)) {
             return;
         }
 
@@ -1193,6 +1236,59 @@ public class LockableResourcesRootAction implements RootAction {
 
             rsp.forwardToPreviousPage(req);
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Disables a resource with the given {@code cause}. A disabled resource is not given to new lock
+     * requests and can not be reserved or stolen; a build that already holds it keeps it.
+     */
+    @RequirePOST
+    public void doDisable(final StaplerRequest2 req, final StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(CONFIGURE);
+
+        List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+        if (resources == null) {
+            return;
+        }
+
+        String cause = Util.fixEmptyAndTrim(req.getParameter("cause"));
+        if (cause == null) {
+            // an empty cause means enabled, so it can not be used to disable
+            rsp.sendError(400, Messages.error_disabledCauseRequired());
+            return;
+        }
+
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        for (LockableResource resource : resources) {
+            LOGGER.info("doDisable: user='" + getUserName() + "' resource=" + resource.getName() + " cause='" + cause
+                    + "'");
+            lrm.setDisabledCause(resource, cause);
+        }
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Enables a disabled resource again and lets waiting builds take it. */
+    @RequirePOST
+    public void doEnable(final StaplerRequest2 req, final StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(CONFIGURE);
+
+        List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+        if (resources == null) {
+            return;
+        }
+
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        for (LockableResource resource : resources) {
+            if (resource.isDisabled()) {
+                LOGGER.info("doEnable: user='" + getUserName() + "' resource=" + resource.getName());
+                lrm.setDisabledCause(resource, null);
+            }
+        }
+
+        rsp.forwardToPreviousPage(req);
     }
 
     // ---------------------------------------------------------------------------
@@ -1654,6 +1750,24 @@ public class LockableResourcesRootAction implements RootAction {
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         return resources;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Sends 423 with the disabled cause when one of the resources is disabled.
+     *
+     * @return {@code true} if an error has been sent.
+     */
+    private static boolean sendErrorIfDisabled(final List<LockableResource> resources, final StaplerResponse2 rsp)
+            throws IOException {
+        for (LockableResource resource : resources) {
+            String cause = resource.getDisabledCause();
+            if (cause != null) {
+                rsp.sendError(423, Messages.error_resourceDisabled(resource.getName(), cause));
+                return true;
+            }
+        }
+        return false;
     }
 
     // ---------------------------------------------------------------------------
