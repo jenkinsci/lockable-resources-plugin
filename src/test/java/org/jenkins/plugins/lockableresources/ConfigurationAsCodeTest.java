@@ -21,6 +21,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.util.Constants;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -183,5 +187,70 @@ class ConfigurationAsCodeTest {
         Files.delete(yaml);
         assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
         assertNull(LRM.fromName("Resource_B").getDisabledCause());
+    }
+
+    private static void configure(String declaredResources) throws Exception {
+        Path yaml = Files.createTempFile("casc-disabled", ".yml");
+        try {
+            Files.writeString(
+                    yaml, "unclassified:\n  lockableResourcesManager:\n    declaredResources:\n" + declaredResources);
+            ConfigurationAsCode.get().configure(yaml.toString());
+        } finally {
+            Files.delete(yaml);
+        }
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-disabled.yml")
+    void reload_keeps_runtime_disabled_cause_when_yaml_omits_it(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+
+        // disable at runtime by a pipeline
+        WorkflowJob p = r.createProject(WorkflowJob.class, "p");
+        p.setDefinition(
+                new CpsFlowDefinition("updateLock(resource: 'Resource_B', disabledCause: 'Broken cable')", true));
+        r.buildAndAssertSuccess(p);
+        assertEquals("Broken cable", LRM.fromName("Resource_B").getDisabledCause());
+
+        // reload a YAML that does not mention disabledCause for Resource_B: it stays disabled
+        configure("      - name: \"Resource_A\"\n"
+                + "        disabledCause: \"Broken power supply\"\n"
+                + "      - name: \"Resource_B\"\n"
+                + "        description: \"reloaded\"\n");
+        assertEquals("reloaded", LRM.fromName("Resource_B").getDescription());
+        assertEquals("Broken cable", LRM.fromName("Resource_B").getDisabledCause());
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+
+        // an explicit empty disabledCause enables it
+        configure(
+                "      - name: \"Resource_A\"\n" + "      - name: \"Resource_B\"\n" + "        disabledCause: \"\"\n");
+        assertNull(LRM.fromName("Resource_B").getDisabledCause());
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+        // Resource_A was omitted this time, so it keeps its cause
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-disabled.yml")
+    void reload_keeps_runtime_disabled_cause_of_locked_resource(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+
+        WorkflowJob p = r.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("lock('Resource_B') { semaphore 'wait-inside' }", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait-inside/1", b);
+        LRM.setDisabledCause(LRM.fromName("Resource_B"), "Broken cable");
+
+        // locked resources are merged instead of replaced, the cause must survive that path too
+        configure("      - name: \"Resource_B\"\n");
+        assertTrue(LRM.fromName("Resource_B").isLocked());
+        assertEquals("Broken cable", LRM.fromName("Resource_B").getDisabledCause());
+
+        configure("      - name: \"Resource_B\"\n        disabledCause: \"\"\n");
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+
+        SemaphoreStep.success("wait-inside/1", null);
+        r.assertBuildStatusSuccess(r.waitForCompletion(b));
     }
 }

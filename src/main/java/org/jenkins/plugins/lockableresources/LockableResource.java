@@ -90,6 +90,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private String disabledCause = null;
 
     /**
+     * {@code true} once {@link #setDisabledCause(String)} has been called on this object. Configuration
+     * as Code only calls the setter when the YAML contains {@code disabledCause}, so a declared resource
+     * without it keeps the runtime cause (see {@link LockableResourcesManager#setDeclaredResources}).
+     * Not persisted.
+     */
+    private transient boolean disabledCauseConfigured = false;
+
+    /**
      * Track that a currently reserved resource was originally reserved for someone else, or locked
      * for some other job, and explicitly taken away - e.g. for SUT post-mortem while a test job runs.
      * Currently this does not track "who" it was taken from nor intend to give it back - just for
@@ -319,6 +327,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @DataBoundSetter
     public void setDisabledCause(@CheckForNull String disabledCause) {
         this.disabledCause = Util.fixEmptyAndTrim(disabledCause);
+        this.disabledCauseConfigured = true;
+    }
+
+    /**
+     * Returns {@code true} when {@link #setDisabledCause(String)} has been called on this object, even
+     * with an empty value. Used to tell an omitted {@code disabledCause} in a declared resource from an
+     * explicit empty one.
+     */
+    boolean isDisabledCauseConfigured() {
+        return this.disabledCauseConfigured;
     }
 
     /** Return true when the resource is disabled and must not be given to new lock requests. */

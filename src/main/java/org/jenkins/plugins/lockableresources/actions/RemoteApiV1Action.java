@@ -446,6 +446,10 @@ public class RemoteApiV1Action {
             } else {
                 json.put("state", "FREE");
             }
+            // The state stays as it is (a disabled resource nobody holds is still FREE, so clients that
+            // only know the existing states keep working); this field tells that it will not be given out.
+            // The disabled cause is free text, like the note and the lock reason, so it is not included.
+            json.put("disabled", r.isDisabled());
             return json;
         }
     }

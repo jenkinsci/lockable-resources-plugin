@@ -39,18 +39,12 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl {
         PrintStream logger = getContext().get(TaskListener.class).getLogger();
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
-        boolean enabled = false;
         synchronized (LockableResourcesManager.syncResources) {
             if (step.isDeleteResource()) {
                 handleDeleteResource(lrm, logger);
             } else {
-                enabled = handleUpdateResource(lrm, logger);
+                handleUpdateResource(lrm, logger);
             }
-        }
-
-        if (enabled) {
-            // let builds waiting for this resource take it now
-            lrm.refreshQueue();
         }
 
         getContext().onSuccess(null);
@@ -99,10 +93,8 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl {
 
     /**
      * Handles updating an existing resource or creating a new one.
-     *
-     * @return {@code true} if a disabled resource has been enabled.
      */
-    private boolean handleUpdateResource(LockableResourcesManager lrm, PrintStream logger) {
+    private void handleUpdateResource(LockableResourcesManager lrm, PrintStream logger) {
         String resourceName = step.getResource();
         LockableResource resource = lrm.fromName(resourceName);
 
@@ -141,11 +133,9 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl {
                     "Resource [" + resourceName + "] note updated.", Level.FINE, LOGGER, logger);
         }
 
-        // Handle disabled state
-        boolean enabled = false;
+        // Handle disabled state. Enabling a resource also lets waiting builds take it.
         if (step.isDisabledCauseSet()) {
-            enabled = resource.isDisabled() && step.getDisabledCause() == null;
-            resource.setDisabledCause(step.getDisabledCause());
+            lrm.setDisabledCause(resource, step.getDisabledCause());
             if (resource.isDisabled()) {
                 LockableResourcesManager.printLogs(
                         "Resource [" + resourceName + "] disabled: " + resource.getDisabledCause(),
@@ -160,7 +150,6 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl {
 
         lrm.save();
         LockableResourcesManager.printLogs("Resource [" + resourceName + "] updated.", Level.FINE, LOGGER, logger);
-        return enabled;
     }
 
     /**

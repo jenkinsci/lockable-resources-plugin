@@ -190,7 +190,9 @@ function deleteResource(button) {
 function resource_action(button, action) {
   const resourceName = button.closest('tr').getAttribute('data-resource-name');
 
-  if (action === "reserve" || action === "steal") {
+  if (action === "reserve" || action === "steal" || action === "disable") {
+    // disable needs a cause: an empty cause means "enabled"
+    const param = action === "disable" ? "cause" : "reason";
     dialog
       .prompt(i18n(action + "-title", resourceName), {
         message: i18n(action + "-message", resourceName),
@@ -200,7 +202,7 @@ function resource_action(button, action) {
       })
       .then(
         (reason) => {
-          const url = action + "?resource=" + encodeURIComponent(resourceName) + "&reason=" + encodeURIComponent(reason || "");
+          const url = action + "?resource=" + encodeURIComponent(resourceName) + "&" + param + "=" + encodeURIComponent(reason || "");
           fetch(url, {
             method: "post",
             headers: crumb.wrap({}),
