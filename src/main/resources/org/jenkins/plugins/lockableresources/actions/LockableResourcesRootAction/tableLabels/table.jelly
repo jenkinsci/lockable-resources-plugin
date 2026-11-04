@@ -50,7 +50,7 @@ THE SOFTWARE.
             />
             <j:set
               var="freeCount"
-              value="${label.free}"
+              value="${label.available}"
             />
             <j:set
               var="allCount"
@@ -58,7 +58,7 @@ THE SOFTWARE.
             />
             <j:set
               var="percentage"
-              value="${label.percentage}"
+              value="${label.availablePercentage}"
             />
             <j:choose>
               <j:when test="${percentage lt 5}">

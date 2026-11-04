@@ -302,6 +302,23 @@ updateLock(resource: 'my-resource', addLabels: 'new', removeLabels: 'old')
 updateLock(resource: 'my-resource', setNote: 'Updated by build #${BUILD_NUMBER}')
 ```
 
+**Disable and enable a resource:**
+
+```groovy
+// Disable: new lock() requests for this resource (by name or by label) wait as if it were busy.
+// A build that currently holds the resource keeps it.
+updateLock(resource: 'my-resource', disabledCause: "Something goes wrong in ${env.BUILD_ID}")
+
+// Enable again: builds waiting for the resource can take it.
+updateLock(resource: 'my-resource', disabledCause: null)
+```
+
+The cause can also be set with Configuration as Code (`disabledCause` on a declared resource).
+
+On the *Lockable Resources* page, users with the *Configure* permission can disable a resource (a cause is required)
+and enable it again. A disabled resource is shown as *DISABLED* with its cause, and it can not be reserved, stolen
+or reassigned until it is enabled again.
+
 **Delete a resource:**
 
 ```groovy
