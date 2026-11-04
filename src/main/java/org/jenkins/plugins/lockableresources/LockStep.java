@@ -230,6 +230,9 @@ public class LockStep extends Step implements Serializable {
         @RequirePOST
         public ListBoxModel doFillResourceSelectStrategyItems(@AncestorInPath Item item) {
             ListBoxModel items = new ListBoxModel();
+            if (!LockStepResource.DescriptorImpl.hasConfigurePermission(item)) {
+                return items;
+            }
             for (ResourceSelectStrategy resSelStrategy : ResourceSelectStrategy.values()) {
                 items.add(resSelStrategy.name());
             }
@@ -251,6 +254,9 @@ public class LockStep extends Step implements Serializable {
         @RequirePOST
         public static FormValidation doCheckResourceSelectStrategy(
                 @QueryParameter String resourceSelectStrategy, @AncestorInPath Item item) {
+            if (!LockStepResource.DescriptorImpl.hasConfigurePermission(item)) {
+                return FormValidation.ok();
+            }
             if (resourceSelectStrategy != null && !resourceSelectStrategy.isEmpty()) {
                 try {
                     ResourceSelectStrategy.valueOf(resourceSelectStrategy.toUpperCase(Locale.ENGLISH));
@@ -269,6 +275,9 @@ public class LockStep extends Step implements Serializable {
         @RequirePOST
         public ListBoxModel doFillTimeoutUnitItems(@AncestorInPath Item item) {
             ListBoxModel items = new ListBoxModel();
+            if (!LockStepResource.DescriptorImpl.hasConfigurePermission(item)) {
+                return items;
+            }
             items.add("Seconds", "SECONDS");
             items.add("Minutes", "MINUTES");
             items.add("Hours", "HOURS");
