@@ -1,0 +1,21 @@
+<div>
+  <p>
+    Returns the lockable resources that match a label, without locking or changing them.
+    The result is a list with one map per resource, with these keys:
+  </p>
+  <ul>
+    <li><code>name</code></li>
+    <li><code>labels</code> (list of labels)</li>
+    <li><code>description</code></li>
+    <li><code>note</code></li>
+  </ul>
+  <p>
+    Only resources on this controller are returned; resources of remote servers are not.
+    A typical use is building the <code>order</code> list of the <code>lock</code> step:
+  </p>
+  <pre>
+def order = findLockableResources(label: 'nwcard:1').findAll { r -&gt; r.labels.contains('nwcard:2') }*.name
+lock(label: 'nwcard:1', quantity: 1, order: order) {
+    // ...
+}</pre>
+</div>

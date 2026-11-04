@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1690,7 +1691,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
 
                 available = this.getFreeResourcesWithLabel(
-                        requiredResources.label, requiredAmount, selectStrategy, logger, candidates, candidateFilter);
+                        requiredResources.label,
+                        requiredAmount,
+                        selectStrategy,
+                        logger,
+                        candidates,
+                        candidateFilter,
+                        requiredResources.getOrder());
             } else if (requiredResources.required != null) {
                 // resource by name requested
 
@@ -1768,6 +1775,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 if (selectStrategy == ResourceSelectStrategy.RANDOM) {
                     Collections.shuffle(available);
                 }
+                // ResourceMatcher tries candidates in list order, so this order is the preference
+                applyOrder(available, requirement.getOrder());
                 for (int i = 0; i < amount; i++) {
                     candidatesPerSlot.add(available);
                 }
@@ -1832,7 +1841,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             final @Nullable ResourceSelectStrategy selectStrategy,
             final @Nullable PrintStream logger,
             final List<LockableResource> alreadySelected,
-            @NonNull final Predicate<LockableResource> candidateFilter) {
+            @NonNull final Predicate<LockableResource> candidateFilter,
+            @CheckForNull final List<String> order) {
         List<LockableResource> found = new ArrayList<>();
 
         List<LockableResource> candidates = _getResourcesWithLabel(label, alreadySelected);
@@ -1861,6 +1871,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (selectStrategy != null && selectStrategy.equals(ResourceSelectStrategy.RANDOM)) {
             Collections.shuffle(candidates);
         }
+        applyOrder(candidates, order);
 
         for (LockableResource r : candidates) {
             // TODO: it shall be used isFree() here, but in that case we need to change the
@@ -1884,6 +1895,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         return null;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Moves the resources named in {@code order} to the front, in list order. Unlisted candidates follow and keep
+     * their current order (the sort is stable). A duplicated name counts at its first position; names that are not
+     * candidates are ignored, so this never adds candidates.
+     */
+    private static void applyOrder(List<LockableResource> candidates, @CheckForNull List<String> order) {
+        if (order == null || order.isEmpty() || candidates.size() < 2) {
+            return;
+        }
+        Map<String, Integer> position = new HashMap<>();
+        for (int i = 0; i < order.size(); i++) {
+            position.putIfAbsent(order.get(i), i);
+        }
+        candidates.sort(Comparator.comparingInt(r -> position.getOrDefault(r.getName(), Integer.MAX_VALUE)));
     }
 
     // ---------------------------------------------------------------------------

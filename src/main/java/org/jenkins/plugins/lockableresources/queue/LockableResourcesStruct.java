@@ -12,6 +12,7 @@ import hudson.EnvVars;
 import hudson.model.Descriptor;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -39,6 +40,10 @@ public class LockableResourcesStruct implements Serializable {
     @SuppressFBWarnings("SE_TRANSIENT_FIELD_NOT_RESTORED")
     @CheckForNull
     private transient SecureGroovyScript resourceMatchScript;
+
+    /** Optional preferred order of label candidates (resource names), see {@link #getOrder()}. */
+    @CheckForNull
+    private ArrayList<String> order;
 
     private static final long serialVersionUID = 1L;
 
@@ -83,6 +88,23 @@ public class LockableResourcesStruct implements Serializable {
             @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
         this(resources, label, quantity);
         requiredVar = variable;
+    }
+
+    /**
+     * Constructor for a lock request with a preferred order of label candidates.
+     *
+     * @param order Resource names to try first, in this order. Other candidates keep their normal order.
+     */
+    public LockableResourcesStruct(
+            @Nullable List<String> resources,
+            @Nullable String label,
+            int quantity,
+            @Nullable String variable,
+            @CheckForNull List<String> order) {
+        this(resources, label, quantity, variable);
+        if (order != null && !order.isEmpty()) {
+            this.order = new ArrayList<>(order);
+        }
     }
 
     public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
@@ -137,6 +159,16 @@ public class LockableResourcesStruct implements Serializable {
         return serializableResourceMatchScript != null ? serializableResourceMatchScript.getScript() : null;
     }
 
+    /**
+     * Gets the preferred order of label candidates.
+     *
+     * @return resource names to try first, or {@code null} if no order was requested
+     */
+    @CheckForNull
+    public List<String> getOrder() {
+        return order != null ? Collections.unmodifiableList(order) : null;
+    }
+
     @Override
     public String toString() {
         String str = "";
@@ -148,6 +180,9 @@ public class LockableResourcesStruct implements Serializable {
         }
         if (this.resourceMatchScript != null) {
             str += "Required label script: " + this.resourceMatchScript.getScript();
+        }
+        if (this.order != null) {
+            str += ", Order: " + this.order;
         }
         if (this.requiredVar != null) {
             str += ", Variable name: " + this.requiredVar;
