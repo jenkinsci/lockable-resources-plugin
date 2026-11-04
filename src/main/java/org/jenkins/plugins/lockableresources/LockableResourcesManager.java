@@ -2070,6 +2070,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     // ---------------------------------------------------------------------------
+    /**
+     * Removes all queued contexts of a finished build. After a hard kill the step context can no
+     * longer resolve its build, so dead (invalid) entries are removed as well.
+     */
+    public void unqueueBuild(@Nullable Run<?, ?> build) {
+        if (build == null) {
+            return;
+        }
+        synchronized (syncResources) {
+            if (this.queuedContexts.removeIf(entry -> entry.getBuild() == build || !entry.isValid())) {
+                save();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Remote queue support
     // ---------------------------------------------------------------------------
 
