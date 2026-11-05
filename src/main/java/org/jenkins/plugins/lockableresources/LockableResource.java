@@ -29,8 +29,11 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -151,6 +154,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private String buildExternalizableId = null;
     private long queuingStarted = 0;
 
+    /**
+     * Share id of the current local hold, or {@code null} when the hold is not shared. Set by the
+     * first holder of a {@code lock(shareId: ...)} block. Not configurable: no setter is exposed to
+     * the configuration form, JCasC or {@code @DataBoundSetter}.
+     */
+    private String shareId = null;
+
+    /**
+     * One entry per active lock block holding this resource, in acquisition order, formatted as
+     * {@code <buildExternalizableId>@<blockStartNodeId>} (see {@link #shareHolderEntry}). Empty
+     * when the resource is not held through the share mechanism. The build of the first entry is
+     * the primary holder ({@link #buildExternalizableId}). Not configurable.
+     */
+    private LinkedHashSet<String> shareHolders = new LinkedHashSet<>();
+
     private static final long serialVersionUID = 1L;
 
     private static final long SCRIPT_CACHE_TTL_MS =
@@ -251,6 +269,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         }
         if (properties == null) {
             properties = new ArrayList<>();
+        }
+        if (shareHolders == null) { // added with shareId; absent in older XML
+            shareHolders = new LinkedHashSet<>();
         }
         this.repairLabels();
         return this;
@@ -822,6 +843,157 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             this.buildExternalizableId = null;
             setReservedTimestamp(null);
         }
+        // A new (or no) holder replaces any share of the previous hold.
+        clearShare();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Shared holds (lock(shareId: ...)). All mutators are expected to be called while holding
+    // LockableResourcesManager.syncResources.
+
+    /** Builds a holder entry for one lock block: {@code <buildExternalizableId>@<blockStartNodeId>}. */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public static String shareHolderEntry(@NonNull String buildExternalizableId, @NonNull String blockStartNodeId) {
+        return buildExternalizableId + "@" + blockStartNodeId;
+    }
+
+    /** Extracts the build externalizable id from a holder entry. */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public static String buildIdOfShareHolderEntry(@NonNull String entry) {
+        // Job names cannot contain '@', so the last '@' separates the node id.
+        int at = entry.lastIndexOf('@');
+        return at < 0 ? entry : entry.substring(0, at);
+    }
+
+    /** Share id of the current hold, or {@code null} when it is not shared. */
+    @Exported
+    @CheckForNull
+    public String getShareId() {
+        return shareId;
+    }
+
+    /** Distinct externalizable ids of the builds holding this resource, primary holder first. */
+    @Exported
+    @NonNull
+    public List<String> getShareHolderBuilds() {
+        List<String> builds = new ArrayList<>();
+        for (String entry : shareHolders) {
+            String id = buildIdOfShareHolderEntry(entry);
+            if (!builds.contains(id)) {
+                builds.add(id);
+            }
+        }
+        return builds;
+    }
+
+    /** Snapshot of the holder entries, in acquisition order. */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<String> getShareHolders() {
+        return Collections.unmodifiableList(new ArrayList<>(shareHolders));
+    }
+
+    @Restricted(NoExternalUse.class)
+    public boolean hasShareHolders() {
+        return !shareHolders.isEmpty();
+    }
+
+    @Restricted(NoExternalUse.class)
+    public boolean hasShareHolder(@NonNull String entry) {
+        return shareHolders.contains(entry);
+    }
+
+    /** True when at least one entry of the given build holds this resource. */
+    @Restricted(NoExternalUse.class)
+    public boolean isShareHolderBuild(@NonNull String buildExternalizableId) {
+        for (String entry : shareHolders) {
+            if (buildIdOfShareHolderEntry(entry).equals(buildExternalizableId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Starts a hold by its first lock block: sets the primary build, the share id (may be {@code
+     * null} for a plain hold that the same build may re-enter) and the first holder entry.
+     */
+    @Restricted(NoExternalUse.class)
+    public void startShare(@NonNull Run<?, ?> build, @CheckForNull String shareId, @NonNull String entry) {
+        setBuild(build);
+        this.shareId = Util.fixEmptyAndTrim(shareId);
+        this.shareHolders.add(entry);
+    }
+
+    /**
+     * Adds the entry of a lock block joining the current hold.
+     *
+     * @return {@code false} if the entry was already present
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean addShareHolder(@NonNull String entry) {
+        return shareHolders.add(entry);
+    }
+
+    /**
+     * Removes the entry of one lock block. If the primary build no longer holds any entry, the build
+     * of the oldest remaining entry becomes primary.
+     *
+     * @return {@code true} if the entry was present
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean removeShareHolder(@NonNull String entry) {
+        boolean removed = shareHolders.remove(entry);
+        if (removed) {
+            promotePrimaryHolder();
+        }
+        return removed;
+    }
+
+    /**
+     * Removes all entries of a build (hard kill, deletion).
+     *
+     * @return {@code true} if at least one entry was removed
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean removeShareHoldersOfBuild(@NonNull String buildExternalizableId) {
+        boolean removed = false;
+        for (Iterator<String> it = shareHolders.iterator(); it.hasNext(); ) {
+            if (buildIdOfShareHolderEntry(it.next()).equals(buildExternalizableId)) {
+                it.remove();
+                removed = true;
+            }
+        }
+        if (removed) {
+            promotePrimaryHolder();
+        }
+        return removed;
+    }
+
+    /**
+     * Keeps the primary build in line with the holder entries: when the primary build has no entry
+     * left and others remain, the build of the oldest remaining entry becomes primary. Does nothing
+     * when the set is empty; freeing the resource is the caller's job.
+     */
+    private void promotePrimaryHolder() {
+        if (shareHolders.isEmpty() || (buildExternalizableId != null && isShareHolderBuild(buildExternalizableId))) {
+            return;
+        }
+        String newPrimary = buildIdOfShareHolderEntry(shareHolders.iterator().next());
+        LOGGER.fine("Resource " + name + ": primary holder " + buildExternalizableId + " left, " + newPrimary
+                + " becomes primary");
+        this.buildExternalizableId = newPrimary;
+        this.build = null; // resolved lazily by getBuild()
+        invalidateCaches();
+    }
+
+    /** Clears the share id and all holder entries. */
+    @Restricted(NoExternalUse.class)
+    public void clearShare() {
+        this.shareId = null;
+        this.shareHolders.clear();
     }
 
     public Task getTask() {
@@ -923,6 +1095,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         setReservedTimestamp(null);
         setNote("");
         setLockReason("");
+        // Share state is never configurable: drop anything a configuration source may carry.
+        clearShare();
     }
 
     /**
