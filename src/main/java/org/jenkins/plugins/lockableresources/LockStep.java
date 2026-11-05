@@ -397,16 +397,13 @@ public class LockStep extends Step implements Serializable {
             return;
         }
         if (label != null) {
-            throw new IllegalArgumentException(
-                    "The 'shareId' parameter cannot be combined with 'label'. Name each resource to share.");
+            throw new IllegalArgumentException(Messages.error_shareIdWithLabel());
         }
         if (quantity != 0) {
-            throw new IllegalArgumentException(
-                    "The 'shareId' parameter cannot be combined with 'quantity'. Name each resource to share.");
+            throw new IllegalArgumentException(Messages.error_shareIdWithQuantity());
         }
         if (serverId != null) {
-            throw new IllegalArgumentException(
-                    "The 'shareId' parameter cannot be combined with 'serverId': only local resources can be shared.");
+            throw new IllegalArgumentException(Messages.error_shareIdWithServerId());
         }
         if (isGroupOnly()) {
             throw new IllegalArgumentException(Messages.error_shareIdWithGroupOnly());
@@ -417,8 +414,7 @@ public class LockStep extends Step implements Serializable {
                     throw new IllegalArgumentException(Messages.error_shareIdWithGroupOnly());
                 }
                 if (e.label != null || e.quantity != 0) {
-                    throw new IllegalArgumentException("The 'shareId' parameter cannot be combined with 'extra'"
-                            + " entries that use 'label' or 'quantity'. Name each resource to share.");
+                    throw new IllegalArgumentException(Messages.error_shareIdWithExtraLabelOrQuantity());
                 }
             }
         }
