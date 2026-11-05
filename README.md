@@ -296,6 +296,59 @@ lock(resource: 'some_resource', skipIfLocked: true) {
 }
 ```
 
+#### Share a lock with downstream builds and nested blocks
+
+By default a `lock` block waits while any other block holds the resource, even one of the same
+build. With `shareId`, a block **joins** a hold of the same resources instead of waiting for it, when
+the hold was taken under the same `shareId` by this build or by one of its upstream builds:
+
+```groovy
+// upstream job
+lock(resource: 'test-env', shareId: 'release-42') {
+    build job: 'integration-tests'   // would wait forever for 'test-env' without shareId
+}
+
+// integration-tests job
+lock(resource: 'test-env', shareId: 'release-42') {
+    echo 'Runs while the upstream build still holds test-env'
+}
+```
+
+The same works inside one build. Parallel branches with the same `shareId` run together, and a
+nested block joins an outer `lock` of the same build, also one without `shareId`:
+
+```groovy
+lock(resource: 'test-env') {              // outer lock, no shareId
+    lock(resource: 'test-env', shareId: 'suite') {   // joins the outer lock instead of a deadlock
+        parallel(
+            a: { lock(resource: 'test-env', shareId: 'suite') { echo 'a' } },
+            b: { lock(resource: 'test-env', shareId: 'suite') { echo 'b' } }   // runs together with a
+        )
+    }
+}
+```
+
+Rules:
+
+- A downstream build joins only when it was started by a holder, i.e. it has an upstream cause
+  pointing to a build that holds the resource (the `build` step sets it; the chain may be several
+  builds long). A build started by hand, by a timer, by an SCM change, or replayed or rebuilt is not
+  downstream and waits as usual. Unrelated builds never join each other, even with the same
+  `shareId`; a different `shareId` waits too.
+- A resource is released only when the last block holding it ends. If the first holder ends earlier,
+  the oldest remaining holder build becomes the one shown as holder.
+- `shareId` works with named resources only: it cannot be combined with `label`, `quantity`, or
+  `extra` entries that use them.
+- `shareId` works with local resources only: it cannot be combined with `serverId`, nor be used when
+  the controller forwards its locks to a remote server (`forcedServerId`).
+- **Unlock** or **Reset** on the resources page ends the hold for every holder.
+
+The resources page shows the first holder build and, below it, *shared as `<shareId>` with N more*,
+which expands to the other holder builds. The build's *Lockable resources* page logs `joined` and
+`left` for the blocks that joined a hold, and the share id of each block.
+
+More in [Share a lock with downstream builds](src/doc/examples/share-lock-with-downstream-builds.md).
+
 #### Update resource properties
 
 The `updateLock` step allows pipelines to dynamically manage lockable resources without using the Jenkins UI.

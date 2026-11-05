@@ -23,6 +23,7 @@ import hudson.util.FormValidation;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -1293,12 +1294,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * End of one lock block: removes the block's holder entry from each resource and frees only the
      * resources that have no holder left. A resource without this entry (unlocked, reset or stolen in
      * the meantime, possibly taken by someone else since) is left alone.
+     *
+     * @return names of the resources the block left while other holders keep them; the others were
+     *     released (or were no longer held by the block)
      */
+    @NonNull
     @Restricted(NoExternalUse.class)
-    public void unlockShareHolder(
+    public List<String> unlockShareHolder(
             @Nullable List<String> resourceNames, @NonNull Run<?, ?> build, @NonNull String shareHolderEntry) {
+        List<String> left = new ArrayList<>();
         if (resourceNames == null || resourceNames.isEmpty()) {
-            return;
+            return left;
         }
         String buildId = build.getExternalizableId();
         List<LockableResource> toFree = new ArrayList<>();
@@ -1313,7 +1319,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 changed = true;
                 if (!r.hasShareHolders()) {
                     toFree.add(r);
-                } else if (!r.isShareHolderBuild(buildId)) {
+                    continue;
+                }
+                left.add(r.getName());
+                if (!r.isShareHolderBuild(buildId)) {
                     LockedResourcesBuildAction.findAndInitAction(build)
                             .removeUsedResources(Collections.singletonList(r.getName()));
                 }
@@ -1328,6 +1337,32 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (!toFree.isEmpty()) {
             scheduleQueueMaintenance();
         }
+        return left;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Names of the resources that the lock block with {@code shareHolderEntry} joined, i.e. that
+     * another block already held when it got them. The block was the first holder of the others.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<String> getJoinedResourceNames(
+            @NonNull Collection<String> resourceNames, @NonNull String shareHolderEntry) {
+        List<String> joined = new ArrayList<>();
+        synchronized (syncResources) {
+            for (String name : resourceNames) {
+                LockableResource r = fromName(name);
+                if (r == null || !r.hasShareHolder(shareHolderEntry)) {
+                    continue;
+                }
+                List<String> holders = r.getShareHolders();
+                if (!holders.get(0).equals(shareHolderEntry)) {
+                    joined.add(name);
+                }
+            }
+        }
+        return joined;
     }
 
     // ---------------------------------------------------------------------------
@@ -1446,7 +1481,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 nextContext.getContext(),
                 nextContext.getResourceDescription(),
                 nextContext.getVariableName(),
-                entry);
+                entry,
+                nextContext.getShareId());
     }
 
     private boolean proceedRemoteEntry(@NonNull RemoteQueueEntry entry) {
