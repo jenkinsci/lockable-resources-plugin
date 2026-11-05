@@ -63,6 +63,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         LinkedHashMap<String, List<LockableResourceProperty>> lockedResources = new LinkedHashMap<>();
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
+        if (step.shareId != null && RemoteLockRouting.isRemoteRequest(step, lrm)) {
+            // Also covers forcedServerId (delegated mode), which validate() cannot see.
+            throw new IllegalArgumentException("The 'shareId' parameter cannot be used with a remote lock"
+                    + " (serverId or forcedServerId): only local resources can be shared.");
+        }
         if (RemoteLockRouting.isRemoteRequest(step, lrm)) {
             remoteSession = new RemoteLockSession();
             return remoteSession.start(this);
@@ -98,6 +103,21 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     resourceHolderList.add(requirement);
                 }
                 LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
+                String entry = shareHolderEntry(run, getContext());
+                if (step.shareId != null) {
+                    // validate() allows only named resources with a share id
+                    available = lrm.acquireShared(resourceNames, run, step.shareId, entry, step.reason, logger);
+                    if (available == null) {
+                        onLockFailed(logger, resourceHolderList);
+                        return false;
+                    }
+                    for (LockableResource resource : available) {
+                        lockedResources.put(resource.getName(), resource.getProperties());
+                    }
+                    LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable, entry);
+                    lrm.admitJoinableContexts();
+                    return false;
+                }
                 // determine if there are enough resources available to proceed
                 available = lrm.getAvailableResources(resourceHolderList, logger, resourceSelectStrategy);
                 if (available == null || available.isEmpty()) {
@@ -106,7 +126,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     return false;
                 }
 
-                if (!lrm.lock(available, run, step.reason)) {
+                // The plain hold records its block too, so a nested lock(shareId: ...) of this build can join it.
+                if (!lrm.lock(available, run, step.reason, null, entry)) {
                     // this here is very defensive code, and you will probably never hit it. (hopefully)
                     LOGGER.warning("Internal program error: Can not lock resources: " + available);
                     onLockFailed(logger, resourceHolderList);
@@ -118,6 +139,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                 for (LockableResource resource : available) {
                     lockedResources.put(resource.getName(), resource.getProperties());
                 }
+                LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable, entry);
+                lrm.admitJoinableContexts();
+                return false;
             }
 
             LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
@@ -238,7 +262,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     step.priority,
                     step.reason,
                     step.timeoutForAllocateResource,
-                    step.timeoutUnit);
+                    step.timeoutUnit,
+                    step.shareId);
         }
     }
 
@@ -258,6 +283,20 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
 
     // ---------------------------------------------------------------------------
 
+    /**
+     * Holder entry of the lock block running in {@code context}: the build plus the id of the block's
+     * start node, which is unique per lock block within a build.
+     */
+    @NonNull
+    static String shareHolderEntry(@NonNull Run<?, ?> build, @NonNull StepContext context)
+            throws IOException, InterruptedException {
+        FlowNode node = context.get(FlowNode.class);
+        if (node == null) {
+            throw new IOException("No flow node for the lock step of " + build.getExternalizableId());
+        }
+        return LockableResource.shareHolderEntry(build.getExternalizableId(), node.getId());
+    }
+
     private static final int MAX_LOGGED_RESOURCE_NAMES = 5;
 
     static String formatResourceNames(Collection<String> names) {
@@ -275,12 +314,27 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         return shown.toString();
     }
 
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
             String resourceDescription,
             final String variable) {
+        proceed(lockedResources, context, resourceDescription, variable, null);
+    }
+
+    /**
+     * Starts the lock body. {@code shareHolderEntry} is the holder entry the block was recorded under
+     * (see {@link #shareHolderEntry}); the block end then removes only that entry. When {@code null}
+     * the block end frees the resources of the build as before.
+     */
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    public static void proceed(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            @edu.umd.cs.findbugs.annotations.CheckForNull final String shareHolderEntry) {
         Run<?, ?> build;
         FlowNode node;
         PrintStream logger;
@@ -302,8 +356,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             List<String> resourceNames = new ArrayList<>(lockedResources.keySet());
             LockedResourcesBuildAction.addLog(build, resourceNames, "acquired", resourceDescription);
             PauseAction.endCurrentPause(node);
-            BodyInvoker bodyInvoker =
-                    context.newBodyInvoker().withCallback(new Callback(resourceNames, resourceDescription));
+            BodyInvoker bodyInvoker = context.newBodyInvoker()
+                    .withCallback(new Callback(resourceNames, resourceDescription, shareHolderEntry));
             if (variable != null && !variable.isEmpty()) {
                 Map<String, String> resourceLabels = new LinkedHashMap<>();
                 for (String resourceName : resourceNames) {
@@ -436,16 +490,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         private final List<String> resourceNames;
         private final String resourceDescription;
 
-        Callback(List<String> resourceNames, String resourceDescription) {
+        /** Holder entry of this block; {@code null} for blocks started by older versions. */
+        @edu.umd.cs.findbugs.annotations.CheckForNull
+        private final String shareHolderEntry;
+
+        Callback(
+                List<String> resourceNames,
+                String resourceDescription,
+                @edu.umd.cs.findbugs.annotations.CheckForNull String shareHolderEntry) {
             this.resourceNames = resourceNames;
             this.resourceDescription = resourceDescription;
+            this.shareHolderEntry = shareHolderEntry;
         }
 
         @Override
         protected void finished(StepContext context) throws Exception {
             Run<?, ?> build = context.get(Run.class);
             LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
-            LockableResourcesManager.get().unlockNames(this.resourceNames, build);
+            if (this.shareHolderEntry != null) {
+                LockableResourcesManager.get().unlockShareHolder(this.resourceNames, build, this.shareHolderEntry);
+            } else {
+                LockableResourcesManager.get().unlockNames(this.resourceNames, build);
+            }
             String message = "Lock released on resource [" + this.resourceDescription + "]";
             if (this.resourceNames != null && !this.resourceNames.isEmpty()) {
                 message += ", resources: " + formatResourceNames(this.resourceNames);
