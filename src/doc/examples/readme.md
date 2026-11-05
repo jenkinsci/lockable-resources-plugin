@@ -18,3 +18,4 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Lock with allocation timeout](lock-with-timeout.md)
 - [Remote Lock REST API (curl examples)](remote-api-curl.md)
 - [Remote lock from Jenkins Pipeline (local gate + remote lock)](remote-lock-pipeline-pattern.md)
+- [Share a lock with downstream builds and nested blocks](share-lock-with-downstream-builds.md)

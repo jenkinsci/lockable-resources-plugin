@@ -171,6 +171,35 @@ THE SOFTWARE.
                 </j:when>
                 <j:when test="${resource.locked}">
                   <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>
+                  <!-- Shared hold (lock(shareId: ...)): the primary build above, the other holders below.
+                       The share id and the build names are user-controlled: plain escaped text only. -->
+                  <j:if test="${resource.shareId != null}">
+                    <j:set var="otherHolderCount" value="${resource.otherShareHolderBuilds.size()}"/>
+                    <j:choose>
+                      <j:when test="${otherHolderCount == 0}">
+                        <div class="lr-share jenkins-!-color-secondary">
+                          ${%resource.heldBy.sharedAs} <code class="lr-share__id">${resource.shareId}</code>
+                        </div>
+                      </j:when>
+                      <j:otherwise>
+                        <details class="lr-share">
+                          <summary class="jenkins-!-color-secondary">
+                            ${%resource.heldBy.sharedAs} <code class="lr-share__id">${resource.shareId}</code>
+                            ${%resource.heldBy.withMore(otherHolderCount)}
+                          </summary>
+                          <j:set var="visibleHolders" value="${resource.visibleOtherShareHolderRuns}"/>
+                          <ul class="lr-share__holders">
+                            <j:forEach var="holderRun" items="${visibleHolders}">
+                              <li><a class="jenkins-table__link" href="${rootURL}/${holderRun.url}">${holderRun.fullDisplayName}</a></li>
+                            </j:forEach>
+                            <j:if test="${visibleHolders.size() lt otherHolderCount}">
+                              <li class="jenkins-!-color-secondary">${%resource.heldBy.notVisible(otherHolderCount - visibleHolders.size())}</li>
+                            </j:if>
+                          </ul>
+                        </details>
+                      </j:otherwise>
+                    </j:choose>
+                  </j:if>
                 </j:when>
                 <j:when test="${resource.queued}">
                   ${resource.queueItemProject}
