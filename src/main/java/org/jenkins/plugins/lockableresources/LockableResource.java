@@ -808,6 +808,44 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return builds;
     }
 
+    /**
+     * Builds holding this resource besides the primary holder, as externalizable ids, in acquisition
+     * order. Empty when the hold is not shared with another build.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<String> getOtherShareHolderBuilds() {
+        List<String> others;
+        synchronized (LockableResourcesManager.syncResources) {
+            others = getShareHolderBuilds();
+        }
+        others.remove(buildExternalizableId);
+        return others;
+    }
+
+    /**
+     * The builds of {@link #getOtherShareHolderBuilds()} that still exist and that the current user may
+     * see, for the resources page.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<Run<?, ?>> getVisibleOtherShareHolderRuns() {
+        List<Run<?, ?>> runs = new ArrayList<>();
+        for (String id : getOtherShareHolderBuilds()) {
+            // resolved with the current user's permissions: null when deleted or not readable
+            Run<?, ?> run;
+            try {
+                run = Run.fromExternalizableId(id);
+            } catch (IllegalArgumentException | org.springframework.security.access.AccessDeniedException e) {
+                run = null; // malformed id, or the job is discoverable but not readable
+            }
+            if (run != null) {
+                runs.add(run);
+            }
+        }
+        return runs;
+    }
+
     /** Snapshot of the holder entries, in acquisition order. */
     @NonNull
     @Restricted(NoExternalUse.class)

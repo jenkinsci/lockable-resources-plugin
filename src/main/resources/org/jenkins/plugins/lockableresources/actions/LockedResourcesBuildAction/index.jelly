@@ -61,6 +61,7 @@ THE SOFTWARE.
               <th>${%table.column.action}</th>
               <th>${%table.column.step}</th>
               <th>${%table.column.name}</th>
+              <th>${%table.column.shareId}</th>
               </tr>
             </thead>
             <tbody>
@@ -79,6 +80,12 @@ THE SOFTWARE.
                   <td>${loEntry.action}</td>
                   <td>${loEntry.step}</td>
                   <td>${loEntry.name}</td>
+                  <!-- user-controlled: escaped by escape-by-default; empty for entries without a share id -->
+                  <td>
+                    <j:if test="${loEntry.shareId != null}">
+                      <code>${loEntry.shareId}</code>
+                    </j:if>
+                  </td>
                 </tr>
               </j:forEach>
             </tbody>

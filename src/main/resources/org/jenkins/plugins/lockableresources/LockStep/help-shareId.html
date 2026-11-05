@@ -1,0 +1,36 @@
+<div>
+  <p>
+    An optional share id. A lock block with a share id does not wait for resources that are
+    already held under <strong>the same share id</strong> by <strong>this build</strong> or by one
+    of its <strong>upstream builds</strong>: it joins that hold and runs at the same time.
+    A resource is released only when the last block holding it ends.
+  </p>
+  <p>
+    A build counts as downstream only when it was started by a holder, for example with the
+    <code>build</code> step (an upstream cause). A build started by hand, by a timer, or replayed
+    or rebuilt, waits as usual. Builds that are not related never join each other, even with the
+    same share id.
+  </p>
+  <p>
+    A block with a share id can also join a lock of the same resources held by an outer
+    <code>lock</code> block of the same build, with or without a share id.
+  </p>
+  <p>
+    Only named resources can be shared: a share id cannot be combined with <code>label</code>,
+    <code>quantity</code>, or <code>extra</code> entries that use them. Only local resources can be
+    shared: a share id cannot be used with <code>serverId</code> or when this controller forwards
+    its locks to a remote server.
+  </p>
+  <p>
+    Example:
+    <pre>// upstream job
+lock(resource: 'test-env', shareId: 'release-42') {
+    build job: 'integration-tests'
+}
+
+// integration-tests job, started by the build step above
+lock(resource: 'test-env', shareId: 'release-42') {
+    // runs while the upstream build still holds 'test-env'
+}</pre>
+  </p>
+</div>
