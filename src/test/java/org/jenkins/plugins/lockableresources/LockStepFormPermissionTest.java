@@ -56,6 +56,7 @@ class LockStepFormPermissionTest {
             assertEquals(strategyNames(), names(d.doFillResourceSelectStrategyItems(job)));
             assertEquals(List.of("SECONDS", "MINUTES", "HOURS"), values(d.doFillTimeoutUnitItems(job)));
             assertTrue(d.doAutoCompleteResource("res", job).getValues().isEmpty());
+            assertTrue(d.doAutoCompleteLabel("lab", job).getValues().isEmpty());
         }
     }
 
@@ -73,6 +74,10 @@ class LockStepFormPermissionTest {
             assertEquals(
                     List.of("resource1"), d.doAutoCompleteResource("res", job).getValues());
         }
+
+        assertEquals(List.of("label1"), d.doAutoCompleteLabel("lab", job).getValues());
+        assertTrue(d.doAutoCompleteLabel("xyz", job).getValues().isEmpty());
+        assertTrue(d.doAutoCompleteLabel("   ", job).getValues().isEmpty());
     }
 
     private static List<String> strategyNames() {

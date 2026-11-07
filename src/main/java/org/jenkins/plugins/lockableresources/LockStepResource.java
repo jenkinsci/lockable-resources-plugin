@@ -5,6 +5,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.AutoCompletionCandidates;
@@ -230,6 +231,15 @@ public class LockStepResource extends AbstractDescribableImpl<LockStepResource> 
                 return new AutoCompletionCandidates();
             }
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
+        }
+
+        @RequirePOST
+        public AutoCompletionCandidates doAutoCompleteLabel(@QueryParameter String value, @AncestorInPath Item item) {
+            if (!hasConfigurePermission(item)) {
+                return new AutoCompletionCandidates();
+            }
+            return ExtensionList.lookupSingleton(RequiredResourcesProperty.DescriptorImpl.class)
+                    .doAutoCompleteLabelName(value, item);
         }
 
         /**
