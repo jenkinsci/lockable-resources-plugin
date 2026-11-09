@@ -52,11 +52,19 @@ class LockStepFormPermissionTest {
         try (ACLContext ignored = ACL.as2(User.getById("reader", true).impersonate2())) {
             assertEquals(FormValidation.Kind.OK, d.doCheckLabel("label1", null, job).kind);
             assertEquals(FormValidation.Kind.OK, d.doCheckResource("resource1", null, job).kind);
+            assertEquals(FormValidation.Kind.OK, d.doCheckLabel("unknown-label", null, job).kind);
+            assertEquals(FormValidation.Kind.OK, d.doCheckLabel(null, null, job).kind);
             assertEquals(FormValidation.Kind.OK, d.doCheckResourceSelectStrategy("sequential", job).kind);
-            assertEquals(strategyNames(), names(d.doFillResourceSelectStrategyItems(job)));
-            assertEquals(List.of("SECONDS", "MINUTES", "HOURS"), values(d.doFillTimeoutUnitItems(job)));
+            assertEquals(FormValidation.Kind.OK, d.doCheckResourceSelectStrategy("bogus", job).kind);
+            assertTrue(d.doFillResourceSelectStrategyItems(job).isEmpty());
+            assertTrue(d.doFillTimeoutUnitItems(job).isEmpty());
             assertTrue(d.doAutoCompleteResource("res", job).getValues().isEmpty());
             assertTrue(d.doAutoCompleteLabel("lab", job).getValues().isEmpty());
+
+            LockStepResource.DescriptorImpl rd = j.jenkins.getDescriptorByType(LockStepResource.DescriptorImpl.class);
+            assertEquals(FormValidation.Kind.OK, rd.doCheckLabel("unknown-label", null, job).kind);
+            assertEquals(FormValidation.Kind.OK, rd.doCheckResource("resource1", null, job).kind);
+            assertTrue(rd.doAutoCompleteResource("res", job).getValues().isEmpty());
         }
     }
 
