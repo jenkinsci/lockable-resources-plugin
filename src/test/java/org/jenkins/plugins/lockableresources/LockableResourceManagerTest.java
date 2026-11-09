@@ -244,15 +244,15 @@ class LockableResourceManagerTest {
             queuedContexts.add(matchingQueued);
             try {
                 lrmLogger.setLevel(java.util.logging.Level.INFO);
-                org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(
-                        Collections.singletonList(new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(Collections.singletonList(
+                        new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
                                 Collections.emptyList(), "gpu-pool", 1))));
                 assertEquals(0, nonMatchingGetBuildCalls.get());
                 assertEquals(0, matchingGetBuildCalls.get());
 
                 lrmLogger.setLevel(java.util.logging.Level.FINE);
-                org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(
-                        Collections.singletonList(new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
+                org.junit.jupiter.api.Assertions.assertNull(manager.getAvailableResources(Collections.singletonList(
+                        new org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct(
                                 Collections.emptyList(), "gpu-pool", 1))));
                 assertEquals(0, nonMatchingGetBuildCalls.get());
                 assertEquals(1, matchingGetBuildCalls.get());
