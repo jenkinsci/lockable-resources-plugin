@@ -1,0 +1,9 @@
+<div>
+  Select resources only from this group. Blank selects <code>common</code>, including
+  resources configured before groups were introduced. Labels remain capabilities and
+  are matched within the selected group. Named resources must belong to the group.
+  An unknown group or a group with no matching resources fails; occupied matching
+  resources wait without falling back to another group.
+  With a nonblank group and no resource, label, or extra selector, select the whole
+  group: quantity zero means all members and a positive quantity selects that many.
+</div>

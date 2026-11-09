@@ -1,0 +1,13 @@
+unclassified:
+  lockableResourcesManager:
+    resourceGroups:
+      - name: "production"
+        description: "Devices dedicated to production validation"
+      - name: "empty"
+        description: "Devices planned for future validation"
+    declaredResources:
+      - name: "legacy-device"
+        labels: "device"
+      - name: "protected-device"
+        labels: "device"
+        group: "production"

@@ -10,6 +10,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockStep;
+import org.jenkins.plugins.lockableresources.LockableResource;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -22,6 +23,22 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
  */
 @Restricted(NoExternalUse.class)
 public final class RemoteLockRequest {
+
+    private final String group;
+    private final boolean groupOnly;
+
+    public boolean isGroupOnly() {
+        return groupOnly;
+    }
+
+    public String getGroup() {
+        return LockableResource.normalizeGroup(group);
+    }
+
+    @CheckForNull
+    public String getEffectiveGroup(@NonNull ExtraResource selector) {
+        return selector.getGroup() == null ? group : selector.getGroup();
+    }
 
     @CheckForNull
     private final String resource;
@@ -66,6 +83,41 @@ public final class RemoteLockRequest {
             long timeoutForAllocateResource,
             @NonNull String timeoutUnit,
             @CheckForNull String reason) {
+        this(
+                resource,
+                label,
+                quantity,
+                variable,
+                inversePrecedence,
+                resourceSelectStrategy,
+                skipIfLocked,
+                extra,
+                priority,
+                timeoutForAllocateResource,
+                timeoutUnit,
+                reason,
+                null);
+    }
+
+    public RemoteLockRequest(
+            @CheckForNull String resource,
+            @CheckForNull String label,
+            int quantity,
+            @CheckForNull String variable,
+            boolean inversePrecedence,
+            @NonNull String resourceSelectStrategy,
+            boolean skipIfLocked,
+            @CheckForNull List<ExtraResource> extra,
+            int priority,
+            long timeoutForAllocateResource,
+            @NonNull String timeoutUnit,
+            @CheckForNull String reason,
+            @CheckForNull String group) {
+        this.group = hudson.Util.fixEmptyAndTrim(group);
+        this.groupOnly = hudson.Util.fixEmptyAndTrim(group) != null
+                && resource == null
+                && label == null
+                && (extra == null || extra.isEmpty());
         this.resource = resource;
         this.label = label;
         this.quantity = quantity;
@@ -144,7 +196,7 @@ public final class RemoteLockRequest {
         List<ExtraResource> extra = null;
         if (step.extra != null && !step.extra.isEmpty()) {
             extra = step.extra.stream()
-                    .map(r -> new ExtraResource(r.resource, r.label, r.quantity))
+                    .map(r -> new ExtraResource(r.resource, r.label, r.quantity, r.getGroup()))
                     .collect(Collectors.toList());
         }
         return new RemoteLockRequest(
@@ -159,13 +211,27 @@ public final class RemoteLockRequest {
                 step.priority,
                 step.timeoutForAllocateResource,
                 step.timeoutUnit,
-                step.reason);
+                step.reason,
+                step.isGroupOnly()
+                                || step.resource != null
+                                || step.label != null
+                                || (step.extra != null && !step.extra.isEmpty())
+                        ? step.getGroup()
+                        : null);
     }
 
     // -----------------------------------------------------------------------
 
     /** Represents an additional resource in a multi-resource lock request. */
+    @Restricted(NoExternalUse.class)
     public static final class ExtraResource {
+        private final String group;
+
+        @CheckForNull
+        public String getGroup() {
+            return group;
+        }
+
         @CheckForNull
         private final String resource;
 
@@ -175,6 +241,12 @@ public final class RemoteLockRequest {
         private final int quantity;
 
         public ExtraResource(@CheckForNull String resource, @CheckForNull String label, int quantity) {
+            this(resource, label, quantity, null);
+        }
+
+        public ExtraResource(
+                @CheckForNull String resource, @CheckForNull String label, int quantity, @CheckForNull String group) {
+            this.group = hudson.Util.fixEmptyAndTrim(group);
             this.resource = resource;
             this.label = label;
             this.quantity = quantity;

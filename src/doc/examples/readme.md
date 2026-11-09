@@ -11,6 +11,7 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Locking multiple stages in declarative pipeline](locking-multiple-stages-in-declarative-pipeline.md)
 - [Locking a random free resource](locking-random-free-resource.md)
 - [Resource properties](resource-properties.md)
+- [Global resource groups](resource-groups.md)
 - [Use build parameters in a Freestyle resource-selection script](groovy-script-build-parameters.md)
 - [Scripted vs declarative pipeline](scripted-vs-declarative-pipeline.md)
 - [Timeout inside lock](timeout-inside-lock.md)

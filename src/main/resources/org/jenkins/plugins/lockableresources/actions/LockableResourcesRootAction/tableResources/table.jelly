@@ -38,16 +38,16 @@ THE SOFTWARE.
     >
       <thead>
         <tr>
-          <th data-sort-disable="true"><input type="checkbox" class="lr-select-all" aria-label="${%resource.editor.selectAll}" /></th>
-          <th>${%resources.table.column.index}</th>
-          <th>${%resources.table.column.resource}</th>
-          <th>${%resources.table.column.status}</th>
-          <th>${%resources.table.column.heldBy}</th>
-          <th>${%resources.table.column.reason}</th>
-          <th>${%resources.table.column.since}</th>
-          <th>${%resources.table.column.labels}</th>
-          <th>${%resources.table.column.properties}</th>
-          <th data-sort-disable="true">${%resources.table.column.action}</th>
+          <th class="lr-col-select" data-sort-disable="true"><input type="checkbox" class="lr-select-all" aria-label="${%resource.editor.selectAll}" /></th>
+          <th class="lr-col-index" data-sort-disable="true">${%resources.table.column.index}</th>
+          <th class="lr-col-resource">${%resources.table.column.resource}</th>
+          <th class="lr-col-status">${%resources.table.column.status}</th>
+          <th class="lr-col-held-by">${%resources.table.column.heldBy}</th>
+          <th class="lr-col-reason">${%resources.table.column.reason}</th>
+          <th class="lr-col-since">${%resources.table.column.since}</th>
+          <th class="lr-col-labels">${%resources.table.column.labels}</th>
+          <th class="lr-col-properties">${%resources.table.column.properties}</th>
+          <th class="lr-col-actions" data-sort-disable="true">${%resources.table.column.action}</th>
         </tr>
 
       </thead>
@@ -56,19 +56,20 @@ THE SOFTWARE.
           <tr data-resource-name="${resource.name}"
               data-resource-description="${resource.description != null ? resource.description : ''}"
               data-resource-labels="${resource.labels != null ? resource.labels : ''}"
+              data-resource-group="${resource.group}"
               data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : 'free'))}"
               data-resource-owner="${resource.reservedBy != null ? resource.reservedBy : (resource.buildName != null ? resource.buildName : '')}">
             <!-- Checkbox -->
-            <td><input type="checkbox" class="lr-select-resource" data-resource-name="${resource.name}" aria-label="${%resource.editor.selectOne(resource.name)}" /></td>
+            <td class="lr-col-select"><input type="checkbox" class="lr-select-resource" data-resource-name="${resource.name}" aria-label="${%resource.editor.selectOne(resource.name)}" /></td>
             <!-- **************************************************************
                  Index
             -->
-            <td>${idx.index + 1}</td>
+            <td class="lr-col-index lr-resource-index">${idx.index + 1}</td>
 
             <!-- **************************************************************
                  Column with common resource data
             -->
-            <td>
+            <td class="lr-col-resource">
               <div class="lr-resource-header">
                 <strong>${resource.name}</strong>
                 <j:if test="${resource.ephemeral}">
@@ -82,6 +83,7 @@ THE SOFTWARE.
                   </a>
                 </l:hasPermission>
               </div>
+              <div class="lr-resource-group">${resource.group}</div>
               <j:if test="${resource.description != null and !resource.description.isEmpty()}">
                 <div class="lr-resource-description">
                   ${resource.description}
@@ -116,7 +118,7 @@ THE SOFTWARE.
               </j:otherwise>
             </j:choose>
 
-            <td class="jenkins-!-${cssClass}-color">
+            <td class="lr-col-status jenkins-!-${cssClass}-color">
               <j:choose>
                 <!-- Reserved by user, config or API -->
                 <j:when test="${resource.reservedBy != null}">
@@ -144,7 +146,7 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Held By column
             -->
-            <td>
+            <td class="lr-col-held-by">
               <j:choose>
                 <j:when test="${resource.reservedBy != null}">
                   <a class="jenkins-table__link" href="${rootURL}/user/${resource.reservedBy}">${resource.reservedBy}</a>
@@ -182,7 +184,7 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Reason column
             -->
-            <td>
+            <td class="lr-col-reason">
               <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
                 ${resource.lockReason}
               </j:if>
@@ -193,7 +195,7 @@ THE SOFTWARE.
             -->
             <j:choose>
               <j:when test="${resource.reservedTimestamp != null}">
-                <td data="${resource.reservedTimestamp.time}">
+                <td class="lr-col-since" data="${resource.reservedTimestamp.time}">
                   <i:formatDate
                     value="${resource.reservedTimestamp}"
                     type="both"
@@ -205,7 +207,7 @@ THE SOFTWARE.
                 </td>
               </j:when>
               <j:otherwise>
-                <td></td>
+                <td class="lr-col-since"></td>
               </j:otherwise>
             </j:choose>
 
@@ -213,7 +215,7 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Labels column
             -->
-            <td>
+            <td class="lr-col-labels">
               <!--todo replace it by getLabelsAsList() -->
               <j:forEach var="label" items="${resource.getLabelsAsList()}">
                 <a class="jenkins-table__link model-link" href="${rootURL}/label/${label}">
@@ -227,7 +229,7 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Table with assigned properties
             -->
-            <td>
+            <td class="lr-col-properties">
               <j:if test="${resource.properties.size() gt 0}">
                 <div class="lr-properties-pills">
                   <j:forEach var="property" items="${resource.properties}">
@@ -243,7 +245,7 @@ THE SOFTWARE.
             <!-- **************************************************************
                  Action column
             -->
-            <td>
+            <td class="lr-col-actions">
               <div class="jenkins-table__cell__button-wrapper">
               <j:choose>
                 <!-- Remote-locked resource: show force-release button (admin override for STALE/orphaned locks) -->

@@ -5,12 +5,16 @@
  */
 package org.jenkins.plugins.lockableresources;
 
+import static org.jenkins.plugins.lockableresources.queue.Utils.containsVariable;
+
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Util;
+import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.BuildListener;
 import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.Job;
@@ -20,9 +24,9 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.lockableresources.actions.GroupLockFailureAction;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.kohsuke.stapler.AncestorInPath;
@@ -34,7 +38,34 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
 
+    @Override
+    public boolean prebuild(AbstractBuild<?, ?> build, BuildListener listener) {
+        if (build.getAction(GroupLockFailureAction.class) != null) {
+            listener.error(Messages.error_groupChangedBeforeBuild());
+            return false;
+        }
+        return super.prebuild(build, listener);
+    }
+
     private final String resourceNames;
+    private String group;
+
+    /** @since TODO */
+    public String getGroup() {
+        return LockableResource.normalizeGroup(group);
+    }
+
+    /** @since TODO */
+    @DataBoundSetter
+    public void setGroup(String group) {
+        this.group = Util.fixEmptyAndTrim(group);
+    }
+
+    /** @since TODO */
+    public boolean isGroupOnly() {
+        return group != null && resourceNames == null && labelName == null && resourceMatchScript == null;
+    }
+
     private final String resourceNamesVar;
     private final String resourceNumber;
     private final String labelName;
@@ -107,7 +138,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
         if (resourceMatchScript == null
                 && labelName != null
                 && labelName.startsWith(LockableResource.GROOVY_LABEL_MARKER)) {
-            return new RequiredResourcesProperty(
+            RequiredResourcesProperty migrated = new RequiredResourcesProperty(
                     resourceNames,
                     resourceNamesVar,
                     resourceNumber,
@@ -115,6 +146,8 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                     new SecureGroovyScript(
                                     labelName.substring(LockableResource.GROOVY_LABEL_MARKER.length()), false, null)
                             .configuring(ApprovalContext.create()));
+            migrated.setGroup(group);
+            return migrated;
         }
 
         return this;
@@ -178,13 +211,36 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
     @Extension
     public static class DescriptorImpl extends JobPropertyDescriptor {
 
-        /** Detects {@code ${...}} variable references that are resolved at build time. */
-        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{[^}]+}");
-
         @NonNull
         @Override
         public String getDisplayName() {
             return Messages.RequiredResourcesProperty_displayName();
+        }
+
+        /** @since TODO */
+        @RequirePOST
+        public FormValidation doCheckGroup(
+                @QueryParameter String value,
+                @QueryParameter String resourceNames,
+                @QueryParameter String labelName,
+                @AncestorInPath Item item) {
+            checkPermission(item);
+            if (containsVariable(value) || containsVariable(resourceNames) || containsVariable(labelName)) {
+                return FormValidation.ok();
+            }
+            try {
+                String names = Util.fixEmptyAndTrim(resourceNames);
+                if (names != null) {
+                    for (String name : names.split("\\s+")) {
+                        LockableResourcesManager.get().validateGroup(name, null, value);
+                    }
+                } else {
+                    LockableResourcesManager.get().validateGroup(null, Util.fixEmptyAndTrim(labelName), value);
+                }
+                return FormValidation.ok();
+            } catch (IllegalArgumentException e) {
+                return FormValidation.error(e.getMessage());
+            }
         }
 
         @Override
@@ -222,14 +278,14 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 List<String> wrongNames = new ArrayList<>();
                 for (String name : names.split("\\s+")) {
                     // Skip validation for names containing build-parameter references
-                    if (VARIABLE_PATTERN.matcher(name).find()) {
+                    if (containsVariable(name)) {
                         continue;
                     }
                     boolean found = LockableResourcesManager.get().resourceExist(name);
                     if (!found) wrongNames.add(name);
                 }
                 if (wrongNames.isEmpty()) {
-                    if (VARIABLE_PATTERN.matcher(names).find()) {
+                    if (containsVariable(names)) {
                         return FormValidation.warning(Messages.warning_resourceNameContainsVariable());
                     }
                     return FormValidation.ok();
@@ -257,7 +313,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
                 return FormValidation.error(Messages.error_labelAndNameOrGroovySpecified());
             } else {
                 // Skip label validation when it contains build-parameter references
-                if (VARIABLE_PATTERN.matcher(label).find()) {
+                if (containsVariable(label)) {
                     return FormValidation.warning(Messages.warning_labelContainsVariable());
                 }
                 if (LockableResourcesManager.get().isValidLabel(label)) {
@@ -288,7 +344,7 @@ public class RequiredResourcesProperty extends JobProperty<Job<?, ?>> {
             }
 
             // Skip numeric validation when number contains build-parameter references
-            if (VARIABLE_PATTERN.matcher(number).find()) {
+            if (containsVariable(number)) {
                 return FormValidation.warning(Messages.warning_resourceNumberContainsVariable());
             }
 
