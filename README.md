@@ -86,6 +86,9 @@ configuration, selection rules, migration, and examples.
 When configuring the job, select **This build requires lockable resources**.
 Please see the help item for each field for details.
 
+For a complete example using a build parameter to select a resource by name or
+label, see [Use build parameters in a Freestyle resource-selection script](src/doc/examples/groovy-script-build-parameters.md).
+
 ### Using a resource in a pipeline job
 
 When the `lock` step is used in a Pipeline, if the resource to be locked isn't
