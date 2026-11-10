@@ -760,6 +760,14 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         this.releaseAt = Math.max(0, releaseAt);
     }
 
+    /**
+     * Whether a locking build is recorded, even if it can't be loaded yet. Unlike {@link
+     * #isLocked()}, this is true during startup before jobs are loaded.
+     */
+    boolean hasRecordedBuild() {
+        return buildExternalizableId != null;
+    }
+
     public String getRemoteLockedBy() {
         return remoteLockedBy;
     }
