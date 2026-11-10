@@ -26,7 +26,8 @@ class LockedResourcesBuildActionApiTest {
         job.setDefinition(new CpsFlowDefinition("lock('r1') {}", true));
         WorkflowRun run = j.buildAndAssertSuccess(job);
 
-        JSONObject payload = j.getJSON(run.getUrl() + "locked-resources/api/json").getJSONObject();
+        JSONObject payload =
+                j.getJSON(run.getUrl() + "locked-resources/api/json").getJSONObject();
         JSONArray logs = payload.getJSONArray("logs");
         assertThat(logs.size(), greaterThan(0));
 
