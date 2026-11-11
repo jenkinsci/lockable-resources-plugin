@@ -1,5 +1,8 @@
 package org.jenkins.plugins.lockableresources;
 
+import static java.text.DateFormat.MEDIUM;
+import static java.text.DateFormat.SHORT;
+
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
@@ -7,7 +10,10 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -288,7 +294,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             build = context.get(Run.class);
             node = context.get(FlowNode.class);
             logger = context.get(TaskListener.class).getLogger();
-            String message = "Lock acquired on [" + resourceDescription + "]";
+            DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+            String timestamp = format.format(new Date());
+            String message = "Lock acquired on [" + resourceDescription + "] at " + timestamp;
             if (!lockedResources.isEmpty()) {
                 message += ", resources: " + formatResourceNames(lockedResources.keySet());
             }
@@ -446,7 +454,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             Run<?, ?> build = context.get(Run.class);
             LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
             LockableResourcesManager.get().unlockNames(this.resourceNames, build);
-            String message = "Lock released on resource [" + this.resourceDescription + "]";
+            DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+            String timestamp = format.format(new Date());
+            String message = "Lock released on resource [" + this.resourceDescription + "] at " + timestamp;
             if (this.resourceNames != null && !this.resourceNames.isEmpty()) {
                 message += ", resources: " + formatResourceNames(this.resourceNames);
             }

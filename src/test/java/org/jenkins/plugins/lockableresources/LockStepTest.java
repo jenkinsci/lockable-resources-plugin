@@ -1908,7 +1908,8 @@ class LockStepTest extends LockStepTestBase {
         p.setDefinition(
                 new CpsFlowDefinition("lock(label: 'label1', quantity: 1) {\n" + "  echo 'inside'\n" + "}", true));
         WorkflowRun b1 = j.buildAndAssertSuccess(p);
-        j.assertLogContains("Lock acquired on [Label: label1, Quantity: 1], resources: [resource1]", b1);
+        j.assertLogContains("Lock acquired on [Label: label1, Quantity: 1] at ", b1);
+        j.assertLogContains(", resources: [resource1]", b1);
     }
 
     @Test
@@ -1966,6 +1967,7 @@ class LockStepTest extends LockStepTestBase {
         p.setDefinition(
                 new CpsFlowDefinition("lock(label: 'label1', quantity: 1) {\n" + "  echo 'inside'\n" + "}", true));
         WorkflowRun b1 = j.buildAndAssertSuccess(p);
-        j.assertLogContains("Lock released on resource [Label: label1, Quantity: 1], resources: [resource1]", b1);
+        j.assertLogContains("Lock released on resource [Label: label1, Quantity: 1] at ", b1);
+        j.assertLogContains(", resources: [resource1]", b1);
     }
 }
