@@ -1967,9 +1967,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Predicate<LockableResource> candidateFilter) {
         List<List<LockableResource>> candidatesPerSlot = new ArrayList<>();
         for (LockableResourcesStruct requirement : requirements) {
-            if (requirement.label != null && !requirement.label.isBlank()) {
-                List<LockableResource> possible = getResourcesWithLabel(requirement.label);
-                possible.removeIf(r -> !candidateFilter.test(r));
+            // Same group scoping as the non-distinct path: a requirement only ever sees its own group.
+            Predicate<LockableResource> groupFilter =
+                    candidateFilter.and(r -> requirement.getGroup().equals(r.getGroup()));
+            if (requirement.isGroupOnly() || (requirement.label != null && !requirement.label.isBlank())) {
+                List<LockableResource> possible = requirement.isGroupOnly()
+                        ? new ArrayList<>(getResources())
+                        : getResourcesWithLabel(requirement.label);
+                possible.removeIf(r -> !groupFilter.test(r));
                 int amount = 0;
                 if (requirement.requiredNumber != null) {
                     try {
@@ -2003,7 +2008,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 List<String> names = getResourcesNames(requirement.required);
                 List<LockableResource> available = fromNames(names, /*create un-existent resources */ true);
                 if (available.size() != names.size()
-                        || available.stream().anyMatch(r -> !candidateFilter.test(r))
+                        || available.stream().anyMatch(r -> !groupFilter.test(r))
                         || !areAllAvailable(available)) {
                     printLogs("Named resources are not available: " + names, logger, Level.FINE);
                     return null;
