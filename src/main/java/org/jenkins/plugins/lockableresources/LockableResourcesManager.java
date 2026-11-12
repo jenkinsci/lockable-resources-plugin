@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -2554,11 +2555,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
             synchronized (this) {
                 se = saveExecutor;
                 if (se == null) {
-                    saveExecutor = se = Executors.newSingleThreadScheduledExecutor(r -> {
+                    ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1, r -> {
                         Thread t = new Thread(r, "lockable-resources-async-save");
                         t.setDaemon(true);
                         return t;
                     });
+                    // on shutdown() drop delayed saves that have not started yet; flushPendingSave()
+                    // performs them synchronously instead.
+                    stpe.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+                    saveExecutor = se = stpe;
                 }
             }
         }
@@ -2578,7 +2583,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (asyncSaveEnabled && saveCoalesceMs > 0) {
             if (getSavePending().compareAndSet(false, true)) {
-                getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
+                try {
+                    getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
+                } catch (RejectedExecutionException e) {
+                    // executor already shut down (Jenkins is terminating): save synchronously
+                    doSave();
+                }
             }
         } else {
             doSave();
@@ -2610,7 +2620,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         ScheduledExecutorService se = lrm.saveExecutor;
         if (se != null) {
-            se.shutdownNow();
+            // Do not interrupt a save that is already running: an interrupt closes the file
+            // channel and the write fails (ClosedChannelException), losing the state. shutdown()
+            // only drops delayed saves that have not started yet (see getSaveExecutor()); those
+            // are performed below because savePending is still true for them.
+            se.shutdown();
+            try {
+                if (!se.awaitTermination(10, TimeUnit.SECONDS)) {
+                    LOGGER.warning("Timed out waiting for the async save to finish during shutdown");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         if (lrm.savePending != null && lrm.savePending.compareAndSet(true, false)) {
             lrm.doSave();
