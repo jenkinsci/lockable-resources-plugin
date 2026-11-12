@@ -464,6 +464,113 @@ class LockStepShareIdTest extends LockStepTestBase {
         assertFalse(res("r1").isLocked());
     }
 
+    /** Issue #549: refusing the join would deadlock, as the holder waits for the block that joins. */
+    @Test
+    void joinsHoldOnDisabledResourceWithoutDeadlock(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        declare("r1");
+
+        // a downstream build the parent waits for joins the parent's hold
+        WorkflowJob parent = job(j, "parent", """
+                lock(resource: 'r1', shareId: 'x') {
+                  semaphore 'parent'
+                  build job: 'child', wait: true
+                  echo 'child done'
+                }
+                echo 'parent done'
+                """);
+        WorkflowJob child = job(j, "child", "lock(resource: 'r1', shareId: 'x') { echo 'child inside' }");
+
+        WorkflowRun p = parent.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("parent/1", p);
+        // disabling does not take the resource from its holder
+        lrm.setDisabledCause(res("r1"), "broken");
+        assertTrue(res("r1").isDisabled());
+        assertEquals(p, res("r1").getBuild());
+        assertEquals(Collections.singletonList(p.getExternalizableId()), holders("r1"));
+
+        SemaphoreStep.success("parent/1", null);
+        WorkflowRun c = firstBuild(child);
+        j.assertBuildStatusSuccess(j.waitForCompletion(c));
+        j.assertLogContains("Joining the hold of [r1] under share id 'x'", c);
+        j.assertLogContains("child inside", c);
+        j.assertLogNotContains("is disabled", c);
+        j.assertBuildStatusSuccess(j.waitForCompletion(p));
+        j.assertLogContains("child done", p);
+        j.assertLogContains("parent done", p);
+        assertFalse(res("r1").isLocked());
+        assertTrue(res("r1").isDisabled());
+        assertTrue(holders("r1").isEmpty());
+
+        // a nested lock(shareId: ...) joins the plain hold of its own build
+        WorkflowJob nested = job(j, "nested", """
+                lock('r1') {
+                  semaphore 'outer'
+                  lock(resource: 'r1', shareId: 'x') {
+                    echo 'nested inside'
+                  }
+                }
+                echo 'nested done'
+                """);
+        lrm.setDisabledCause(res("r1"), null);
+        WorkflowRun n = nested.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("outer/1", n);
+        assertEquals(n, res("r1").getBuild());
+        lrm.setDisabledCause(res("r1"), "broken again");
+
+        SemaphoreStep.success("outer/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(n));
+        j.assertLogContains("Joining the hold of [r1] under share id 'x'", n);
+        j.assertLogContains("nested inside", n);
+        j.assertLogContains("nested done", n);
+        j.assertLogNotContains("is disabled", n);
+        assertFalse(res("r1").isLocked());
+        assertTrue(res("r1").isDisabled());
+        assertTrue(holders("r1").isEmpty());
+        assertTrue(lrm.getCurrentQueuedContext().isEmpty());
+    }
+
+    @Test
+    void shareRequestWaitsOnFreeDisabledResourceUntilEnabled(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        declare("r1");
+        WorkflowJob holder = job(j, "holder", "lock(resource: 'r1', shareId: 'x') { semaphore 'holder' }");
+        WorkflowJob waiter = job(j, "waiter", "lock(resource: 'r1', shareId: 'x') { semaphore 'waiter' }");
+
+        // the resource is disabled while held; the holder keeps it and leaves
+        WorkflowRun h = holder.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("holder/1", h);
+        lrm.setDisabledCause(res("r1"), "broken");
+        SemaphoreStep.success("holder/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(h));
+        assertFalse(res("r1").isLocked());
+        assertTrue(res("r1").isDisabled());
+        assertTrue(holders("r1").isEmpty());
+
+        // nobody new gets the free but disabled resource: the request waits as a plain lock does
+        WorkflowRun w = waiter.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("is not free, waiting for execution", w);
+        j.assertLogContains("The resource [r1] is disabled: broken", w);
+        isPaused(w, 1, 1);
+        assertFalse(res("r1").isLocked());
+        assertTrue(holders("r1").isEmpty());
+        assertEquals(1, lrm.getCurrentQueuedContext().size());
+
+        // enabling the resource lets the waiting request acquire it
+        assertTrue(lrm.setDisabledCause(res("r1"), null));
+        SemaphoreStep.waitForStart("waiter/1", w);
+        assertEquals(w, res("r1").getBuild());
+        assertEquals("x", res("r1").getShareId());
+        assertEquals(Collections.singletonList(w.getExternalizableId()), holders("r1"));
+        assertTrue(lrm.getCurrentQueuedContext().isEmpty());
+
+        SemaphoreStep.success("waiter/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(w));
+        assertFalse(res("r1").isLocked());
+        assertNull(res("r1").getShareId());
+        assertTrue(holders("r1").isEmpty());
+    }
+
     @Test
     void partialRequestEntersOnceTheRestIsFree(JenkinsRule j) throws Exception {
         declare("r1", "r2");

@@ -1747,8 +1747,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     }
 
     /**
-     * Works out how a share request could be granted now: every resource must be free or joinable.
-     * Returns {@code null} when it has to wait. Must be called under {@link #syncResources}.
+     * Works out how a share request could be granted now: every resource must be free (and enabled) or
+     * joinable. Returns {@code null} when it has to wait. Must be called under {@link #syncResources}.
      */
     @CheckForNull
     private SharePlan planShare(@CheckForNull List<String> names, @NonNull Run<?, ?> build, @NonNull String shareId) {
@@ -1764,8 +1764,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 return null; // does not exist and ephemeral resources are disabled
             }
             if (r.isFree()) {
+                if (r.isDisabled()) {
+                    // no new holder for a disabled resource: wait until it is enabled, as a plain lock does
+                    return null;
+                }
                 plan.toStart.add(r);
             } else {
+                // Joining a hold is allowed even when the resource is disabled: the join is part of the
+                // work that already holds it, and disabling never takes a resource from its holders.
+                // Refusing it would deadlock a nested block or a downstream build the holder waits for.
                 if (ancestry == null) {
                     ancestry = ancestryOf(build);
                 }
