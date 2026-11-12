@@ -111,6 +111,65 @@ class LockStepReleaseDelayTest extends LockStepTestBase {
     }
 
     @Test
+    void disabledDuringDelayIsGivenToWaitingBuildOnlyOnceEnabled() throws Throwable {
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            createDeclaredResource("resource1");
+            WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "p1");
+            p1.setDefinition(new CpsFlowDefinition("""
+                    lock(resource: 'resource1', onReleaseDelay: 5) {
+                      semaphore 'inside-lock'
+                    }
+                    """, true));
+            WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "p2");
+            p2.setDefinition(new CpsFlowDefinition("""
+                    lock('resource1') {
+                      echo 'p2 got the lock'
+                    }
+                    """, true));
+
+            WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inside-lock/1", b1);
+            WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", b2);
+
+            SemaphoreStep.success("inside-lock/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+            LockableResource resource = lrm.fromName("resource1");
+            final long releaseAt = resource.getReleaseAt();
+            assertTrue(releaseAt > 0, "b1 keeps the resource for its release delay");
+
+            // disable the resource while b1 is still in its release delay
+            lrm.setDisabledCause(resource, "maintenance");
+            assertTrue(resource.isDisabled());
+            if (System.currentTimeMillis() < releaseAt) {
+                // disabling does not end the delay: b1 keeps the resource and b2 keeps waiting
+                assertTrue(resource.isLocked());
+                assertTrue(resource.isReleaseDelayed());
+                assertEquals(b1, resource.getBuild());
+                j.assertLogNotContains("p2 got the lock", b2);
+                isPaused(b2, 1, 1);
+            }
+
+            // the delay ends: the resource is freed, but it is disabled, so b2 must not get it
+            waitUntilFree("resource1");
+            assertTrue(System.currentTimeMillis() >= releaseAt, "released before the delay was over");
+            assertFalse(resource.isReleaseDelayed());
+            assertNull(resource.getBuild());
+            assertTrue(resource.isDisabled());
+            Thread.sleep(500); // let the queue processing after the release settle
+            j.assertLogNotContains("p2 got the lock", b2);
+            isPaused(b2, 1, 1);
+
+            // enabling the resource again lets the waiting build take it
+            assertTrue(lrm.setDisabledCause(resource, null), "resource has been enabled");
+            j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+            j.assertLogContains("p2 got the lock", b2);
+            waitUntilFree("resource1");
+        });
+    }
+
+    @Test
     void abortUsesOnCancelDelay() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager lrm = LockableResourcesManager.get();
