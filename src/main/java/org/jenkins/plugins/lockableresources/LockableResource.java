@@ -763,15 +763,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @CheckForNull
     @Restricted(NoExternalUse.class)
     public String getLockCauseDetail() {
+        final DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
+        Date since = this.getReservedTimestamp();
+        final String timestamp = (since == null ? "<unknown>" : format.format(since));
+
         if (this.isReserved()) {
             User user = Jenkins.get().getUser(reservedBy);
             String userText = user == null ? reservedBy : ModelHyperlinkNote.encodeTo(user);
-            return String.format("The resource [%s] is reserved by %s.", name, userText);
+            return String.format("The resource [%s] is reserved by %s since %s.", name, userText, timestamp);
         }
         if (this.isLocked()) {
-            final DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
-            Date since = this.getReservedTimestamp();
-            final String timestamp = (since == null ? "<unknown>" : format.format(since));
             Run<?, ?> lockBuild = getBuild();
             if (lockBuild != null) {
                 return String.format(
