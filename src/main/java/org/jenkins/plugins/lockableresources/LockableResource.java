@@ -5,9 +5,6 @@
  */
 package org.jenkins.plugins.lockableresources;
 
-import static java.text.DateFormat.MEDIUM;
-import static java.text.DateFormat.SHORT;
-
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -726,7 +723,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @CheckForNull
     @Exported
     public String getLockCause() {
-        final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+        final DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
         final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
         if (isReserved()) {
             return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
@@ -772,7 +769,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             return String.format("The resource [%s] is reserved by %s.", name, userText);
         }
         if (this.isLocked()) {
-            final DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+            final DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
             Date since = this.getReservedTimestamp();
             final String timestamp = (since == null ? "<unknown>" : format.format(since));
             Run<?, ?> lockBuild = getBuild();
