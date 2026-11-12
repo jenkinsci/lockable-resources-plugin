@@ -345,6 +345,9 @@ On the *Lockable Resources* page, users with the *Configure* permission can disa
 and enable it again. A disabled resource is shown as *DISABLED* with its cause, and it can not be reserved, stolen
 or reassigned until it is enabled again.
 
+To book a resource for a person at a fixed time, for example for manual testing, disable and enable it with two
+scheduled jobs. See [Book a resource for a time slot](src/doc/examples/book-a-resource-for-a-time-slot.md).
+
 **Delete a resource:**
 
 ```groovy
