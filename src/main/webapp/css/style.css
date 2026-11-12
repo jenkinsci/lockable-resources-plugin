@@ -560,6 +560,11 @@ html:has(#lockable-resources) {
 .lr-legend-dot--locked { background: var(--red); }
 .lr-legend-dot--reserved { background: var(--orange); }
 .lr-legend-dot--free { background: var(--green); }
+.lr-legend-dot--disabled { background: var(--text-color-secondary); }
+
+/* Disabled resources: cause in the reason column, tag next to the status of a used resource */
+.lr-disabled-cause { color: var(--text-color-secondary); }
+span.lr-static-label.lr-disabled-label { color: var(--text-color-secondary); }
 
 .lr-overview-stat {
   display: flex;

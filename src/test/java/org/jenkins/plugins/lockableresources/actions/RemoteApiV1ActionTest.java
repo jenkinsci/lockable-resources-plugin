@@ -483,6 +483,55 @@ class RemoteApiV1ActionTest {
     }
 
     @Test
+    void resourcesReportsDisabledResourcesWithoutChangingTheirState(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        manager.createResourceWithLabel("board-2", "hw");
+        manager.createResourceWithLabel("board-3", "hw");
+        manager.setDisabledCause(manager.fromName("board-1"), "Broken power supply");
+
+        // a disabled resource that is still held keeps its LOCKED state
+        ResponseCapture acquire = invokeAcquire(new RemoteApiV1Action(), jsonBody("resource", "board-3"));
+        assertEquals(202, acquire.status.get());
+        manager.setDisabledCause(manager.fromName("board-3"), "Retire after this run");
+
+        net.sf.json.JSONArray resources = net.sf.json.JSONObject.fromObject(
+                        invokeResources().body.toString())
+                .getJSONArray("resources");
+        assertEquals(3, resources.size());
+
+        net.sf.json.JSONObject disabled = resources.getJSONObject(0);
+        assertEquals("board-1", disabled.getString("name"));
+        assertEquals("FREE", disabled.getString("state"));
+        assertTrue(disabled.getBoolean("disabled"));
+
+        net.sf.json.JSONObject enabled = resources.getJSONObject(1);
+        assertEquals("board-2", enabled.getString("name"));
+        assertEquals("FREE", enabled.getString("state"));
+        assertFalse(enabled.getBoolean("disabled"));
+
+        net.sf.json.JSONObject held = resources.getJSONObject(2);
+        assertEquals("board-3", held.getString("name"));
+        assertEquals("LOCKED", held.getString("state"));
+        assertTrue(held.getBoolean("disabled"));
+
+        // the cause is free text written by an administrator, like the note: it is not disclosed
+        String body = invokeResources().body.toString();
+        assertFalse(body.contains("disabledCause"), body);
+        assertFalse(body.contains("Broken power supply"), body);
+        assertFalse(body.contains("Retire after this run"), body);
+
+        manager.setDisabledCause(manager.fromName("board-1"), null);
+        net.sf.json.JSONObject reEnabled = net.sf.json.JSONObject.fromObject(
+                        invokeResources().body.toString())
+                .getJSONArray("resources")
+                .getJSONObject(0);
+        assertFalse(reEnabled.getBoolean("disabled"));
+    }
+
+    @Test
     void resourcesIsRefusedWhileTheRemoteApiIsDisabled(JenkinsRule j) throws Exception {
         LockableResourcesManager.get().setRemoteApiEnabled(false);
 

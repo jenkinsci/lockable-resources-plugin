@@ -15,10 +15,16 @@ import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.misc.Util;
 import io.jenkins.plugins.casc.misc.junit.jupiter.WithJenkinsConfiguredWithCode;
 import io.jenkins.plugins.casc.model.CNode;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.util.Constants;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -187,5 +193,94 @@ class ConfigurationAsCodeTest {
         assertEquals("plc-01", declared.get(0).getName());
         assertEquals("plc remote-enabled", declared.get(0).getLabelsAsString());
         assertEquals("plc-02", declared.get(1).getName());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-disabled.yml")
+    void should_support_disabled_cause_via_casc(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+        assertTrue(LRM.fromName("Resource_A").isDisabled());
+        assertNull(LRM.fromName("Resource_B").getDisabledCause());
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+
+        // export
+        ConfigurationContext context = new ConfigurationContext(ConfiguratorRegistry.get());
+        String exported = Util.toYamlString(Util.getUnclassifiedRoot(context).get("lockableResourcesManager"));
+        assertThat(exported.contains("disabledCause: \"Broken power supply\""), is(true));
+
+        // import the exported configuration again
+        LRM.fromName("Resource_A").setDisabledCause(null);
+        Path yaml = Files.createTempFile("casc-disabled", ".yml");
+        Files.writeString(yaml, "unclassified:\n  lockableResourcesManager:\n" + exported.replaceAll("(?m)^", "    "));
+        ConfigurationAsCode.get().configure(yaml.toString());
+        Files.delete(yaml);
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+        assertNull(LRM.fromName("Resource_B").getDisabledCause());
+    }
+
+    private static void configure(String declaredResources) throws Exception {
+        Path yaml = Files.createTempFile("casc-disabled", ".yml");
+        try {
+            Files.writeString(
+                    yaml, "unclassified:\n  lockableResourcesManager:\n    declaredResources:\n" + declaredResources);
+            ConfigurationAsCode.get().configure(yaml.toString());
+        } finally {
+            Files.delete(yaml);
+        }
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-disabled.yml")
+    void reload_keeps_runtime_disabled_cause_when_yaml_omits_it(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+
+        // disable at runtime by a pipeline
+        WorkflowJob p = r.createProject(WorkflowJob.class, "p");
+        p.setDefinition(
+                new CpsFlowDefinition("updateLock(resource: 'Resource_B', disabledCause: 'Broken cable')", true));
+        r.buildAndAssertSuccess(p);
+        assertEquals("Broken cable", LRM.fromName("Resource_B").getDisabledCause());
+
+        // reload a YAML that does not mention disabledCause for Resource_B: it stays disabled
+        configure("      - name: \"Resource_A\"\n"
+                + "        disabledCause: \"Broken power supply\"\n"
+                + "      - name: \"Resource_B\"\n"
+                + "        description: \"reloaded\"\n");
+        assertEquals("reloaded", LRM.fromName("Resource_B").getDescription());
+        assertEquals("Broken cable", LRM.fromName("Resource_B").getDisabledCause());
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+
+        // an explicit empty disabledCause enables it
+        configure(
+                "      - name: \"Resource_A\"\n" + "      - name: \"Resource_B\"\n" + "        disabledCause: \"\"\n");
+        assertNull(LRM.fromName("Resource_B").getDisabledCause());
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+        // Resource_A was omitted this time, so it keeps its cause
+        assertEquals("Broken power supply", LRM.fromName("Resource_A").getDisabledCause());
+    }
+
+    @Test
+    @ConfiguredWithCode("configuration-as-code-disabled.yml")
+    void reload_keeps_runtime_disabled_cause_of_locked_resource(JenkinsConfiguredWithCodeRule r) throws Exception {
+        LockableResourcesManager LRM = LockableResourcesManager.get();
+
+        WorkflowJob p = r.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("lock('Resource_B') { semaphore 'wait-inside' }", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait-inside/1", b);
+        LRM.setDisabledCause(LRM.fromName("Resource_B"), "Broken cable");
+
+        // locked resources are merged instead of replaced, the cause must survive that path too
+        configure("      - name: \"Resource_B\"\n");
+        assertTrue(LRM.fromName("Resource_B").isLocked());
+        assertEquals("Broken cable", LRM.fromName("Resource_B").getDisabledCause());
+
+        configure("      - name: \"Resource_B\"\n        disabledCause: \"\"\n");
+        assertFalse(LRM.fromName("Resource_B").isDisabled());
+
+        SemaphoreStep.success("wait-inside/1", null);
+        r.assertBuildStatusSuccess(r.waitForCompletion(b));
     }
 }
