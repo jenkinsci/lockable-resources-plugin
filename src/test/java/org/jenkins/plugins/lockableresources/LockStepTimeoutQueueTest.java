@@ -336,4 +336,36 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
 
         assertTrue(LockableResourcesManager.get().getCurrentQueuedContext().isEmpty());
     }
+
+    /**
+     * When a build is queued for a lock, the log message must include a timestamp so users can see
+     * how long the build has been waiting.
+     */
+    @Test
+    void queuedMessageIncludesTimestamp(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResource("resource1");
+
+        // b1 holds the lock
+        WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "holder");
+        p1.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }", true));
+        WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("hold/1", b1);
+
+        // b2 waits for the lock — should be queued with a timestamp
+        WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "waiter");
+        p2.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'waiter' }\necho 'waiter done'", true));
+        WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("added into queue at position ", b2);
+
+        // Release the lock so b2 can proceed
+        SemaphoreStep.success("hold/1", null);
+        j.waitForCompletion(b1);
+        SemaphoreStep.waitForStart("waiter/1", b2);
+        SemaphoreStep.success("waiter/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+
+        // Verify the log contains the timestamp pattern
+        j.assertLogContains("added into queue at position ", b2);
+        j.assertLogContains(" since ", b2);
+    }
 }
