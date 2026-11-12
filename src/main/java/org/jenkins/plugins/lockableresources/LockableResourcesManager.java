@@ -19,9 +19,6 @@ import hudson.init.Terminator;
 import hudson.model.Descriptor;
 import hudson.model.Run;
 import hudson.util.FormValidation;
-import static java.text.DateFormat.MEDIUM;
-import static java.text.DateFormat.SHORT;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.text.DateFormat;
@@ -2273,7 +2270,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             this.queuedContexts.add(queueIndex, newQueueItem);
-            DateFormat format = SimpleDateFormat.getDateTimeInstance(MEDIUM, SHORT);
+            DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
             String timestamp = format.format(new Date());
             printLogs(
                     requiredResources + " added into queue at position " + queueIndex + " since " + timestamp,
