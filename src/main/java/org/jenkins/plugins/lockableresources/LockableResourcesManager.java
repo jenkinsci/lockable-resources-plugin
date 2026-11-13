@@ -18,6 +18,7 @@ import hudson.console.ModelHyperlinkNote;
 import hudson.init.Terminator;
 import hudson.model.Descriptor;
 import hudson.model.Run;
+import hudson.model.listeners.SaveableListener;
 import hudson.util.FormValidation;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -2595,6 +2596,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 LOGGER.log(Level.WARNING, "Failed to save " + getConfigFile(), e);
             }
         }
+        SaveableListener.fireOnChange(this, getConfigFile());
     }
 
     // ---------------------------------------------------------------------------
