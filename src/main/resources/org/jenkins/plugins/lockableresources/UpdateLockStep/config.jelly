@@ -22,4 +22,7 @@
   <f:entry title="${%entry.setNote.title}" field="setNote">
     <f:textarea/>
   </f:entry>
+  <f:entry title="${%entry.disabledCause.title}" field="disabledCause">
+    <f:textbox/>
+  </f:entry>
 </j:jelly>

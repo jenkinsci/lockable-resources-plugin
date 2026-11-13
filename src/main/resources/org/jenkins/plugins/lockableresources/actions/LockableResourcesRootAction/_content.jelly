@@ -118,6 +118,8 @@
                   data-reserve-message="${%reserve.dialog.message}"
                   data-steal-title="${%steal.dialog.title}"
                   data-steal-message="${%steal.dialog.message}"
+                  data-disable-title="${%disable.dialog.title}"
+                  data-disable-message="${%disable.dialog.message}"
                   data-reassign-title="${%reassign.dialog.title}"
                   data-reassign-message="${%reassign.dialog.message}"
                   data-action-on-success="${%action.on.success}"
@@ -213,16 +215,31 @@
                   <j:set var="freePct" value="${summary.total > 0 ? (summary.free * 100.0) / summary.total : 0}" />
                   <j:set var="lockedEnd" value="${lockedPct}" />
                   <j:set var="reservedEnd" value="${lockedPct + reservedPct}" />
-                  <div class="lr-donut"
-                       style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--green) ${reservedEnd}% 100%);"
-                       aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.free}: ${summary.free}">
-                  </div>
+                  <j:choose>
+                    <!-- Disabled resources are not free, they get their own (grey) part at the end -->
+                    <j:when test="${summary.disabled > 0}">
+                      <j:set var="freeEnd" value="${reservedEnd + freePct}" />
+                      <div class="lr-donut"
+                           style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--green) ${reservedEnd}% ${freeEnd}%, var(--text-color-secondary) ${freeEnd}% 100%);"
+                           aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.free}: ${summary.free}, ${%overview.disabled}: ${summary.disabled}">
+                      </div>
+                    </j:when>
+                    <j:otherwise>
+                      <div class="lr-donut"
+                           style="background: conic-gradient(var(--red) 0 ${lockedEnd}%, var(--orange) ${lockedEnd}% ${reservedEnd}%, var(--green) ${reservedEnd}% 100%);"
+                           aria-label="${%overview.locked}: ${summary.locked}, ${%overview.reserved}: ${summary.reserved}, ${%overview.free}: ${summary.free}">
+                      </div>
+                    </j:otherwise>
+                  </j:choose>
                   <div class="lr-donut-center">${summary.total}</div>
                 </div>
                 <div class="lr-donut-legend">
                   <a class="lr-legend-item lr-legend-item--locked" data-filter-status="locked" href="#"><span class="lr-legend-dot lr-legend-dot--locked"></span><span class="lr-legend-label">${%overview.locked}</span><span class="lr-legend-count">${summary.locked}</span></a>
                   <a class="lr-legend-item lr-legend-item--reserved" data-filter-status="reserved" href="#"><span class="lr-legend-dot lr-legend-dot--reserved"></span><span class="lr-legend-label">${%overview.reserved}</span><span class="lr-legend-count">${summary.reserved}</span></a>
                   <a class="lr-legend-item lr-legend-item--free" data-filter-status="free" href="#"><span class="lr-legend-dot lr-legend-dot--free"></span><span class="lr-legend-label">${%overview.free}</span><span class="lr-legend-count">${summary.free}</span></a>
+                  <j:if test="${summary.disabled > 0}">
+                    <a class="lr-legend-item lr-legend-item--disabled" data-filter-status="disabled" href="#"><span class="lr-legend-dot lr-legend-dot--disabled"></span><span class="lr-legend-label">${%overview.disabled}</span><span class="lr-legend-count">${summary.disabled}</span></a>
+                  </j:if>
                 </div>
               </div>
               <!-- Utilization stats card -->
@@ -245,6 +262,12 @@
                     <span class="lr-overview-stat__number" data-pct="${summary.freePct}" data-type="free">${summary.freePct}%</span>
                     <span class="lr-overview-stat__label">${%overview.free}</span>
                   </div>
+                  <j:if test="${summary.disabled > 0}">
+                    <div class="lr-overview-stat">
+                      <span class="lr-overview-stat__number" data-pct="${summary.disabledPct}" data-type="disabled">${summary.disabledPct}%</span>
+                      <span class="lr-overview-stat__label">${%overview.disabled}</span>
+                    </div>
+                  </j:if>
                 </div>
               </div>
               <!-- Labels card -->
@@ -319,6 +342,7 @@
                     <option value="reserved">${%filter.status.reserved}</option>
                     <option value="locked">${%filter.status.locked}</option>
                     <option value="queued">${%filter.status.queued}</option>
+                    <option value="disabled">${%filter.status.disabled}</option>
                   </select>
                 </div>
                 <input type="text" class="jenkins-input lr-col-filter" id="lr-filter-held-by" placeholder="${%filter.heldBy}" />

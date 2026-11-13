@@ -103,6 +103,22 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private String lockReason = "";
 
     /**
+     * Why this resource is disabled, or {@code null} when it is enabled. A disabled resource is not
+     * given to new lock requests (they wait as if it were busy), but a build that already holds it
+     * keeps it. Similar to the offline cause of a Jenkins node.
+     */
+    @CheckForNull
+    private String disabledCause = null;
+
+    /**
+     * {@code true} once {@link #setDisabledCause(String)} has been called on this object. Configuration
+     * as Code only calls the setter when the YAML contains {@code disabledCause}, so a declared resource
+     * without it keeps the runtime cause (see {@link LockableResourcesManager#setDeclaredResources}).
+     * Not persisted.
+     */
+    private transient boolean disabledCauseConfigured = false;
+
+    /**
      * Track that a currently reserved resource was originally reserved for someone else, or locked
      * for some other job, and explicitly taken away - e.g. for SUT post-mortem while a test job runs.
      * Currently this does not track "who" it was taken from nor intend to give it back - just for
@@ -310,6 +326,45 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
      */
     public void setLockReason(@Nullable String lockReason) {
         this.lockReason = Util.fixNull(lockReason);
+    }
+
+    /**
+     * Returns why this resource is disabled.
+     *
+     * @return The disabled cause, or {@code null} when the resource is enabled.
+     */
+    @Exported
+    @CheckForNull
+    public String getDisabledCause() {
+        return this.disabledCause;
+    }
+
+    /**
+     * Disables or enables this resource. This only changes the field. Use {@link
+     * LockableResourcesManager#setDisabledCause(LockableResource, String)} to also let waiting
+     * builds take the resource once it is enabled again.
+     *
+     * @param disabledCause Why the resource is disabled, or {@code null} (or blank) to enable it.
+     */
+    @DataBoundSetter
+    public void setDisabledCause(@CheckForNull String disabledCause) {
+        this.disabledCause = Util.fixEmptyAndTrim(disabledCause);
+        this.disabledCauseConfigured = true;
+    }
+
+    /**
+     * Returns {@code true} when {@link #setDisabledCause(String)} has been called on this object, even
+     * with an empty value. Used to tell an omitted {@code disabledCause} in a declared resource from an
+     * explicit empty one.
+     */
+    boolean isDisabledCauseConfigured() {
+        return this.disabledCauseConfigured;
+    }
+
+    /** Return true when the resource is disabled and must not be given to new lock requests. */
+    @Exported
+    public boolean isDisabled() {
+        return this.disabledCause != null;
     }
 
     @DataBoundSetter
@@ -734,6 +789,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
                         "The resource [%s] is locked by %s (lockId %s) since %s.",
                         name, remoteHolder(record), remoteLockedBy, remoteSince(record, format));
             }
+        }
+        if (this.isDisabled()) {
+            return String.format("The resource [%s] is disabled: %s", name, disabledCause);
         }
         return null;
     }

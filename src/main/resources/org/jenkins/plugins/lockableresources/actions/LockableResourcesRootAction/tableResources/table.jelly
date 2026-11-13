@@ -57,7 +57,7 @@ THE SOFTWARE.
               data-resource-description="${resource.description != null ? resource.description : ''}"
               data-resource-labels="${resource.labels != null ? resource.labels : ''}"
               data-resource-group="${resource.group}"
-              data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : 'free'))}"
+              data-resource-status="${resource.reservedBy != null ? 'reserved' : (resource.locked ? 'locked' : (resource.queued ? 'queued' : (resource.disabled ? 'disabled' : 'free')))}"
               data-resource-owner="${resource.reservedBy != null ? resource.reservedBy : (resource.buildName != null ? resource.buildName : '')}">
             <!-- Checkbox -->
             <td class="lr-col-select"><input type="checkbox" class="lr-select-resource" data-resource-name="${resource.name}" aria-label="${%resource.editor.selectOne(resource.name)}" /></td>
@@ -113,6 +113,9 @@ THE SOFTWARE.
               <j:when test="${resource.queued}">
                 <j:set var="cssClass" value="warning"/>
               </j:when>
+              <j:when test="${resource.disabled}">
+                <j:set var="cssClass" value="destructive"/>
+              </j:when>
               <j:otherwise>
                 <j:set var="cssClass" value="success"/>
               </j:otherwise>
@@ -136,11 +139,19 @@ THE SOFTWARE.
                 <j:when test="${resource.queued}">
                   ${%resource.status.queued}
                 </j:when>
+                <!-- Disabled (and not used by anyone) -->
+                <j:when test="${resource.disabled}">
+                  ${%resource.status.disabled}
+                </j:when>
                 <!-- Free -->
                 <j:otherwise>
                   ${%resource.status.free}
                 </j:otherwise>
               </j:choose>
+              <!-- Disabled while still used: the holder keeps it, but nobody gets it afterwards -->
+              <j:if test="${resource.disabled and !resource.free}">
+                <span class="lr-static-label lr-disabled-label" tooltip="${%resource.disabled.cause(resource.disabledCause)}">${%resource.disabled}</span>
+              </j:if>
             </td>
 
             <!-- **************************************************************
@@ -187,6 +198,9 @@ THE SOFTWARE.
             <td class="lr-col-reason">
               <j:if test="${resource.lockReason != null and !resource.lockReason.isEmpty()}">
                 ${resource.lockReason}
+              </j:if>
+              <j:if test="${resource.disabled}">
+                <div class="lr-disabled-cause">${%resource.disabled.cause(resource.disabledCause)}</div>
               </j:if>
             </td>
 
@@ -271,13 +285,15 @@ THE SOFTWARE.
                     </button>
                   </l:hasPermission>
                   <l:hasPermission permission="${it.STEAL}">
-                    <button
-                      data-action="steal"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
-                      tooltip="${%btn.steal}"
-                    >
-                      <l:icon src="symbol-flash-outline plugin-ionicons-api" />
-                    </button>
+                    <j:if test="${!resource.disabled}">
+                      <button
+                        data-action="steal"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                        tooltip="${%btn.steal}"
+                      >
+                        <l:icon src="symbol-flash-outline plugin-ionicons-api" />
+                      </button>
+                    </j:if>
                   </l:hasPermission>
                 </j:when>
                 <j:when test="${resource.reservedBy != null}">
@@ -293,7 +309,7 @@ THE SOFTWARE.
                     </j:if>
                   </l:hasPermission>
                   <l:hasPermission permission="${it.STEAL}">
-                    <j:if test="${!resource.isReservedByCurrentUser()}">
+                    <j:if test="${!resource.isReservedByCurrentUser() and !resource.disabled}">
                       <button
                         data-action="reassign"
                         class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
@@ -317,13 +333,15 @@ THE SOFTWARE.
                 </j:when>
                 <j:otherwise>
                   <l:hasPermission permission="${it.RESERVE}">
-                    <button
-                      data-action="reserve"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
-                      tooltip="${%btn.reserve}"
-                    >
-                      <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
-                    </button>
+                    <j:if test="${!resource.disabled}">
+                      <button
+                        data-action="reserve"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
+                        tooltip="${%btn.reserve}"
+                      >
+                        <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
+                      </button>
+                    </j:if>
                   </l:hasPermission>
                   <l:hasPermission permission="${it.CONFIGURE}">
                     <button
@@ -336,6 +354,29 @@ THE SOFTWARE.
                   </l:hasPermission>
                 </j:otherwise>
               </j:choose>
+              <!-- Disable / enable, in every state: a holder keeps a resource that gets disabled -->
+              <l:hasPermission permission="${it.CONFIGURE}">
+                <j:choose>
+                  <j:when test="${resource.disabled}">
+                    <button
+                      data-action="enable"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-action-button"
+                      tooltip="${%btn.enable}"
+                    >
+                      <l:icon src="symbol-checkmark-circle-outline plugin-ionicons-api" />
+                    </button>
+                  </j:when>
+                  <j:otherwise>
+                    <button
+                      data-action="disable"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                      tooltip="${%btn.disable}"
+                    >
+                      <l:icon src="symbol-ban-outline plugin-ionicons-api" />
+                    </button>
+                  </j:otherwise>
+                </j:choose>
+              </l:hasPermission>
               <l:hasPermission permission="${it.CONFIGURE}">
                 <button
                   class="jenkins-button jenkins-button--tertiary lockable-resources-edit-button"

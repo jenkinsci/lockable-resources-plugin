@@ -23,6 +23,10 @@
   <f:entry title="${%entry.group.title}" field="group">
     <f:textbox/>
   </f:entry>
+  <!-- Not editable here yet, but kept so that saving this form does not enable a disabled resource -->
+  <f:invisibleEntry>
+    <f:textbox field="disabledCause"/>
+  </f:invisibleEntry>
   <f:entry title="${%entry.properties.title}">
     <f:repeatableProperty field="properties" header="" minimum="0" add="${%entry.properties.add}">
       <f:block>

@@ -133,6 +133,21 @@ public class UpdateLockStepExecution extends AbstractStepExecutionImpl {
                     "Resource [" + resourceName + "] note updated.", Level.FINE, LOGGER, logger);
         }
 
+        // Handle disabled state. Enabling a resource also lets waiting builds take it.
+        if (step.isDisabledCauseSet()) {
+            lrm.setDisabledCause(resource, step.getDisabledCause());
+            if (resource.isDisabled()) {
+                LockableResourcesManager.printLogs(
+                        "Resource [" + resourceName + "] disabled: " + resource.getDisabledCause(),
+                        Level.FINE,
+                        LOGGER,
+                        logger);
+            } else {
+                LockableResourcesManager.printLogs(
+                        "Resource [" + resourceName + "] enabled.", Level.FINE, LOGGER, logger);
+            }
+        }
+
         lrm.save();
         LockableResourcesManager.printLogs("Resource [" + resourceName + "] updated.", Level.FINE, LOGGER, logger);
     }

@@ -524,6 +524,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     locked.setGroup(r.getGroup());
                     locked.setEphemeral(false);
                     locked.setNote(r.getNote());
+                    if (r.isDisabledCauseConfigured()) {
+                        // otherwise keep the runtime cause, see below
+                        locked.setDisabledCause(r.getDisabledCause());
+                    }
                     mergedResources.add(locked);
                     continue;
                 }
@@ -546,6 +550,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 final LockableResource oldDeclaredResource = fromName(newResource.getName());
                 if (oldDeclaredResource != null) {
                     newResource.copyUnconfigurableProperties(oldDeclaredResource);
+                    // A resource disabled at runtime (updateLock, UI) stays disabled when the new
+                    // configuration does not mention disabledCause (e.g. a CasC YAML without it).
+                    // An explicit value, also an empty one (enable), wins.
+                    if (newResource != oldDeclaredResource && !newResource.isDisabledCauseConfigured()) {
+                        newResource.setDisabledCause(oldDeclaredResource.getDisabledCause());
+                    }
                 } else {
                     newResource.resetUnconfigurableProperties();
                 }
@@ -553,7 +563,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             this.resources = mergedResources;
             save();
+
+            // A resource may have been enabled again (or got new labels), let waiting builds re-check
+            cachedCandidates.invalidateAll();
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
         }
+        scheduleQueueMaintenance();
     }
 
     // ---------------------------------------------------------------------------
@@ -831,7 +848,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             throw e;
         }
         for (LockableResource r : resources) {
-            if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked()) {
+            if (r.isReserved() || r.isQueued(queueItemId) || r.isLocked() || r.isDisabled()) {
                 return false;
             }
         }
@@ -1026,7 +1043,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
             for (LockableResource rs : candidates) {
                 if (number != 0 && (selected.size() >= number)) break;
-                if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued()) selected.add(rs);
+                if (!rs.isReserved() && !rs.isLocked() && !rs.isQueued() && !rs.isDisabled()) selected.add(rs);
             }
 
             // if did not get wanted amount or did not get all
@@ -1181,7 +1198,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             audit("LOCAL", "RELEASED", resource.getName(), build.getExternalizableId());
             uncacheIfFreeing(resource, true, false);
 
-            if (resource.isEphemeral()) {
+            // keep a disabled ephemeral resource, otherwise it is re-created enabled for the next build
+            if (resource.isEphemeral() && !resource.isDisabled()) {
                 LOGGER.fine("Remove ephemeral resource: " + resource);
                 toBeRemoved.add(resource);
             }
@@ -1592,7 +1610,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @param resources list of resources to reserve
      * @param userName the user reserving the resources
      * @param reason the reason for reserving (optional)
-     * @return true if all resources were successfully reserved, false if any was not free
+     * @return true if all resources were successfully reserved, false if any was not free or is
+     *     disabled
      */
     public boolean reserve(List<LockableResource> resources, String userName, String reason) {
         LOGGER.info("reserve() called user='" + userName + "' resources=" + getResourcesNames(resources) + " reason='"
@@ -1601,6 +1620,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
                     LOGGER.fine("reserve() failed because resource not free: " + r.getName());
+                    return false;
+                }
+                if (r.isDisabled()) {
+                    LOGGER.fine("reserve() failed because resource is disabled: " + r.getName());
                     return false;
                 }
             }
@@ -1632,10 +1655,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @param resources list of resources to steal
      * @param userName the user stealing the resources
      * @param reason the reason for stealing (optional)
-     * @return true if stolen successfully
+     * @return true if stolen successfully, false if any resource is disabled (nothing is changed then)
      */
     public boolean steal(List<LockableResource> resources, String userName, String reason) {
         synchronized (syncResources) {
+            for (LockableResource r : resources) {
+                if (r.isDisabled()) {
+                    LOGGER.fine("steal() failed because resource is disabled: " + r.getName());
+                    return false;
+                }
+            }
             for (LockableResource r : resources) {
                 r.setReservedBy(userName);
                 r.setStolen();
@@ -1655,10 +1684,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
     /**
      * Reserves a resource that may be or not be reserved by some person already, giving it away to
      * the userName indefinitely (until that person, or some explicit scripted action, decides to
-     * release the resource).
+     * release the resource). Nothing is changed when any of the resources is disabled.
      */
     public void reassign(List<LockableResource> resources, String userName) {
         synchronized (syncResources) {
+            for (LockableResource r : resources) {
+                if (r.isDisabled()) {
+                    LOGGER.fine("reassign() skipped because resource is disabled: " + r.getName());
+                    return;
+                }
+            }
             Date date = new Date();
             for (LockableResource r : resources) {
                 if (!r.isFree()) {
@@ -1720,6 +1755,32 @@ public class LockableResourcesManager extends GlobalConfiguration {
             save();
         }
         scheduleQueueMaintenance();
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Disables or enables a resource and saves the change. When a disabled resource is enabled again,
+     * the queue is re-checked so waiting builds can take it.
+     *
+     * <p>A build that already holds the resource keeps it when the resource is disabled.
+     *
+     * @param resource the resource to change
+     * @param disabledCause why the resource is disabled, or {@code null} (or blank) to enable it
+     * @return {@code true} if a disabled resource has been enabled
+     */
+    public boolean setDisabledCause(@NonNull LockableResource resource, @CheckForNull String disabledCause) {
+        boolean enabled;
+        synchronized (syncResources) {
+            boolean wasDisabled = resource.isDisabled();
+            resource.setDisabledCause(disabledCause);
+            enabled = wasDisabled && !resource.isDisabled();
+            save();
+        }
+        if (enabled) {
+            // let builds waiting for this resource take it now
+            refreshQueue();
+        }
+        return enabled;
     }
 
     // ---------------------------------------------------------------------------
@@ -1923,7 +1984,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
                 // Preserve label eligibility, including the existing treatment of freestyle queue markers.
                 List<LockableResource> available = new ArrayList<>(possible);
-                available.removeIf(r -> r.isReserved() || r.isLocked());
+                available.removeIf(r -> r.isReserved() || r.isLocked() || r.isDisabled());
                 if (amount == 0 || available.size() < amount) {
                     printLogs(
                             "Found " + available.size() + " available resource(s). Waiting for correct amount: "
@@ -1968,7 +2029,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     private boolean areAllAvailable(List<LockableResource> resources) {
         for (LockableResource resource : resources) {
-            if (!resource.isFree()) {
+            if (!resource.isFree() || resource.isDisabled()) {
                 return false;
             }
         }
@@ -2033,7 +2094,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         for (LockableResource r : candidates) {
             // TODO: it shall be used isFree() here, but in that case we need to change the
             // logic in parametrized builds and that is much more effort as I want to spend here now
-            if (!r.isReserved() && !r.isLocked()) {
+            if (!r.isReserved() && !r.isLocked() && !r.isDisabled()) {
                 found.add(r);
             }
 
