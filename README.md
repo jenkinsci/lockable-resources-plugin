@@ -547,6 +547,28 @@ System.setProperty("org.jenkins.plugins.lockableresources.PRINT_QUEUE_INFO", "-1
  0 means disabled
  -1 means all / unlimited.
 
+## Locked resources on the build page
+
+A build that locks a resource gets a **Lockable resources** entry in its sidebar at
+`<build URL>/locked-resources/`. The page lists the lock events for that build.
+
+The same data is available as JSON at `<build URL>/locked-resources/api/json`:
+
+```sh
+curl -s "$JENKINS_URL/job/my-job/12/locked-resources/api/json"
+```
+
+Notes:
+
+- Only builds that used a lockable resource have this page. For any other build the URL returns 404.
+- `logs` is the event history, oldest first. Each entry has:
+  - `name`: the resource name.
+  - `step`: the event type. The values are `try` (the build started waiting for the resource), `acquired`, `released`, and `skipped` (a remote lock that the server skipped, so the block did not run).
+  - `action`: the description of the `lock` step.
+  - `timeStamp`: the event time in epoch milliseconds.
+- `resourcesInUse` lists the resources this build holds right now. It is empty once the build has released them.
+- The page shows the same data as the build page. The JSON layout is not yet a stable public API, so scripts that depend on it may need updating after a plugin upgrade.
+
 ## Configuration as Code
 
 This plugin can be configured via
