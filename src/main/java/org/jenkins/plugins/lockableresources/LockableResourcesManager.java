@@ -505,7 +505,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         synchronized (syncResources) {
             Map<String, LockableResource> lockedResources = new HashMap<>();
             for (LockableResource r : this.resources) {
-                if (!r.isLocked()) continue;
+                // CasC runs at startup before jobs load, so a held lock's build may not resolve yet.
+                if (!r.isLocked() && !r.hasRecordedBuild()) continue;
                 lockedResources.put(r.getName(), r);
             }
 
