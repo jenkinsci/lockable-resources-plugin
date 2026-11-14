@@ -59,6 +59,7 @@ class LockStepFormPermissionTest {
             assertTrue(d.doFillResourceSelectStrategyItems(job).isEmpty());
             assertTrue(d.doFillTimeoutUnitItems(job).isEmpty());
             assertTrue(d.doAutoCompleteResource("res", job).getValues().isEmpty());
+            assertTrue(d.doAutoCompleteLabel("lab", job).getValues().isEmpty());
 
             LockStepResource.DescriptorImpl rd = j.jenkins.getDescriptorByType(LockStepResource.DescriptorImpl.class);
             assertEquals(FormValidation.Kind.OK, rd.doCheckLabel("unknown-label", null, job).kind);
@@ -81,6 +82,10 @@ class LockStepFormPermissionTest {
             assertEquals(
                     List.of("resource1"), d.doAutoCompleteResource("res", job).getValues());
         }
+
+        assertEquals(List.of("label1"), d.doAutoCompleteLabel("lab", job).getValues());
+        assertTrue(d.doAutoCompleteLabel("xyz", job).getValues().isEmpty());
+        assertTrue(d.doAutoCompleteLabel("   ", job).getValues().isEmpty());
     }
 
     private static List<String> strategyNames() {
