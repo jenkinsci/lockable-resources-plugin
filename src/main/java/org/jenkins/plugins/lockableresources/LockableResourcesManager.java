@@ -16,18 +16,21 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.console.ModelHyperlinkNote;
 import hudson.init.Terminator;
+import hudson.model.Cause;
 import hudson.model.Descriptor;
 import hudson.model.Run;
 import hudson.util.FormValidation;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1144,6 +1147,23 @@ public class LockableResourcesManager extends GlobalConfiguration {
      * @return true if locked successfully.
      */
     public boolean lock(List<LockableResource> resourcesToLock, Run<?, ?> build, @Nullable String reason) {
+        return lock(resourcesToLock, build, reason, null, null);
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Try to lock the resources for one lock block and return true if locked. With a holder entry the
+     * block becomes the first holder of each resource (see {@link LockableResource#startShare}), under
+     * {@code shareId} or, when it is {@code null}, as a plain hold that only the same build may join.
+     * Without an entry this is the plain lock used by freestyle builds.
+     */
+    @Restricted(NoExternalUse.class)
+    public boolean lock(
+            List<LockableResource> resourcesToLock,
+            Run<?, ?> build,
+            @Nullable String reason,
+            @CheckForNull String shareId,
+            @CheckForNull String shareHolderEntry) {
 
         LOGGER.fine("lock it: " + resourcesToLock + " for build " + build + " with reason: " + reason);
 
@@ -1160,7 +1180,11 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         for (LockableResource r : resourcesToLock) {
             r.unqueue();
-            r.setBuild(build);
+            if (shareHolderEntry != null) {
+                r.startShare(build, shareId, shareHolderEntry);
+            } else {
+                r.setBuild(build);
+            }
             if (reason != null && !reason.isEmpty()) {
                 r.setLockReason(reason);
             }
@@ -1217,13 +1241,128 @@ public class LockableResourcesManager extends GlobalConfiguration {
             return;
         }
 
-        List<String> resourcesInUse =
-                LockedResourcesBuildAction.findAndInitAction(build).getCurrentUsedResourceNames();
+        LockedResourcesBuildAction action = LockedResourcesBuildAction.findAndInitAction(build);
+        List<String> resourcesInUse = action.getReadOnlyResourcesInUse();
 
         if (resourcesInUse.isEmpty()) {
             return;
         }
-        unlockNames(resourcesInUse, build);
+        String buildId = build.getExternalizableId();
+        List<LockableResource> toFree = new ArrayList<>();
+        synchronized (syncResources) {
+            // The build is gone: drop all of its holder entries, and free only what nobody else holds.
+            boolean changed = false;
+            for (LockableResource r : this.fromNames(resourcesInUse)) {
+                if (r.isShareHolderBuild(buildId)) {
+                    r.removeShareHoldersOfBuild(buildId);
+                    changed = true;
+                    if (r.hasShareHolders()) {
+                        LOGGER.fine("Build " + buildId + " left " + r.getName() + ", still held by "
+                                + r.getShareHolderBuilds());
+                        action.removeUsedResources(Collections.singletonList(r.getName()));
+                        continue;
+                    }
+                }
+                // last holder, or a hold without entries (freestyle, older versions)
+                toFree.add(r);
+            }
+            if (!toFree.isEmpty()) {
+                freeAndProceed(toFree, build);
+            } else if (changed) {
+                save();
+            }
+        }
+        if (!toFree.isEmpty()) {
+            scheduleQueueMaintenance();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /** As {@link #unlockResources(List, Run)}, but the caller notifies the Jenkins queue outside the lock. */
+    private void freeAndProceed(@NonNull List<LockableResource> toFree, @NonNull Run<?, ?> build) {
+        synchronized (syncResources) {
+            this.freeResources(toFree, build);
+            while (proceedNextContext()) {
+                // process as many contexts as possible
+            }
+            save();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * End of one lock block: removes the block's holder entry from each resource and frees only the
+     * resources that have no holder left. A resource without this entry (unlocked, reset or stolen in
+     * the meantime, possibly taken by someone else since) is left alone.
+     *
+     * @return names of the resources the block left while other holders keep them; the others were
+     *     released (or were no longer held by the block)
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<String> unlockShareHolder(
+            @Nullable List<String> resourceNames, @NonNull Run<?, ?> build, @NonNull String shareHolderEntry) {
+        List<String> left = new ArrayList<>();
+        if (resourceNames == null || resourceNames.isEmpty()) {
+            return left;
+        }
+        String buildId = build.getExternalizableId();
+        List<LockableResource> toFree = new ArrayList<>();
+        synchronized (syncResources) {
+            boolean changed = false;
+            for (LockableResource r : this.fromNames(new ArrayList<>(new LinkedHashSet<>(resourceNames)))) {
+                if (!r.removeShareHolder(shareHolderEntry)) {
+                    LOGGER.fine("Resource " + r.getName() + " has no holder entry " + shareHolderEntry
+                            + " any more, nothing to release");
+                    continue;
+                }
+                changed = true;
+                if (!r.hasShareHolders()) {
+                    toFree.add(r);
+                    continue;
+                }
+                left.add(r.getName());
+                if (!r.isShareHolderBuild(buildId)) {
+                    LockedResourcesBuildAction.findAndInitAction(build)
+                            .removeUsedResources(Collections.singletonList(r.getName()));
+                }
+            }
+            if (!toFree.isEmpty()) {
+                // The primary build always holds an entry, so with none left it is this build.
+                freeAndProceed(toFree, build);
+            } else if (changed) {
+                save();
+            }
+        }
+        if (!toFree.isEmpty()) {
+            scheduleQueueMaintenance();
+        }
+        return left;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Names of the resources that the lock block with {@code shareHolderEntry} joined, i.e. that
+     * another block already held when it got them. The block was the first holder of the others.
+     */
+    @NonNull
+    @Restricted(NoExternalUse.class)
+    public List<String> getJoinedResourceNames(
+            @NonNull Collection<String> resourceNames, @NonNull String shareHolderEntry) {
+        List<String> joined = new ArrayList<>();
+        synchronized (syncResources) {
+            for (String name : resourceNames) {
+                LockableResource r = fromName(name);
+                if (r == null || !r.hasShareHolder(shareHolderEntry)) {
+                    continue;
+                }
+                List<String> holders = r.getShareHolders();
+                if (!holders.get(0).equals(shareHolderEntry)) {
+                    joined.add(name);
+                }
+            }
+        }
+        return joined;
     }
 
     // ---------------------------------------------------------------------------
@@ -1292,12 +1431,44 @@ public class LockableResourcesManager extends GlobalConfiguration {
             LOGGER.warning("Skip this context, as the build cannot be retrieved");
             return true;
         }
-        boolean locked = this.lock(requiredResourceForNextContext, build, nextContext.getReason());
+        String entry;
+        try {
+            entry = LockStepExecution.shareHolderEntry(build, nextContext.getContext());
+        } catch (IOException | InterruptedException | RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Cannot record the holder entry of " + nextContext, e);
+            entry = null;
+        }
+        String shareId = nextContext.getShareId();
+        if (shareId != null && entry != null) {
+            List<LockableResource> acquired = acquireSharedNow(
+                    nextContext.candidates, build, shareId, entry, nextContext.getReason(), nextContext.getLogger());
+            if (acquired == null) {
+                // defensive; getNextQueuedContextEntry() just checked it
+                LOGGER.warning("Can not acquire shared resources: " + nextContext.candidates);
+                return false;
+            }
+            startQueuedContext(nextContext, acquired, entry);
+            admitJoinableContexts();
+            return true;
+        }
+        boolean locked = this.lock(requiredResourceForNextContext, build, nextContext.getReason(), null, entry);
         if (!locked) {
             // defensive; shall never happen
             LOGGER.warning("Can not lock resources: " + requiredResourceForNextContext);
             return false;
         }
+        startQueuedContext(nextContext, requiredResourceForNextContext, entry);
+        if (entry != null) {
+            admitJoinableContexts();
+        }
+        return true;
+    }
+
+    // ---------------------------------------------------------------------------
+    private void startQueuedContext(
+            @NonNull QueuedContextStruct nextContext,
+            @NonNull List<LockableResource> requiredResourceForNextContext,
+            @CheckForNull String entry) {
 
         LinkedHashMap<String, List<LockableResourceProperty>> resourcesToLock = new LinkedHashMap<>();
         for (LockableResource r : requiredResourceForNextContext) {
@@ -1309,8 +1480,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 resourcesToLock,
                 nextContext.getContext(),
                 nextContext.getResourceDescription(),
-                nextContext.getVariableName());
-        return true;
+                nextContext.getVariableName(),
+                entry,
+                nextContext.getShareId());
     }
 
     private boolean proceedRemoteEntry(@NonNull RemoteQueueEntry entry) {
@@ -1445,6 +1617,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     // ---------------------------------------------------------------------------
     QueuedContextStruct getNextQueuedContextEntry(QueuedContextStruct entry) {
+        String shareId = entry.getShareId();
+        if (shareId != null) {
+            // A resource held under the same share id by an ancestor (or this build) counts as available.
+            Run<?, ?> build = entry.getBuild();
+            List<String> names = getRequiredNames(entry.getResources());
+            if (build == null || planShare(names, build, shareId) == null) {
+                return null;
+            }
+            entry.candidates = names;
+            LOGGER.fine("take this (shared): " + entry);
+            return entry;
+        }
         List<LockableResource> candidates = this.getAvailableResources(entry.getResources());
         if (candidates == null || candidates.isEmpty()) {
             return null;
@@ -1453,6 +1637,325 @@ public class LockableResourcesManager extends GlobalConfiguration {
         entry.candidates = getResourcesNames(candidates);
         LOGGER.fine("take this: " + entry);
         return entry;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Shared holds (lock(shareId: ...))
+
+    /** Upper bound for following nested upstream causes, on top of the limit Jenkins applies itself. */
+    private static final int MAX_UPSTREAM_DEPTH = 64;
+
+    /** What a share request needs: free resources it becomes the first holder of, and holds it joins. */
+    private static final class SharePlan {
+        final List<LockableResource> toStart = new ArrayList<>();
+        final List<LockableResource> toJoin = new ArrayList<>();
+        /** All resources, in request order. */
+        final List<LockableResource> all = new ArrayList<>();
+    }
+
+    /** The build itself and its upstream builds, as externalizable ids, with why the walk may be partial. */
+    private static final class Ancestry {
+        final Set<String> buildIds = new HashSet<>();
+        boolean hasUpstream;
+        boolean truncated;
+        boolean replayed;
+    }
+
+    @NonNull
+    private static Ancestry ancestryOf(@NonNull Run<?, ?> build) {
+        Ancestry ancestry = new Ancestry();
+        ancestry.buildIds.add(build.getExternalizableId());
+        collectUpstream(build.getCauses(), ancestry, 0);
+        return ancestry;
+    }
+
+    private static void collectUpstream(@CheckForNull List<Cause> causes, @NonNull Ancestry ancestry, int depth) {
+        if (causes == null) {
+            return;
+        }
+        for (Cause cause : causes) {
+            if (cause instanceof Cause.UpstreamCause) {
+                Cause.UpstreamCause upstream = (Cause.UpstreamCause) cause;
+                ancestry.hasUpstream = true;
+                // same format as Run.getExternalizableId()
+                ancestry.buildIds.add(upstream.getUpstreamProject() + "#" + upstream.getUpstreamBuild());
+                if (depth + 1 < MAX_UPSTREAM_DEPTH) {
+                    collectUpstream(upstream.getUpstreamCauses(), ancestry, depth + 1);
+                } else {
+                    ancestry.truncated = true;
+                }
+            } else if (cause instanceof Cause.UpstreamCause.DeeplyNestedUpstreamCause) {
+                // Jenkins cut the chain of nested upstream causes here
+                ancestry.truncated = true;
+            } else {
+                // ReplayCause (workflow-cps), RebuildCause (rebuild), RestartDeclarativePipelineCause, ...
+                // matched by name so no dependency is needed
+                String name = cause.getClass().getSimpleName();
+                if (name.contains("Replay") || name.contains("Rebuild") || name.contains("Restart")) {
+                    ancestry.replayed = true;
+                }
+            }
+        }
+    }
+
+    /** Held by a build, through holder entries, and not reserved, stolen or held remotely. */
+    private static boolean isSharedLocalHold(@NonNull LockableResource r) {
+        return r.getRemoteLockedBy() == null
+                && !r.isReserved()
+                && !r.isStolen()
+                && r.getBuild() != null
+                && r.hasShareHolders();
+    }
+
+    /**
+     * Whether a lock block of {@code build} with {@code shareId} may join the current hold of {@code r}:
+     * (a) the hold has the same share id and one of its holder builds is the build or an upstream build
+     * of it, or (b) the hold is a plain one (no share id) of the same build.
+     */
+    private static boolean isJoinable(
+            @NonNull LockableResource r, @NonNull Ancestry ancestry, @NonNull String buildId, @NonNull String shareId) {
+        if (!isSharedLocalHold(r)) {
+            return false;
+        }
+        String heldShareId = r.getShareId();
+        if (heldShareId == null) {
+            return r.isShareHolderBuild(buildId);
+        }
+        if (!heldShareId.equals(shareId)) {
+            return false;
+        }
+        for (String holderBuild : r.getShareHolderBuilds()) {
+            if (ancestry.buildIds.contains(holderBuild)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Names of the named resources of a request, without duplicates, in request order. */
+    @NonNull
+    private static List<String> getRequiredNames(@CheckForNull List<LockableResourcesStruct> structs) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (structs != null) {
+            for (LockableResourcesStruct struct : structs) {
+                if (struct.required != null) {
+                    names.addAll(getResourcesNames(struct.required));
+                }
+            }
+        }
+        return new ArrayList<>(names);
+    }
+
+    /**
+     * Works out how a share request could be granted now: every resource must be free (and enabled) or
+     * joinable. Returns {@code null} when it has to wait. Must be called under {@link #syncResources}.
+     */
+    @CheckForNull
+    private SharePlan planShare(@CheckForNull List<String> names, @NonNull Run<?, ?> build, @NonNull String shareId) {
+        if (names == null || names.isEmpty()) {
+            return null;
+        }
+        String buildId = build.getExternalizableId();
+        Ancestry ancestry = null;
+        SharePlan plan = new SharePlan();
+        for (String name : new LinkedHashSet<>(names)) {
+            LockableResource r = fromNameOrEphemeral(name);
+            if (r == null) {
+                return null; // does not exist and ephemeral resources are disabled
+            }
+            if (r.isFree()) {
+                if (r.isDisabled()) {
+                    // no new holder for a disabled resource: wait until it is enabled, as a plain lock does
+                    return null;
+                }
+                plan.toStart.add(r);
+            } else {
+                // Joining a hold is allowed even when the resource is disabled: the join is part of the
+                // work that already holds it, and disabling never takes a resource from its holders.
+                // Refusing it would deadlock a nested block or a downstream build the holder waits for.
+                if (ancestry == null) {
+                    ancestry = ancestryOf(build);
+                }
+                if (!isJoinable(r, ancestry, buildId, shareId)) {
+                    return null;
+                }
+                plan.toJoin.add(r);
+            }
+            plan.all.add(r);
+        }
+        return plan;
+    }
+
+    /**
+     * Returns the named resource, re-creating it as an ephemeral resource when it does not exist (an
+     * ephemeral resource is removed when its last holder leaves, while others may still wait for it).
+     * Unlike {@link #createResource} this does not process the queue, because it is called from the
+     * queue scan itself. Must be called under {@link #syncResources}.
+     */
+    @CheckForNull
+    private LockableResource fromNameOrEphemeral(@NonNull String name) {
+        LockableResource r = fromName(name);
+        if (r != null || !allowEphemeralResources) {
+            return r;
+        }
+        String trimmed = Util.fixEmptyAndTrim(name);
+        if (trimmed == null) {
+            return null;
+        }
+        r = new LockableResource(trimmed);
+        r.setEphemeral(true);
+        this.resources.add(r);
+        cachedCandidates.invalidateAll();
+        LOGGER.fine("Ephemeral resource re-created for a share request: " + r);
+        return r;
+    }
+
+    /**
+     * Acquires the named resources for one {@code lock(shareId: ...)} block if it can be granted now:
+     * free resources are started under the share id, held ones are joined. Returns the resources in
+     * request order, or {@code null} when the block has to wait; the reason is then written to
+     * {@code logger} when a resource is held under the same share id by a build that is not an
+     * ancestor. Never queues.
+     */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public List<LockableResource> acquireShared(
+            @NonNull List<String> names,
+            @NonNull Run<?, ?> build,
+            @NonNull String shareId,
+            @NonNull String shareHolderEntry,
+            @CheckForNull String reason,
+            @CheckForNull PrintStream logger) {
+        synchronized (syncResources) {
+            List<LockableResource> acquired = acquireSharedNow(names, build, shareId, shareHolderEntry, reason, logger);
+            if (acquired == null) {
+                explainShareWait(names, build, shareId, logger);
+            }
+            return acquired;
+        }
+    }
+
+    @CheckForNull
+    private List<LockableResource> acquireSharedNow(
+            @CheckForNull List<String> names,
+            @NonNull Run<?, ?> build,
+            @NonNull String shareId,
+            @NonNull String shareHolderEntry,
+            @CheckForNull String reason,
+            @CheckForNull PrintStream logger) {
+        SharePlan plan = planShare(names, build, shareId);
+        if (plan == null) {
+            return null;
+        }
+        if (!plan.toStart.isEmpty() && !lock(plan.toStart, build, reason, shareId, shareHolderEntry)) {
+            return null;
+        }
+        if (!plan.toJoin.isEmpty()) {
+            LockedResourcesBuildAction action = LockedResourcesBuildAction.findAndInitAction(build);
+            List<String> inUse = action.getReadOnlyResourcesInUse();
+            List<String> toAdd = new ArrayList<>();
+            for (LockableResource r : plan.toJoin) {
+                r.addShareHolder(shareHolderEntry);
+                if (!inUse.contains(r.getName())) {
+                    toAdd.add(r.getName());
+                }
+            }
+            action.addUsedResources(toAdd);
+            printLogs(
+                    "Joining the hold of " + LockStepExecution.formatResourceNames(getResourcesNames(plan.toJoin))
+                            + " under share id '" + shareId + "'",
+                    logger,
+                    Level.FINE);
+            save();
+        }
+        return plan.all;
+    }
+
+    /**
+     * Writes why a share request waits on a resource that is held under the same share id: the
+     * holders are not this build nor one of its upstream builds, as far as the causes tell.
+     */
+    private void explainShareWait(
+            @NonNull List<String> names,
+            @NonNull Run<?, ?> build,
+            @NonNull String shareId,
+            @CheckForNull PrintStream logger) {
+        Ancestry ancestry = null;
+        String buildId = build.getExternalizableId();
+        for (String name : new LinkedHashSet<>(names)) {
+            LockableResource r = fromName(name);
+            if (r == null || !isSharedLocalHold(r) || !shareId.equals(r.getShareId())) {
+                continue;
+            }
+            if (ancestry == null) {
+                ancestry = ancestryOf(build);
+            }
+            if (isJoinable(r, ancestry, buildId, shareId)) {
+                continue;
+            }
+            String why;
+            if (ancestry.truncated) {
+                why = "the chain of upstream builds of this build is too deep to be followed to the holder";
+            } else if (ancestry.replayed && !ancestry.hasUpstream) {
+                why = "this build was replayed, rebuilt or restarted, which does not make it a downstream build"
+                        + " of the holder";
+            } else if (!ancestry.hasUpstream) {
+                why = "this build has no upstream build (it was not started by the holder, e.g. with the build"
+                        + " step)";
+            } else {
+                why = "none of the holders is this build or one of its upstream builds";
+            }
+            printLogs(
+                    "[" + r.getName() + "] is held under share id '" + shareId + "' by " + r.getShareHolderBuilds()
+                            + ", but cannot be joined: " + why + ". Waiting for it to be released.",
+                    logger,
+                    Level.FINE);
+        }
+    }
+
+    /**
+     * Starts the queued share requests that need no new resource, i.e. can join holds only, whatever
+     * their position in the queue. Called after any acquire that records holder entries, since a new
+     * holder can make others joinable. Must be called under {@link #syncResources}.
+     */
+    @Restricted(NoExternalUse.class)
+    public void admitJoinableContexts() {
+        synchronized (syncResources) {
+            boolean admitted = true;
+            while (admitted) {
+                admitted = false;
+                for (QueuedContextStruct entry : new ArrayList<>(this.queuedContexts)) {
+                    String shareId = entry.getShareId();
+                    if (shareId == null || !this.queuedContexts.contains(entry) || !entry.isValid()) {
+                        continue;
+                    }
+                    Run<?, ?> build = entry.getBuild();
+                    if (build == null) {
+                        continue;
+                    }
+                    List<String> names = getRequiredNames(entry.getResources());
+                    SharePlan plan = planShare(names, build, shareId);
+                    if (plan == null || !plan.toStart.isEmpty()) {
+                        continue; // needs a new resource: keeps its queue position
+                    }
+                    String holderEntry;
+                    try {
+                        holderEntry = LockStepExecution.shareHolderEntry(build, entry.getContext());
+                    } catch (IOException | InterruptedException | RuntimeException e) {
+                        LOGGER.log(Level.WARNING, "Cannot record the holder entry of " + entry, e);
+                        continue;
+                    }
+                    List<LockableResource> acquired =
+                            acquireSharedNow(names, build, shareId, holderEntry, entry.getReason(), entry.getLogger());
+                    if (acquired == null) {
+                        continue;
+                    }
+                    LOGGER.fine("Queued share request joins: " + entry);
+                    startQueuedContext(entry, acquired, holderEntry);
+                    admitted = true;
+                }
+            }
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -2235,6 +2738,36 @@ public class LockableResourcesManager extends GlobalConfiguration {
             String reason,
             long timeoutForAllocateResource,
             String timeoutUnit) {
+        queueContext(
+                context,
+                requiredResources,
+                resourceDescription,
+                variableName,
+                inversePrecedence,
+                priority,
+                reason,
+                timeoutForAllocateResource,
+                timeoutUnit,
+                null);
+    }
+
+    // ---------------------------------------------------------------------------
+    /*
+     * Adds the given context and the required resources to the queue if
+     * this context is not yet queued, with reason, timeout and the share id of the lock block.
+     */
+    @Restricted(NoExternalUse.class)
+    public void queueContext(
+            StepContext context,
+            List<LockableResourcesStruct> requiredResources,
+            String resourceDescription,
+            String variableName,
+            boolean inversePrecedence,
+            int priority,
+            String reason,
+            long timeoutForAllocateResource,
+            String timeoutUnit,
+            @CheckForNull String shareId) {
         synchronized (syncResources) {
             for (QueuedContextStruct entry : this.queuedContexts) {
                 if (entry.getContext() == context) {
@@ -2252,7 +2785,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     priority,
                     reason,
                     timeoutForAllocateResource,
-                    timeoutUnit);
+                    timeoutUnit,
+                    shareId);
 
             if (!inversePrecedence || priority != 0) {
                 queueIndex = this.queuedContexts.size() - 1;

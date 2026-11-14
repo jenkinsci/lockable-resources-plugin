@@ -107,6 +107,15 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String timeoutUnit = "MINUTES";
 
+    /**
+     * Share id of this lock block. A block with a share id joins a hold of the same resources taken
+     * under the same share id by this build or one of its upstream builds, instead of waiting for it.
+     * Only named resources can be shared.
+     */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Same style as the other fields.")
+    public String shareId = null;
+
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
     // is not required)
@@ -215,6 +224,16 @@ public class LockStep extends Step implements Serializable {
                 throw new IllegalArgumentException("Invalid timeoutUnit: " + timeoutUnit);
             }
             this.timeoutUnit = timeoutUnit.toUpperCase(Locale.ENGLISH);
+        }
+    }
+
+    @DataBoundSetter
+    public void setShareId(String shareId) {
+        if (shareId != null && !shareId.trim().isEmpty()) {
+            if (!shareId.equals(shareId.trim())) {
+                LOG.warning("The provided 'shareId' should not start or end with spaces.");
+            }
+            this.shareId = shareId.trim();
         }
     }
 
@@ -337,6 +356,9 @@ public class LockStep extends Step implements Serializable {
             if (this.priority != 0) {
                 ret += ", Priority: " + this.priority;
             }
+            if (this.shareId != null) {
+                ret += ", Share id: " + this.shareId;
+            }
             return ret;
         } else {
             return "nothing";
@@ -362,6 +384,39 @@ public class LockStep extends Step implements Serializable {
         for (LockStepResource selector : getResources()) {
             selector.validate(allowEmptyOrNullValues);
             LockableResourcesManager.get().validateGroup(selector.resource, selector.label, selector.getGroup());
+        }
+        validateShareId();
+    }
+
+    /**
+     * A share id is only allowed on named, local resources: the shared hold is matched resource by
+     * resource, so a label, a quantity or a remote server cannot be combined with it.
+     */
+    void validateShareId() {
+        if (shareId == null) {
+            return;
+        }
+        if (label != null) {
+            throw new IllegalArgumentException(Messages.error_shareIdWithLabel());
+        }
+        if (quantity != 0) {
+            throw new IllegalArgumentException(Messages.error_shareIdWithQuantity());
+        }
+        if (serverId != null) {
+            throw new IllegalArgumentException(Messages.error_shareIdWithServerId());
+        }
+        if (isGroupOnly()) {
+            throw new IllegalArgumentException(Messages.error_shareIdWithGroupOnly());
+        }
+        if (extra != null) {
+            for (LockStepResource e : extra) {
+                if (e.resource == null && e.label == null && (e.getGroup() != null || group != null)) {
+                    throw new IllegalArgumentException(Messages.error_shareIdWithGroupOnly());
+                }
+                if (e.label != null || e.quantity != 0) {
+                    throw new IllegalArgumentException(Messages.error_shareIdWithExtraLabelOrQuantity());
+                }
+            }
         }
     }
 
