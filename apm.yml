@@ -1,0 +1,8 @@
+name: lockable-resources-plugin-skills
+version: 0.1.0
+description: End-user resource configuration and Pipeline lock guidance.
+license: MIT
+includes:
+  - .apm/skills/lockable-resources-usage/
+targets:
+  - copilot

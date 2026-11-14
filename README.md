@@ -675,6 +675,54 @@ refer to the separate [CONTRIBUTING](CONTRIBUTING.md) document
 for details on how to proceed!
 Join [Gitter channel](https://gitter.im/jenkinsci/lockable-resources) to discuss your ideas with the community.
 
+### AI-Assisted Development with APM
+
+This checkout includes a draft end-user skill in
+[.apm/skills/lockable-resources-usage](.apm/skills/lockable-resources-usage/SKILL.md)
+for resource configuration, Pipeline `lock()` patterns, and Groovy helpers.
+Maintainer automation is kept separately in
+[mPokornyETM/jenkins-apm-skills](https://github.com/mPokornyETM/jenkins-apm-skills).
+All skill content must be reviewed by mPokornyETM before publication. The
+maintainer repository is initially empty; GitHub installation is available only
+after a reviewed revision has been pushed.
+
+Install [Microsoft APM](https://github.com/microsoft/apm) first. The following
+local-draft workflow was checked with APM 0.31.0. In a separate consumer workspace
+(for example, your Pipeline/shared-library project or a disposable directory),
+install the end-user skill directory from your local plugin checkout:
+
+```sh
+apm install /path/to/lockable-resources-plugin/.apm/skills/lockable-resources-usage --target copilot
+```
+
+For contributors who also want common plugin-maintenance skills, install your
+local skills checkout into that consumer workspace:
+
+```sh
+apm install /path/to/jenkins-apm-skills --target copilot
+```
+
+Use the real checkout paths. Windows PowerShell accepts forward-slash absolute
+paths such as `C:/ws/jenkins/plugins/jenkins-apm-skills`. Use a short consumer
+directory on Windows to avoid APM dependency-staging path-length limits.
+
+After publication, replace each placeholder below with a reviewed full commit
+SHA. End users need only the plugin package; the maintainer collection is optional
+and intended for contributors:
+
+```sh
+apm install jenkinsci/lockable-resources-plugin#<reviewed-plugin-commit-sha> --target copilot
+apm install mPokornyETM/jenkins-apm-skills#<reviewed-skills-commit-sha> --target copilot
+```
+
+APM deploys the skills and their bundled files to `.agents/skills/` and records
+dependencies in `apm.yml` and `apm.lock.yaml`. Inspect the generated changes before
+committing them; do not commit machine-specific local dependency paths. For
+shared projects, commit reviewed manifest/lockfile changes together and restore
+dependencies with `apm install --frozen`. No `apm compile` or replacement of
+existing Copilot instructions is required. Installing a skill does not authorize
+it to push Git changes, modify Jenkins configuration, or trigger builds.
+
 ----
 
 ## License

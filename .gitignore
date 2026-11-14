@@ -4,3 +4,5 @@
 /target/
 /work/
 /jsbundles/
+/apm_modules/
+/.agents/skills/
