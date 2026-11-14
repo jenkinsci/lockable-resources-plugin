@@ -202,6 +202,42 @@ Freestyle allocation and priority between separate requests are unchanged.
 Sequential candidate order or shuffled candidates for `random` remain
 preferences, not guarantees of a uniformly random complete assignment.
 
+#### Prefer some label candidates with order
+
+`order` is a list of resource names. Listed resources are tried first, in list
+order; candidates that are not listed come after them and keep their normal
+order (including the `random` shuffle). Names that do not match the label, or
+that are locked or reserved, are skipped: `order` only reorders candidates and
+never adds any. A name listed twice counts at its first position. `order`
+applies to label selectors (including `extra` entries), not to named
+resources. It is a Pipeline (`lock` step) option and is not available for
+freestyle jobs.
+
+`findLockableResources(label: ...)` returns the local resources matching a
+label (same label syntax as `lock`) as a list of maps with `name`, `labels`,
+`group`, `description` and `note`, so the order can be computed in the Pipeline.
+The optional `group` parameter returns only the resources of that group
+(`findLockableResources(label: 'nwcard:1', group: 'plc')`); without it, matching
+resources of every group are returned:
+
+```groovy
+// resource1 has label 'nwcard:1', resource2 has 'nwcard:1 nwcard:2'.
+// Prefer resources that also carry nwcard:2; the others still follow in normal order.
+// Note: list.sort { ... } does not work in a sandboxed Pipeline (CPS), findAll does.
+def order = findLockableResources(label: 'nwcard:1').findAll { r -> r.labels.contains('nwcard:2') }*.name
+lock(label: 'nwcard:1', quantity: 1, order: order) {
+    echo 'Locked a resource with nwcard:2 if one was free'
+}
+```
+
+`findLockableResources` is read-only and only sees resources on this
+controller.
+
+**`order` applies to local locks only.** It does not work with
+[remote locks](#remote-lockable-resources): when a lock goes to a remote server
+(`serverId`, or a forced server ID in delegated mode), the build log shows a
+warning and `order` is ignored.
+
 #### Take first position in queue
 
 ```groovy
@@ -461,7 +497,8 @@ lock(label: 'k8s-slot', quantity: 1) {
 
 Everything else about `lock()` behaves as it does locally: `label`, `quantity`, `variable`, `extra`,
 `priority`, `skipIfLocked`, `inversePrecedence` and the allocate timeout all work the same way, and
-the queue on the server is shared between local and remote waiters. A remote lock **fails closed**:
+the queue on the server is shared between local and remote waiters. The one exception is `order`,
+which is local only: a remote lock logs a warning and ignores it. A remote lock **fails closed**:
 if the server cannot be reached, the step fails rather than running the block unlocked.
 
 ### On the server (the controller that owns the resource)

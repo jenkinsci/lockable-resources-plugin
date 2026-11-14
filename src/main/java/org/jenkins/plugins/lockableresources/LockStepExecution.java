@@ -64,6 +64,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         LockableResourcesManager lrm = LockableResourcesManager.get();
 
         if (RemoteLockRouting.isRemoteRequest(step, lrm)) {
+            if (step.order != null) {
+                LockableResourcesManager.printLogs(
+                        "order is not supported for remote locks and will be ignored.", Level.WARNING, LOGGER, logger);
+            }
             remoteSession = new RemoteLockSession();
             return remoteSession.start(this);
         }
@@ -91,10 +95,15 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     } else {
                         resourceNames.add("N/A");
                     }
-                    LockableResourcesStruct requirement =
-                            new LockableResourcesStruct(resources, resource.label, resource.quantity);
+                    boolean groupOnly = resource.resource == null && resource.label == null;
+                    // order only applies to entries that pick from candidates (label or group-only);
+                    // named resources keep the old constructor
+                    LockableResourcesStruct requirement = resource.label != null || groupOnly
+                            ? new LockableResourcesStruct(
+                                    resources, resource.label, resource.quantity, null, step.order)
+                            : new LockableResourcesStruct(resources, resource.label, resource.quantity);
                     requirement.setGroup(resource.getGroup());
-                    requirement.setGroupOnly(resource.resource == null && resource.label == null);
+                    requirement.setGroupOnly(groupOnly);
                     resourceHolderList.add(requirement);
                 }
                 LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
