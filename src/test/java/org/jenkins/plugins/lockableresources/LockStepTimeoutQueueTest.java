@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import hudson.model.Result;
+import java.util.regex.Pattern;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -364,8 +365,13 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
         SemaphoreStep.success("waiter/1", null);
         j.assertBuildStatusSuccess(j.waitForCompletion(b2));
 
-        // Verify the log contains the timestamp pattern
-        j.assertLogContains("added into queue at position ", b2);
-        j.assertLogContains(" since ", b2);
+        // Verify the log contains the ISO-like timestamp pattern: yyyy-MM-dd'T'HH:mm:ssZ
+        String log = j.getLog(b2);
+        assertTrue(
+                Pattern.compile(
+                                "added into queue at position \\d+ since \\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{4}")
+                        .matcher(log)
+                        .find(),
+                "Queue log should contain ISO-like timestamp: " + log);
     }
 }

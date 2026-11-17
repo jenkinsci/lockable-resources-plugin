@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Date;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 class LockableResourceTest {
@@ -113,5 +114,24 @@ class LockableResourceTest {
 
         assertNotNull(detail);
         assertTrue(detail.contains("remote-lock-1"));
+    }
+
+    @Test
+    void testGetLockCauseWithReservedResource() {
+        LockableResource resource = new LockableResource("reserved-res");
+        resource.reserve("testUser");
+
+        String cause = resource.getLockCause();
+
+        assertNotNull(cause);
+        assertTrue(cause.contains("reserved-res"), "Should contain resource name");
+        assertTrue(cause.contains("testUser"), "Should contain reservedBy user");
+        assertTrue(cause.contains("at"), "Should contain 'at' keyword");
+        // Verify the ISO-like timestamp format: yyyy-MM-dd'T'HH:mm:ssZ
+        assertTrue(
+                Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{4}")
+                        .matcher(cause)
+                        .find(),
+                "Should contain ISO-like timestamp, got: " + cause);
     }
 }

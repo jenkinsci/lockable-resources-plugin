@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -717,13 +718,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     /**
      * Resolve the lock cause for this resource. It can be reserved or locked.
+     * The timestamp uses a fixed ISO-like pattern (yyyy-MM-dd'T'HH:mm:ssZ) with the JVM default time zone
+     * and {@code en_US} locale, so the output is stable across locales and comparable across controllers.
      *
      * @return the lock cause or null if not locked
      */
     @CheckForNull
     @Exported
     public String getLockCause() {
-        final DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
+        final DateFormat format = createTimestampFormat();
         final String timestamp = (reservedTimestamp == null ? "<unknown>" : format.format(reservedTimestamp));
         if (isReserved()) {
             return String.format("[%s] is reserved by %s at %s", name, reservedBy, timestamp);
@@ -754,6 +757,17 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     }
 
     /**
+     * Create a new {@link SimpleDateFormat} instance for timestamp formatting.
+     * {@link SimpleDateFormat} is not thread-safe, so each caller must create its own instance.
+     * The format uses an ISO-like pattern with time zone and a fixed {@code en_US} locale
+     * so that log lines from different controllers or agents are comparable.
+     */
+    @NonNull
+    public static DateFormat createTimestampFormat() {
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
+    }
+
+    /**
      * Resolve the lock detailed cause for this resource.
      * Note: this function is used in lock() step and not in the UI. Therefore
      *       moving text into localization files does not make really sense.
@@ -763,7 +777,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @CheckForNull
     @Restricted(NoExternalUse.class)
     public String getLockCauseDetail() {
-        final DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
+        final DateFormat format = createTimestampFormat();
         Date since = this.getReservedTimestamp();
         final String timestamp = (since == null ? "<unknown>" : format.format(since));
 
