@@ -1,6 +1,7 @@
 package org.jenkins.plugins.lockableresources.actions;
 
 import hudson.model.Action;
+import hudson.model.Api;
 import hudson.model.Run;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,12 +11,16 @@ import net.jcip.annotations.GuardedBy;
 import org.jenkins.plugins.lockableresources.Messages;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 // -----------------------------------------------------------------------------
 /** BuildAction for lockable resources.
  * Shows usage of resources in the build page.
  * url: jobUrl/buildNr/locked-resources/
+ * Remote API: jobUrl/buildNr/locked-resources/api/json
  */
+@ExportedBean
 @Restricted(NoExternalUse.class)
 public class LockedResourcesBuildAction implements Action {
 
@@ -46,6 +51,14 @@ public class LockedResourcesBuildAction implements Action {
     @Override
     public String getUrlName() {
         return "locked-resources";
+    }
+
+    /**
+     * Exposes this page through the Jenkins remote API.
+     * Present only on builds that locked a resource; other builds have no such action.
+     */
+    public Api getApi() {
+        return new Api(this);
     }
 
     public List<String> getCurrentUsedResourceNames() {
@@ -113,6 +126,7 @@ public class LockedResourcesBuildAction implements Action {
         }
     }
 
+    @Exported(name = "logs")
     @Restricted(NoExternalUse.class)
     public List<LogEntry> getReadOnlyLogs() {
         ensureListsInitialized();
@@ -121,6 +135,7 @@ public class LockedResourcesBuildAction implements Action {
         }
     }
 
+    @Exported(name = "resourcesInUse")
     @Restricted(NoExternalUse.class)
     public List<String> getReadOnlyResourcesInUse() {
         ensureListsInitialized();
@@ -174,6 +189,9 @@ public class LockedResourcesBuildAction implements Action {
         return new LockedResourcesBuildAction(this);
     }
 
+    // Visibility 2 keeps name, step, action, and timeStamp in the default
+    // /locked-resources/api/json response. Visibility 1 is pruned one level down.
+    @ExportedBean(defaultVisibility = 2)
     public static class LogEntry {
 
         private final String step;
@@ -190,24 +208,28 @@ public class LockedResourcesBuildAction implements Action {
         }
 
         // ---------------------------------------------------------------------
+        @Exported
         @Restricted(NoExternalUse.class)
         public String getName() {
             return this.resourceName;
         }
 
         // ---------------------------------------------------------------------
+        @Exported
         @Restricted(NoExternalUse.class)
         public String getStep() {
             return this.step;
         }
 
         // ---------------------------------------------------------------------
+        @Exported
         @Restricted(NoExternalUse.class)
         public String getAction() {
             return this.action;
         }
 
         // ---------------------------------------------------------------------
+        @Exported
         @Restricted(NoExternalUse.class)
         public Date getTimeStamp() {
             return new Date(this.timeStamp);
