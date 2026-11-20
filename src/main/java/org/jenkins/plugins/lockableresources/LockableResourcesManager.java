@@ -129,10 +129,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private boolean allowEphemeralResources = true;
 
     /**
-     * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
-     * (freestyle builds) regular Jenkins queue is used.
+     * Legacy location of the {@link LockStep} queue. Only read from old {@code LockableResourcesManager.xml}
+     * files; {@link LockableResourcesState} drains it on startup and it stays {@code null} afterwards, so it is
+     * no longer written.
+     *
+     * @deprecated Replaced with {@link LockableResourcesState} (runtime state, separate file).
      */
-    private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+    @Deprecated
+    @CheckForNull
+    private List<QueuedContextStruct> queuedContexts;
+
+    /** Cached runtime state store, see {@link #state()}. */
+    private transient volatile LockableResourcesState state;
 
     /**
      * Remote acquire requests waiting for resources. Transient: does not survive Jenkins restart
@@ -185,6 +193,12 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     private transient volatile AtomicBoolean savePending;
     private transient volatile ScheduledExecutorService saveExecutor;
+
+    /** Set when this configuration file must be written by the next coalesced save. */
+    private transient volatile boolean configDirty;
+
+    /** Set when the {@link LockableResourcesState} file must be written by the next coalesced save. */
+    private transient volatile boolean stateDirty;
 
     /** Single scheduled timeout task. Guarded by {@link #syncResources}. */
     private transient java.util.concurrent.ScheduledFuture<?> nextTimeoutTask;
@@ -1364,16 +1378,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @CheckForNull
     private QueuedContextStruct getNextQueuedContext() {
 
-        LOGGER.fine("current queue size: " + this.queuedContexts.size());
-        LOGGER.finest("current queue: " + this.queuedContexts);
+        List<QueuedContextStruct> queue = state().queuedContexts();
+        LOGGER.fine("current queue size: " + queue.size());
+        LOGGER.finest("current queue: " + queue);
         List<QueuedContextStruct> toRemove = new ArrayList<>();
         QueuedContextStruct nextEntry = null;
         long earliestDeadline = Long.MAX_VALUE;
 
         // the first one added lock is the oldest one, and this wins
 
-        for (int idx = 0; idx < this.queuedContexts.size() && nextEntry == null; idx++) {
-            QueuedContextStruct entry = this.queuedContexts.get(idx);
+        for (int idx = 0; idx < queue.size() && nextEntry == null; idx++) {
+            QueuedContextStruct entry = queue.get(idx);
             // check queue list first
             if (!entry.isValid()) {
                 LOGGER.fine("well be removed: " + idx + " " + entry);
@@ -1408,7 +1423,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         if (!toRemove.isEmpty()) {
-            this.queuedContexts.removeAll(toRemove);
+            queue.removeAll(toRemove);
+            state().save();
         }
 
         // reschedule for the next earliest deadline, across both queues.
@@ -1501,8 +1517,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class) // used by jelly
     public List<QueuedContextStruct> getCurrentQueuedContext() {
         synchronized (syncResources) {
-            return Collections.unmodifiableList(this.queuedContexts);
+            return Collections.unmodifiableList(state().queuedContexts());
         }
+    }
+
+    /** The runtime state store holding the {@link LockStep} queue. */
+    private LockableResourcesState state() {
+        LockableResourcesState s = state;
+        if (s == null) {
+            state = s = LockableResourcesState.get();
+        }
+        return s;
+    }
+
+    /**
+     * Hands over queue entries read from an old {@code LockableResourcesManager.xml} and clears the legacy
+     * field. Called once by {@link LockableResourcesState} while it loads. Must hold {@link #syncResources}.
+     */
+    @CheckForNull
+    @SuppressWarnings("deprecation")
+    List<QueuedContextStruct> drainLegacyQueuedContexts() {
+        List<QueuedContextStruct> legacy = this.queuedContexts;
+        this.queuedContexts = null;
+        return legacy;
     }
 
     // ---------------------------------------------------------------------------
@@ -1806,14 +1843,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class) // used by jelly
     public void changeQueueOrder(final String queueId, final int newPosition) throws IOException {
         synchronized (syncResources) {
-            if (newPosition < 0 || newPosition >= this.queuedContexts.size()) {
-                throw new IOException(
-                        Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
+            List<QueuedContextStruct> queue = state().queuedContexts();
+            if (newPosition < 0 || newPosition >= queue.size()) {
+                throw new IOException(Messages.error_queuePositionOutOfRange(newPosition + 1, queue.size()));
             }
 
             int oldIndex = -1;
-            for (int i = 0; i < this.queuedContexts.size(); i++) {
-                QueuedContextStruct entry = this.queuedContexts.get(i);
+            for (int i = 0; i < queue.size(); i++) {
+                QueuedContextStruct entry = queue.get(i);
                 if (entry.getId().equals(queueId)) {
                     oldIndex = i;
                     break;
@@ -1825,7 +1862,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 throw new IOException(Messages.error_queueDoesNotExist(queueId));
             }
 
-            Collections.swap(this.queuedContexts, oldIndex, newPosition);
+            Collections.swap(queue, oldIndex, newPosition);
+            state().save();
         }
     }
 
@@ -2149,7 +2187,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         Map<Run<?, ?>, Integer> usage = new HashMap<>();
 
-        for (QueuedContextStruct entry : this.queuedContexts) {
+        for (QueuedContextStruct entry : state().queuedContexts()) {
             boolean matched = false;
             for (LockableResourcesStruct _struct : entry.getResources()) {
                 if (_struct.isResourceRequired(resource)) {
@@ -2237,7 +2275,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             long timeoutForAllocateResource,
             String timeoutUnit) {
         synchronized (syncResources) {
-            for (QueuedContextStruct entry : this.queuedContexts) {
+            List<QueuedContextStruct> queue = state().queuedContexts();
+            for (QueuedContextStruct entry : queue) {
                 if (entry.getContext() == context) {
                     LOGGER.warning("queueContext, duplicated, " + requiredResources);
                     return;
@@ -2256,9 +2295,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     timeoutUnit);
 
             if (!inversePrecedence || priority != 0) {
-                queueIndex = this.queuedContexts.size() - 1;
+                queueIndex = queue.size() - 1;
                 for (; queueIndex >= 0; queueIndex--) {
-                    QueuedContextStruct entry = this.queuedContexts.get(queueIndex);
+                    QueuedContextStruct entry = queue.get(queueIndex);
                     final int rc = entry.compare(newQueueItem);
                     if (rc > 0) {
                         continue;
@@ -2268,7 +2307,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 queueIndex++;
             }
 
-            this.queuedContexts.add(queueIndex, newQueueItem);
+            queue.add(queueIndex, newQueueItem);
             DateFormat format = LockableResource.createTimestampFormat();
             String timestamp = format.format(new Date());
             printLogs(
@@ -2276,7 +2315,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     newQueueItem.getLogger(),
                     Level.FINE);
 
-            save();
+            state().save();
 
             // If this entry has a timeout and its deadline is earlier than the
             // currently scheduled one, (re)schedule so it fires on time.
@@ -2290,10 +2329,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     public boolean unqueueContext(StepContext context) {
         synchronized (syncResources) {
-            for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
+            for (Iterator<QueuedContextStruct> iter = state().queuedContexts().listIterator(); iter.hasNext(); ) {
                 if (iter.next().getContext() == context) {
                     iter.remove();
-                    save();
+                    state().save();
                     return true;
                 }
             }
@@ -2568,28 +2607,76 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return se;
     }
 
-    @Override
-    public void save() {
+    boolean isSaveEnabled() {
         if (enableSave == -1) {
             // read system property and cache it.
             enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
         }
+        return enableSave != 0;
+    }
 
-        if (enableSave == 0) return; // saving is disabled
+    private static boolean isAsyncSave() {
+        return asyncSaveEnabled && saveCoalesceMs > 0;
+    }
+
+    @Override
+    public void save() {
+        if (!isSaveEnabled()) return; // saving is disabled
 
         if (BulkChange.contains(this)) return;
 
-        if (asyncSaveEnabled && saveCoalesceMs > 0) {
-            if (getSavePending().compareAndSet(false, true)) {
-                getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
-            }
+        if (isAsyncSave()) {
+            configDirty = true;
+            scheduleSave();
         } else {
-            doSave();
+            writeConfig();
+        }
+    }
+
+    /**
+     * Saves the {@link LockableResourcesState} file. Shares the coalesced save with this configuration: one
+     * task writes the state file first, then this file, each only when it changed.
+     */
+    void saveState(@NonNull LockableResourcesState state) {
+        if (!isSaveEnabled()) return; // saving is disabled
+
+        if (BulkChange.contains(state)) return;
+
+        if (isAsyncSave()) {
+            stateDirty = true;
+            scheduleSave();
+        } else {
+            synchronized (syncResources) {
+                state.write();
+            }
+        }
+    }
+
+    private void scheduleSave() {
+        if (getSavePending().compareAndSet(false, true)) {
+            getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
         }
     }
 
     private void doSave() {
         getSavePending().set(false);
+        boolean writeState = stateDirty;
+        stateDirty = false;
+        boolean writeConfig = configDirty;
+        configDirty = false;
+        synchronized (syncResources) {
+            // State first, then configuration. While per-resource state still lives in the configuration
+            // file, a hard kill between the two writes can leave them out of step.
+            if (writeState) {
+                state().write();
+            }
+            if (writeConfig) {
+                writeConfig();
+            }
+        }
+    }
+
+    private void writeConfig() {
         synchronized (syncResources) {
             resourceGroups = getResourceGroups();
             try {
@@ -2603,7 +2690,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * Flush any pending async save during Jenkins shutdown so that lock state
-     * is never lost on an orderly restart.
+     * is never lost on an orderly restart. Covers both this file and the
+     * {@link LockableResourcesState} file.
      */
     @Terminator
     public static void flushPendingSave() {
@@ -2615,7 +2703,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (se != null) {
             se.shutdownNow();
         }
-        if (lrm.savePending != null && lrm.savePending.compareAndSet(true, false)) {
+        if (lrm.stateDirty || lrm.configDirty) {
             lrm.doSave();
             LOGGER.fine("Flushed pending async save during shutdown");
         }
