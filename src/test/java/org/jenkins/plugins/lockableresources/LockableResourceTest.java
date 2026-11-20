@@ -9,8 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Date;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 class LockableResourceTest {
 
@@ -133,5 +139,93 @@ class LockableResourceTest {
                         .matcher(cause)
                         .find(),
                 "Should contain ISO-like timestamp, got: " + cause);
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for invalid user lookup handling (no stack traces, clean messages)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Verifies that reserving a resource with a bogus username does not cause
+     * {@code getLockCauseDetail()} to throw, and returns a clean message containing
+     * the raw username instead of a stack trace.
+     */
+    @WithJenkins
+    @Test
+    void getLockCauseDetail_withBogusUser_doesNotThrow(JenkinsRule r) throws Exception {
+        LockableResource resource = new LockableResource("myResource");
+        resource.reserve("bogusUserName");
+
+        String detail = assertDoesNotThrow(resource::getLockCauseDetail);
+
+        assertNotNull(detail);
+        assertTrue(detail.contains("myResource"), "Should contain resource name");
+        assertTrue(detail.contains("bogusUserName"), "Should contain the raw reservedBy name");
+        assertTrue(detail.contains("reserved"), "Should mention reservation");
+        // Must not leak stack trace artifacts into the message
+        assertFalse(detail.contains("Exception"), "Should not contain exception text in message");
+        assertFalse(detail.contains("at "), "Should not contain stack trace frames in message");
+    }
+
+    /**
+     * Verifies that {@code getReservedByEmail()} gracefully handles a bogus reservedBy
+     * username and returns null without throwing.
+     */
+    @WithJenkins
+    @Test
+    void getReservedByEmail_withBogusUser_returnsNull(JenkinsRule r) throws Exception {
+        LockableResource resource = new LockableResource("myResource");
+        resource.reserve("bogusUserName");
+
+        String email = assertDoesNotThrow(resource::getReservedByEmail);
+        assertNull(email, "Email should be null for unknown user");
+    }
+
+    /**
+     * Verifies that a bogus reservedBy name does not cause any log records above
+     * FINE level (i.e., no WARNING or SEVERE spam in build logs).
+     */
+    @WithJenkins
+    @Test
+    void getLockCauseDetail_withBogusUser_noHighSeverityLogs(JenkinsRule r) throws Exception {
+        LockableResource resource = new LockableResource("myResource");
+        resource.reserve("bogusUserName");
+
+        Logger logger = Logger.getLogger(LockableResource.class.getName());
+        TestLogHandler logHandler = new TestLogHandler();
+        logHandler.setLevel(Level.ALL);
+        logger.addHandler(logHandler);
+
+        try {
+            resource.getLockCauseDetail();
+            resource.getReservedByEmail();
+
+            // Assert no log records above FINE were emitted
+            for (LogRecord record : logHandler.records) {
+                assertTrue(
+                        record.getLevel().intValue() <= Level.FINE.intValue(),
+                        "Expected FINE or lower, but got " + record.getLevel() + ": " + record.getMessage());
+            }
+        } finally {
+            logger.removeHandler(logHandler);
+        }
+    }
+
+    /**
+     * Simple log handler that captures LogRecords for assertion.
+     */
+    private static class TestLogHandler extends Handler {
+        final java.util.List<LogRecord> records = new java.util.ArrayList<>();
+
+        @Override
+        public void publish(LogRecord record) {
+            records.add(record);
+        }
+
+        @Override
+        public void flush() {}
+
+        @Override
+        public void close() throws SecurityException {}
     }
 }
