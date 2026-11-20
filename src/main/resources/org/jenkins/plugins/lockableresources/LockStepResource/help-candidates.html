@@ -1,0 +1,36 @@
+<div>
+  <p>
+    Optional list of resource names to lock from, in list order. Use exactly one of
+    <code>resource</code>, <code>label</code> or <code>candidates</code> in each <code>extra</code> entry.
+  </p>
+  <ul>
+    <li>
+      <strong>Without <code>quantity</code></strong>: all listed resources are locked, like a list of named
+      resources. A resource that does not exist is created as an ephemeral resource when ephemeral resources
+      are allowed; otherwise it is skipped with a line in the build log.
+    </li>
+    <li>
+      <strong>With <code>quantity</code></strong>: only resources that exist are used. They are tried in list
+      order and the first free ones are locked (the <code>random</code> strategy shuffles the list first).
+      Names that do not exist are skipped with one line in the build log. If fewer resources exist than
+      requested, the step fails when "fail fast on insufficient resources" is enabled, and waits otherwise.
+    </li>
+    <li>With <code>group</code>, only candidates of that group are used.</li>
+    <li>
+      The list is checked again each time the queue is processed: a resource deleted while waiting is no
+      longer a candidate.
+    </li>
+  </ul>
+  <p>
+    Use <code>findLockableResources</code> to build the list, for example:
+  </p>
+  <pre>
+def preferred = findLockableResources(label: 'os:Debian &amp;&amp; nwcard:1').findAll { r -&gt; !r.description.contains('Test-agent') }
+def sorted = preferred.findAll { r -&gt; r.labels.contains('nwcard:2') } + preferred.findAll { r -&gt; !r.labels.contains('nwcard:2') }
+lock(candidates: sorted*.name, quantity: 2, variable: 'LOCKED') { echo 'Locked: ' + env.LOCKED }</pre>
+  <p>
+    <code>candidates</code> is not available in the Snippet Generator form, because a text field cannot hold
+    a list. Write it in the Pipeline script directly.
+    It is not supported for remote locks (<code>serverId</code>): such a lock fails with an error.
+  </p>
+</div>

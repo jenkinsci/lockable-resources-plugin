@@ -1901,8 +1901,16 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Predicate<LockableResource> groupFilter =
                     candidateFilter.and(r -> requiredResources.getGroup().equals(r.getGroup()));
             List<LockableResource> available = new ArrayList<>();
-            // filter by labels
-            if (requiredResources.isGroupOnly()
+            final List<String> candidateNames = requiredResources.getCandidates();
+            if (candidateNames != null) {
+                available = getFreeCandidates(
+                        candidateNames,
+                        parseQuantity(requiredResources),
+                        selectStrategy,
+                        logger,
+                        candidates,
+                        groupFilter);
+            } else if (requiredResources.isGroupOnly()
                     || (requiredResources.label != null && !requiredResources.label.isBlank())) {
                 // get required amount first
                 int requiredAmount = 0;
@@ -1968,7 +1976,38 @@ public class LockableResourcesManager extends GlobalConfiguration {
             Predicate<LockableResource> candidateFilter) {
         List<List<LockableResource>> candidatesPerSlot = new ArrayList<>();
         for (LockableResourcesStruct requirement : requirements) {
-            if (requirement.label != null && !requirement.label.isBlank()) {
+            final List<String> candidateNames = requirement.getCandidates();
+            if (candidateNames != null) {
+                List<LockableResource> available = existingCandidates(
+                        candidateNames,
+                        candidateFilter.and(r -> requirement.getGroup().equals(r.getGroup())),
+                        Collections.emptyList());
+                int amount = parseQuantity(requirement);
+                if (amount <= 0 || available.size() < amount) {
+                    printLogs(
+                            "Found " + available.size() + " existing candidate(s). Waiting for correct amount: "
+                                    + amount + ".",
+                            logger,
+                            Level.FINE);
+                    return null;
+                }
+                available.removeIf(r -> r.isReserved() || r.isLocked() || r.isDisabled());
+                if (available.size() < amount) {
+                    printLogs(
+                            "Found " + available.size() + " free candidate(s). Waiting for correct amount: " + amount
+                                    + ".",
+                            logger,
+                            Level.FINE);
+                    return null;
+                }
+                if (selectStrategy == ResourceSelectStrategy.RANDOM) {
+                    Collections.shuffle(available);
+                }
+                // ResourceMatcher tries candidates in list order, so the list order is the preference
+                for (int i = 0; i < amount; i++) {
+                    candidatesPerSlot.add(available);
+                }
+            } else if (requirement.label != null && !requirement.label.isBlank()) {
                 List<LockableResource> possible = getResourcesWithLabel(requirement.label);
                 possible.removeIf(r -> !candidateFilter.test(r));
                 int amount = 0;
@@ -2113,6 +2152,80 @@ public class LockableResourcesManager extends GlobalConfiguration {
             printLogs(msg, logger, Level.FINE);
         }
 
+        return null;
+    }
+
+    // ---------------------------------------------------------------------------
+    /** The requested quantity of a requirement, 0 when none (or an unparsable one) is set. */
+    private static int parseQuantity(LockableResourcesStruct requirement) {
+        if (requirement.requiredNumber != null) {
+            try {
+                return Integer.parseInt(requirement.requiredNumber);
+            } catch (NumberFormatException ignored) {
+                // same as a missing quantity
+            }
+        }
+        return 0;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * The resources named in {@code names} that exist now and pass {@code filter}, in list order, without
+     * duplicates and without the resources in {@code exclude}. Names of resources that do not exist (or no
+     * longer exist) are skipped.
+     */
+    private List<LockableResource> existingCandidates(
+            List<String> names, Predicate<LockableResource> filter, List<LockableResource> exclude) {
+        List<LockableResource> found = new ArrayList<>();
+        for (String name : names) {
+            LockableResource r = fromName(name);
+            if (r != null && filter.test(r) && !exclude.contains(r) && !found.contains(r)) {
+                found.add(r);
+            }
+        }
+        return found;
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
+     * Picks the first {@code amount} free resources from {@code names}, in list order (shuffled first for the
+     * {@code random} strategy). Only resources that exist and pass {@code candidateFilter} count. Returns
+     * {@code null} when fewer than {@code amount} of them are free.
+     */
+    @CheckForNull
+    private List<LockableResource> getFreeCandidates(
+            List<String> names,
+            int amount,
+            final @Nullable ResourceSelectStrategy selectStrategy,
+            final @Nullable PrintStream logger,
+            final List<LockableResource> alreadySelected,
+            @NonNull final Predicate<LockableResource> candidateFilter) {
+        List<LockableResource> candidates = existingCandidates(names, candidateFilter, alreadySelected);
+        if (amount <= 0 || candidates.size() < amount) {
+            printLogs(
+                    "Found " + candidates.size() + " existing candidate(s). Waiting for correct amount: " + amount
+                            + ".",
+                    logger,
+                    Level.FINE);
+            return null;
+        }
+        if (selectStrategy == ResourceSelectStrategy.RANDOM) {
+            Collections.shuffle(candidates);
+        }
+        List<LockableResource> found = new ArrayList<>();
+        for (LockableResource r : candidates) {
+            // same eligibility as label candidates
+            if (!r.isReserved() && !r.isLocked() && !r.isDisabled()) {
+                found.add(r);
+                if (found.size() >= amount) {
+                    return found;
+                }
+            }
+        }
+        printLogs(
+                "Found " + found.size() + " free candidate(s). Waiting for correct amount: " + amount + ".",
+                logger,
+                Level.FINE);
         return null;
     }
 

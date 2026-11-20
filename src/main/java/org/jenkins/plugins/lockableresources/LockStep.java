@@ -50,7 +50,11 @@ public class LockStep extends Step implements Serializable {
 
     /** @since TODO */
     public boolean isGroupOnly() {
-        return group != null && resource == null && label == null && (extra == null || extra.isEmpty());
+        return group != null
+                && resource == null
+                && label == null
+                && candidates == null
+                && (extra == null || extra.isEmpty());
     }
 
     @CheckForNull
@@ -106,6 +110,15 @@ public class LockStep extends Step implements Serializable {
      */
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public String timeoutUnit = "MINUTES";
+
+    /**
+     * Optional list of resource names to pick from, in list order. Without a quantity all listed resources are
+     * locked, like named resources; with a quantity the first free ones that exist are locked. Mutually exclusive
+     * with {@link #resource} and {@link #label}. Not supported for remote locks.
+     */
+    @CheckForNull
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public List<String> candidates = null;
 
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
@@ -216,6 +229,11 @@ public class LockStep extends Step implements Serializable {
             }
             this.timeoutUnit = timeoutUnit.toUpperCase(Locale.ENGLISH);
         }
+    }
+
+    @DataBoundSetter
+    public void setCandidates(@CheckForNull List<String> candidates) {
+        this.candidates = LockStepResource.cleanCandidates(candidates);
     }
 
     @Extension
@@ -329,8 +347,8 @@ public class LockStep extends Step implements Serializable {
                     .collect(Collectors.joining(","));
         } else if (isGroupOnly()) {
             return "Group: " + getGroup() + (quantity > 0 ? ", Quantity: " + quantity : "");
-        } else if (resource != null || label != null) {
-            String ret = LockStepResource.toString(resource, label, quantity, reason);
+        } else if (resource != null || label != null || candidates != null) {
+            String ret = LockStepResource.toString(resource, label, candidates, quantity, reason);
             if (!ResourceGroup.DEFAULT_NAME.equals(getGroup())) {
                 ret += ", Group: " + getGroup();
             }
@@ -349,6 +367,7 @@ public class LockStep extends Step implements Serializable {
         LockStepResource.validate(
                 resource,
                 label,
+                candidates,
                 resourceSelectStrategy,
                 isGroupOnly() || (extra != null && !extra.isEmpty()),
                 priority,
@@ -359,17 +378,29 @@ public class LockStep extends Step implements Serializable {
                 selector.validate(allowEmptyOrNullValues || group != null, getGroup());
             }
         }
+        LockableResourcesManager lrm = LockableResourcesManager.get();
         for (LockStepResource selector : getResources()) {
             selector.validate(allowEmptyOrNullValues);
-            LockableResourcesManager.get().validateGroup(selector.resource, selector.label, selector.getGroup());
+            if (selector.candidates == null) {
+                lrm.validateGroup(selector.resource, selector.label, selector.getGroup());
+            } else if (selector.quantity <= 0) {
+                // without a quantity, candidates are locked like named resources
+                for (String name : selector.candidates) {
+                    lrm.validateGroup(name, null, selector.getGroup());
+                }
+            } else {
+                // with a quantity, candidates outside the group are skipped when resources are picked
+                lrm.validateGroupExists(selector.getGroup());
+            }
         }
     }
 
     // -------------------------------------------------------------------------
     public List<LockStepResource> getResources() {
         List<LockStepResource> resources = new ArrayList<>();
-        if (resource != null || label != null || isGroupOnly()) {
+        if (resource != null || label != null || candidates != null || isGroupOnly()) {
             LockStepResource main = new LockStepResource(resource, label, quantity, reason);
+            main.candidates = candidates;
             main.setGroup(getGroup());
             resources.add(main);
         }
@@ -378,6 +409,7 @@ public class LockStep extends Step implements Serializable {
             for (LockStepResource selector : extra) {
                 LockStepResource resolved =
                         new LockStepResource(selector.resource, selector.label, selector.quantity, selector.reason);
+                resolved.candidates = selector.candidates;
                 resolved.setGroup(selector.getGroup() == null ? getGroup() : selector.getGroup());
                 resources.add(resolved);
             }

@@ -12,6 +12,7 @@ import hudson.EnvVars;
 import hudson.model.Descriptor;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import org.jenkins.plugins.lockableresources.LockableResource;
@@ -66,6 +67,10 @@ public class LockableResourcesStruct implements Serializable {
     @CheckForNull
     private transient SecureGroovyScript resourceMatchScript;
 
+    /** Resource names to pick {@link #requiredNumber} resources from, see {@link #getCandidates()}. */
+    @CheckForNull
+    private ArrayList<String> candidates;
+
     private static final long serialVersionUID = 1L;
 
     public LockableResourcesStruct(RequiredResourcesProperty property, EnvVars env) {
@@ -114,6 +119,20 @@ public class LockableResourcesStruct implements Serializable {
             @Nullable List<String> resources, @Nullable String label, int quantity, String variable) {
         this(resources, label, quantity);
         requiredVar = variable;
+    }
+
+    /**
+     * Creates a request for {@code quantity} resources picked from {@code candidates}, in list order. The names are
+     * stored, not the resources, so the list is checked again each time the queue is processed.
+     *
+     * @param candidates Resource names to pick from.
+     * @param quantity Number of resources to lock, greater than 0.
+     */
+    @Restricted(NoExternalUse.class)
+    public static LockableResourcesStruct forCandidates(List<String> candidates, int quantity) {
+        LockableResourcesStruct struct = new LockableResourcesStruct(null, null, quantity);
+        struct.candidates = new ArrayList<>(candidates);
+        return struct;
     }
 
     public LockableResourcesStruct(@Nullable List<String> resources, @Nullable String label, int quantity) {
@@ -168,6 +187,17 @@ public class LockableResourcesStruct implements Serializable {
         return serializableResourceMatchScript != null ? serializableResourceMatchScript.getScript() : null;
     }
 
+    /**
+     * Gets the resource names to pick from.
+     *
+     * @return the candidate names in list order, or {@code null} if this request does not use candidates
+     */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public List<String> getCandidates() {
+        return candidates != null ? Collections.unmodifiableList(candidates) : null;
+    }
+
     @Override
     public String toString() {
         String str = "";
@@ -179,6 +209,9 @@ public class LockableResourcesStruct implements Serializable {
         }
         if (this.resourceMatchScript != null) {
             str += "Required label script: " + this.resourceMatchScript.getScript();
+        }
+        if (this.candidates != null) {
+            str += "Required candidates: " + this.candidates;
         }
         if (this.requiredVar != null) {
             str += ", Variable name: " + this.requiredVar;
