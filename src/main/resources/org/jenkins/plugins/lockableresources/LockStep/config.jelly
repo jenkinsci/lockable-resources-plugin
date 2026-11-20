@@ -19,6 +19,9 @@
   <f:entry title="${%entry.reason.title}" field="reason">
     <f:textbox/>
   </f:entry>
+  <f:entry title="${%entry.shareId.title}" field="shareId">
+    <f:textbox/>
+  </f:entry>
   <f:entry field="inversePrecedence">
     <f:checkbox title="${%entry.inversePrecedence.checkbox.title}"/>
   </f:entry>

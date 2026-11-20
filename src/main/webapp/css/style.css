@@ -958,3 +958,22 @@ span.lr-static-label.lr-disabled-label { color: var(--text-color-secondary); }
     padding: 0.5rem;
   }
 }
+
+/* Shared hold (lock(shareId: ...)): other holder builds under the primary one */
+.lr-share {
+    margin-top: 0.25rem;
+    font-size: var(--font-size-xs, 0.75rem);
+}
+
+.lr-share summary {
+    cursor: pointer;
+}
+
+.lr-share__id {
+    word-break: break-all;
+}
+
+.lr-share__holders {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+}

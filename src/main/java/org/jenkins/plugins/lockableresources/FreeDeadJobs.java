@@ -7,6 +7,7 @@ package org.jenkins.plugins.lockableresources;
 
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
+import hudson.model.Run;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -42,10 +43,26 @@ public final class FreeDeadJobs {
         synchronized (LockableResourcesManager.syncResources) {
             List<LockableResource> orphan = new ArrayList<>();
             LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
+            boolean pruned = false;
             for (LockableResource resource : lrm.getResources()) {
+                // A shared hold lives as long as one of its holder builds runs: prune the others first.
+                for (String holderBuild : resource.getShareHolderBuilds()) {
+                    Run<?, ?> run = Run.fromExternalizableId(holderBuild);
+                    if (run == null || !run.isInProgress()) {
+                        LOG.log(
+                                Level.INFO,
+                                "lockable-resources-plugin removes post mortem holder " + holderBuild + " of resource "
+                                        + resource.getName());
+                        resource.removeShareHoldersOfBuild(holderBuild);
+                        pruned = true;
+                    }
+                }
                 if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
                     orphan.add(resource);
                 }
+            }
+            if (pruned) {
+                lrm.save();
             }
 
             for (LockableResource resource : orphan) {
