@@ -277,6 +277,7 @@ public class LockedResourcesBuildAction implements Action {
         }
 
         // ---------------------------------------------------------------------
+        @Exported
         @Restricted(NoExternalUse.class)
         public Date getTimeStamp() {
             return new Date(this.timeStamp);
