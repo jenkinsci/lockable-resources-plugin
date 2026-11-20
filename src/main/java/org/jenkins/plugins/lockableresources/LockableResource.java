@@ -655,6 +655,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
                 if (email != null) return email.getAddress();
             } catch (Exception e) {
                 LOGGER.fine(() -> "Failed to look up email for reservedBy='" + reservedBy + "': " + e.getMessage());
+                LOGGER.log(
+                        Level.FINEST,
+                        "Full stack trace for email lookup failure for reservedBy='" + reservedBy + "'",
+                        e);
             }
         }
         return null;
@@ -792,6 +796,10 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
                 return String.format("The resource [%s] is reserved by %s since %s.", name, userText, timestamp);
             } catch (Exception e) {
                 LOGGER.fine(() -> "Failed to look up user for reservedBy='" + reservedBy + "': " + e.getMessage());
+                LOGGER.log(
+                        Level.FINEST,
+                        "Full stack trace for user lookup failure for reservedBy='" + reservedBy + "'",
+                        e);
                 return String.format(
                         "The resource [%s] is reserved by %s (user lookup failed) since %s.",
                         name, reservedBy, timestamp);
