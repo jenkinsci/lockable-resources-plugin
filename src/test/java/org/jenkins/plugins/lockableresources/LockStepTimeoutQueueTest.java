@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import hudson.model.Result;
+import java.util.regex.Pattern;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -335,5 +336,42 @@ class LockStepTimeoutQueueTest extends LockStepTestBase {
         j.assertLogContains("fresh done", b3);
 
         assertTrue(LockableResourcesManager.get().getCurrentQueuedContext().isEmpty());
+    }
+
+    /**
+     * When a build is queued for a lock, the log message must include a timestamp so users can see
+     * how long the build has been waiting.
+     */
+    @Test
+    void queuedMessageIncludesTimestamp(JenkinsRule j) throws Exception {
+        LockableResourcesManager.get().createResource("resource1");
+
+        // b1 holds the lock
+        WorkflowJob p1 = j.jenkins.createProject(WorkflowJob.class, "holder");
+        p1.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'hold' }", true));
+        WorkflowRun b1 = p1.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("hold/1", b1);
+
+        // b2 waits for the lock — should be queued with a timestamp
+        WorkflowJob p2 = j.jenkins.createProject(WorkflowJob.class, "waiter");
+        p2.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'waiter' }\necho 'waiter done'", true));
+        WorkflowRun b2 = p2.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("added into queue at position ", b2);
+
+        // Release the lock so b2 can proceed
+        SemaphoreStep.success("hold/1", null);
+        j.waitForCompletion(b1);
+        SemaphoreStep.waitForStart("waiter/1", b2);
+        SemaphoreStep.success("waiter/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(b2));
+
+        // Verify the log contains the ISO-like timestamp pattern: yyyy-MM-dd'T'HH:mm:ssZ
+        String log = j.getLog(b2);
+        assertTrue(
+                Pattern.compile(
+                                "added into queue at position \\d+ since \\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{4}")
+                        .matcher(log)
+                        .find(),
+                "Queue log should contain ISO-like timestamp: " + log);
     }
 }

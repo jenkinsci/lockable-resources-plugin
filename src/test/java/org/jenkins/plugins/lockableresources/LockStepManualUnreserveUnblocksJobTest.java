@@ -46,7 +46,7 @@ class LockStepManualUnreserveUnblocksJobTest extends LockStepTestBase {
                 """, true));
 
             WorkflowRun r = p.scheduleBuild2(0).waitForStart();
-            j.waitForMessage("The resource [resource1] is reserved by someone.", r);
+            j.waitForMessage("The resource [resource1] is reserved by someone", r);
             j.waitForMessage("[Resource: resource1] is not free, waiting for execution ...", r);
             j.assertLogNotContains("I am inside", r);
             testHelpers.clickButton("unreserve", "resource1");
