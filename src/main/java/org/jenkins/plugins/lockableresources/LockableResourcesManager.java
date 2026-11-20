@@ -24,7 +24,6 @@ import hudson.util.FormValidation;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1865,7 +1864,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
             }
             action.addUsedResources(toAdd);
-            DateFormat format = new SimpleDateFormat("MMM d, yyyy, HH:mm:ss");
+            DateFormat format = LockableResource.createTimestampFormat();
             String timestamp = format.format(new Date());
             printLogs(
                     "Joining the hold of " + LockStepExecution.formatResourceNames(getResourcesNames(plan.toJoin))
