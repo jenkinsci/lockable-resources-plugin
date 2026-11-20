@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Date;
 import java.util.logging.Handler;
@@ -14,10 +15,14 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import jenkins.model.Jenkins;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class LockableResourceTest {
 
     private final LockableResource instance = new LockableResource("r1");
@@ -182,32 +187,82 @@ class LockableResourceTest {
     }
 
     /**
-     * Verifies that a bogus reservedBy name does not cause any log records above
-     * FINE level (i.e., no WARNING or SEVERE spam in build logs).
+     * Verifies that when Jenkins.getUser() throws (simulating an LDAP error),
+     * a short message is logged at FINE level and the full stack trace at FINEST level,
+     * without any log records above FINE (i.e., no WARNING or SEVERE spam in build logs).
      */
     @WithJenkins
     @Test
-    void getLockCauseDetail_withBogusUser_noHighSeverityLogs(JenkinsRule r) throws Exception {
+    void getLockCauseDetail_withBogusUser_logsAtFineAndFinest(JenkinsRule r) throws Exception {
         LockableResource resource = new LockableResource("myResource");
         resource.reserve("bogusUserName");
 
         Logger logger = Logger.getLogger(LockableResource.class.getName());
+        Level originalLevel = logger.getLevel();
         TestLogHandler logHandler = new TestLogHandler();
         logHandler.setLevel(Level.ALL);
         logger.addHandler(logHandler);
+        logger.setLevel(Level.ALL);
 
+        // Stub Jenkins.getInstance() to throw, simulating an LDAP lookup failure
+        Jenkins jenkins = Jenkins.get();
+        Jenkins spyJenkins = org.mockito.Mockito.spy(jenkins);
+        org.mockito.Mockito.doThrow(new RuntimeException("Simulated LDAP error"))
+                .when(spyJenkins)
+                .getUser(org.mockito.ArgumentMatchers.anyString());
+
+        // Replace the singleton reference so our code sees the spy
+        // Since Jenkins.get() returns a singleton, we use a different approach:
+        // directly test that the catch block produces the expected output
         try {
-            resource.getLockCauseDetail();
-            resource.getReservedByEmail();
+            // Replace Jenkins instance with spy — use reflection on the static field
+            java.lang.reflect.Field instanceField = Jenkins.class.getDeclaredField("theInstance");
+            instanceField.setAccessible(true);
+            Jenkins originalInstance = (Jenkins) instanceField.get(null);
+            instanceField.set(null, spyJenkins);
 
-            // Assert no log records above FINE were emitted
-            for (LogRecord record : logHandler.records) {
-                assertTrue(
-                        record.getLevel().intValue() <= Level.FINE.intValue(),
-                        "Expected FINE or lower, but got " + record.getLevel() + ": " + record.getMessage());
+            try {
+                resource.getLockCauseDetail();
+                resource.getReservedByEmail();
+
+                // Each method emits 2 records: one FINE (short message) + one FINEST (full stack trace)
+                // 2 methods x 2 records = 4 total
+                assertEquals(4, logHandler.records.size(), "Expected 4 log records (2 FINE + 2 FINEST)");
+
+                int fineCount = 0;
+                int finestCount = 0;
+                for (LogRecord record : logHandler.records) {
+                    // Verify the log message mentions the reservedBy value
+                    assertTrue(
+                            record.getMessage().contains("bogusUserName"),
+                            "Log message should mention the bogus username: " + record.getMessage());
+
+                    if (record.getLevel().equals(Level.FINE)) {
+                        fineCount++;
+                        // FINE logs should have the short message with exception message, no thrown exception
+                        assertNull(record.getThrown(), "FINE log record should not include the thrown exception");
+                    } else if (record.getLevel().equals(Level.FINEST)) {
+                        finestCount++;
+                        // FINEST logs should include the full exception for stack trace
+                        assertNotNull(
+                                record.getThrown(),
+                                "FINEST log record should include the thrown exception for stack trace");
+                    } else {
+                        fail("Unexpected log level " + record.getLevel() + ": " + record.getMessage());
+                    }
+                }
+
+                assertEquals(2, fineCount, "Expected 2 FINE log records");
+                assertEquals(2, finestCount, "Expected 2 FINEST log records");
+            } finally {
+                // Restore original Jenkins instance
+                instanceField.set(null, originalInstance);
             }
         } finally {
             logger.removeHandler(logHandler);
+            if (originalLevel != null) {
+                logger.setLevel(originalLevel);
+            }
         }
     }
 
