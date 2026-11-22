@@ -335,18 +335,25 @@ Response `200 OK`:
 {
   "acceptNewAcquires": true,
   "resources": [
-    { "name": "r1", "labels": ["gpu", "remote-enabled"], "description": "", "state": "FREE" },
+    { "name": "r1", "labels": ["gpu", "remote-enabled"], "description": "", "state": "FREE",
+      "disabled": false },
     { "name": "r2", "labels": ["gpu", "remote-enabled"], "description": "", "state": "LOCKED",
-      "heldByKind": "REMOTE_CLIENT", "heldByClientId": "my-script", "since": 1723526400000 }
+      "heldByKind": "REMOTE_CLIENT", "heldByClientId": "my-script", "since": 1723526400000,
+      "disabled": false },
+    { "name": "r3", "labels": ["gpu", "remote-enabled"], "description": "", "state": "FREE",
+      "disabled": true }
   ]
 }
 ```
 
 Only resources carrying one of the server's *expose label(s)* appear. `state` is `FREE`, `QUEUED`,
 `LOCKED` or `RESERVED`; when it is held, `heldByKind` says by what — `LOCAL_BUILD`, `REMOTE_CLIENT`
-or `ADMIN` — and `since` is an epoch-milliseconds timestamp. The build name, its reason and the
-resource note are deliberately not included: which resources exist and whether they are busy is what
-a borrower needs, and nothing more is disclosed.
+or `ADMIN` — and `since` is an epoch-milliseconds timestamp. `disabled` is `true` when an
+administrator disabled the resource: it is not given to new lock requests until it is enabled
+again, even when its `state` is `FREE` (a holder keeps a resource that gets disabled). The build
+name, its reason, the resource note and the disabled cause are deliberately not included: which
+resources exist, whether they are busy and whether they can be taken at all is what a borrower
+needs, and nothing more is disclosed.
 
 `acceptNewAcquires` mirrors the maintenance switch, so a client can tell a paused server from an
 unreachable one before it tries to acquire.

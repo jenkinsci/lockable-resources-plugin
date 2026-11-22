@@ -42,8 +42,11 @@ Each lockable resource has the following properties:
 - **Description** - Optional verbose description of this particular resource,
   i.e. `Printers in the Danish Office`
 - **Labels** - Optional space-delimited list of Labels (A label can not containing spaces) used to
-  identify a pool of resources. i.e. `DK_Printers_Office Country:DK device:printer`,
+  identify shared capabilities. i.e. `DK_Printers_Office Country:DK device:printer`,
   `DK_Printer_Production`, `DK_Printer_Engineering`
+- **Group** - Optional allocation group. Empty means `common`. Resources in other
+  groups are only selected by requests that explicitly choose that group.
+  Each resource belongs to exactly one group.
 - **Reserved by** - Optional reserved / locked cause. If non-empty,
   the resource will be unavailable for jobs. i.e. `All printers are currently not available due to maintenance.`
   This option is still possible, but we recommend to use the *Manage Jenkins* > *Lockable Resources* page
@@ -51,9 +54,32 @@ Each lockable resource has the following properties:
 A resource is always the one thing that is locked (or free or reserved).
 It exists once and has an unique name (if we take the hardware example, this may be `office_printer_14`).
 Every resource can have multiple labels (the printer could be labeled `dot-matrix-printer`, `in-office-printer`, `a4-printer`, etc.).
-All resources with the same label form a "pool", so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
+Within the selected resource group, labels select matching resources, so if you try to lock an `a4-printer`, one of the resources with the label `a4-printer` will be locked when it is available.
 If all resources with the label `a4-printer` are in use, your job waits until one is available.
 This is similar to nodes and node labels.
+
+### Global resource groups
+
+Groups isolate resource selection independently of capability labels. Configure
+groups in Jenkins global configuration and assign each resource a **Group**.
+Existing resources and requests without a group use `common`.
+The single-group membership is intentional: groups define separate allocation
+boundaries, while labels describe shared capabilities. A group can contain many
+resources, and each resource can have multiple labels.
+
+Create the `plc` group and assign resources with the `S7` label to it before using
+this example:
+
+```groovy
+lock(group: 'plc', label: 'S7', quantity: 1) {
+    // Only matching devices in plc are eligible; no fallback to other groups.
+}
+```
+
+The management page offers **All**, **common**, and custom group filters.
+Groups prevent accidental selection, not unauthorized access; folder scoping is
+not implemented. See [resource groups](src/doc/examples/resource-groups.md) for
+configuration, selection rules, migration, and examples.
 
 ### Using a resource in a freestyle job
 
@@ -302,6 +328,26 @@ updateLock(resource: 'my-resource', addLabels: 'new', removeLabels: 'old')
 updateLock(resource: 'my-resource', setNote: 'Updated by build #${BUILD_NUMBER}')
 ```
 
+**Disable and enable a resource:**
+
+```groovy
+// Disable: new lock() requests for this resource (by name or by label) wait as if it were busy.
+// A build that currently holds the resource keeps it.
+updateLock(resource: 'my-resource', disabledCause: "Something goes wrong in ${env.BUILD_ID}")
+
+// Enable again: builds waiting for the resource can take it.
+updateLock(resource: 'my-resource', disabledCause: null)
+```
+
+The cause can also be set with Configuration as Code (`disabledCause` on a declared resource).
+
+On the *Lockable Resources* page, users with the *Configure* permission can disable a resource (a cause is required)
+and enable it again. A disabled resource is shown as *DISABLED* with its cause, and it can not be reserved, stolen
+or reassigned until it is enabled again.
+
+To book a resource for a person at a fixed time, for example for manual testing, disable and enable it with two
+scheduled jobs. See [Book a resource for a time slot](src/doc/examples/book-a-resource-for-a-time-slot.md).
+
 **Delete a resource:**
 
 ```groovy
@@ -500,6 +546,28 @@ System.setProperty("org.jenkins.plugins.lockableresources.PRINT_QUEUE_INFO", "-1
 
  0 means disabled
  -1 means all / unlimited.
+
+## Locked resources on the build page
+
+A build that locks a resource gets a **Lockable resources** entry in its sidebar at
+`<build URL>/locked-resources/`. The page lists the lock events for that build.
+
+The same data is available as JSON at `<build URL>/locked-resources/api/json`:
+
+```sh
+curl -s "$JENKINS_URL/job/my-job/12/locked-resources/api/json"
+```
+
+Notes:
+
+- Only builds that used a lockable resource have this page. For any other build the URL returns 404.
+- `logs` is the event history, oldest first. Each entry has:
+  - `name`: the resource name.
+  - `step`: the event type. The values are `try` (the build started waiting for the resource), `acquired`, `released`, and `skipped` (a remote lock that the server skipped, so the block did not run).
+  - `action`: the description of the `lock` step.
+  - `timeStamp`: the event time in epoch milliseconds.
+- `resourcesInUse` lists the resources this build holds right now. It is empty once the build has released them.
+- The page shows the same data as the build page. The JSON layout is not yet a stable public API, so scripts that depend on it may need updating after a plugin upgrade.
 
 ## Configuration as Code
 

@@ -1,0 +1,7 @@
+---
+unclassified:
+  lockableResourcesManager:
+    declaredResources:
+      - name: "Resource_A"
+        disabledCause: "Broken power supply"
+      - name: "Resource_B"

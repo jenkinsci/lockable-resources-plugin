@@ -10,6 +10,7 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.AbstractBuild;
 import hudson.model.Job;
+import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.model.TaskListener;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 import org.jenkins.plugins.lockableresources.LockableResource;
 import org.jenkins.plugins.lockableresources.LockableResourceProperty;
 import org.jenkins.plugins.lockableresources.LockableResourcesManager;
+import org.jenkins.plugins.lockableresources.actions.GroupLockFailureAction;
 import org.jenkins.plugins.lockableresources.actions.ResourceVariableNameAction;
 
 @Extension
@@ -54,17 +56,31 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
                     buildEnv = new EnvVars();
                 }
 
-                LockableResourcesStruct resources = Utils.requiredResources(proj, buildEnv);
+                LockableResourcesStruct resources;
+                try {
+                    resources = Utils.requiredResources(proj, buildEnv);
+                } catch (IllegalArgumentException e) {
+                    // Named selectors may have changed groups since queue admission.
+                    failGroupLock(lrm, proj, lrm.getResourcesFromProject(proj.getFullName()), build, listener);
+                    return;
+                }
 
                 if (resources != null) {
                     if (resources.requiredNumber != null
                             || !resources.label.isEmpty()
+                            || resources.isGroupOnly()
                             || resources.getResourceMatchScriptText() != null) {
                         required.addAll(lrm.getResourcesFromProject(proj.getFullName()));
                     } else {
                         required.addAll(resources.required);
                     }
 
+                    boolean groupMatches =
+                            required.stream().allMatch(r -> resources.getGroup().equals(r.getGroup()));
+                    if (!groupMatches) {
+                        failGroupLock(lrm, proj, required, build, listener);
+                        return;
+                    }
                     if (lrm.lock(required, build)) {
                         // build.addAction(LockedResourcesBuildAction.fromResources(required));
                         listener.getLogger().printf("%s acquired lock on %s%n", LOG_PREFIX, required);
@@ -101,12 +117,35 @@ public class LockRunListener extends RunListener<Run<?, ?>> {
                             build.addAction(new ResourceVariableNameAction(envsToSet));
                         }
                     } else {
-                        listener.getLogger().printf("%s failed to lock %s%n", LOG_PREFIX, required);
-                        LOGGER.warning(build.getFullDisplayName() + " failed to lock " + required);
+                        reportLockFailure(lrm, proj, required, build, listener);
                     }
                 }
             }
         }
+    }
+
+    private static void failGroupLock(
+            LockableResourcesManager lrm,
+            Job<?, ?> project,
+            List<LockableResource> required,
+            Run<?, ?> build,
+            TaskListener listener) {
+        reportLockFailure(lrm, project, required, build, listener);
+        build.addAction(new GroupLockFailureAction());
+        build.setResult(Result.FAILURE);
+    }
+
+    private static void reportLockFailure(
+            LockableResourcesManager lrm,
+            Job<?, ?> project,
+            List<LockableResource> required,
+            Run<?, ?> build,
+            TaskListener listener) {
+        for (LockableResource resource : lrm.getResourcesFromProject(project.getFullName())) {
+            resource.unqueue();
+        }
+        listener.getLogger().printf("%s failed to lock %s%n", LOG_PREFIX, required);
+        LOGGER.warning(build.getFullDisplayName() + " failed to lock " + required);
     }
 
     @Override

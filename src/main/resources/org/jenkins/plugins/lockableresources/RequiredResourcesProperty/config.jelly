@@ -15,6 +15,9 @@
     name="required-lockable-resources"
     checked="${instance!=null}">
     <f:nested>
+      <f:entry title="${%entry.group.title}" field="group">
+        <f:textbox/>
+      </f:entry>
       <f:entry title="${%entry.resourceNames.title}" field="resourceNames">
         <f:textbox autoCompleteDelimChar=" "/>
       </f:entry>

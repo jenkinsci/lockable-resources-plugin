@@ -7,9 +7,11 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -91,7 +93,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     } else {
                         resourceNames.add("N/A");
                     }
-                    resourceHolderList.add(new LockableResourcesStruct(resources, resource.label, resource.quantity));
+                    LockableResourcesStruct requirement =
+                            new LockableResourcesStruct(resources, resource.label, resource.quantity);
+                    requirement.setGroup(resource.getGroup());
+                    requirement.setGroupOnly(resource.resource == null && resource.label == null);
+                    resourceHolderList.add(requirement);
                 }
                 LockedResourcesBuildAction.addLog(run, resourceNames, "try", step.toString());
                 // determine if there are enough resources available to proceed
@@ -184,6 +190,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
      * To acquire a lock, at least one of these properties must be non-null and non-empty.
      */
     private boolean acquireLock() {
+        if (step.isGroupOnly()) {
+            return true;
+        }
         if (step.label != null) {
             return true;
         }
@@ -281,7 +290,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             build = context.get(Run.class);
             node = context.get(FlowNode.class);
             logger = context.get(TaskListener.class).getLogger();
-            String message = "Lock acquired on [" + resourceDescription + "]";
+            DateFormat format = LockableResource.createTimestampFormat();
+            String timestamp = format.format(new Date());
+            String message = "Lock acquired on [" + resourceDescription + "] at " + timestamp;
             if (!lockedResources.isEmpty()) {
                 message += ", resources: " + formatResourceNames(lockedResources.keySet());
             }
@@ -439,7 +450,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             Run<?, ?> build = context.get(Run.class);
             LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
             LockableResourcesManager.get().unlockNames(this.resourceNames, build);
-            String message = "Lock released on resource [" + this.resourceDescription + "]";
+            DateFormat format = LockableResource.createTimestampFormat();
+            String timestamp = format.format(new Date());
+            String message = "Lock released on resource [" + this.resourceDescription + "] at " + timestamp;
             if (this.resourceNames != null && !this.resourceNames.isEmpty()) {
                 message += ", resources: " + formatResourceNames(this.resourceNames);
             }

@@ -1,0 +1,15 @@
+<div>
+  <p>
+    Disables the resource and stores why. A disabled resource is not given to new
+    <code>lock</code> requests, neither by name nor by label. Those requests wait in the
+    queue as if the resource were busy. A build that holds the resource when it gets
+    disabled keeps it until it releases it.
+  </p>
+  <p>
+    Use <code>disabledCause: null</code> to enable the resource again. Builds waiting
+    for it can then take it.
+  </p>
+  <p>
+    Example: <code>disabledCause: "Something goes wrong in ${env.BUILD_ID}"</code>
+  </p>
+</div>

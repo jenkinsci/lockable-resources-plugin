@@ -30,6 +30,67 @@ import org.kohsuke.stapler.verb.GET;
 @WithJenkins
 class RemoteApiV1ActionTest {
 
+    @Test
+    void acquireJsonGroupOnlyExtraInheritsMainGroup(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("exposed");
+        manager.createResourceWithLabel("protected-one", "exposed");
+        manager.fromName("protected-one").setGroup("production");
+        manager.createResourceWithLabel("protected-two", "exposed");
+        manager.fromName("protected-two").setGroup("production");
+        manager.createResourceWithLabel("hidden", "");
+        manager.fromName("hidden").setGroup("production");
+        manager.createResourceWithLabel("ordinary", "exposed");
+        RemoteApiV1Action action = new RemoteApiV1Action();
+
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"extra\":[{\"quantity\":1}]}}"), 400, "INVALID_EXTRA");
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"group\":\"missing\",\"extra\":[{\"quantity\":1}]}}"),
+                404,
+                "UNKNOWN_GROUP");
+        ResponseCapture result = invokeAcquire(action, """
+                {"lockRequest":{"group":"production","extra":[{"quantity":1}]}}
+                """);
+        assertEquals(202, result.status());
+        assertEquals("ACQUIRED", result.json().getString("state"));
+        assertNotNull(manager.fromName("protected-one").getRemoteLockedBy());
+        assertTrue(manager.fromName("protected-two").isFree());
+        assertTrue(manager.fromName("hidden").isFree());
+        assertTrue(manager.fromName("ordinary").isFree());
+        invokeRelease(result.json().getString("lockId"));
+    }
+
+    @Test
+    void acquireJsonGroupAndInheritedExtraAreEnforced(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("exposed");
+        manager.createResourceWithLabel("ordinary", "device exposed");
+        manager.createResourceWithLabel("protected", "device exposed");
+        manager.fromName("protected").setGroup("production");
+        manager.createResourceWithLabel("extra-protected", "exposed");
+        manager.fromName("extra-protected").setGroup("production");
+        RemoteApiV1Action action = new RemoteApiV1Action();
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"resource\":\"protected\"}}"), 400, "INVALID_REQUEST");
+        assertJsonError(
+                invokeAcquire(action, "{\"lockRequest\":{\"label\":\"device\",\"group\":\"missing\"}}"),
+                404,
+                "UNKNOWN_LABEL");
+        ResponseCapture result = invokeAcquire(action, """
+                {"lockRequest":{"label":"device","group":"production","quantity":1,
+                  "extra":[{"resource":"extra-protected"},{"resource":"ordinary","group":"common"}]}}
+                """);
+        assertEquals(202, result.status());
+        assertEquals("ACQUIRED", result.json().getString("state"));
+        assertNotNull(manager.fromName("protected").getRemoteLockedBy());
+        assertNotNull(manager.fromName("extra-protected").getRemoteLockedBy());
+        assertNotNull(manager.fromName("ordinary").getRemoteLockedBy());
+        invokeRelease(result.json().getString("lockId"));
+    }
+
     @BeforeEach
     void setUp() {
         System.setProperty(Constants.SYSTEM_PROPERTY_DISABLE_SAVE, "true");
@@ -225,7 +286,7 @@ class RemoteApiV1ActionTest {
         RemoteApiV1Action action = new RemoteApiV1Action();
 
         // A quantity that is not a number used to read as 0, and 0 on a label means "every match" -
-        // so a typo asked for the whole pool instead of the one machine that was meant.
+        // so a typo asked for the whole group instead of the one machine that was meant.
         assertJsonError(
                 invokeAcquire(action, "{\"lockRequest\":{\"label\":\"hw\",\"quantity\":\"abc\"}}"),
                 400,
@@ -419,6 +480,55 @@ class RemoteApiV1ActionTest {
         assertFalse(payload.getBoolean("acceptNewAcquires"));
         // A free resource is still reported as free: "you cannot take it right now" is the page's job.
         assertEquals("FREE", payload.getJSONArray("resources").getJSONObject(0).getString("state"));
+    }
+
+    @Test
+    void resourcesReportsDisabledResourcesWithoutChangingTheirState(JenkinsRule j) throws Exception {
+        LockableResourcesManager manager = LockableResourcesManager.get();
+        manager.setRemoteApiEnabled(true);
+        manager.setExposeLabel("hw");
+        manager.createResourceWithLabel("board-1", "hw");
+        manager.createResourceWithLabel("board-2", "hw");
+        manager.createResourceWithLabel("board-3", "hw");
+        manager.setDisabledCause(manager.fromName("board-1"), "Broken power supply");
+
+        // a disabled resource that is still held keeps its LOCKED state
+        ResponseCapture acquire = invokeAcquire(new RemoteApiV1Action(), jsonBody("resource", "board-3"));
+        assertEquals(202, acquire.status.get());
+        manager.setDisabledCause(manager.fromName("board-3"), "Retire after this run");
+
+        net.sf.json.JSONArray resources = net.sf.json.JSONObject.fromObject(
+                        invokeResources().body.toString())
+                .getJSONArray("resources");
+        assertEquals(3, resources.size());
+
+        net.sf.json.JSONObject disabled = resources.getJSONObject(0);
+        assertEquals("board-1", disabled.getString("name"));
+        assertEquals("FREE", disabled.getString("state"));
+        assertTrue(disabled.getBoolean("disabled"));
+
+        net.sf.json.JSONObject enabled = resources.getJSONObject(1);
+        assertEquals("board-2", enabled.getString("name"));
+        assertEquals("FREE", enabled.getString("state"));
+        assertFalse(enabled.getBoolean("disabled"));
+
+        net.sf.json.JSONObject held = resources.getJSONObject(2);
+        assertEquals("board-3", held.getString("name"));
+        assertEquals("LOCKED", held.getString("state"));
+        assertTrue(held.getBoolean("disabled"));
+
+        // the cause is free text written by an administrator, like the note: it is not disclosed
+        String body = invokeResources().body.toString();
+        assertFalse(body.contains("disabledCause"), body);
+        assertFalse(body.contains("Broken power supply"), body);
+        assertFalse(body.contains("Retire after this run"), body);
+
+        manager.setDisabledCause(manager.fromName("board-1"), null);
+        net.sf.json.JSONObject reEnabled = net.sf.json.JSONObject.fromObject(
+                        invokeResources().body.toString())
+                .getJSONArray("resources")
+                .getJSONObject(0);
+        assertFalse(reEnabled.getBoolean("disabled"));
     }
 
     @Test
