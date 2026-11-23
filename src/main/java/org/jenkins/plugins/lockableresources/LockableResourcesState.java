@@ -6,6 +6,7 @@
 package org.jenkins.plugins.lockableresources;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.BulkChange;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.XmlFile;
@@ -29,9 +30,10 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
  * Runtime state of the plugin, kept apart from the global configuration in {@link LockableResourcesManager}.
  * Holds the queue of {@link LockStep} executions waiting for resources.
  *
- * <p>Stored in its own file in {@code JENKINS_HOME}. Saves share the coalesced async save of
- * {@link LockableResourcesManager} (see {@link LockableResourcesManager#saveState}). Saving does not fire
- * {@link hudson.model.listeners.SaveableListener}: these are not configuration changes.
+ * <p>Stored in its own file in {@code JENKINS_HOME}, with its own save: {@link #save()} writes the file
+ * right away and does not share the async save of {@link LockableResourcesManager}. A pending save of the
+ * configuration is written first, so the configuration is never older on disk than this state. Saving does
+ * not fire {@link hudson.model.listeners.SaveableListener}: these are not configuration changes.
  *
  * <p>All access must hold {@link LockableResourcesManager#syncResources}.
  */
@@ -83,12 +85,19 @@ public final class LockableResourcesState implements Saveable {
     @Override
     public void save() {
         LockableResourcesManager lrm = GlobalConfiguration.all().get(LockableResourcesManager.class);
-        if (lrm != null) {
-            lrm.saveState(this);
-        } else {
-            synchronized (LockableResourcesManager.syncResources) {
-                write();
+        if (lrm != null && !lrm.isSaveEnabled()) {
+            return; // saving is disabled
+        }
+        if (BulkChange.contains(this)) {
+            return;
+        }
+        synchronized (LockableResourcesManager.syncResources) {
+            // Configuration first, then state: a lock taken by a queued build must be on disk before its
+            // queue entry is gone from this file.
+            if (lrm != null) {
+                lrm.flushPendingConfigSave();
             }
+            write();
         }
     }
 

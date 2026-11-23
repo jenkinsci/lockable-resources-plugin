@@ -201,12 +201,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private transient volatile AtomicBoolean savePending;
     private transient volatile ScheduledExecutorService saveExecutor;
 
-    /** Set when this configuration file must be written by the next coalesced save. */
-    private transient volatile boolean configDirty;
-
-    /** Set when the {@link LockableResourcesState} file must be written by the next coalesced save. */
-    private transient volatile boolean stateDirty;
-
     /** Single scheduled timeout task. Guarded by {@link #syncResources}. */
     private transient ScheduledFuture<?> nextTimeoutTask;
 
@@ -3566,81 +3560,33 @@ public class LockableResourcesManager extends GlobalConfiguration {
         return se;
     }
 
-    boolean isSaveEnabled() {
+    @Override
+    public void save() {
         if (enableSave == -1) {
             // read system property and cache it.
             enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
         }
-        return enableSave != 0;
-    }
 
-    private static boolean isAsyncSave() {
-        return asyncSaveEnabled && saveCoalesceMs > 0;
-    }
-
-    @Override
-    public void save() {
-        if (!isSaveEnabled()) return; // saving is disabled
+        if (enableSave == 0) return; // saving is disabled
 
         if (BulkChange.contains(this)) return;
 
-        if (isAsyncSave()) {
-            configDirty = true;
-            scheduleSave();
-        } else {
-            writeConfig();
-        }
-    }
-
-    /**
-     * Saves the {@link LockableResourcesState} file. Shares the coalesced save with this configuration: one
-     * task writes the state file first, then this file, each only when it changed.
-     */
-    void saveState(@NonNull LockableResourcesState state) {
-        if (!isSaveEnabled()) return; // saving is disabled
-
-        if (BulkChange.contains(state)) return;
-
-        if (isAsyncSave()) {
-            stateDirty = true;
-            scheduleSave();
-        } else {
-            synchronized (syncResources) {
-                state.write();
+        if (asyncSaveEnabled && saveCoalesceMs > 0) {
+            if (getSavePending().compareAndSet(false, true)) {
+                try {
+                    getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
+                } catch (RejectedExecutionException e) {
+                    // executor already shut down (Jenkins is terminating): save synchronously
+                    doSave();
+                }
             }
-        }
-    }
-
-    private void scheduleSave() {
-        if (getSavePending().compareAndSet(false, true)) {
-            try {
-                getSaveExecutor().schedule(this::doSave, saveCoalesceMs, TimeUnit.MILLISECONDS);
-            } catch (RejectedExecutionException e) {
-                // executor already shut down (Jenkins is terminating): save synchronously
-                doSave();
-            }
+        } else {
+            doSave();
         }
     }
 
     private void doSave() {
         getSavePending().set(false);
-        boolean writeState = stateDirty;
-        stateDirty = false;
-        boolean writeConfig = configDirty;
-        configDirty = false;
-        synchronized (syncResources) {
-            // State first, then configuration. While per-resource state still lives in the configuration
-            // file, a hard kill between the two writes can leave them out of step.
-            if (writeState) {
-                state().write();
-            }
-            if (writeConfig) {
-                writeConfig();
-            }
-        }
-    }
-
-    private void writeConfig() {
         synchronized (syncResources) {
             resourceGroups = getResourceGroups();
             try {
@@ -3655,8 +3601,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     /**
      * Flush any pending async save during Jenkins shutdown so that lock state
-     * is never lost on an orderly restart. Covers both this file and the
-     * {@link LockableResourcesState} file.
+     * is never lost on an orderly restart.
      */
     @Terminator
     public static void flushPendingSave() {
@@ -3679,9 +3624,31 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 Thread.currentThread().interrupt();
             }
         }
-        if (lrm.stateDirty || lrm.configDirty) {
+        if (lrm.savePending != null && lrm.savePending.compareAndSet(true, false)) {
             lrm.doSave();
             LOGGER.fine("Flushed pending async save during shutdown");
+        }
+    }
+
+    /** Whether saving is enabled, see {@link Constants#SYSTEM_PROPERTY_DISABLE_SAVE}. */
+    boolean isSaveEnabled() {
+        if (enableSave == -1) {
+            // read system property and cache it.
+            enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
+        }
+        return enableSave != 0;
+    }
+
+    /**
+     * Writes this configuration now when an async save of it is pending. Called by
+     * {@link LockableResourcesState} before it writes its own file, so the configuration (the locks) is on
+     * disk before the queue state: after a hard kill a lock is never lost while its queue entry is already
+     * gone. Must hold {@link #syncResources}.
+     */
+    void flushPendingConfigSave() {
+        AtomicBoolean sp = savePending;
+        if (sp != null && sp.get()) {
+            doSave();
         }
     }
 

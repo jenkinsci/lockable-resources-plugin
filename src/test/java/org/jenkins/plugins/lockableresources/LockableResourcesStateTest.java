@@ -139,6 +139,36 @@ class LockableResourcesStateTest extends LockStepTestBase {
     }
 
     @Test
+    void configurationIsWrittenBeforeQueueState() throws Throwable {
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            lrm.createResource("resource1");
+            lrm.reserve(Collections.singletonList(lrm.fromName("resource1")), "test");
+            WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'held' }", true));
+            Path managerXml = j.jenkins.getRootDir().toPath().resolve(MANAGER_XML);
+            Path stateXml = j.jenkins.getRootDir().toPath().resolve(STATE_XML);
+
+            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("The resource [resource1] is reserved by test", b1);
+            waitUntil(() -> countEntries(read(stateXml)) == 1);
+
+            // The queued build gets the resource. Once its entry is gone from the state file, the lock
+            // is already in the configuration file: a hard kill now loses neither.
+            lrm.unreserve(Collections.singletonList(lrm.fromName("resource1")));
+            waitUntil(() -> countEntries(read(stateXml)) == 0);
+            assertTrue(
+                    read(managerXml)
+                            .contains(
+                                    "<buildExternalizableId>" + b1.getExternalizableId() + "</buildExternalizableId>"),
+                    "lock written before the queue entry was removed");
+
+            SemaphoreStep.success("held/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+        });
+    }
+
+    @Test
     void queueOrderSurvivesRestart() throws Throwable {
         sessions.then(j -> {
             LockableResourcesManager.get().createResource("resource1");
