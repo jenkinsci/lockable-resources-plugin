@@ -123,19 +123,36 @@ function showAddResourceDialog() {
   }, "name");
 }
 
-function editResource(button) {
-  const row = button.closest("tr");
-  const resourceName = row.getAttribute("data-resource-name");
-  const currentDesc = row.getAttribute("data-resource-description") || "";
-  const currentLabels = row.getAttribute("data-resource-labels") || "";
+// The element holding a resource's data-resource-* attributes: a table row on the main
+// page, the page wrapper on the resource detail page. Action URLs are resolved against
+// the closest data-lr-base-url (the root action URL); without one they stay relative.
+function resourceContext(element) {
+  const holder = element.closest("[data-resource-name]");
+  const base = element.closest("[data-lr-base-url]");
+  return {
+    holder: holder,
+    name: holder.getAttribute("data-resource-name"),
+    baseUrl: base ? base.getAttribute("data-lr-base-url") : "",
+  };
+}
 
-  const currentProps = [];
-  row.querySelectorAll(".lr-property-pill").forEach(function (pill) {
+// Current configuration of a resource, as rendered into its holder element.
+function resourceConfig(holder) {
+  const properties = [];
+  holder.querySelectorAll(".lr-property-pill").forEach(function (pill) {
     const k = pill.querySelector(".lr-property-pill__key");
     const v = pill.querySelector(".lr-property-pill__value");
-    if (k) currentProps.push({ name: k.textContent.trim(), value: v ? v.textContent.trim() : "" });
+    if (k) properties.push({ name: k.textContent.trim(), value: v ? v.textContent.trim() : "" });
   });
+  return {
+    description: holder.getAttribute("data-resource-description") || "",
+    labels: holder.getAttribute("data-resource-labels") || "",
+    group: holder.getAttribute("data-resource-group") || "common",
+    properties: properties,
+  };
+}
 
+function editResource(resourceName, current, baseUrl) {
   const template = document.getElementById("lr-add-resource-template");
   if (!template) return;
   const content = template.content.firstElementChild.cloneNode(true);
@@ -144,12 +161,12 @@ function editResource(button) {
   nameInput.value = resourceName;
   nameInput.readOnly = true;
   nameInput.style.opacity = "0.6";
-  content.querySelector("input[name='description']").value = currentDesc;
-  content.querySelector("input[name='labels']").value = currentLabels;
-  content.querySelector("input[name='group']").value = row.dataset.resourceGroup || "common";
+  content.querySelector("input[name='description']").value = current.description;
+  content.querySelector("input[name='labels']").value = current.labels;
+  content.querySelector("input[name='group']").value = current.group;
 
   const container = content.querySelector(".lr-properties-container");
-  currentProps.forEach(function (prop) {
+  current.properties.forEach(function (prop) {
     createPropertyRow(container, prop.name, prop.value);
   });
 
@@ -162,7 +179,7 @@ function editResource(button) {
       properties: collectProperties(content)
     };
 
-    fetch("editResource", {
+    fetch(baseUrl + "editResource", {
       method: "post",
       headers: crumb.wrap({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
@@ -172,16 +189,14 @@ function editResource(button) {
   }, "description");
 }
 
-function deleteResource(button) {
-  const resourceName = button.closest("tr").getAttribute("data-resource-name");
-
+function deleteResource(resourceName, baseUrl) {
   dialog
     .confirm(i18n("delete-resource-message", resourceName), {
       type: "destructive",
       okText: i18n("delete-resource-title", resourceName)
     })
     .then(function () {
-      fetch("deleteResource?resource=" + encodeURIComponent(resourceName), {
+      fetch(baseUrl + "deleteResource?resource=" + encodeURIComponent(resourceName), {
         method: "post",
         headers: crumb.wrap({}),
       }).then(function(rsp) {
@@ -190,9 +205,7 @@ function deleteResource(button) {
     });
 }
 
-function resource_action(button, action) {
-  const resourceName = button.closest('tr').getAttribute('data-resource-name');
-
+function resource_action(resourceName, action, baseUrl) {
   if (action === "reserve" || action === "steal" || action === "disable") {
     // disable needs a cause: an empty cause means "enabled"
     const param = action === "disable" ? "cause" : "reason";
@@ -205,7 +218,7 @@ function resource_action(button, action) {
       })
       .then(
         (reason) => {
-          const url = action + "?resource=" + encodeURIComponent(resourceName) + "&" + param + "=" + encodeURIComponent(reason || "");
+          const url = baseUrl + action + "?resource=" + encodeURIComponent(resourceName) + "&" + param + "=" + encodeURIComponent(reason || "");
           fetch(url, {
             method: "post",
             headers: crumb.wrap({}),
@@ -218,7 +231,7 @@ function resource_action(button, action) {
     return;
   }
 
-  fetch(action + "?resource=" + encodeURIComponent(resourceName), {
+  fetch(baseUrl + action + "?resource=" + encodeURIComponent(resourceName), {
     method: "post",
     headers: crumb.wrap({}),
   }).then((rsp) => {
@@ -532,9 +545,11 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener("click", function (event) {
     let btn;
     if ((btn = event.target.closest(".lockable-resources-action-button"))) {
-      resource_action(btn, btn.dataset.action);
+      const ctx = resourceContext(btn);
+      resource_action(ctx.name, btn.dataset.action, ctx.baseUrl);
     } else if ((btn = event.target.closest(".lockable-resources-delete-button"))) {
-      deleteResource(btn);
+      const ctx = resourceContext(btn);
+      deleteResource(ctx.name, ctx.baseUrl);
     } else if ((btn = event.target.closest(".lockable-resources-change-queue-order"))) {
       changeQueueOrder(btn.dataset.queueItemId);
     } else if ((btn = event.target.closest(".lockable-resources-replace-note"))) {
@@ -543,7 +558,8 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (event.target.closest(".lr-add-resource-btn")) {
       showAddResourceDialog();
     } else if ((btn = event.target.closest(".lockable-resources-edit-button"))) {
-      editResource(btn);
+      const ctx = resourceContext(btn);
+      editResource(ctx.name, resourceConfig(ctx.holder), ctx.baseUrl);
     }
   });
 
