@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import hudson.Functions;
@@ -208,6 +209,47 @@ class LockStepWithRestartTest extends LockStepTestBase {
 
             j.waitForMessage("Lock acquired on [Label: label, Quantity: 1]", b1);
             j.waitForMessage("Lock released on resource [Label: label, Quantity: 1]", b1);
+        });
+    }
+
+    @Test
+    void changedQueueOrderSurvivesRestart() throws Throwable {
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            lrm.createResource("resource1");
+            WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition("lock('resource1') { semaphore 'order' }", true));
+            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("order/1", b1);
+            WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b2);
+            WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
+            j.waitForMessage("[resource1] is locked by build " + b1.getFullDisplayName(), b3);
+            assertEquals(2, lrm.getCurrentQueuedContext().size());
+            // let the pending save of the queued entries run, so only the reorder is left to save
+            Thread.sleep(2_500);
+
+            lrm.changeQueueOrder(lrm.getCurrentQueuedContext().get(1).getId(), 0);
+            assertEquals(b3, lrm.getCurrentQueuedContext().get(0).getBuild());
+        });
+
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            WorkflowJob p = j.jenkins.getItemByFullName("p", WorkflowJob.class);
+            WorkflowRun b1 = p.getBuildByNumber(1);
+            WorkflowRun b2 = p.getBuildByNumber(2);
+            WorkflowRun b3 = p.getBuildByNumber(3);
+            assertEquals(2, lrm.getCurrentQueuedContext().size());
+            assertEquals(b3, lrm.getCurrentQueuedContext().get(0).getBuild());
+
+            SemaphoreStep.success("order/1", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(b1));
+            SemaphoreStep.waitForStart("order/2", b3);
+            SemaphoreStep.success("order/2", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(b3));
+            SemaphoreStep.waitForStart("order/3", b2);
+            SemaphoreStep.success("order/3", null);
+            j.assertBuildStatusSuccess(j.waitForCompletion(b2));
         });
     }
 
