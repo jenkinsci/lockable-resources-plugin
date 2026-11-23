@@ -117,6 +117,11 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                                             logger);
                                 }
                             }
+                            if (resource.candidates.stream().noneMatch(name -> lrm.fromName(name) != null)) {
+                                // nothing to lock: fail now, a request without resources would wait forever
+                                PauseAction.endCurrentPause(getContext().get(FlowNode.class));
+                                throw new AbortException(Messages.error_noCandidateExists(resource.candidates));
+                            }
                             resourceNames.addAll(resources);
                         } else if (resource.resource != null) {
                             addNamedResource(resource.resource, resources, lrm, logger);

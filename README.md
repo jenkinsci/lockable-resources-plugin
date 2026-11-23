@@ -210,6 +210,8 @@ preferences, not guarantees of a uniformly random complete assignment.
 - Without `quantity`, all listed resources are locked, like a list of named
   resources. A missing one is created as an ephemeral resource if ephemeral
   resources are allowed, and is skipped with a line in the build log otherwise.
+  If none of the listed resources exist then, the step fails. In a group other
+  than `common` every listed resource must exist, as for `resource`.
 - With `quantity`, only resources that exist are used. They are tried in list
   order and the first free ones are locked. Missing names are skipped with one
   line in the build log. If fewer resources exist than requested,

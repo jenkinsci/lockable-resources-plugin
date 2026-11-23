@@ -7,7 +7,9 @@
     <li>
       <strong>Without <code>quantity</code></strong>: all listed resources are locked, like a list of named
       resources. A resource that does not exist is created as an ephemeral resource when ephemeral resources
-      are allowed; otherwise it is skipped with a line in the build log.
+      are allowed; otherwise it is skipped with a line in the build log. If none of the listed resources
+      exist then, the step fails. In a group other than <code>common</code> every listed resource must
+      exist, as for <code>resource</code>.
     </li>
     <li>
       <strong>With <code>quantity</code></strong>: only resources that exist are used. They are tried in list

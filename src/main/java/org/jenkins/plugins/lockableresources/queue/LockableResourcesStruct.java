@@ -211,7 +211,7 @@ public class LockableResourcesStruct implements Serializable {
             str += "Required label script: " + this.resourceMatchScript.getScript();
         }
         if (this.candidates != null) {
-            str += "Required candidates: " + this.candidates;
+            str += (str.isEmpty() ? "" : ", ") + "Required candidates: " + this.candidates;
         }
         if (this.requiredVar != null) {
             str += ", Variable name: " + this.requiredVar;

@@ -330,6 +330,28 @@ class LockStepCandidatesTest extends LockStepTestBase {
         assertNull(lrm.fromName("eph1"));
     }
 
+    @Test
+    @Issue("669")
+    void noQuantityWithAllCandidatesMissingDoesNotWaitForever(JenkinsRule j) throws Exception {
+        LockableResourcesManager lrm = createResources();
+        lrm.setAllowEphemeralResources(false);
+        WorkflowRun b1 = startLock(j, "p", "candidates: ['eph1', 'eph2']");
+        long deadline = System.currentTimeMillis() + 15_000;
+        while (b1.isBuilding() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(200);
+        }
+        boolean stillWaiting = b1.isBuilding();
+        if (stillWaiting) {
+            b1.doStop();
+        }
+        j.waitForCompletion(b1);
+        j.assertLogContains("Candidate [eph2] does not exist and ephemeral resources are disabled. Skipped.", b1);
+        assertFalse(stillWaiting, "the build waits in the queue with nothing to lock instead of failing");
+        j.assertBuildStatus(Result.FAILURE, b1);
+        j.assertLogContains("None of the candidates [eph1, eph2] exist and ephemeral resources are disabled.", b1);
+        assertTrue(lrm.getCurrentQueuedContext().isEmpty());
+    }
+
     // -------------------------------------------------------------------------
     // validation and remote
 
