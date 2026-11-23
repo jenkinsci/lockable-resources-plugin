@@ -5,6 +5,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
 import hudson.model.TaskListener;
@@ -256,6 +257,12 @@ public class LockStep extends Step implements Serializable {
                 return new AutoCompletionCandidates();
             }
             return RequiredResourcesProperty.DescriptorImpl.doAutoCompleteResourceNames(value, item);
+        }
+
+        @RequirePOST
+        public AutoCompletionCandidates doAutoCompleteLabel(@QueryParameter String value, @AncestorInPath Item item) {
+            return ExtensionList.lookupSingleton(LockStepResource.DescriptorImpl.class)
+                    .doAutoCompleteLabel(value, item);
         }
 
         @RequirePOST
