@@ -161,9 +161,15 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     /**
      * One entry per active lock block holding this resource, in acquisition order, formatted as
-     * {@code <buildExternalizableId>@<blockStartNodeId>} (see {@link #shareHolderEntry}). Empty
-     * when the resource is not held through the share mechanism. The build of the first entry is
-     * the primary holder ({@link #buildExternalizableId}). Not configurable.
+     * {@code <buildExternalizableId>@<blockStartNodeId>} (see {@link #shareHolderEntry}). A plain
+     * {@code lock()} block of a pipeline records its entry too (with no {@link #shareId}), so that a
+     * nested {@code lock(shareId: ...)} of the same build can join it and the resource is freed only
+     * when the last block ends. Empty when the resource is free or held without a lock block
+     * (freestyle builds, reservations, holds of older versions). The build of the first entry is the
+     * primary holder ({@link #buildExternalizableId}). Not configurable.
+     *
+     * <p>Guarded by {@link LockableResourcesManager#syncResources}: mutators are called under it, and
+     * readers that iterate take it themselves.
      */
     private LinkedHashSet<String> shareHolders = new LinkedHashSet<>();
 
@@ -902,7 +908,9 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @Exported
     @CheckForNull
     public String getShareId() {
-        return shareId;
+        synchronized (LockableResourcesManager.syncResources) {
+            return shareId;
+        }
     }
 
     /** Distinct externalizable ids of the builds holding this resource, primary holder first. */
@@ -910,10 +918,13 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @NonNull
     public List<String> getShareHolderBuilds() {
         List<String> builds = new ArrayList<>();
-        for (String entry : shareHolders) {
-            String id = buildIdOfShareHolderEntry(entry);
-            if (!builds.contains(id)) {
-                builds.add(id);
+        // also called without the lock (REST export, UI), while a release may change the set
+        synchronized (LockableResourcesManager.syncResources) {
+            for (String entry : shareHolders) {
+                String id = buildIdOfShareHolderEntry(entry);
+                if (!builds.contains(id)) {
+                    builds.add(id);
+                }
             }
         }
         return builds;
@@ -926,12 +937,11 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @NonNull
     @Restricted(NoExternalUse.class)
     public List<String> getOtherShareHolderBuilds() {
-        List<String> others;
         synchronized (LockableResourcesManager.syncResources) {
-            others = getShareHolderBuilds();
+            List<String> others = getShareHolderBuilds();
+            others.remove(buildExternalizableId);
+            return others;
         }
-        others.remove(buildExternalizableId);
-        return others;
     }
 
     /**
@@ -961,28 +971,36 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @NonNull
     @Restricted(NoExternalUse.class)
     public List<String> getShareHolders() {
-        return Collections.unmodifiableList(new ArrayList<>(shareHolders));
+        synchronized (LockableResourcesManager.syncResources) {
+            return Collections.unmodifiableList(new ArrayList<>(shareHolders));
+        }
     }
 
     @Restricted(NoExternalUse.class)
     public boolean hasShareHolders() {
-        return !shareHolders.isEmpty();
+        synchronized (LockableResourcesManager.syncResources) {
+            return !shareHolders.isEmpty();
+        }
     }
 
     @Restricted(NoExternalUse.class)
     public boolean hasShareHolder(@NonNull String entry) {
-        return shareHolders.contains(entry);
+        synchronized (LockableResourcesManager.syncResources) {
+            return shareHolders.contains(entry);
+        }
     }
 
     /** True when at least one entry of the given build holds this resource. */
     @Restricted(NoExternalUse.class)
     public boolean isShareHolderBuild(@NonNull String buildExternalizableId) {
-        for (String entry : shareHolders) {
-            if (buildIdOfShareHolderEntry(entry).equals(buildExternalizableId)) {
-                return true;
+        synchronized (LockableResourcesManager.syncResources) {
+            for (String entry : shareHolders) {
+                if (buildIdOfShareHolderEntry(entry).equals(buildExternalizableId)) {
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     /**

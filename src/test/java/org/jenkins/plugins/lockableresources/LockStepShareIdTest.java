@@ -697,6 +697,45 @@ class LockStepShareIdTest extends LockStepTestBase {
         j.assertLogContains(
                 "The 'shareId' parameter cannot be used with a remote lock",
                 j.assertBuildStatus(Result.FAILURE, p4.scheduleBuild2(0)));
+        // the combination is reported even when the label does not exist
+        WorkflowJob p5 = job(j, "p5", "lock(label: 'no-such-label', shareId: 'x') { echo 'inside' }");
+        j.assertLogContains(
+                "The 'shareId' parameter cannot be combined with 'label'",
+                j.assertBuildStatus(Result.FAILURE, p5.scheduleBuild2(0)));
+        assertFalse(res("r1").isLocked());
+    }
+
+    @Test
+    void waitingShareRequestDoesNotCreateEphemeralResource(JenkinsRule j) throws Exception {
+        // the availability check is read-only: 'eph' is created only once the whole request is granted
+        declare("r1");
+        WorkflowJob holder = job(j, "holder", "lock('r1') { semaphore 'holder' }");
+        WorkflowJob waiter = job(
+                j, "waiter", "lock(resource: 'eph', shareId: 'x', extra: [[resource: 'r1']]) { semaphore 'waiter' }");
+
+        WorkflowRun h = holder.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("holder/1", h);
+        WorkflowRun w = waiter.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("is not free, waiting for execution", w);
+        // the step itself declares 'eph' when it starts, as for a plain lock; drop it to see the queue scan
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        LockableResource eph = res("eph");
+        if (eph != null) {
+            lrm.removeResources(Collections.singletonList(eph));
+        }
+        lrm.admitJoinableContexts();
+        assertNull(res("eph"));
+
+        SemaphoreStep.success("holder/1", null);
+        SemaphoreStep.waitForStart("waiter/1", w);
+        assertNotNull(res("eph"));
+        assertTrue(res("eph").isEphemeral());
+        assertEquals(w, res("eph").getBuild());
+        assertEquals("x", res("eph").getShareId());
+
+        SemaphoreStep.success("waiter/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(w));
+        assertNull(res("eph"));
         assertFalse(res("r1").isLocked());
     }
 

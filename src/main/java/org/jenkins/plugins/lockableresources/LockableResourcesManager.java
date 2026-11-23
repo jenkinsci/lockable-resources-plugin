@@ -1423,9 +1423,6 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     private boolean proceedLocalEntry(@NonNull QueuedContextStruct nextContext) {
         LOGGER.finest("nextContext candidates: " + nextContext.candidates);
-        List<LockableResource> requiredResourceForNextContext =
-                this.fromNames(nextContext.candidates, /*create un-existent resources */ true);
-        LOGGER.finest("nextContext real candidates: " + requiredResourceForNextContext);
 
         Run<?, ?> build = nextContext.getBuild();
         if (build == null) {
@@ -1442,6 +1439,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
         String shareId = nextContext.getShareId();
         if (shareId != null && entry != null) {
+            // Missing resources are created by acquireSharedNow(). Creating them here with
+            // createResource() would process the queue again and start this entry twice.
             List<LockableResource> acquired = acquireSharedNow(
                     nextContext.candidates, build, shareId, entry, nextContext.getReason(), nextContext.getLogger());
             if (acquired == null) {
@@ -1453,6 +1452,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
             admitJoinableContexts();
             return true;
         }
+        List<LockableResource> requiredResourceForNextContext =
+                this.fromNames(nextContext.candidates, /*create un-existent resources */ true);
+        LOGGER.finest("nextContext real candidates: " + requiredResourceForNextContext);
         boolean locked = this.lock(requiredResourceForNextContext, build, nextContext.getReason(), null, entry);
         if (!locked) {
             // defensive; shall never happen
@@ -1652,8 +1654,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private static final class SharePlan {
         final List<LockableResource> toStart = new ArrayList<>();
         final List<LockableResource> toJoin = new ArrayList<>();
-        /** All resources, in request order. */
-        final List<LockableResource> all = new ArrayList<>();
+        /** Names of missing resources to create as ephemeral ones when the request is granted. */
+        final List<String> toCreate = new ArrayList<>();
+        /** Names of all resources, in request order. */
+        final List<String> names = new ArrayList<>();
+
+        /** True when the request needs a resource nobody holds yet, i.e. it cannot be granted by joining only. */
+        boolean needsNewResource() {
+            return !toStart.isEmpty() || !toCreate.isEmpty();
+        }
     }
 
     /** The build itself and its upstream builds, as externalizable ids, with why the walk may be partial. */
@@ -1751,7 +1760,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
     /**
      * Works out how a share request could be granted now: every resource must be free (and enabled) or
-     * joinable. Returns {@code null} when it has to wait. Must be called under {@link #syncResources}.
+     * joinable. Returns {@code null} when it has to wait. Read-only: a missing resource is only noted
+     * in {@link SharePlan#toCreate}, and created by {@link #acquireSharedNow} once the whole request
+     * can be granted. Must be called under {@link #syncResources}.
      */
     @CheckForNull
     private SharePlan planShare(@CheckForNull List<String> names, @NonNull Run<?, ?> build, @NonNull String shareId) {
@@ -1762,9 +1773,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
         Ancestry ancestry = null;
         SharePlan plan = new SharePlan();
         for (String name : new LinkedHashSet<>(names)) {
-            LockableResource r = fromNameOrEphemeral(name);
+            LockableResource r = fromName(name);
             if (r == null) {
-                return null; // does not exist and ephemeral resources are disabled
+                String trimmed = Util.fixEmptyAndTrim(name);
+                if (!allowEphemeralResources || trimmed == null) {
+                    return null; // does not exist and cannot be created
+                }
+                // An ephemeral resource is removed when its last holder leaves, while others may
+                // still wait for it: it is re-created when this request is granted.
+                plan.toCreate.add(trimmed);
+                plan.names.add(trimmed);
+                continue;
             }
             if (r.isFree()) {
                 if (r.isDisabled()) {
@@ -1784,33 +1803,30 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 }
                 plan.toJoin.add(r);
             }
-            plan.all.add(r);
+            plan.names.add(r.getName());
         }
         return plan;
     }
 
     /**
-     * Returns the named resource, re-creating it as an ephemeral resource when it does not exist (an
-     * ephemeral resource is removed when its last holder leaves, while others may still wait for it).
+     * Creates the missing resources of a share request that is being granted, as ephemeral resources.
      * Unlike {@link #createResource} this does not process the queue, because it is called from the
      * queue scan itself. Must be called under {@link #syncResources}.
      */
-    @CheckForNull
-    private LockableResource fromNameOrEphemeral(@NonNull String name) {
-        LockableResource r = fromName(name);
-        if (r != null || !allowEphemeralResources) {
-            return r;
+    @NonNull
+    private List<LockableResource> createEphemeralResources(@NonNull List<String> names) {
+        List<LockableResource> created = new ArrayList<>();
+        for (String name : names) {
+            LockableResource r = new LockableResource(name);
+            r.setEphemeral(true);
+            this.resources.add(r);
+            created.add(r);
+            LOGGER.fine("Ephemeral resource created for a share request: " + r);
         }
-        String trimmed = Util.fixEmptyAndTrim(name);
-        if (trimmed == null) {
-            return null;
+        if (!created.isEmpty()) {
+            cachedCandidates.invalidateAll();
         }
-        r = new LockableResource(trimmed);
-        r.setEphemeral(true);
-        this.resources.add(r);
-        cachedCandidates.invalidateAll();
-        LOGGER.fine("Ephemeral resource re-created for a share request: " + r);
-        return r;
+        return created;
     }
 
     /**
@@ -1850,7 +1866,15 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (plan == null) {
             return null;
         }
-        if (!plan.toStart.isEmpty() && !lock(plan.toStart, build, reason, shareId, shareHolderEntry)) {
+        List<LockableResource> created = createEphemeralResources(plan.toCreate);
+        List<LockableResource> toStart = new ArrayList<>(plan.toStart);
+        toStart.addAll(created);
+        if (!toStart.isEmpty() && !lock(toStart, build, reason, shareId, shareHolderEntry)) {
+            // not granted after all: leave no resource behind that this request created
+            if (!created.isEmpty()) {
+                this.resources.removeAll(created);
+                cachedCandidates.invalidateAll();
+            }
             return null;
         }
         if (!plan.toJoin.isEmpty()) {
@@ -1873,7 +1897,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     Level.FINE);
             save();
         }
-        return plan.all;
+        List<LockableResource> all = new ArrayList<>();
+        for (String name : plan.names) {
+            LockableResource r = fromName(name);
+            if (r != null) {
+                all.add(r);
+            }
+        }
+        return all;
     }
 
     /**
@@ -1940,7 +1971,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     }
                     List<String> names = getRequiredNames(entry.getResources());
                     SharePlan plan = planShare(names, build, shareId);
-                    if (plan == null || !plan.toStart.isEmpty()) {
+                    if (plan == null || plan.needsNewResource()) {
                         continue; // needs a new resource: keeps its queue position
                     }
                     String holderEntry;

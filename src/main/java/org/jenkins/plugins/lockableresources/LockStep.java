@@ -375,6 +375,8 @@ public class LockStep extends Step implements Serializable {
     // -------------------------------------------------------------------------
     /** Label and resource are mutual exclusive. */
     public void validate(boolean allowEmptyOrNullValues) {
+        // First, so that a wrong combination is reported as such and not as e.g. a missing label.
+        validateShareId();
         LockStepResource.validate(
                 resource,
                 label,
@@ -392,7 +394,6 @@ public class LockStep extends Step implements Serializable {
             selector.validate(allowEmptyOrNullValues);
             LockableResourcesManager.get().validateGroup(selector.resource, selector.label, selector.getGroup());
         }
-        validateShareId();
     }
 
     /**
