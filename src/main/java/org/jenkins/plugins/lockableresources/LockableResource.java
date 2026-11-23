@@ -648,10 +648,18 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     @Exported
     public String getReservedByEmail() {
         if (isReserved()) {
-            UserProperty email = null;
-            User user = Jenkins.get().getUser(reservedBy);
-            if (user != null) email = user.getProperty(UserProperty.class);
-            if (email != null) return email.getAddress();
+            try {
+                UserProperty email = null;
+                User user = Jenkins.get().getUser(reservedBy);
+                if (user != null) email = user.getProperty(UserProperty.class);
+                if (email != null) return email.getAddress();
+            } catch (Exception e) {
+                LOGGER.fine(() -> "Failed to look up email for reservedBy='" + reservedBy + "': " + e.getMessage());
+                LOGGER.log(
+                        Level.FINEST,
+                        "Full stack trace for email lookup failure for reservedBy='" + reservedBy + "'",
+                        e);
+            }
         }
         return null;
     }
@@ -782,9 +790,20 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         final String timestamp = (since == null ? "<unknown>" : format.format(since));
 
         if (this.isReserved()) {
-            User user = Jenkins.get().getUser(reservedBy);
-            String userText = user == null ? reservedBy : ModelHyperlinkNote.encodeTo(user);
-            return String.format("The resource [%s] is reserved by %s since %s.", name, userText, timestamp);
+            try {
+                User user = Jenkins.get().getUser(reservedBy);
+                String userText = user == null ? reservedBy : ModelHyperlinkNote.encodeTo(user);
+                return String.format("The resource [%s] is reserved by %s since %s.", name, userText, timestamp);
+            } catch (Exception e) {
+                LOGGER.fine(() -> "Failed to look up user for reservedBy='" + reservedBy + "': " + e.getMessage());
+                LOGGER.log(
+                        Level.FINEST,
+                        "Full stack trace for user lookup failure for reservedBy='" + reservedBy + "'",
+                        e);
+                return String.format(
+                        "The resource [%s] is reserved by %s (user lookup failed) since %s.",
+                        name, reservedBy, timestamp);
+            }
         }
         if (this.isLocked()) {
             Run<?, ?> lockBuild = getBuild();
