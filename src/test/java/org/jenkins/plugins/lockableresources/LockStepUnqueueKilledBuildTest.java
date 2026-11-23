@@ -42,7 +42,7 @@ class LockStepUnqueueKilledBuildTest extends LockStepTestBase {
         WorkflowRun b2 = builds[1];
 
         b1.doKill();
-        j.waitForMessage("Hard kill!", b1);
+        j.waitForMessage("Forcibly killing entire build", b1);
         j.waitForCompletion(b1);
         j.assertBuildStatus(Result.ABORTED, b1);
 
