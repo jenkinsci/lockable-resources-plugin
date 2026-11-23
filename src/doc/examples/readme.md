@@ -23,3 +23,4 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Book a resource for a time slot (disable and enable on a schedule)](book-a-resource-for-a-time-slot.md)
 - [Share a lock with downstream builds and nested blocks](share-lock-with-downstream-builds.md)
 - [Keep a resource locked for a while after the lock block (release delay)](release-delay.md)
+- [Resource detail page](resource-detail-page.md)
