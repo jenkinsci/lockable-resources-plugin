@@ -17,12 +17,9 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import jenkins.model.Jenkins;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
 class LockableResourceTest {
 
     private final LockableResource instance = new LockableResource("r1");
@@ -204,21 +201,17 @@ class LockableResourceTest {
         logger.addHandler(logHandler);
         logger.setLevel(Level.ALL);
 
-        // Stub Jenkins.getInstance() to throw, simulating an LDAP lookup failure
-        Jenkins jenkins = Jenkins.get();
-        Jenkins spyJenkins = org.mockito.Mockito.spy(jenkins);
-        org.mockito.Mockito.doThrow(new RuntimeException("Simulated LDAP error"))
-                .when(spyJenkins)
-                .getUser(org.mockito.ArgumentMatchers.anyString());
-
-        // Replace the singleton reference so our code sees the spy
-        // Since Jenkins.get() returns a singleton, we use a different approach:
-        // directly test that the catch block produces the expected output
         try {
-            // Replace Jenkins instance with spy — use reflection on the static field
+            // Use Mockito to create a spy that throws on getUser()
+            Jenkins originalJenkins = Jenkins.get();
+            Jenkins spyJenkins = org.mockito.Mockito.spy(originalJenkins);
+            org.mockito.Mockito.doThrow(new RuntimeException("Simulated LDAP error"))
+                    .when(spyJenkins)
+                    .getUser(org.mockito.ArgumentMatchers.anyString());
+
+            // Replace Jenkins singleton with the spy via reflection
             java.lang.reflect.Field instanceField = Jenkins.class.getDeclaredField("theInstance");
             instanceField.setAccessible(true);
-            Jenkins originalInstance = (Jenkins) instanceField.get(null);
             instanceField.set(null, spyJenkins);
 
             try {
@@ -256,7 +249,7 @@ class LockableResourceTest {
                 assertEquals(2, finestCount, "Expected 2 FINEST log records");
             } finally {
                 // Restore original Jenkins instance
-                instanceField.set(null, originalInstance);
+                instanceField.set(null, originalJenkins);
             }
         } finally {
             logger.removeHandler(logHandler);
