@@ -1410,6 +1410,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         if (!toRemove.isEmpty()) {
             this.queuedContexts.removeAll(toRemove);
+            save();
         }
 
         // reschedule for the next earliest deadline, across both queues.
@@ -1827,6 +1828,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
             }
 
             Collections.swap(this.queuedContexts, oldIndex, newPosition);
+            save();
         }
     }
 
