@@ -20,3 +20,4 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Remote Lock REST API (curl examples)](remote-api-curl.md)
 - [Remote lock from Jenkins Pipeline (local gate + remote lock)](remote-lock-pipeline-pattern.md)
 - [Book a resource for a time slot (disable and enable on a schedule)](book-a-resource-for-a-time-slot.md)
+- [Share a lock with downstream builds and nested blocks](share-lock-with-downstream-builds.md)

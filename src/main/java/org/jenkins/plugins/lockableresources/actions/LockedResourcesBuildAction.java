@@ -1,5 +1,6 @@
 package org.jenkins.plugins.lockableresources.actions;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Action;
 import hudson.model.Api;
 import hudson.model.Run;
@@ -111,6 +112,25 @@ public class LockedResourcesBuildAction implements Action {
         for (String resourceName : resourceNames) addLog(build, resourceName, step, action);
     }
 
+    /**
+     * As {@link #addLog(Run, List, String, String)}, recording the share id of the lock block.
+     *
+     * @param shareId share id of the lock block, or {@code null} when the block has none
+     */
+    @Restricted(NoExternalUse.class)
+    public static void addLog(
+            final Run<?, ?> build,
+            final List<String> resourceNames,
+            final String step,
+            final String action,
+            @CheckForNull final String shareId) {
+
+        LockedResourcesBuildAction buildAction = findAndInitAction(build);
+        for (String resourceName : resourceNames) {
+            buildAction.addLog(resourceName, step, action, shareId);
+        }
+    }
+
     public static void addLog(
             final Run<?, ?> build, final String resourceName, final String step, final String action) {
 
@@ -120,9 +140,15 @@ public class LockedResourcesBuildAction implements Action {
     }
 
     public void addLog(final String resourceName, final String step, final String action) {
+        addLog(resourceName, step, action, null);
+    }
+
+    @Restricted(NoExternalUse.class)
+    public void addLog(
+            final String resourceName, final String step, final String action, @CheckForNull final String shareId) {
         ensureListsInitialized();
         synchronized (this.logs) {
-            this.logs.add(new LogEntry(step, action, resourceName));
+            this.logs.add(new LogEntry(step, action, resourceName, shareId));
         }
     }
 
@@ -199,11 +225,25 @@ public class LockedResourcesBuildAction implements Action {
         private final String resourceName;
         private final long timeStamp;
 
+        /**
+         * Share id of the lock block ({@code lock(shareId: ...)}); {@code null} when the block has
+         * none and for entries written by older versions.
+         */
+        @CheckForNull
+        private final String shareId;
+
         @Restricted(NoExternalUse.class)
         public LogEntry(final String step, final String action, final String resourceName) {
+            this(step, action, resourceName, null);
+        }
+
+        @Restricted(NoExternalUse.class)
+        public LogEntry(
+                final String step, final String action, final String resourceName, @CheckForNull final String shareId) {
             this.step = step;
             this.action = action;
             this.resourceName = resourceName;
+            this.shareId = shareId;
             this.timeStamp = new Date().getTime();
         }
 
@@ -226,6 +266,14 @@ public class LockedResourcesBuildAction implements Action {
         @Restricted(NoExternalUse.class)
         public String getAction() {
             return this.action;
+        }
+
+        // ---------------------------------------------------------------------
+        @Exported
+        @Restricted(NoExternalUse.class)
+        @CheckForNull
+        public String getShareId() {
+            return this.shareId;
         }
 
         // ---------------------------------------------------------------------

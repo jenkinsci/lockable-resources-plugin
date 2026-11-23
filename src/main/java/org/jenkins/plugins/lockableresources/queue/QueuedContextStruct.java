@@ -72,6 +72,11 @@ public class QueuedContextStruct implements Serializable {
      */
     private long timeoutDeadlineMillis = 0;
 
+    /*
+     * Share id of the waiting lock block, or null. Null as well for entries saved by older versions.
+     */
+    private String shareId;
+
     // cached candidates
     public transient List<String> candidates = null;
 
@@ -105,6 +110,33 @@ public class QueuedContextStruct implements Serializable {
             String reason,
             long timeoutForAllocateResource,
             String timeoutUnit) {
+        this(
+                context,
+                lockableResourcesStruct,
+                resourceDescription,
+                variableName,
+                priority,
+                reason,
+                timeoutForAllocateResource,
+                timeoutUnit,
+                null);
+    }
+
+    /*
+     * Constructor for the QueuedContextStruct class with reason, timeout and share id.
+     */
+    @Restricted(NoExternalUse.class)
+    public QueuedContextStruct(
+            StepContext context,
+            List<LockableResourcesStruct> lockableResourcesStruct,
+            String resourceDescription,
+            String variableName,
+            int priority,
+            String reason,
+            long timeoutForAllocateResource,
+            String timeoutUnit,
+            @CheckForNull String shareId) {
+        this.shareId = shareId;
         this.context = context;
         this.lockableResourcesStruct = lockableResourcesStruct;
         this.resourceDescription = resourceDescription;
@@ -243,6 +275,13 @@ public class QueuedContextStruct implements Serializable {
     @Restricted(NoExternalUse.class)
     public String getTimeoutUnit() {
         return this.timeoutUnit;
+    }
+
+    /** Share id of the waiting lock block, or {@code null} when it does not share. */
+    @CheckForNull
+    @Restricted(NoExternalUse.class)
+    public String getShareId() {
+        return this.shareId;
     }
 
     @Restricted(NoExternalUse.class)
