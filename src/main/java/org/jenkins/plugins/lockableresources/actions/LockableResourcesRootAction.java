@@ -41,6 +41,7 @@ import org.jenkins.plugins.lockableresources.remote.RemoteCatalog;
 import org.jenkins.plugins.lockableresources.remote.RemoteCatalogCache;
 import org.jenkins.plugins.lockableresources.remote.RemoteClientRegistry;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
+import org.jenkins.plugins.lockableresources.remote.RemoteLockRecord;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRequest;
 import org.jenkins.plugins.lockableresources.remote.RemoteQueueEntry;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
@@ -537,6 +538,40 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     /**
+     * Encodes {@code value} as one URL path segment, e.g. a resource name in {@code resource/NAME/}.
+     * Jelly has no such helper ({@code h.urlEncode} is for query strings and turns spaces into '+').
+     */
+    @Restricted(NoExternalUse.class) // used by jelly
+    public String encodePathSegment(@NonNull final String value) {
+        return Util.rawEncode(value);
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Queue entries that wait for {@code resource}, in the order they will be promoted. */
+    @Restricted(NoExternalUse.class) // used by LockableResource/index.jelly
+    public List<Queue.QueueStruct> getQueueFor(@NonNull final LockableResource resource)
+            throws Descriptor.FormException {
+        Jenkins.get().checkPermission(VIEW);
+        return getQueue().getAll().stream()
+                .filter(entry -> entry.isWaitingFor(resource))
+                .collect(Collectors.toList());
+    }
+
+    // ---------------------------------------------------------------------------
+    /** Since when {@code resource} is reserved or locked, locally or remotely; {@code null} if unknown or free. */
+    @CheckForNull
+    @Restricted(NoExternalUse.class) // used by LockableResource/index.jelly
+    public Date getHeldSince(@NonNull final LockableResource resource) {
+        Date since = resource.getReservedTimestamp();
+        if (since != null) {
+            return since;
+        }
+        RemoteLockRecord record = resource.getRemoteLockedBy() == null ? null : resource.getRemoteLockRecord();
+        return record == null || record.getAcquiredAt() <= 0 ? null : new Date(record.getAcquiredAt());
+    }
+
+    // ---------------------------------------------------------------------------
+    /**
      * Get amount of free resources assigned to given *labelString*
      *
      * @param labelString Label to search.
@@ -817,9 +852,12 @@ public class LockableResourcesRootAction implements RootAction {
             String requestedByUrl;
             String remoteReason;
             String remoteRequest;
+            /** The request(s) this entry was built from, used to tell which resources it waits for. */
+            List<LockableResourcesStruct> sources = List.of();
 
             public QueueStruct(final LockableResourcesStruct resourceStruct, final QueuedContextStruct context)
                     throws Descriptor.FormException {
+                this.sources = List.of(resourceStruct);
                 this.requiredResources = resourceStruct.required;
                 this.requiredLabel = resourceStruct.label;
                 this.requiredNumber = resourceStruct.requiredNumber;
@@ -837,6 +875,7 @@ public class LockableResourcesRootAction implements RootAction {
             }
 
             public QueueStruct(@NonNull final RemoteQueueEntry remoteEntry) {
+                this.sources = List.copyOf(remoteEntry.getStructs());
                 this.queuedAt = remoteEntry.getRecord().getEnqueuedAt();
                 this.priority = remoteEntry.getPriority();
                 this.id = remoteEntry.getLockId();
@@ -976,6 +1015,28 @@ public class LockableResourcesRootAction implements RootAction {
             @Restricted(NoExternalUse.class) // used by jelly
             public boolean scriptMatch() {
                 return (groovyScript != null && !groovyScript.isEmpty());
+            }
+
+            // -----------------------------------------------------------------------
+            /**
+             * Whether this entry can be satisfied by {@code resource}: it names the resource, or asks for
+             * its group or a label it carries. Uses the same group rule as the allocator. Entries selecting
+             * resources by Groovy script are not evaluated here, as that would run the script on page render.
+             */
+            @Restricted(NoExternalUse.class)
+            public boolean isWaitingFor(@NonNull final LockableResource resource) {
+                for (LockableResourcesStruct struct : this.sources) {
+                    if (!struct.getGroup().equals(resource.getGroup())) {
+                        continue;
+                    }
+                    if (struct.isResourceRequired(resource) || struct.isGroupOnly()) {
+                        return true;
+                    }
+                    if (struct.label != null && !struct.label.isBlank() && resource.isValidLabel(struct.label)) {
+                        return true;
+                    }
+                }
+                return false;
             }
 
             private static String buildRemoteRequestText(@NonNull RemoteLockRequest lr) {

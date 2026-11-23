@@ -1,0 +1,234 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Body of the resource detail page. Included by index.jelly.
+
+  'it' is the LockableResource, 'action' the LockableResourcesRootAction and
+  'baseUrl' the URL of the root action (ending with '/').
+ -->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler" xmlns:i="jelly:fmt">
+  <link rel="stylesheet" href="${resURL}/plugin/lockable-resources/css/style.css"/>
+
+  <!-- data-resource-* and the property pills below are read by the shared edit dialog -->
+  <div class="lr-resource-detail"
+       data-lr-base-url="${baseUrl}"
+       data-resource-name="${it.name}"
+       data-resource-description="${it.description != null ? it.description : ''}"
+       data-resource-labels="${it.labels != null ? it.labels : ''}"
+       data-resource-group="${it.group}">
+
+    <a class="lr-resource-detail__back" href="${baseUrl}">
+      <l:icon src="symbol-arrow-back-outline plugin-ionicons-api" />
+      <span>${%back}</span>
+    </a>
+
+    <l:app-bar title="${it.name}">
+      <div class="lr-resource-detail__actions">
+        <j:set var="resource" value="${it}"/>
+        <j:set var="lrShowLabels" value="${true}"/>
+        <j:set var="lrDetailPage" value="${true}"/>
+        <st:include page="_resourceActions.jelly" it="${action}"/>
+      </div>
+    </l:app-bar>
+    <st:include page="_resourceDialogs.jelly" it="${action}"/>
+
+    <!-- ****************************************************************** Status -->
+    <j:set var="heldSince" value="${action.getHeldSince(it)}"/>
+    <section class="lr-resource-detail__section">
+      <h2 class="jenkins-section__title">${%section.status}</h2>
+      <dl class="lr-resource-detail__list">
+        <dt>${%field.status}</dt>
+        <dd>
+          <j:choose>
+            <j:when test="${it.reservedBy != null}">
+              <strong class="lr-resource-detail__status jenkins-!-destructive-color">${%status.reserved}</strong>
+            </j:when>
+            <j:when test="${it.remoteLockedBy != null}">
+              <strong class="lr-resource-detail__status jenkins-!-warning-color">${%status.locked}</strong>
+            </j:when>
+            <j:when test="${it.locked}">
+              <strong class="lr-resource-detail__status jenkins-!-warning-color">${%status.locked}</strong>
+            </j:when>
+            <j:when test="${it.queued}">
+              <strong class="lr-resource-detail__status jenkins-!-warning-color">${%status.queued}</strong>
+            </j:when>
+            <j:when test="${it.disabled}">
+              <strong class="lr-resource-detail__status jenkins-!-destructive-color">${%status.disabled}</strong>
+            </j:when>
+            <j:otherwise>
+              <strong class="lr-resource-detail__status jenkins-!-success-color">${%status.free}</strong>
+            </j:otherwise>
+          </j:choose>
+          <j:if test="${it.ephemeral}">
+            <span class="lr-static-label">${%ephemeral}</span>
+          </j:if>
+        </dd>
+
+        <j:if test="${it.disabled}">
+          <dt>${%field.disabled}</dt>
+          <dd>${it.disabledCause}</dd>
+        </j:if>
+
+        <j:if test="${!it.free}">
+          <dt>${%field.heldBy}</dt>
+          <dd>
+            <j:choose>
+              <j:when test="${it.reservedBy != null}">
+                <a href="${rootURL}/user/${action.encodePathSegment(it.reservedBy)}">${it.reservedBy}</a>
+              </j:when>
+              <j:when test="${it.remoteLockedBy != null}">
+                <j:set var="remoteLockRecord" value="${it.remoteLockRecord}"/>
+                <j:choose>
+                  <j:when test="${remoteLockRecord != null and remoteLockRecord.clientId != null}">
+                    ${%heldBy.remote(remoteLockRecord.clientId)}
+                  </j:when>
+                  <j:otherwise>${%heldBy.remoteUnknown}</j:otherwise>
+                </j:choose>
+              </j:when>
+              <j:when test="${it.locked}">
+                <a href="${rootURL}/${it.build.url}">${it.build.fullDisplayName}</a>
+              </j:when>
+              <j:when test="${it.queued}">
+                ${it.queueItemProject}
+              </j:when>
+            </j:choose>
+          </dd>
+        </j:if>
+
+        <j:if test="${heldSince != null}">
+          <dt>${%field.since}</dt>
+          <dd>
+            <i:formatDate value="${heldSince}" type="both" dateStyle="medium" timeStyle="short"/>
+            <span class="jenkins-!-color-secondary jenkins-!-margin-left-1">(${%ago(h.getTimeSpanString(heldSince))})</span>
+          </dd>
+        </j:if>
+
+        <j:if test="${it.lockReason != null and !it.lockReason.isEmpty()}">
+          <dt>${%field.reason}</dt>
+          <dd>${it.lockReason}</dd>
+        </j:if>
+      </dl>
+    </section>
+
+    <!-- ****************************************************************** Details -->
+    <section class="lr-resource-detail__section">
+      <h2 class="jenkins-section__title">${%section.details}</h2>
+      <dl class="lr-resource-detail__list">
+        <dt>${%field.group}</dt>
+        <dd>${it.group}</dd>
+
+        <dt>${%field.description}</dt>
+        <dd>
+          <j:choose>
+            <j:when test="${it.description != null and !it.description.isEmpty()}">${it.description}</j:when>
+            <j:otherwise><span class="jenkins-!-color-secondary">${%none}</span></j:otherwise>
+          </j:choose>
+        </dd>
+
+        <dt>${%field.labels}</dt>
+        <dd>
+          <j:choose>
+            <j:when test="${it.labelsAsList.size() gt 0}">
+              <j:forEach var="label" items="${it.labelsAsList}">
+                <a class="lr-resource-detail__label" href="${rootURL}/label/${action.encodePathSegment(label)}">${label}</a>
+              </j:forEach>
+            </j:when>
+            <j:otherwise><span class="jenkins-!-color-secondary">${%none}</span></j:otherwise>
+          </j:choose>
+        </dd>
+
+        <dt>${%field.properties}</dt>
+        <dd>
+          <j:choose>
+            <j:when test="${it.properties.size() gt 0}">
+              <div class="lr-properties-pills">
+                <j:forEach var="property" items="${it.properties}">
+                  <span class="lr-property-pill">
+                    <span class="lr-property-pill__key">${property.name}</span>
+                    <span class="lr-property-pill__value">${property.value}</span>
+                  </span>
+                </j:forEach>
+              </div>
+            </j:when>
+            <j:otherwise><span class="jenkins-!-color-secondary">${%none}</span></j:otherwise>
+          </j:choose>
+        </dd>
+
+        <dt>${%field.note}</dt>
+        <dd>
+          <j:choose>
+            <j:when test="${it.note != null and !it.note.isEmpty()}">
+              <div class="lr-note-wrapper">
+                <j:out value="${app.markupFormatter.translate(it.note)}"/>
+              </div>
+            </j:when>
+            <j:otherwise><span class="jenkins-!-color-secondary">${%none}</span></j:otherwise>
+          </j:choose>
+        </dd>
+      </dl>
+    </section>
+
+    <!-- ****************************************************************** Queue -->
+    <j:set var="queueEntries" value="${action.getQueueFor(it)}"/>
+    <section class="lr-resource-detail__section" id="lr-resource-queue">
+      <h2 class="jenkins-section__title">${%section.queue(queueEntries.size())}</h2>
+      <j:choose>
+        <j:when test="${queueEntries.isEmpty()}">
+          <p class="jenkins-!-color-secondary">${%queue.empty}</p>
+        </j:when>
+        <j:otherwise>
+          <table class="jenkins-table jenkins-table--small">
+            <thead>
+              <tr>
+                <th>${%queue.column.order}</th>
+                <th>${%queue.column.requestedBy}</th>
+                <th>${%queue.column.request}</th>
+                <th>${%queue.column.queuedAt}</th>
+                <th>${%queue.column.priority}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <j:forEach var="entry" items="${queueEntries}" varStatus="idx">
+                <tr>
+                  <td>${idx.index + 1}</td>
+                  <td>
+                    <j:choose>
+                      <j:when test="${!entry.requestedByUrl.isEmpty()}">
+                        <a href="${rootURL}/${entry.requestedByUrl}">${entry.requestedBy}</a>
+                      </j:when>
+                      <j:otherwise>${entry.requestedBy}</j:otherwise>
+                    </j:choose>
+                  </td>
+                  <td>
+                    <j:choose>
+                      <j:when test="${entry.remote}">${entry.remoteRequest}</j:when>
+                      <j:when test="${entry.resourcesMatch()}">
+                        ${%queue.request.resources}
+                        <j:forEach var="required" items="${entry.requiredResources}" varStatus="r">
+                          <j:if test="${!r.first}">, </j:if>
+                          <a href="${baseUrl}resource/${action.encodePathSegment(required.name)}/">${required.name}</a>
+                        </j:forEach>
+                      </j:when>
+                      <j:when test="${entry.labelsMatch()}">
+                        ${%queue.request.label(entry.requiredLabel)}
+                      </j:when>
+                      <j:otherwise>${%queue.request.group}</j:otherwise>
+                    </j:choose>
+                  </td>
+                  <td>
+                    <j:if test="${entry.queuedAt gt 0}">
+                      ${%ago(h.getTimeSpanString(entry.queuedTimestamp))}
+                    </j:if>
+                  </td>
+                  <td>${entry.priority}</td>
+                </tr>
+              </j:forEach>
+            </tbody>
+          </table>
+        </j:otherwise>
+      </j:choose>
+      <p class="jenkins-!-color-secondary lr-resource-detail__hint">${%queue.scriptHint}</p>
+    </section>
+  </div>
+
+  <script type="text/javascript" src="${resURL}/plugin/lockable-resources/js/lockable-resources.js"/>
+</j:jelly>

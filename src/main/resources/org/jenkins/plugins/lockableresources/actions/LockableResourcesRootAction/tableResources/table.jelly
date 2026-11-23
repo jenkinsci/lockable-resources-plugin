@@ -71,7 +71,7 @@ THE SOFTWARE.
             -->
             <td class="lr-col-resource">
               <div class="lr-resource-header">
-                <strong>${resource.name}</strong>
+                <a class="jenkins-table__link lr-resource-link" href="resource/${it.encodePathSegment(resource.name)}/"><strong>${resource.name}</strong></a>
                 <j:if test="${resource.ephemeral}">
                   <span class="lr-static-label">${%resources.ephemeral}</span>
                 </j:if>
