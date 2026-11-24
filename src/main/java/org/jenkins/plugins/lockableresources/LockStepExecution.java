@@ -33,6 +33,8 @@ import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 public class LockStepExecution extends AbstractStepExecutionImpl implements RemoteLockSession.Host {
 
@@ -76,13 +78,8 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                 throw new AbortException(Messages.error_candidatesNotSupportedForRemoteLocks());
             }
             if (step.onReleaseDelay > 0 || step.onCancelDelay > 0) {
-                LockableResourcesManager.printLogs(
-                        "onReleaseDelay and onCancelDelay are not supported for remote locks and are ignored ["
-                                + step
-                                + "]",
-                        Level.WARNING,
-                        LOGGER,
-                        logger);
+                // fail before anything is sent to the remote server; also covers forcedServerId
+                throw new AbortException(Messages.error_releaseDelayNotSupportedForRemoteLocks());
             }
             remoteSession = new RemoteLockSession();
             return remoteSession.start(this);
@@ -406,10 +403,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             StepContext context,
             String resourceDescription,
             final String variable) {
-        proceed(lockedResources, context, resourceDescription, variable, null, null, 0, 0);
+        proceed(lockedResources, context, resourceDescription, variable, null, null);
     }
 
-    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    @Restricted(NoExternalUse.class)
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
@@ -429,7 +426,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
      * {@code onCancelDelay} seconds when the build was aborted.
      */
     @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
-    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    @Restricted(NoExternalUse.class)
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
@@ -547,7 +544,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
     }
 
     /** Builds lock environment variables with indexed labels and a first-resource label alias. */
-    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    @Restricted(NoExternalUse.class)
     @edu.umd.cs.findbugs.annotations.CheckForNull
     public static Map<String, String> buildLockEnvVars(
             @edu.umd.cs.findbugs.annotations.CheckForNull String variable,
@@ -655,7 +652,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         @Override
         public void onFailure(StepContext context, Throwable t) {
             try {
-                // abort (and other interruptions like timeout) end the body with FlowInterruptedException
+                // abort, timeout and a failFast parallel branch end the body with FlowInterruptedException
                 release(context, t instanceof FlowInterruptedException);
             } catch (Exception x) {
                 t.addSuppressed(x);

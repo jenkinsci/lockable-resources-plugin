@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,6 +50,7 @@ import java.util.stream.Collectors;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import jenkins.util.SystemProperties;
+import jenkins.util.Timer;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.lockableresources.actions.LockedResourcesBuildAction;
 import org.jenkins.plugins.lockableresources.queue.LockableResourcesStruct;
@@ -192,22 +194,22 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private transient volatile ScheduledExecutorService saveExecutor;
 
     /** Single scheduled timeout task. Guarded by {@link #syncResources}. */
-    private transient java.util.concurrent.ScheduledFuture<?> nextTimeoutTask;
+    private transient ScheduledFuture<?> nextTimeoutTask;
 
     /** Deadline (epoch ms) the current {@link #nextTimeoutTask} targets. 0 = none. */
     private transient long nextTimeoutDeadline;
 
     /** Single scheduled delayed-release task. Guarded by {@link #syncResources}. */
-    private transient java.util.concurrent.ScheduledFuture<?> nextReleaseTask;
+    private transient ScheduledFuture<?> nextReleaseTask;
 
     /** Epoch millis the {@link #nextReleaseTask} runs at, 0 when none. Guarded by {@link #syncResources}. */
     private transient long nextReleaseAt;
 
     /**
      * True while some resource may have a pending delayed release. Lets the periodic safety net skip
-     * {@link #releaseDueResources()} without locking when no release delay is used. Written under
-     * {@link #syncResources}; set by {@link #delayRelease}, recomputed by {@link #releaseDueResources()}
-     * (which also runs at startup, so persisted delays are picked up).
+     * {@link #releaseDueResources()} without locking when no release delay is used. Set when a release
+     * delay starts and after {@link #load()} finds a persisted one, recomputed by {@link
+     * #releaseDueResources()}. Volatile, so {@link #load()} sets it without taking {@link #syncResources}.
      */
     private transient volatile boolean releaseDelayPending;
 
@@ -267,6 +269,27 @@ public class LockableResourcesManager extends GlobalConfiguration {
         remotes = new ArrayList<>();
         load();
         resourceGroups = getResourceGroups();
+    }
+
+    /**
+     * Loads the configuration, then keeps the periodic safety net ({@link
+     * org.jenkins.plugins.lockableresources.queue.LockWaitTimeoutPeriodicWork}) active when a resource has
+     * a persisted release delay, so it is released even if {@link FreeDeadJobs#resumeDelayedReleases()}
+     * returned early.
+     */
+    @Override
+    public synchronized void load() {
+        super.load();
+        List<LockableResource> loaded = this.resources;
+        if (loaded == null) {
+            return;
+        }
+        for (LockableResource resource : loaded) {
+            if (resource.getReleaseAt() > 0) {
+                releaseDelayPending = true;
+                return;
+            }
+        }
     }
 
     /**
@@ -1408,7 +1431,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         nextReleaseAt = releaseAt;
         long delayMs = Math.max(0, releaseAt - System.currentTimeMillis());
         LOGGER.fine("Scheduling delayed release in " + delayMs + "ms");
-        nextReleaseTask = jenkins.util.Timer.get()
+        nextReleaseTask = Timer.get()
                 .schedule(
                         () -> {
                             LOGGER.fine("Scheduled delayed release fired");
@@ -1419,7 +1442,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                             releaseDueResources();
                         },
                         delayMs,
-                        java.util.concurrent.TimeUnit.MILLISECONDS);
+                        TimeUnit.MILLISECONDS);
     }
 
     public void unlockBuild(@Nullable Run<?, ?> build) {
@@ -3454,7 +3477,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
         // Small buffer so the deadline has definitely passed when we check
         long delayMs = Math.max(0, deadline - System.currentTimeMillis()) + 500L;
         LOGGER.fine("Scheduling timeout check in " + delayMs + "ms");
-        nextTimeoutTask = jenkins.util.Timer.get()
+        nextTimeoutTask = Timer.get()
                 .schedule(
                         () -> {
                             LOGGER.fine("Scheduled timeout check fired");
@@ -3467,7 +3490,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                             }
                         },
                         delayMs,
-                        java.util.concurrent.TimeUnit.MILLISECONDS);
+                        TimeUnit.MILLISECONDS);
     }
 
     // ---------------------------------------------------------------------------

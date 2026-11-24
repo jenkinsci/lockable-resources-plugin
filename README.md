@@ -405,8 +405,9 @@ lock(resource: 'licenseServer1', onReleaseDelay: 300, onCancelDelay: 0) {
 echo 'Continues right away, licenseServer1 stays locked for 5 more minutes'
 ```
 
-- `onReleaseDelay`: seconds the resources stay locked after the block ends normally or fails.
-- `onCancelDelay`: seconds the resources stay locked after the build is aborted.
+- `onReleaseDelay`: delay in seconds the resources stay locked after the block ends normally or fails.
+- `onCancelDelay`: delay in seconds the resources stay locked after the build is aborted, including by
+  `timeout` or a `failFast` parallel branch.
 
 Both are optional and default to `0`, which releases the resources immediately. The pipeline does not
 wait for the delay: it continues with the steps after the block, the resources stay locked in the background,
@@ -414,7 +415,14 @@ and when the delay is over they are released and the next waiting build gets the
 the resource as locked until that time. The pending release survives a Jenkins restart. Unlocking or
 resetting the resource on the resources page ends the delay right away.
 
-Not supported for remote locks (`serverId`): the options are ignored with a warning.
+With `shareId`, the delay starts only when the last block holding the resource ends, that is when the
+resource is actually freed; the delay of that last block is used. A block that ends while other blocks
+still hold the resource does not start a delay.
+
+Not supported for remote locks (`serverId`): the step fails with an error before anything is sent to the
+remote server.
+
+More in [Keep a resource locked for a while after the lock block](src/doc/examples/release-delay.md).
 
 #### Update resource properties
 
@@ -581,8 +589,9 @@ lock(label: 'k8s-slot', quantity: 1) {
 
 Everything else about `lock()` behaves as it does locally: `label`, `quantity`, `variable`, `extra`,
 `priority`, `skipIfLocked`, `inversePrecedence` and the allocate timeout all work the same way, and
-the queue on the server is shared between local and remote waiters. The one exception is `candidates`,
-which is local only: a remote lock with `candidates` fails with an error. A remote lock **fails closed**:
+the queue on the server is shared between local and remote waiters. The exceptions are `candidates`,
+`onReleaseDelay` and `onCancelDelay`, which are local only: a remote lock with any of them fails with an
+error. A remote lock **fails closed**:
 if the server cannot be reached, the step fails rather than running the block unlocked.
 
 ### On the server (the controller that owns the resource)

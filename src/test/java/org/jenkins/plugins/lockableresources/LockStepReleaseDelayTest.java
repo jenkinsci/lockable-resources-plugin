@@ -7,10 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import hudson.ExtensionList;
+import hudson.XmlFile;
 import hudson.model.Result;
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import jenkins.model.Jenkins;
+import org.jenkins.plugins.lockableresources.queue.LockWaitTimeoutPeriodicWork;
+import org.jenkins.plugins.lockableresources.remote.RemoteServerFixture;
 import org.jenkinsci.plugins.structs.describable.DescribableModel;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -383,6 +391,73 @@ class LockStepReleaseDelayTest extends LockStepTestBase {
             assertTrue(System.currentTimeMillis() >= releaseAt, "released before the delay was over");
             assertFalse(resource.isReleaseDelayed());
         });
+    }
+
+    @Test
+    void loadedConfigWithPersistedDelayKeepsSafetyNetActive() throws Throwable {
+        sessions.then(j -> {
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            createDeclaredResource("resource1");
+            createDeclaredResource("resource2");
+            // a delay that ended while Jenkins was down, persisted on the resource; nothing in this
+            // instance started it, as if resumeDelayedReleases() had returned early
+            synchronized (LockableResourcesManager.syncResources) {
+                lrm.fromName("resource1").setReleaseAt(System.currentTimeMillis() - 1_000L);
+            }
+            writeConfigNow(lrm);
+            assertFalse(lrm.isReleaseDelayPending(), "nothing has set the flag yet");
+
+            lrm.load();
+            assertTrue(lrm.isReleaseDelayPending(), "load() sees the persisted release delay");
+            LockableResource resource = lrm.fromName("resource1");
+            assertTrue(resource.isReleaseDelayed());
+            assertTrue(resource.isLocked());
+
+            // the periodic safety net now releases it
+            ExtensionList.lookupSingleton(LockWaitTimeoutPeriodicWork.class).run();
+            assertFalse(resource.isReleaseDelayed());
+            assertFalse(resource.isLocked());
+            assertFalse(lrm.isReleaseDelayPending(), "recomputed once nothing is pending");
+
+            // without any persisted delay, load() leaves the flag off
+            writeConfigNow(lrm);
+            lrm.load();
+            assertFalse(lrm.isReleaseDelayPending());
+        });
+    }
+
+    @Test
+    void remoteLockWithDelayFailsBeforeContactingTheServer() throws Throwable {
+        sessions.then(j -> {
+            RemoteServerFixture remote = new RemoteServerFixture();
+            remote.start();
+            try {
+                LockableResourcesManager lrm = LockableResourcesManager.get();
+                lrm.setRemotes(List.of(new RemoteConnection("server-a", remote.baseUrl(), "")));
+                lrm.setClientId("client-jenkins-a");
+                WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+                for (String delay : List.of("onReleaseDelay: 5", "onCancelDelay: 5")) {
+                    p.setDefinition(new CpsFlowDefinition("""
+                            lock(resource: 'remote-resource', serverId: 'server-a', %s) {
+                              echo 'inside lock'
+                            }
+                            """.formatted(delay), true));
+                    WorkflowRun b = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0));
+                    j.assertLogContains("onReleaseDelay and onCancelDelay are not supported for remote locks", b);
+                    j.assertLogNotContains("inside lock", b);
+                }
+                assertEquals(0, remote.acquireRequests.get(), "nothing was sent to the remote server");
+                assertEquals(0, remote.statusRequests.get());
+                assertEquals(0, remote.releaseRequests.get());
+            } finally {
+                remote.stop();
+            }
+        });
+    }
+
+    /** Writes the manager config right away; {@code save()} may only schedule an asynchronous write. */
+    private static void writeConfigNow(LockableResourcesManager lrm) throws IOException {
+        new XmlFile(new File(Jenkins.get().getRootDir(), lrm.getId() + ".xml")).write(lrm);
     }
 
     /** A configured (not ephemeral) resource, so it still exists after it is released. */
