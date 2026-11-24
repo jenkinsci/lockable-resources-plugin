@@ -10,6 +10,7 @@ If you have a question, please open a [GitHub issue](https://github.com/jenkinsc
 - [Lock specific stages](lock-specific-stages.md)
 - [Locking multiple stages in declarative pipeline](locking-multiple-stages-in-declarative-pipeline.md)
 - [Locking a random free resource](locking-random-free-resource.md)
+- [Lock from a list of candidates in a given order](lock-from-a-list-of-candidates.md)
 - [Resource properties](resource-properties.md)
 - [Global resource groups](resource-groups.md)
 - [Use build parameters in a Freestyle resource-selection script](groovy-script-build-parameters.md)
