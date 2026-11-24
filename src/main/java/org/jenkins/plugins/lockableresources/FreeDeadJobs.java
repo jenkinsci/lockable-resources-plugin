@@ -42,6 +42,7 @@ public final class FreeDeadJobs {
         boolean freedAny = false;
         synchronized (LockableResourcesManager.syncResources) {
             List<LockableResource> orphan = new ArrayList<>();
+            List<LockableResource> unresolvable = new ArrayList<>();
             LOG.log(Level.FINE, "lockable-resources-plugin free post mortem task run");
             boolean pruned = false;
             for (LockableResource resource : lrm.getResources()) {
@@ -63,10 +64,23 @@ public final class FreeDeadJobs {
                 }
                 if (resource.getBuild() != null && !resource.getBuild().isInProgress()) {
                     orphan.add(resource);
+                } else if (resource.getBuild() == null && resource.hasRecordedBuild()) {
+                    // Jobs are loaded now, so a recorded build that still doesn't resolve is gone.
+                    unresolvable.add(resource);
                 }
             }
             if (pruned) {
                 lrm.save();
+            }
+
+            if (!unresolvable.isEmpty()) {
+                LOG.log(Level.INFO, "lockable-resources-plugin reset resources whose build no longer exists: "
+                        + unresolvable);
+                lrm.reset(unresolvable);
+                lrm.removeResources(unresolvable.stream()
+                        .filter(LockableResource::isEphemeral)
+                        .toList());
+                freedAny = true;
             }
 
             for (LockableResource resource : orphan) {
