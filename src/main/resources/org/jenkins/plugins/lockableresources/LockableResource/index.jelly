@@ -1,0 +1,34 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Detail page of one lockable resource, at /lockable-resources/resource/NAME/
+  (routed by LockableResourcesRootAction.getResource). Like the main page it
+  renders inside Manage Jenkins when reached through /manage/lockable-resources/.
+
+  'it' is the LockableResource.
+ -->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+  <!-- not j:invokeStatic: Jelly's class loader can not see plugin classes in a running Jenkins -->
+  <j:set var="action"
+         value="${app.getExtensionList('org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction').get(0)}"/>
+  <!-- URL of the root action as it was reached, so /manage/ stays /manage/ -->
+  <j:set var="baseUrl" value="${rootURL}/${action.urlName}/"/>
+  <j:forEach var="ancestor" items="${request.ancestors}">
+    <j:if test="${ancestor.object == action}">
+      <j:set var="baseUrl" value="${ancestor.url}/"/>
+    </j:if>
+  </j:forEach>
+  <j:choose>
+    <j:when test="${request.requestURI.contains('/manage/')}">
+      <l:settings-subpage managementLink="${action.managementLink}" permission="${action.VIEW}" header="${null}">
+        <st:include page="_detail.jelly"/>
+      </l:settings-subpage>
+    </j:when>
+    <j:otherwise>
+      <l:layout title="${it.name}" norefresh="true" permission="${action.VIEW}">
+        <l:main-panel>
+          <st:include page="_detail.jelly"/>
+        </l:main-panel>
+      </l:layout>
+    </j:otherwise>
+  </j:choose>
+</j:jelly>

@@ -42,6 +42,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import jenkins.security.stapler.StaplerAccessibleType;
 import jenkins.util.SystemProperties;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockManager;
 import org.jenkins.plugins.lockableresources.remote.RemoteLockRecord;
@@ -56,6 +57,9 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 @ExportedBean(defaultVisibility = 999)
+// Lets Stapler route /lockable-resources/resource/NAME/ (LockableResourcesRootAction.getResource) to the detail
+// page; without it Jenkins' TypedFilter rejects the type, as it has no web methods of its own.
+@StaplerAccessibleType
 public class LockableResource extends AbstractDescribableImpl<LockableResource> implements Serializable {
 
     private static final Logger LOGGER = Logger.getLogger(LockableResource.class.getName());

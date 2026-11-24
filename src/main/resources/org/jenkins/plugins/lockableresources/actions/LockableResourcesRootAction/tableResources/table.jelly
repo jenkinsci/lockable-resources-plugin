@@ -71,7 +71,7 @@ THE SOFTWARE.
             -->
             <td class="lr-col-resource">
               <div class="lr-resource-header">
-                <strong>${resource.name}</strong>
+                <a class="jenkins-table__link lr-resource-link" href="resource/${it.encodePathSegment(resource.name)}/"><strong>${resource.name}</strong></a>
                 <j:if test="${resource.ephemeral}">
                   <span class="lr-static-label">${%resources.ephemeral}</span>
                 </j:if>
@@ -135,18 +135,7 @@ THE SOFTWARE.
                 <j:when test="${resource.locked}">
                   ${%resource.status.locked}
                   <!-- Lock block is over, the resource waits for its release delay (onReleaseDelay / onCancelDelay) -->
-                  <j:if test="${resource.releaseDelayed}">
-                    <br/>
-                    <span class="jenkins-!-color-secondary">
-                      ${%resource.status.releaseDelayed}
-                      <i:formatDate
-                        value="${resource.releaseDelayedUntil}"
-                        type="both"
-                        dateStyle="medium"
-                        timeStyle="short"
-                      />
-                    </span>
-                  </j:if>
+                  <st:include page="_releaseDelay.jelly" it="${resource}"/>
                 </j:when>
                 <!-- Queued -->
                 <j:when test="${resource.queued}">
@@ -201,35 +190,8 @@ THE SOFTWARE.
                 </j:when>
                 <j:when test="${resource.locked}">
                   <a class="jenkins-table__link" href="${rootURL}/${resource.build.url}">${resource.build.fullDisplayName}</a>
-                  <!-- Shared hold (lock(shareId: ...)): the primary build above, the other holders below.
-                       The share id and the build names are user-controlled: plain escaped text only. -->
-                  <j:if test="${resource.shareId != null}">
-                    <j:set var="otherHolderCount" value="${resource.otherShareHolderBuilds.size()}"/>
-                    <j:choose>
-                      <j:when test="${otherHolderCount == 0}">
-                        <div class="lr-share jenkins-!-color-secondary">
-                          ${%resource.heldBy.sharedAs} <code class="lr-share__id">${resource.shareId}</code>
-                        </div>
-                      </j:when>
-                      <j:otherwise>
-                        <details class="lr-share">
-                          <summary class="jenkins-!-color-secondary">
-                            ${%resource.heldBy.sharedAs} <code class="lr-share__id">${resource.shareId}</code>
-                            ${%resource.heldBy.withMore(otherHolderCount)}
-                          </summary>
-                          <j:set var="visibleHolders" value="${resource.visibleOtherShareHolderRuns}"/>
-                          <ul class="lr-share__holders">
-                            <j:forEach var="holderRun" items="${visibleHolders}">
-                              <li><a class="jenkins-table__link" href="${rootURL}/${holderRun.url}">${holderRun.fullDisplayName}</a></li>
-                            </j:forEach>
-                            <j:if test="${visibleHolders.size() lt otherHolderCount}">
-                              <li class="jenkins-!-color-secondary">${%resource.heldBy.notVisible(otherHolderCount - visibleHolders.size())}</li>
-                            </j:if>
-                          </ul>
-                        </details>
-                      </j:otherwise>
-                    </j:choose>
-                  </j:if>
+                  <!-- Shared hold (lock(shareId: ...)): the other holders under the primary build -->
+                  <st:include page="_shareHolders.jelly" it="${resource}"/>
                 </j:when>
                 <j:when test="${resource.queued}">
                   ${resource.queueItemProject}
@@ -307,130 +269,7 @@ THE SOFTWARE.
             -->
             <td class="lr-col-actions">
               <div class="jenkins-table__cell__button-wrapper">
-              <j:choose>
-                <!-- Remote-locked resource: show force-release button (admin override for STALE/orphaned locks) -->
-                <j:when test="${resource.remoteLockedBy != null}">
-                  <l:hasPermission permission="${it.UNLOCK}">
-                    <button
-                      data-action="releaseRemoteLock"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
-                      tooltip="${%btn.releaseRemoteLock}"
-                    >
-                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
-                    </button>
-                  </l:hasPermission>
-                </j:when>
-                <j:when test="${resource.locked}">
-                  <l:hasPermission permission="${it.UNLOCK}">
-                    <button
-                      data-action="unlock"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-warning-color lockable-resources-action-button"
-                      tooltip="${%btn.unlock}"
-                    >
-                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
-                    </button>
-                  </l:hasPermission>
-                  <l:hasPermission permission="${it.STEAL}">
-                    <j:if test="${!resource.disabled}">
-                      <button
-                        data-action="steal"
-                        class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
-                        tooltip="${%btn.steal}"
-                      >
-                        <l:icon src="symbol-flash-outline plugin-ionicons-api" />
-                      </button>
-                    </j:if>
-                  </l:hasPermission>
-                </j:when>
-                <j:when test="${resource.reservedBy != null}">
-                  <l:hasPermission permission="${it.RESERVE}">
-                    <j:if test="${resource.isReservedByCurrentUser() or h.hasPermission(app.ADMINISTER)}">
-                      <button
-                        data-action="unreserve"
-                        class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-action-button"
-                        tooltip="${%btn.unReserve}"
-                      >
-                        <l:icon src="symbol-log-out-outline plugin-ionicons-api" />
-                      </button>
-                    </j:if>
-                  </l:hasPermission>
-                  <l:hasPermission permission="${it.STEAL}">
-                    <j:if test="${!resource.isReservedByCurrentUser() and !resource.disabled}">
-                      <button
-                        data-action="reassign"
-                        class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
-                        tooltip="${%btn.reassign}"
-                      >
-                        <l:icon src="symbol-people" />
-                      </button>
-                    </j:if>
-                  </l:hasPermission>
-                </j:when>
-                <j:when test="${resource.queued}">
-                  <l:hasPermission permission="${it.UNLOCK}">
-                    <button
-                      data-action="reset"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
-                      tooltip="${%btn.reset}"
-                    >
-                      <l:icon src="symbol-refresh" />
-                    </button>
-                  </l:hasPermission>
-                </j:when>
-                <j:otherwise>
-                  <l:hasPermission permission="${it.RESERVE}">
-                    <j:if test="${!resource.disabled}">
-                      <button
-                        data-action="reserve"
-                        class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
-                        tooltip="${%btn.reserve}"
-                      >
-                        <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
-                      </button>
-                    </j:if>
-                  </l:hasPermission>
-                  <l:hasPermission permission="${it.CONFIGURE}">
-                    <button
-                      data-action="deleteResource"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-delete-button"
-                      tooltip="${%btn.delete}"
-                    >
-                      <l:icon src="symbol-trash" />
-                    </button>
-                  </l:hasPermission>
-                </j:otherwise>
-              </j:choose>
-              <!-- Disable / enable, in every state: a holder keeps a resource that gets disabled -->
-              <l:hasPermission permission="${it.CONFIGURE}">
-                <j:choose>
-                  <j:when test="${resource.disabled}">
-                    <button
-                      data-action="enable"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-action-button"
-                      tooltip="${%btn.enable}"
-                    >
-                      <l:icon src="symbol-checkmark-circle-outline plugin-ionicons-api" />
-                    </button>
-                  </j:when>
-                  <j:otherwise>
-                    <button
-                      data-action="disable"
-                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
-                      tooltip="${%btn.disable}"
-                    >
-                      <l:icon src="symbol-ban-outline plugin-ionicons-api" />
-                    </button>
-                  </j:otherwise>
-                </j:choose>
-              </l:hasPermission>
-              <l:hasPermission permission="${it.CONFIGURE}">
-                <button
-                  class="jenkins-button jenkins-button--tertiary lockable-resources-edit-button"
-                  tooltip="${%btn.edit}"
-                >
-                  <l:icon src="symbol-settings" />
-                </button>
-              </l:hasPermission>
+                <st:include page="_resourceActions.jelly"/>
               </div>
             </td>
           </tr>

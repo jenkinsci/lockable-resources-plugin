@@ -977,3 +977,67 @@ span.lr-static-label.lr-disabled-label { color: var(--text-color-secondary); }
     margin: 0.25rem 0 0;
     padding-left: 1.25rem;
 }
+
+/* Resource detail page (LockableResource/index.jelly) */
+.lr-resource-detail__back {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  text-decoration: none;
+}
+
+.lr-resource-detail__back svg {
+  height: 1rem;
+  width: 1rem;
+}
+
+.lr-resource-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lr-resource-detail__actions .jenkins-button {
+  gap: 0.4rem;
+}
+
+.lr-resource-detail__section {
+  margin-bottom: 2rem;
+}
+
+.lr-resource-detail__list {
+  display: grid;
+  gap: 0.6rem 1.5rem;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  margin: 0;
+}
+
+.lr-resource-detail__list dt {
+  color: var(--text-color-secondary);
+  font-weight: 500;
+}
+
+.lr-resource-detail__list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lr-resource-detail__label {
+  margin-right: 0.75rem;
+}
+
+.lr-resource-detail__hint {
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+@media (max-width: 600px) {
+  .lr-resource-detail__list {
+    grid-template-columns: 1fr;
+  }
+
+  .lr-resource-detail__list dd {
+    margin-bottom: 0.5rem;
+  }
+}

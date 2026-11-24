@@ -1,0 +1,20 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Release delay (lock step onReleaseDelay / onCancelDelay) of a locked resource: the lock block is over
+  and the resource stays locked until the shown time. 'it' is the LockableResource; the status itself
+  is shown by the caller. Included by the resources table and the resource detail page.
+ -->
+<j:jelly xmlns:j="jelly:core" xmlns:i="jelly:fmt">
+  <j:if test="${it.releaseDelayed}">
+    <br/>
+    <span class="lr-release-delay jenkins-!-color-secondary">
+      ${%releaseDelayedUntil}
+      <i:formatDate
+        value="${it.releaseDelayedUntil}"
+        type="both"
+        dateStyle="medium"
+        timeStyle="short"
+      />
+    </span>
+  </j:if>
+</j:jelly>

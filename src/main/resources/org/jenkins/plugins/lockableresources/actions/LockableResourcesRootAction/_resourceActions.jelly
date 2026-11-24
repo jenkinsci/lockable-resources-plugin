@@ -1,0 +1,148 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Action buttons for one resource. Shared by the resources table and the
+  resource detail page (LockableResource/index.jelly), so both apply the
+  same permission and state checks.
+
+  Expects 'it' to be the LockableResourcesRootAction and 'resource' the
+  LockableResource. Set 'lrShowLabels' to render button text next to icons,
+  and 'lrDetailPage' to leave out actions that make no sense there (delete).
+ -->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+              <j:choose>
+                <!-- Remote-locked resource: show force-release button (admin override for STALE/orphaned locks) -->
+                <j:when test="${resource.remoteLockedBy != null}">
+                  <l:hasPermission permission="${it.UNLOCK}">
+                    <button
+                      data-action="releaseRemoteLock"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                      tooltip="${%btn.releaseRemoteLock}"
+                    >
+                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                      <j:if test="${lrShowLabels}"><span>${%btn.releaseRemoteLock}</span></j:if>
+                    </button>
+                  </l:hasPermission>
+                </j:when>
+                <j:when test="${resource.locked}">
+                  <l:hasPermission permission="${it.UNLOCK}">
+                    <button
+                      data-action="unlock"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-warning-color lockable-resources-action-button"
+                      tooltip="${%btn.unlock}"
+                    >
+                      <l:icon src="symbol-lock-open-outline plugin-ionicons-api" />
+                      <j:if test="${lrShowLabels}"><span>${%btn.unlock}</span></j:if>
+                    </button>
+                  </l:hasPermission>
+                  <l:hasPermission permission="${it.STEAL}">
+                    <j:if test="${!resource.disabled}">
+                      <button
+                        data-action="steal"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                        tooltip="${%btn.steal}"
+                      >
+                        <l:icon src="symbol-flash-outline plugin-ionicons-api" />
+                        <j:if test="${lrShowLabels}"><span>${%btn.steal}</span></j:if>
+                      </button>
+                    </j:if>
+                  </l:hasPermission>
+                </j:when>
+                <j:when test="${resource.reservedBy != null}">
+                  <l:hasPermission permission="${it.RESERVE}">
+                    <j:if test="${resource.isReservedByCurrentUser() or h.hasPermission(app.ADMINISTER)}">
+                      <button
+                        data-action="unreserve"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-action-button"
+                        tooltip="${%btn.unReserve}"
+                      >
+                        <l:icon src="symbol-log-out-outline plugin-ionicons-api" />
+                        <j:if test="${lrShowLabels}"><span>${%btn.unReserve}</span></j:if>
+                      </button>
+                    </j:if>
+                  </l:hasPermission>
+                  <l:hasPermission permission="${it.STEAL}">
+                    <j:if test="${!resource.isReservedByCurrentUser() and !resource.disabled}">
+                      <button
+                        data-action="reassign"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
+                        tooltip="${%btn.reassign}"
+                      >
+                        <l:icon src="symbol-people" />
+                        <j:if test="${lrShowLabels}"><span>${%btn.reassign}</span></j:if>
+                      </button>
+                    </j:if>
+                  </l:hasPermission>
+                </j:when>
+                <j:when test="${resource.queued}">
+                  <l:hasPermission permission="${it.UNLOCK}">
+                    <button
+                      data-action="reset"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                      tooltip="${%btn.reset}"
+                    >
+                      <l:icon src="symbol-refresh" />
+                      <j:if test="${lrShowLabels}"><span>${%btn.reset}</span></j:if>
+                    </button>
+                  </l:hasPermission>
+                </j:when>
+                <j:otherwise>
+                  <l:hasPermission permission="${it.RESERVE}">
+                    <j:if test="${!resource.disabled}">
+                      <button
+                        data-action="reserve"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-accent-color lockable-resources-action-button"
+                        tooltip="${%btn.reserve}"
+                      >
+                        <l:icon src="symbol-log-in-outline plugin-ionicons-api" />
+                        <j:if test="${lrShowLabels}"><span>${%btn.reserve}</span></j:if>
+                      </button>
+                    </j:if>
+                  </l:hasPermission>
+                  <j:if test="${!lrDetailPage}">
+                    <l:hasPermission permission="${it.CONFIGURE}">
+                      <button
+                        data-action="deleteResource"
+                        class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-delete-button"
+                        tooltip="${%btn.delete}"
+                      >
+                        <l:icon src="symbol-trash" />
+                      </button>
+                    </l:hasPermission>
+                  </j:if>
+                </j:otherwise>
+              </j:choose>
+              <!-- Disable / enable, in every state: a holder keeps a resource that gets disabled -->
+              <l:hasPermission permission="${it.CONFIGURE}">
+                <j:choose>
+                  <j:when test="${resource.disabled}">
+                    <button
+                      data-action="enable"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-success-color lockable-resources-action-button"
+                      tooltip="${%btn.enable}"
+                    >
+                      <l:icon src="symbol-checkmark-circle-outline plugin-ionicons-api" />
+                      <j:if test="${lrShowLabels}"><span>${%btn.enable}</span></j:if>
+                    </button>
+                  </j:when>
+                  <j:otherwise>
+                    <button
+                      data-action="disable"
+                      class="jenkins-button jenkins-button--tertiary jenkins-!-destructive-color lockable-resources-action-button"
+                      tooltip="${%btn.disable}"
+                    >
+                      <l:icon src="symbol-ban-outline plugin-ionicons-api" />
+                      <j:if test="${lrShowLabels}"><span>${%btn.disable}</span></j:if>
+                    </button>
+                  </j:otherwise>
+                </j:choose>
+              </l:hasPermission>
+              <l:hasPermission permission="${it.CONFIGURE}">
+                <button
+                  class="jenkins-button jenkins-button--tertiary lockable-resources-edit-button"
+                  tooltip="${%btn.edit}"
+                >
+                  <l:icon src="symbol-settings" />
+                  <j:if test="${lrShowLabels}"><span>${%btn.edit}</span></j:if>
+                </button>
+              </l:hasPermission>
+</j:jelly>
