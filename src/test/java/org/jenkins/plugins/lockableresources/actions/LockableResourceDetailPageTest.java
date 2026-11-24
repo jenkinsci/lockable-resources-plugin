@@ -288,6 +288,56 @@ class LockableResourceDetailPageTest {
     }
 
     @Test
+    @Issue("1115")
+    void holderLineShowsSharedHold() throws Exception {
+        // declared, not ephemeral: still there to check after the release
+        LockableResourcesManager.get().createResourceWithLabel("printer-1", "printer");
+        WorkflowJob child = j.createProject(WorkflowJob.class, "child");
+        child.setDefinition(
+                new CpsFlowDefinition("lock(resource: 'printer-1', shareId: 'nightly') { semaphore 'child' }", true));
+        WorkflowJob parent = j.createProject(WorkflowJob.class, "parent");
+        parent.setDefinition(new CpsFlowDefinition("""
+                lock(resource: 'printer-1', shareId: 'nightly') {
+                  build job: 'child', wait: true
+                }
+                """, true));
+        WorkflowRun p = parent.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("child/1", null);
+        WorkflowRun c = child.getBuildByNumber(1);
+        j.waitForMessage("Joining the hold of [printer-1] under share id 'nightly'", c);
+
+        // same share info on the detail page's holder line and in the main table
+        for (String url : new String[] {"lockable-resources/resource/printer-1/", "lockable-resources/"}) {
+            HtmlPage page = as("admin").goTo(url);
+            DomElement share = page.querySelector(".lr-share");
+            assertThat(url, share, notNullValue());
+            assertThat(url, share.querySelector(".lr-share__id").getTextContent(), is("nightly"));
+            // textContent: the table cell is not "displayed" for HtmlUnit, so asNormalizedText() is empty there
+            assertThat(
+                    url,
+                    share.getTextContent().replaceAll("\\s+", " "),
+                    containsString("shared as nightly with 1 more"));
+            assertThat(
+                    url,
+                    page.getAnchors().stream()
+                            .anyMatch(a -> a.getHrefAttribute().endsWith("/" + p.getUrl())),
+                    is(true));
+            assertThat(url, share.querySelector(".lr-share__holders a").getTextContent(), is(c.getFullDisplayName()));
+        }
+
+        // a user who cannot read the jobs only sees how many other holders there are
+        HtmlPage detail = as("reader").goTo("lockable-resources/resource/printer-1/");
+        String share = ((DomElement) detail.querySelector(".lr-resource-detail .lr-share")).getTextContent();
+        assertThat(share, containsString("1 build(s) you cannot see"));
+        assertThat(share, not(containsString(c.getFullDisplayName())));
+
+        SemaphoreStep.success("child/1", null);
+        j.assertBuildStatusSuccess(j.waitForCompletion(c));
+        j.assertBuildStatusSuccess(j.waitForCompletion(p));
+        assertThat(as("admin").goTo("lockable-resources/resource/printer-1/").querySelector(".lr-share"), nullValue());
+    }
+
+    @Test
     void nameIsUrlEncodedAndUserInputEscaped() throws Exception {
         String name = "lab printer #2 & co";
         LockableResourcesManager.get().createResource(name);

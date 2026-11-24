@@ -1,0 +1,36 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Shared hold (lock(shareId: ...)) of a locked resource: the share id and the other holder builds.
+  'it' is the LockableResource; the primary build is shown by the caller.
+  Included by the resources table and the resource detail page.
+  The share id and the build names are user-controlled: plain escaped text only.
+ -->
+<j:jelly xmlns:j="jelly:core">
+  <j:if test="${it.shareId != null}">
+    <j:set var="otherHolderCount" value="${it.otherShareHolderBuilds.size()}"/>
+    <j:choose>
+      <j:when test="${otherHolderCount == 0}">
+        <div class="lr-share jenkins-!-color-secondary">
+          ${%sharedAs} <code class="lr-share__id">${it.shareId}</code>
+        </div>
+      </j:when>
+      <j:otherwise>
+        <details class="lr-share">
+          <summary class="jenkins-!-color-secondary">
+            ${%sharedAs} <code class="lr-share__id">${it.shareId}</code>
+            ${%withMore(otherHolderCount)}
+          </summary>
+          <j:set var="visibleHolders" value="${it.visibleOtherShareHolderRuns}"/>
+          <ul class="lr-share__holders">
+            <j:forEach var="holderRun" items="${visibleHolders}">
+              <li><a class="jenkins-table__link" href="${rootURL}/${holderRun.url}">${holderRun.fullDisplayName}</a></li>
+            </j:forEach>
+            <j:if test="${visibleHolders.size() lt otherHolderCount}">
+              <li class="jenkins-!-color-secondary">${%notVisible(otherHolderCount - visibleHolders.size())}</li>
+            </j:if>
+          </ul>
+        </details>
+      </j:otherwise>
+    </j:choose>
+  </j:if>
+</j:jelly>

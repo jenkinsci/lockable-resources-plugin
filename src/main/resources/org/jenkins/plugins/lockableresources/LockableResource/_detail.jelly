@@ -86,6 +86,7 @@
               </j:when>
               <j:when test="${it.locked}">
                 <a href="${rootURL}/${it.build.url}">${it.build.fullDisplayName}</a>
+                <st:include page="_shareHolders.jelly"/>
               </j:when>
               <j:when test="${it.queued}">
                 ${it.queueItemProject}
