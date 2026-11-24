@@ -130,6 +130,20 @@ public class LockStep extends Step implements Serializable {
     @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
     public List<String> candidates = null;
 
+    /**
+     * Seconds the resources stay locked after the lock block ends normally or fails, e.g. for a
+     * license cooldown. The pipeline continues right away. 0 (default) releases them immediately.
+     */
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public long onReleaseDelay = 0;
+
+    /**
+     * Seconds the resources stay locked after the build is aborted inside the lock block.
+     * 0 (default) releases them immediately.
+     */
+    @SuppressFBWarnings(value = "PA_PUBLIC_PRIMITIVE_ATTRIBUTE", justification = "Preserve API compatibility.")
+    public long onCancelDelay = 0;
+
     // it should be LockStep() - without params. But keeping this for backward compatibility
     // so `lock('resource1')` still works and `lock(label: 'label1', quantity: 3)` works too (resource
     // is not required)
@@ -254,6 +268,16 @@ public class LockStep extends Step implements Serializable {
     @DataBoundSetter
     public void setCandidates(@CheckForNull List<String> candidates) {
         this.candidates = LockStepResource.cleanCandidates(candidates);
+    }
+
+    @DataBoundSetter
+    public void setOnReleaseDelay(long onReleaseDelay) {
+        this.onReleaseDelay = Math.max(0, onReleaseDelay);
+    }
+
+    @DataBoundSetter
+    public void setOnCancelDelay(long onCancelDelay) {
+        this.onCancelDelay = Math.max(0, onCancelDelay);
     }
 
     @Extension

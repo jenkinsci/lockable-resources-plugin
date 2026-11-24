@@ -30,8 +30,11 @@ import org.jenkinsci.plugins.workflow.steps.AbstractStepExecutionImpl;
 import org.jenkinsci.plugins.workflow.steps.BodyExecutionCallback;
 import org.jenkinsci.plugins.workflow.steps.BodyInvoker;
 import org.jenkinsci.plugins.workflow.steps.EnvironmentExpander;
+import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.support.actions.PauseAction;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 public class LockStepExecution extends AbstractStepExecutionImpl implements RemoteLockSession.Host {
 
@@ -73,6 +76,10 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         if (RemoteLockRouting.isRemoteRequest(step, lrm)) {
             if (step.getResources().stream().anyMatch(r -> r.candidates != null)) {
                 throw new AbortException(Messages.error_candidatesNotSupportedForRemoteLocks());
+            }
+            if (step.onReleaseDelay > 0 || step.onCancelDelay > 0) {
+                // fail before anything is sent to the remote server; also covers forcedServerId
+                throw new AbortException(Messages.error_releaseDelayNotSupportedForRemoteLocks());
             }
             remoteSession = new RemoteLockSession();
             return remoteSession.start(this);
@@ -149,7 +156,14 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                         lockedResources.put(resource.getName(), resource.getProperties());
                     }
                     LockStepExecution.proceed(
-                            lockedResources, getContext(), step.toString(), step.variable, entry, step.shareId);
+                            lockedResources,
+                            getContext(),
+                            step.toString(),
+                            step.variable,
+                            entry,
+                            step.shareId,
+                            step.onReleaseDelay,
+                            step.onCancelDelay);
                     lrm.admitJoinableContexts();
                     return false;
                 }
@@ -175,12 +189,27 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     lockedResources.put(resource.getName(), resource.getProperties());
                 }
                 LockStepExecution.proceed(
-                        lockedResources, getContext(), step.toString(), step.variable, entry, step.shareId);
+                        lockedResources,
+                        getContext(),
+                        step.toString(),
+                        step.variable,
+                        entry,
+                        step.shareId,
+                        step.onReleaseDelay,
+                        step.onCancelDelay);
                 lrm.admitJoinableContexts();
                 return false;
             }
 
-            LockStepExecution.proceed(lockedResources, getContext(), step.toString(), step.variable);
+            LockStepExecution.proceed(
+                    lockedResources,
+                    getContext(),
+                    step.toString(),
+                    step.variable,
+                    null,
+                    null,
+                    step.onReleaseDelay,
+                    step.onCancelDelay);
         }
 
         return false;
@@ -316,7 +345,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                     step.reason,
                     step.timeoutForAllocateResource,
                     step.timeoutUnit,
-                    step.shareId);
+                    step.shareId,
+                    step.onReleaseDelay,
+                    step.onCancelDelay);
         }
     }
 
@@ -375,14 +406,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         proceed(lockedResources, context, resourceDescription, variable, null, null);
     }
 
-    /**
-     * Starts the lock body. {@code shareHolderEntry} is the holder entry the block was recorded under
-     * (see {@link #shareHolderEntry}); the block end then removes only that entry. When {@code null}
-     * the block end frees the resources of the build as before. {@code shareId} is the share id of the
-     * block, recorded in the build's lock log.
-     */
-    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
-    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    @Restricted(NoExternalUse.class)
     public static void proceed(
             final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
             StepContext context,
@@ -390,6 +414,28 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             final String variable,
             @edu.umd.cs.findbugs.annotations.CheckForNull final String shareHolderEntry,
             @edu.umd.cs.findbugs.annotations.CheckForNull final String shareId) {
+        proceed(lockedResources, context, resourceDescription, variable, shareHolderEntry, shareId, 0, 0);
+    }
+
+    /**
+     * Starts the lock body. {@code shareHolderEntry} is the holder entry the block was recorded under
+     * (see {@link #shareHolderEntry}); the block end then removes only that entry. When {@code null}
+     * the block end frees the resources of the build as before. {@code shareId} is the share id of the
+     * block, recorded in the build's lock log. Once the resources are freed, that is when the last
+     * holder block has left, they stay locked for {@code onReleaseDelay} more seconds, or for
+     * {@code onCancelDelay} seconds when the build was aborted.
+     */
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "not sure which exceptions might be catch.")
+    @Restricted(NoExternalUse.class)
+    public static void proceed(
+            final LinkedHashMap<String, List<LockableResourceProperty>> lockedResources,
+            StepContext context,
+            String resourceDescription,
+            final String variable,
+            @edu.umd.cs.findbugs.annotations.CheckForNull final String shareHolderEntry,
+            @edu.umd.cs.findbugs.annotations.CheckForNull final String shareId,
+            long onReleaseDelay,
+            long onCancelDelay) {
         Run<?, ?> build;
         FlowNode node;
         PrintStream logger;
@@ -414,7 +460,13 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
             logAcquired(build, resourceNames, resourceDescription, shareHolderEntry, shareId);
             PauseAction.endCurrentPause(node);
             BodyInvoker bodyInvoker = context.newBodyInvoker()
-                    .withCallback(new Callback(resourceNames, resourceDescription, shareHolderEntry, shareId));
+                    .withCallback(new Callback(
+                            resourceNames,
+                            resourceDescription,
+                            shareHolderEntry,
+                            shareId,
+                            onReleaseDelay,
+                            onCancelDelay));
             if (variable != null && !variable.isEmpty()) {
                 Map<String, String> resourceLabels = new LinkedHashMap<>();
                 for (String resourceName : resourceNames) {
@@ -492,7 +544,7 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
     }
 
     /** Builds lock environment variables with indexed labels and a first-resource label alias. */
-    @org.kohsuke.accmod.Restricted(org.kohsuke.accmod.restrictions.NoExternalUse.class)
+    @Restricted(NoExternalUse.class)
     @edu.umd.cs.findbugs.annotations.CheckForNull
     public static Map<String, String> buildLockEnvVars(
             @edu.umd.cs.findbugs.annotations.CheckForNull String variable,
@@ -569,6 +621,9 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
         private static final long serialVersionUID = -2024890670461847666L;
         private final List<String> resourceNames;
         private final String resourceDescription;
+        // new fields default to 0 (release right away) for callbacks serialized by older plugin versions
+        private final long onReleaseDelay;
+        private final long onCancelDelay;
 
         /** Holder entry of this block; {@code null} for blocks started by older versions. */
         @edu.umd.cs.findbugs.annotations.CheckForNull
@@ -582,36 +637,79 @@ public class LockStepExecution extends AbstractStepExecutionImpl implements Remo
                 List<String> resourceNames,
                 String resourceDescription,
                 @edu.umd.cs.findbugs.annotations.CheckForNull String shareHolderEntry,
-                @edu.umd.cs.findbugs.annotations.CheckForNull String shareId) {
+                @edu.umd.cs.findbugs.annotations.CheckForNull String shareId,
+                long onReleaseDelay,
+                long onCancelDelay) {
             this.resourceNames = resourceNames;
             this.resourceDescription = resourceDescription;
             this.shareHolderEntry = shareHolderEntry;
             this.shareId = shareId;
+            this.onReleaseDelay = onReleaseDelay;
+            this.onCancelDelay = onCancelDelay;
+        }
+
+        /** Same as {@link BodyExecutionCallback.TailCall#onFailure}, but knows whether the build was aborted. */
+        @Override
+        public void onFailure(StepContext context, Throwable t) {
+            try {
+                // abort, timeout and a failFast parallel branch end the body with FlowInterruptedException
+                release(context, t instanceof FlowInterruptedException);
+            } catch (Exception x) {
+                t.addSuppressed(x);
+            }
+            context.onFailure(t);
         }
 
         @Override
         protected void finished(StepContext context) throws Exception {
+            release(context, false);
+        }
+
+        private void release(StepContext context, boolean cancelled) throws Exception {
             Run<?, ?> build = context.get(Run.class);
+            long delay = cancelled ? this.onCancelDelay : this.onReleaseDelay;
+            LockableResourcesManager lrm = LockableResourcesManager.get();
+            List<String> names = this.resourceNames != null ? this.resourceNames : Collections.emptyList();
+            long releaseAt = 0;
             if (this.shareHolderEntry != null) {
-                // "left" while other blocks still hold the resource, "released" by the last holder
-                List<String> left = LockableResourcesManager.get()
-                        .unlockShareHolder(this.resourceNames, build, this.shareHolderEntry);
-                List<String> names = this.resourceNames != null ? this.resourceNames : Collections.emptyList();
+                // "left" while other blocks still hold the resource, "released" (or "release delayed") by
+                // the last holder: the release delay only starts once the last holder block has left
+                List<String> left = lrm.unlockShareHolder(this.resourceNames, build, this.shareHolderEntry, delay);
                 for (String name : names) {
+                    String action = "released";
+                    if (left.contains(name)) {
+                        action = "left";
+                    } else if (delay > 0) {
+                        long at = lrm.getPendingReleaseAt(name, build);
+                        if (at > 0) {
+                            releaseAt = at;
+                            action = "release delayed";
+                        }
+                    }
                     LockedResourcesBuildAction.addLog(
-                            build,
-                            Collections.singletonList(name),
-                            left.contains(name) ? "left" : "released",
-                            this.resourceDescription,
-                            this.shareId);
+                            build, Collections.singletonList(name), action, this.resourceDescription, this.shareId);
                 }
+            } else if (delay > 0) {
+                // blocks started by older versions have no holder entry; 0 when unlocked meanwhile
+                releaseAt = lrm.delayRelease(this.resourceNames, build, delay);
+                LockedResourcesBuildAction.addLog(
+                        build,
+                        this.resourceNames,
+                        releaseAt > 0 ? "release delayed" : "released",
+                        this.resourceDescription);
             } else {
                 LockedResourcesBuildAction.addLog(build, this.resourceNames, "released", this.resourceDescription);
-                LockableResourcesManager.get().unlockNames(this.resourceNames, build);
+                lrm.unlockNames(this.resourceNames, build);
             }
             DateFormat format = LockableResource.createTimestampFormat();
-            String timestamp = format.format(new Date());
-            String message = "Lock released on resource [" + this.resourceDescription + "] at " + timestamp;
+            String message;
+            if (releaseAt > 0) {
+                message = "Lock on resource [" + this.resourceDescription + "] will be released in " + delay
+                        + " seconds, at " + format.format(new Date(releaseAt));
+            } else {
+                message =
+                        "Lock released on resource [" + this.resourceDescription + "] at " + format.format(new Date());
+            }
             if (this.resourceNames != null && !this.resourceNames.isEmpty()) {
                 message += ", resources: " + formatResourceNames(this.resourceNames);
             }
