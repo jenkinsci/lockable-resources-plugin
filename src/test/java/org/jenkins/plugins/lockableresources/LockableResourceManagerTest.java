@@ -189,7 +189,6 @@ class LockableResourceManagerTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void getFreeResourcesAmountSkipsUnloggedCausesScan(JenkinsRule j) throws Exception {
         LockableResourcesManager manager = LockableResourcesManager.get();
         manager.createResourceWithLabel("busy-res", "gpu-pool");
@@ -230,11 +229,8 @@ class LockableResourceManagerTest {
                     }
                 };
 
-        java.lang.reflect.Field queueField = LockableResourcesManager.class.getDeclaredField("queuedContexts");
-        queueField.setAccessible(true);
         java.util.List<org.jenkins.plugins.lockableresources.queue.QueuedContextStruct> queuedContexts =
-                (java.util.List<org.jenkins.plugins.lockableresources.queue.QueuedContextStruct>)
-                        queueField.get(manager);
+                LockableResourcesState.get().queuedContexts();
         java.util.logging.Logger lrmLogger =
                 java.util.logging.Logger.getLogger(LockableResourcesManager.class.getName());
         java.util.logging.Level previousLevel = lrmLogger.getLevel();

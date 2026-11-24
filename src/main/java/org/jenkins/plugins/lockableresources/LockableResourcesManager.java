@@ -136,10 +136,18 @@ public class LockableResourcesManager extends GlobalConfiguration {
     private boolean allowEphemeralResources = true;
 
     /**
-     * Only used when this lockable resource is tried to be locked by {@link LockStep}, otherwise
-     * (freestyle builds) regular Jenkins queue is used.
+     * Legacy location of the {@link LockStep} queue. Only read from old {@code LockableResourcesManager.xml}
+     * files; {@link LockableResourcesState} drains it on startup and it stays {@code null} afterwards, so it is
+     * no longer written.
+     *
+     * @deprecated Replaced with {@link LockableResourcesState} (runtime state, separate file).
      */
-    private final List<QueuedContextStruct> queuedContexts = new ArrayList<>();
+    @Deprecated
+    @CheckForNull
+    private List<QueuedContextStruct> queuedContexts;
+
+    /** Cached runtime state store, see {@link #state()}. */
+    private transient volatile LockableResourcesState state;
 
     /**
      * Remote acquire requests waiting for resources. Transient: does not survive Jenkins restart
@@ -1772,16 +1780,17 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @CheckForNull
     private QueuedContextStruct getNextQueuedContext() {
 
-        LOGGER.fine("current queue size: " + this.queuedContexts.size());
-        LOGGER.finest("current queue: " + this.queuedContexts);
+        List<QueuedContextStruct> queue = state().queuedContexts();
+        LOGGER.fine("current queue size: " + queue.size());
+        LOGGER.finest("current queue: " + queue);
         List<QueuedContextStruct> toRemove = new ArrayList<>();
         QueuedContextStruct nextEntry = null;
         long earliestDeadline = Long.MAX_VALUE;
 
         // the first one added lock is the oldest one, and this wins
 
-        for (int idx = 0; idx < this.queuedContexts.size() && nextEntry == null; idx++) {
-            QueuedContextStruct entry = this.queuedContexts.get(idx);
+        for (int idx = 0; idx < queue.size() && nextEntry == null; idx++) {
+            QueuedContextStruct entry = queue.get(idx);
             // check queue list first
             if (!entry.isValid()) {
                 LOGGER.fine("well be removed: " + idx + " " + entry);
@@ -1816,8 +1825,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
         }
 
         if (!toRemove.isEmpty()) {
-            this.queuedContexts.removeAll(toRemove);
-            save();
+            queue.removeAll(toRemove);
+            state().save();
         }
 
         // reschedule for the next earliest deadline, across both queues.
@@ -2193,9 +2202,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
             boolean admitted = true;
             while (admitted) {
                 admitted = false;
-                for (QueuedContextStruct entry : new ArrayList<>(this.queuedContexts)) {
+                List<QueuedContextStruct> queue = state().queuedContexts();
+                for (QueuedContextStruct entry : new ArrayList<>(queue)) {
                     String shareId = entry.getShareId();
-                    if (shareId == null || !this.queuedContexts.contains(entry) || !entry.isValid()) {
+                    if (shareId == null || !queue.contains(entry) || !entry.isValid()) {
                         continue;
                     }
                     Run<?, ?> build = entry.getBuild();
@@ -2272,8 +2282,29 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class) // used by jelly
     public List<QueuedContextStruct> getCurrentQueuedContext() {
         synchronized (syncResources) {
-            return Collections.unmodifiableList(this.queuedContexts);
+            return Collections.unmodifiableList(state().queuedContexts());
         }
+    }
+
+    /** The runtime state store holding the {@link LockStep} queue. */
+    private LockableResourcesState state() {
+        LockableResourcesState s = state;
+        if (s == null) {
+            state = s = LockableResourcesState.get();
+        }
+        return s;
+    }
+
+    /**
+     * Hands over queue entries read from an old {@code LockableResourcesManager.xml} and clears the legacy
+     * field. Called once by {@link LockableResourcesState} while it loads. Must hold {@link #syncResources}.
+     */
+    @CheckForNull
+    @SuppressWarnings("deprecation")
+    List<QueuedContextStruct> drainLegacyQueuedContexts() {
+        List<QueuedContextStruct> legacy = this.queuedContexts;
+        this.queuedContexts = null;
+        return legacy;
     }
 
     // ---------------------------------------------------------------------------
@@ -2577,14 +2608,14 @@ public class LockableResourcesManager extends GlobalConfiguration {
     @Restricted(NoExternalUse.class) // used by jelly
     public void changeQueueOrder(final String queueId, final int newPosition) throws IOException {
         synchronized (syncResources) {
-            if (newPosition < 0 || newPosition >= this.queuedContexts.size()) {
-                throw new IOException(
-                        Messages.error_queuePositionOutOfRange(newPosition + 1, this.queuedContexts.size()));
+            List<QueuedContextStruct> queue = state().queuedContexts();
+            if (newPosition < 0 || newPosition >= queue.size()) {
+                throw new IOException(Messages.error_queuePositionOutOfRange(newPosition + 1, queue.size()));
             }
 
             int oldIndex = -1;
-            for (int i = 0; i < this.queuedContexts.size(); i++) {
-                QueuedContextStruct entry = this.queuedContexts.get(i);
+            for (int i = 0; i < queue.size(); i++) {
+                QueuedContextStruct entry = queue.get(i);
                 if (entry.getId().equals(queueId)) {
                     oldIndex = i;
                     break;
@@ -2596,8 +2627,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 throw new IOException(Messages.error_queueDoesNotExist(queueId));
             }
 
-            Collections.swap(this.queuedContexts, oldIndex, newPosition);
-            save();
+            Collections.swap(queue, oldIndex, newPosition);
+            state().save();
         }
     }
 
@@ -3037,7 +3068,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
 
         Map<Run<?, ?>, Integer> usage = new HashMap<>();
 
-        for (QueuedContextStruct entry : this.queuedContexts) {
+        for (QueuedContextStruct entry : state().queuedContexts()) {
             boolean matched = false;
             for (LockableResourcesStruct _struct : entry.getResources()) {
                 if (_struct.isResourceRequired(resource)) {
@@ -3190,7 +3221,8 @@ public class LockableResourcesManager extends GlobalConfiguration {
             long onReleaseDelay,
             long onCancelDelay) {
         synchronized (syncResources) {
-            for (QueuedContextStruct entry : this.queuedContexts) {
+            List<QueuedContextStruct> queue = state().queuedContexts();
+            for (QueuedContextStruct entry : queue) {
                 if (entry.getContext() == context) {
                     LOGGER.warning("queueContext, duplicated, " + requiredResources);
                     return;
@@ -3212,9 +3244,9 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     onCancelDelay);
 
             if (!inversePrecedence || priority != 0) {
-                queueIndex = this.queuedContexts.size() - 1;
+                queueIndex = queue.size() - 1;
                 for (; queueIndex >= 0; queueIndex--) {
-                    QueuedContextStruct entry = this.queuedContexts.get(queueIndex);
+                    QueuedContextStruct entry = queue.get(queueIndex);
                     final int rc = entry.compare(newQueueItem);
                     if (rc > 0) {
                         continue;
@@ -3224,7 +3256,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                 queueIndex++;
             }
 
-            this.queuedContexts.add(queueIndex, newQueueItem);
+            queue.add(queueIndex, newQueueItem);
             DateFormat format = LockableResource.createTimestampFormat();
             String timestamp = format.format(new Date());
             printLogs(
@@ -3232,7 +3264,7 @@ public class LockableResourcesManager extends GlobalConfiguration {
                     newQueueItem.getLogger(),
                     Level.FINE);
 
-            save();
+            state().save();
 
             // If this entry has a timeout and its deadline is earlier than the
             // currently scheduled one, (re)schedule so it fires on time.
@@ -3246,10 +3278,10 @@ public class LockableResourcesManager extends GlobalConfiguration {
     // ---------------------------------------------------------------------------
     public boolean unqueueContext(StepContext context) {
         synchronized (syncResources) {
-            for (Iterator<QueuedContextStruct> iter = this.queuedContexts.listIterator(); iter.hasNext(); ) {
+            for (Iterator<QueuedContextStruct> iter = state().queuedContexts().listIterator(); iter.hasNext(); ) {
                 if (iter.next().getContext() == context) {
                     iter.remove();
-                    save();
+                    state().save();
                     return true;
                 }
             }
@@ -3595,6 +3627,28 @@ public class LockableResourcesManager extends GlobalConfiguration {
         if (lrm.savePending != null && lrm.savePending.compareAndSet(true, false)) {
             lrm.doSave();
             LOGGER.fine("Flushed pending async save during shutdown");
+        }
+    }
+
+    /** Whether saving is enabled, see {@link Constants#SYSTEM_PROPERTY_DISABLE_SAVE}. */
+    boolean isSaveEnabled() {
+        if (enableSave == -1) {
+            // read system property and cache it.
+            enableSave = SystemProperties.getBoolean(Constants.SYSTEM_PROPERTY_DISABLE_SAVE) ? 0 : 1;
+        }
+        return enableSave != 0;
+    }
+
+    /**
+     * Writes this configuration now when an async save of it is pending. Called by
+     * {@link LockableResourcesState} before it writes its own file, so the configuration (the locks) is on
+     * disk before the queue state: after a hard kill a lock is never lost while its queue entry is already
+     * gone. Must hold {@link #syncResources}.
+     */
+    void flushPendingConfigSave() {
+        AtomicBoolean sp = savePending;
+        if (sp != null && sp.get()) {
+            doSave();
         }
     }
 
