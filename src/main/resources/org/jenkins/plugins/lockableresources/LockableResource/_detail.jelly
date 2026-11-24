@@ -47,6 +47,7 @@
             </j:when>
             <j:when test="${it.locked}">
               <strong class="lr-resource-detail__status jenkins-!-warning-color">${%status.locked}</strong>
+              <st:include page="_releaseDelay.jelly"/>
             </j:when>
             <j:when test="${it.queued}">
               <strong class="lr-resource-detail__status jenkins-!-warning-color">${%status.queued}</strong>
@@ -83,6 +84,10 @@
                   </j:when>
                   <j:otherwise>${%heldBy.remoteUnknown}</j:otherwise>
                 </j:choose>
+              </j:when>
+              <!-- Release delay of a build that has been deleted meanwhile, as in the resources table -->
+              <j:when test="${it.locked and it.build == null and it.releaseDelayed}">
+                ${it.buildExternalizableId}
               </j:when>
               <j:when test="${it.locked}">
                 <a href="${rootURL}/${it.build.url}">${it.build.fullDisplayName}</a>

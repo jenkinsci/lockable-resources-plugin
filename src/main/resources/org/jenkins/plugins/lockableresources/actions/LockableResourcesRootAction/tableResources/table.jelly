@@ -135,18 +135,7 @@ THE SOFTWARE.
                 <j:when test="${resource.locked}">
                   ${%resource.status.locked}
                   <!-- Lock block is over, the resource waits for its release delay (onReleaseDelay / onCancelDelay) -->
-                  <j:if test="${resource.releaseDelayed}">
-                    <br/>
-                    <span class="jenkins-!-color-secondary">
-                      ${%resource.status.releaseDelayed}
-                      <i:formatDate
-                        value="${resource.releaseDelayedUntil}"
-                        type="both"
-                        dateStyle="medium"
-                        timeStyle="short"
-                      />
-                    </span>
-                  </j:if>
+                  <st:include page="_releaseDelay.jelly" it="${resource}"/>
                 </j:when>
                 <!-- Queued -->
                 <j:when test="${resource.queued}">

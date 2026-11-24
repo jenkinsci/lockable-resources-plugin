@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
 
 import hudson.model.Result;
 import java.net.URL;
@@ -335,6 +336,39 @@ class LockableResourceDetailPageTest {
         j.assertBuildStatusSuccess(j.waitForCompletion(c));
         j.assertBuildStatusSuccess(j.waitForCompletion(p));
         assertThat(as("admin").goTo("lockable-resources/resource/printer-1/").querySelector(".lr-share"), nullValue());
+    }
+
+    @Test
+    void statusLineShowsReleaseDelay() throws Exception {
+        LockableResourcesManager lrm = LockableResourcesManager.get();
+        // declared, not ephemeral: still there to check after the release
+        lrm.createResourceWithLabel("printer-1", "printer");
+        WorkflowJob p = j.createProject(WorkflowJob.class, "p");
+        p.setDefinition(
+                new CpsFlowDefinition("lock(resource: 'printer-1', onReleaseDelay: 600) { echo 'inside' }", true));
+        WorkflowRun b = j.buildAndAssertSuccess(p);
+        LockableResource resource = lrm.fromName("printer-1");
+        assertThat(resource.isReleaseDelayed(), is(true));
+
+        // same release delay info on the detail page's status line and in the main table
+        for (String url : new String[] {"lockable-resources/resource/printer-1/", "lockable-resources/"}) {
+            HtmlPage page = as("reader").goTo(url);
+            DomElement delay = page.querySelector(".lr-release-delay");
+            assertThat(url, delay, notNullValue());
+            // textContent: the table cell is not "displayed" for HtmlUnit, so asNormalizedText() is empty there
+            String text = delay.getTextContent().replaceAll("\\s+", " ").trim();
+            assertThat(url, text, startsWith("release delay until "));
+            assertThat(url, text.length() > "release delay until ".length(), is(true));
+        }
+        HtmlPage detail = as("admin").goTo("lockable-resources/resource/printer-1/");
+        assertThat(detail.querySelector(".lr-resource-detail__status").getTextContent(), is("Locked"));
+        // the build that ended keeps holding the resource during the delay
+        assertThat(detail.getAnchorByText(b.getFullDisplayName()), notNullValue());
+
+        lrm.unlockResources(List.of(resource));
+        detail = as("reader").goTo("lockable-resources/resource/printer-1/");
+        assertThat(detail.querySelector(".lr-release-delay"), nullValue());
+        assertThat(detail.querySelector(".lr-resource-detail__status").getTextContent(), is("Free"));
     }
 
     @Test
