@@ -378,6 +378,22 @@ class LockStepCandidatesTest extends LockStepTestBase {
 
     @Test
     @Issue("669")
+    void shareIdAndCandidatesIsAnError(JenkinsRule j) throws Exception {
+        createResources();
+        WorkflowRun b1 = runFailingLock(j, "candidates: ['c1', 'c2'], shareId: 'x'");
+        j.assertLogContains("The 'shareId' parameter cannot be combined with 'candidates'.", b1);
+        j.assertLogNotContains("Locked:", b1);
+        b1.getParent().delete();
+
+        // an extra entry with candidates and a group gets the same message, not the group-only one
+        WorkflowRun b2 =
+                runFailingLock(j, "resource: 'board1', shareId: 'x', extra: [[candidates: ['c1'], group: 'g']]");
+        j.assertLogContains("The 'shareId' parameter cannot be combined with 'candidates'.", b2);
+        j.assertLogNotContains("Locked:", b2);
+    }
+
+    @Test
+    @Issue("669")
     void candidatesFailForRemoteLocks(JenkinsRule j) throws Exception {
         RemoteServerFixture remote = new RemoteServerFixture();
         remote.start();

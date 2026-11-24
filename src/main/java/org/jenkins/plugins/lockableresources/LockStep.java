@@ -428,7 +428,7 @@ public class LockStep extends Step implements Serializable {
 
     /**
      * A share id is only allowed on named, local resources: the shared hold is matched resource by
-     * resource, so a label, a quantity or a remote server cannot be combined with it.
+     * resource, so a label, candidates, a quantity or a remote server cannot be combined with it.
      */
     void validateShareId() {
         if (shareId == null) {
@@ -436,6 +436,9 @@ public class LockStep extends Step implements Serializable {
         }
         if (label != null) {
             throw new IllegalArgumentException(Messages.error_shareIdWithLabel());
+        }
+        if (candidates != null) {
+            throw new IllegalArgumentException(Messages.error_shareIdWithCandidates());
         }
         if (quantity != 0) {
             throw new IllegalArgumentException(Messages.error_shareIdWithQuantity());
@@ -448,6 +451,9 @@ public class LockStep extends Step implements Serializable {
         }
         if (extra != null) {
             for (LockStepResource e : extra) {
+                if (e.candidates != null) {
+                    throw new IllegalArgumentException(Messages.error_shareIdWithCandidates());
+                }
                 if (e.resource == null && e.label == null && (e.getGroup() != null || group != null)) {
                     throw new IllegalArgumentException(Messages.error_shareIdWithGroupOnly());
                 }
